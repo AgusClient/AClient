@@ -777,6 +777,7 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 	pCurrentLine->m_Friend = false;
 	pCurrentLine->m_CustomColor = CustomColor;
 	pCurrentLine->m_pManagedTeeRenderInfo = nullptr;
+	pCurrentLine->m_TranslateId = std::nullopt;
 
 	TextRender()->DeleteTextContainer(pCurrentLine->m_TextContainerIndex);
 	Graphics()->DeleteQuadContainer(pCurrentLine->m_QuadContainerIndex);
@@ -998,6 +999,11 @@ void CChat::OnPrepareLines(float y)
 			}
 		}
 
+		const char *pTextTranslated = Line.m_TranslateId.has_value() && Line.m_aTextTranslated[0] != '\0' ? Line.m_aTextTranslated : nullptr;
+		// If hidden and there is translated text
+		if(pText != Line.m_aText && pTextTranslated)
+			pTextTranslated = TCLocalize("Translated text hidden due to streamer mode");
+
 		// get the y offset (calculate it if we haven't done that yet)
 		if(Line.m_aYOffset[OffsetType] < 0.0f)
 		{
@@ -1032,7 +1038,18 @@ void CChat::OnPrepareLines(float y)
 				AppendCursor.m_LineWidth -= Cursor.m_LongestLineWidth;
 			}
 
-			TextRender()->TextEx(&AppendCursor, pText);
+			if(pTextTranslated)
+			{
+				TextRender()->TextEx(&AppendCursor, pTextTranslated);
+				TextRender()->TextEx(&AppendCursor, "\n");
+				AppendCursor.m_FontSize *= 0.8f;
+				TextRender()->TextEx(&AppendCursor, pText);
+				AppendCursor.m_FontSize /= 0.8f;
+			}
+			else
+			{
+				TextRender()->TextEx(&AppendCursor, pText);
+			}
 
 			Line.m_aYOffset[OffsetType] = AppendCursor.Height() + RealMsgPaddingY;
 		}
@@ -1127,7 +1144,25 @@ void CChat::OnPrepareLines(float y)
 			AppendCursor.m_LineWidth -= Cursor.m_LongestLineWidth;
 		}
 
-		TextRender()->CreateOrAppendTextContainer(Line.m_TextContainerIndex, &AppendCursor, pText);
+		if(pTextTranslated)
+		{
+			TextRender()->CreateOrAppendTextContainer(Line.m_TextContainerIndex, &AppendCursor, pTextTranslated);
+			// Show old text darker
+			ColorRGBA ColorDarker = Color;
+			ColorDarker.r *= 0.8f;
+			ColorDarker.g *= 0.8f;
+			ColorDarker.b *= 0.8f;
+			TextRender()->TextColor(ColorDarker);
+			TextRender()->CreateOrAppendTextContainer(Line.m_TextContainerIndex, &AppendCursor, "\n");
+			AppendCursor.m_FontSize *= 0.8f;
+			TextRender()->CreateOrAppendTextContainer(Line.m_TextContainerIndex, &AppendCursor, pText);
+			AppendCursor.m_FontSize /= 0.8f;
+			TextRender()->TextColor(Color);
+		}
+		else
+		{
+			TextRender()->CreateOrAppendTextContainer(Line.m_TextContainerIndex, &AppendCursor, pText);
+		}
 
 		if(!g_Config.m_ClChatOld && (Line.m_aText[0] != '\0' || Line.m_aName[0] != '\0'))
 		{
