@@ -604,7 +604,6 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 	if(FontSelectedOld != FontSelectedNew)
 	{
 		str_copy(g_Config.m_ClCustomFont, s_FontDropDownNames[FontSelectedNew]);
-		FontSelectedOld = FontSelectedNew;
 		TextRender()->SetCustomFace(g_Config.m_ClCustomFont);
 
 		// Attempt to reset all the containers
@@ -2186,9 +2185,9 @@ void CMenus::RenderSettingsStatusBar(CUIRect MainView)
 	Ui()->DoEditBox(&s_StatusScheme, &StatusScheme, EditBoxFontSize);
 
 	static std::vector<const char *> s_DropDownNames = {};
-	for(int i = 0; i < (int)GameClient()->m_StatusBar.m_StatusItemTypes.size(); ++i)
+	for(const CStatusItem &StatusItemType : GameClient()->m_StatusBar.m_StatusItemTypes)
 		if(s_DropDownNames.size() != GameClient()->m_StatusBar.m_StatusItemTypes.size())
-			s_DropDownNames.push_back(GameClient()->m_StatusBar.m_StatusItemTypes[i].m_aName);
+			s_DropDownNames.push_back(StatusItemType.m_aName);
 
 	static CUi::SDropDownState s_DropDownState;
 	static CScrollRegion s_DropDownScrollRegion;
@@ -2233,13 +2232,14 @@ void CMenus::RenderSettingsStatusBar(CUIRect MainView)
 	static std::vector<CButtonContainer *> s_pItemButtons;
 	static std::vector<CButtonContainer> s_ItemButtons;
 	static vec2 s_ActivePos = vec2(0, 0);
-	struct SSwapItem
+	class CSwapItem
 	{
-		vec2 InitialPosition = vec2(0, 0);
-		float Duration = 0.0f;
+	public:
+		vec2 m_InitialPosition = vec2();
+		float m_Duration = 0.0f;
 	};
 
-	static std::vector<SSwapItem> s_ItemSwaps;
+	static std::vector<CSwapItem> s_ItemSwaps;
 
 	if((int)s_ItemButtons.size() != ItemCount)
 	{
@@ -2280,18 +2280,18 @@ void CMenus::RenderSettingsStatusBar(CUIRect MainView)
 			std::swap(s_pItemButtons[i], s_pItemButtons[HotStatusIndex]);
 			std::swap(GameClient()->m_StatusBar.m_StatusBarItems[i], GameClient()->m_StatusBar.m_StatusBarItems[HotStatusIndex]);
 			s_SelectedItem = -2;
-			s_ItemSwaps[HotStatusIndex].InitialPosition = vec2(StatusItemButton.x, StatusItemButton.y);
-			s_ItemSwaps[HotStatusIndex].Duration = 0.15f;
-			s_ItemSwaps[i].InitialPosition = vec2(s_ActivePos.x, s_ActivePos.y);
-			s_ItemSwaps[i].Duration = 0.15f;
+			s_ItemSwaps[HotStatusIndex].m_InitialPosition = vec2(StatusItemButton.x, StatusItemButton.y);
+			s_ItemSwaps[HotStatusIndex].m_Duration = 0.15f;
+			s_ItemSwaps[i].m_InitialPosition = vec2(s_ActivePos.x, s_ActivePos.y);
+			s_ItemSwaps[i].m_Duration = 0.15f;
 			GameClient()->m_StatusBar.UpdateStatusBarScheme(g_Config.m_ClStatusBarScheme);
 		}
 		TempItemButton = StatusItemButton;
-		s_ItemSwaps[i].Duration = std::max(0.0f, s_ItemSwaps[i].Duration - Client()->RenderFrameTime());
-		if(s_ItemSwaps[i].Duration > 0.0f)
+		s_ItemSwaps[i].m_Duration = std::max(0.0f, s_ItemSwaps[i].m_Duration - Client()->RenderFrameTime());
+		if(s_ItemSwaps[i].m_Duration > 0.0f)
 		{
-			float Progress = std::pow(2.0, -5.0 * (1.0 - s_ItemSwaps[i].Duration / 0.15f));
-			TempItemButton.x = mix(TempItemButton.x, s_ItemSwaps[i].InitialPosition.x, Progress);
+			float Progress = std::pow(2.0, -5.0 * (1.0 - s_ItemSwaps[i].m_Duration / 0.15f));
+			TempItemButton.x = mix(TempItemButton.x, s_ItemSwaps[i].m_InitialPosition.x, Progress);
 		}
 		if(DoButtonLineSize_Menu(s_pItemButtons[i], StatusItem->m_aDisplayName, 0, &TempItemButton, LineSize, false, 0, IGraphics::CORNER_ALL, 5.0f, 0.0f, Col))
 		{
