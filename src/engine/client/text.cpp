@@ -1189,7 +1189,7 @@ public:
 		std::vector<std::string> *pVector = static_cast<std::vector<std::string> *>(pUser);
 		if(IsDir)
 			return 0;
-		pVector->push_back(std::string(pFilename));
+		pVector->emplace_back(pFilename);
 		return 0;
 	}
 	// TClient
@@ -1200,7 +1200,7 @@ public:
 			char aBuf[256];
 			str_copy(aBuf, FT_Get_Postscript_Name(CurrentFace));
 			ReplaceHyphensWithSpaces(aBuf);
-			m_DefaultFontFaces.push_back(std::string(aBuf));
+			m_DefaultFontFaces.emplace_back(aBuf);
 		}
 	}
 	// TClient
