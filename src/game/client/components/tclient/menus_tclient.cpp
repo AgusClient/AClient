@@ -1127,9 +1127,9 @@ void CMenus::RenderSettingsWarList(CUIRect MainView)
 	// Filter the list
 	static CLineInputBuffered<128> s_EntriesFilterInput;
 	std::vector<CWarEntry *> vpFilteredEntries;
-	for(size_t i = 0; i < GameClient()->m_WarList.m_WarEntries.size(); ++i)
+	for(size_t i = 0; i < GameClient()->m_WarList.m_vWarEntries.size(); ++i)
 	{
-		CWarEntry *pEntry = &GameClient()->m_WarList.m_WarEntries[i];
+		CWarEntry *pEntry = &GameClient()->m_WarList.m_vWarEntries[i];
 		bool Matches = false;
 		if(str_find_nocase(pEntry->m_aName, s_EntriesFilterInput.GetString()))
 			Matches = true;
@@ -1152,7 +1152,7 @@ void CMenus::RenderSettingsWarList(CUIRect MainView)
 	static std::vector<unsigned char> s_vItemIds;
 	static std::vector<CButtonContainer> s_vDeleteButtons;
 
-	const int MaxEntries = GameClient()->m_WarList.m_WarEntries.size();
+	const int MaxEntries = GameClient()->m_WarList.m_vWarEntries.size();
 	s_vItemIds.resize(MaxEntries);
 	s_vDeleteButtons.resize(MaxEntries);
 
