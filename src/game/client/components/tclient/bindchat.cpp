@@ -2,7 +2,6 @@
 #include <game/client/gameclient.h>
 
 #include "../chat.h"
-#include "../emoticon.h"
 
 #include "bindchat.h"
 
@@ -89,11 +88,9 @@ void CBindchat::AddBindDefault(const char *pName, const char *pCommand)
 		return;
 
 	// If a bind for this command is found then don't add this
-	for(auto It = m_vBinds.begin(); It != m_vBinds.end(); ++It)
-	{
-		if(str_comp(It->m_aCommand, pCommand) == 0)
+	for(const CBind &Bind : m_vBinds)
+		if(str_comp(Bind.m_aCommand, pCommand) == 0)
 			return;
-	}
 
 	CBind Bind;
 	Bind.m_Default = true;
@@ -266,7 +263,7 @@ bool CBindchat::ChatDoAutocomplete(bool ShiftPressed)
 {
 	CChat &Chat = GameClient()->m_Chat;
 
-	if(m_vBinds.size() == 0)
+	if(m_vBinds.empty())
 		return false;
 	if(*Chat.m_aCompletionBuffer == '\0')
 		return false;

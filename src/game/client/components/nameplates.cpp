@@ -24,7 +24,6 @@ protected:
 	bool m_NewLine = false; // Whether this part is a new line (doesn't do anything else)
 	bool m_Visible = true; // Whether this part is visible
 	bool m_ShiftOnInvis = false; // Whether when not visible will still take up space
-	CNamePlatePart() = delete;
 	CNamePlatePart(CGameClient &This) {}
 
 public:
@@ -37,6 +36,7 @@ public:
 	bool NewLine() const { return m_NewLine; }
 	bool Visible() const { return m_Visible; }
 	bool ShiftOnInvis() const { return m_ShiftOnInvis; }
+	CNamePlatePart() = delete;
 	virtual ~CNamePlatePart() = default;
 };
 
@@ -996,8 +996,8 @@ void CNamePlates::RenderNamePlatePreview(vec2 Position, int Dummy)
 
 void CNamePlates::ResetNamePlates()
 {
-	for(int i = 0; i < MAX_CLIENTS; ++i)
-		m_pData->m_aNamePlates[i].Reset(*GameClient());
+	for(CNamePlate &NamePlate : m_pData->m_aNamePlates)
+		NamePlate.Reset(*GameClient());
 }
 
 void CNamePlates::OnRender()
