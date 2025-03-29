@@ -32,11 +32,6 @@
 #include "../skins.h"
 #include <game/client/components/tclient/trails.h>
 
-#include <array>
-#include <chrono>
-#include <memory>
-#include <numeric>
-#include <string>
 #include <vector>
 
 enum
