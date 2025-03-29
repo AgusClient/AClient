@@ -1228,7 +1228,7 @@ public:
 		std::vector<std::string> vCustomFonts;
 		Storage()->ListDirectory(IStorage::TYPE_ALL, "tclient/fonts", LaziestFileCallback, &vCustomFonts);
 		std::sort(vCustomFonts.begin(), vCustomFonts.end());
-		for(const std::string& FilePath : vCustomFonts)
+		for(const std::string &FilePath : vCustomFonts)
 		{
 			char aFontName[IO_MAX_PATH_LENGTH];
 			str_format(aFontName, sizeof(aFontName), "tclient/fonts/%s", FilePath.c_str());
