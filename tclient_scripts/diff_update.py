@@ -104,18 +104,18 @@ versions in the current working directory
 	p.add_argument("version2", metavar="VER2", help="New version")
 	args = p.parse_args()
 
-	with open("update.json") as json_file:
+	with open("update.json", "r", encoding="utf-8") as json_file:
 		data = json.load(json_file)
 
 	pairs = [
-		("TClient-{}-win64".format(args.version1), "TClient-{}-win64".format(args.version2)),
-		("TClient-{}-linux_x86_64".format(args.version1), "TClient-{}-linux_x86_64".format(args.version2))
+		(f"TClient-{args.version1}-win64", f"TClient-{args.version2}-win64"),
+		(f"TClient-{args.version1}-linux_x86_64", f"TClient-{args.version2}-linux_x86_64")
 	]
 
 	data.insert(0, {"version": args.version2, "client": True, "server": True})
 	compare_multiple(pairs, data[0])
 
-	with open("update.json.new", "w") as json_file:
+	with open("update.json.new", "w", encoding="utf-8") as json_file:
 		json.dump(data, json_file, indent=2, sort_keys=False)
 
 
