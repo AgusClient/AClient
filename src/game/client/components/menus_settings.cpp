@@ -696,7 +696,7 @@ void CMenus::RenderSettingsTee(CUIRect MainView)
 		const CSkin *pSkinToBeDraw = SkinListEntry.m_pSkin;
 		if(str_comp(pSkinToBeDraw->GetName(), pSkinName) == 0)
 		{
-			SelectedOld = i;
+			OldSelected = i;
 			if(m_SkinListScrollToSelected)
 			{
 				s_ListBox.ScrollToSelected();
@@ -752,7 +752,7 @@ void CMenus::RenderSettingsTee(CUIRect MainView)
 	}
 
 	const int NewSelected = s_ListBox.DoEnd();
-	if(SelectedOld != NewSelected)
+	if(OldSelected != NewSelected)
 	{
 		str_copy(pSkinName, vSkinList[NewSelected].m_pSkin->GetName(), SkinNameSize);
 		SetNeedSendInfo();
