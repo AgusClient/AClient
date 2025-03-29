@@ -30,7 +30,7 @@
 #include "../countryflags.h"
 #include "../menus.h"
 #include "../skins.h"
-#include "game/client/components/tclient/trails.h"
+#include <game/client/components/tclient/trails.h>
 
 #include <array>
 #include <chrono>
