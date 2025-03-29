@@ -221,6 +221,7 @@ private:
 	class IEditor *m_pEditor;
 	class IFriends *m_pFriends;
 	class IFriends *m_pFoes;
+	class IDiscord *m_pDiscord;
 #if defined(CONF_AUTOUPDATE)
 	class IUpdater *m_pUpdater;
 #endif
@@ -488,7 +489,7 @@ public:
 		//vec2 m_DebugVector3 = vec2(0, 0);
 		float m_Uncertainty = 0.0f;
 
-		std::shared_ptr<CManagedTeeRenderInfo> m_pSkinInfo; // this is what the server reports
+		std::shared_ptr<CManagedTeeRenderInfo> m_pSkinInfo = nullptr; // this is what the server reports
 		CTeeRenderInfo m_RenderInfo; // this is what we use
 
 		float m_Angle;
