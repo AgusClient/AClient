@@ -217,7 +217,7 @@ void CTater::OnMessage(int MsgType, void *pRawMsg)
 				if(RaceTime / 60 >= g_Config.m_ClAutoVoteWhenFarTime)
 				{
 					CGameClient::CClientData *pVoteCaller = nullptr;
-					int m_CallerId = -1;
+					int CallerId = -1;
 					for(int i = 0; i < MAX_CLIENTS; i++)
 					{
 						if(!m_pClient->m_aStats[i].IsActive())
@@ -228,14 +228,14 @@ void CTater::OnMessage(int MsgType, void *pRawMsg)
 						if(str_find_nocase(aBuf, pMsg->m_pDescription) == 0)
 						{
 							pVoteCaller = &m_pClient->m_aClients[i];
-							m_CallerId = i;
+							CallerId = i;
 						}
 					}
 					if(pVoteCaller)
 					{
 						bool Friend = pVoteCaller->m_Friend;
 						bool SameTeam = m_pClient->m_Teams.Team(m_pClient->m_Snap.m_LocalClientId) == pVoteCaller->m_Team && pVoteCaller->m_Team != 0;
-						bool MySelf = m_CallerId == m_pClient->m_Snap.m_LocalClientId;
+						bool MySelf = CallerId == m_pClient->m_Snap.m_LocalClientId;
 
 						if(!Friend && !SameTeam && !MySelf)
 						{
@@ -269,28 +269,7 @@ void CTater::RandomFeetColor()
 void CTater::RandomSkin(void *pUserData)
 {
 	CTater *pThis = static_cast<CTater *>(pUserData);
-	// get the skin count
-	int SkinCount = (int)pThis->m_pClient->m_Skins.GetSkinsUnsafe().size();
-
-	// get a random skin number
-	int SkinNumber = std::rand() % SkinCount;
-
-	// get all skins as a maps
-	const std::unordered_map<std::string_view, std::unique_ptr<CSkin>> &Skins = pThis->m_pClient->m_Skins.GetSkinsUnsafe();
-
-	// map to array
-	int Counter = 0;
-	std::vector<std::pair<std::string_view, CSkin *>> SkinArray;
-	for(const auto &Skin : Skins)
-	{
-		if(Counter == SkinNumber)
-		{
-			// set the skin name
-			const char *SkinName = Skin.first.data();
-			str_copy(g_Config.m_ClPlayerSkin, SkinName, sizeof(g_Config.m_ClPlayerSkin));
-		}
-		Counter++;
-	}
+	str_copy(g_Config.m_ClPlayerSkin, pThis->m_pClient->m_Skins.SkinList()[std::rand() % (int)pThis->m_pClient->m_Skins.SkinList().size()].m_pSkin->GetName());
 }
 
 void CTater::RandomFlag(void *pUserData)
