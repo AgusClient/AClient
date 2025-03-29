@@ -18,6 +18,7 @@
 #include <game/client/components/menu_background.h>
 #include <game/client/components/sounds.h>
 #include <game/client/components/tclient/bindwheel.h>
+#include <game/client/components/tclient/trails.h>
 #include <game/client/gameclient.h>
 #include <game/client/render.h>
 #include <game/client/skin.h>
@@ -30,7 +31,6 @@
 #include "../countryflags.h"
 #include "../menus.h"
 #include "../skins.h"
-#include <game/client/components/tclient/trails.h>
 
 #include <vector>
 
