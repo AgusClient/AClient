@@ -965,25 +965,25 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 				}
 			}
 		}
-	}
 
-	CUIRect KeyButton, KeyLabel;
-	Column.HSplitTop(LineSize, &KeyButton, &Column);
-	KeyButton.VSplitMid(&KeyLabel, &KeyButton);
-	char aBuf[64];
-	str_format(aBuf, sizeof(aBuf), "%s:", TCLocalize(s_Key.m_pName));
-	Ui()->DoLabel(&KeyLabel, aBuf, 12.0f, TEXTALIGN_ML);
-	int OldId = s_Key.m_KeyId, OldModifierCombination = s_Key.m_ModifierCombination, NewModifierCombination;
-	int NewId = DoKeyReader(&s_Key, &KeyButton, OldId, OldModifierCombination, &NewModifierCombination);
-	if(NewId != OldId || NewModifierCombination != OldModifierCombination)
-	{
-		if(OldId != 0 || NewId == 0)
-			m_pClient->m_Binds.Bind(OldId, "", false, OldModifierCombination);
-		if(NewId != 0)
-			m_pClient->m_Binds.Bind(NewId, s_Key.m_pCommand, false, NewModifierCombination);
+		CUIRect KeyButton, KeyLabel;
+		Column.HSplitTop(LineSize, &KeyButton, &Column);
+		KeyButton.VSplitMid(&KeyLabel, &KeyButton);
+		char aBuf[64];
+		str_format(aBuf, sizeof(aBuf), "%s:", TCLocalize(s_Key.m_pName));
+		Ui()->DoLabel(&KeyLabel, aBuf, 12.0f, TEXTALIGN_ML);
+		int OldId = s_Key.m_KeyId, OldModifierCombination = s_Key.m_ModifierCombination, NewModifierCombination;
+		int NewId = DoKeyReader(&s_Key, &KeyButton, OldId, OldModifierCombination, &NewModifierCombination);
+		if(NewId != OldId || NewModifierCombination != OldModifierCombination)
+		{
+			if(OldId != 0 || NewId == 0)
+				m_pClient->m_Binds.Bind(OldId, "", false, OldModifierCombination);
+			if(NewId != 0)
+				m_pClient->m_Binds.Bind(NewId, s_Key.m_pCommand, false, NewModifierCombination);
+		}
+		Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+		s_SectionBoxes.back().h = Column.y - s_SectionBoxes.back().y;
 	}
-	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
-	s_SectionBoxes.back().h = Column.y - s_SectionBoxes.back().y;
 
 	// ***** Rainbow ***** //
 	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
