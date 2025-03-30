@@ -136,7 +136,7 @@ public:
 			return false;
 		}
 
-		const json_value *Obj = m_pHttpRequest->ResultJson();
+		json_value *Obj = m_pHttpRequest->ResultJson();
 		if(Obj == nullptr)
 		{
 			str_copy(pOut, "Error while parsing JSON", Length);
@@ -144,6 +144,7 @@ public:
 			return false;
 		}
 		const bool Result = ParseResponse(Obj, pOut, Length);
+		json_value_free(Obj);
 		m_pHttpRequest = nullptr;
 
 		return Result;
@@ -174,10 +175,6 @@ public:
 
 		m_pHttpRequest = pGet;
 		Http.Run(pGet);
-	}
-	~CTranslateBackendLibretranslate() override
-	{
-		m_pHttpRequest = nullptr;
 	}
 };
 
@@ -254,7 +251,7 @@ public:
 			return false;
 		}
 
-		const json_value *Obj = m_pHttpRequest->ResultJson();
+		json_value *Obj = m_pHttpRequest->ResultJson();
 		if(Obj == nullptr)
 		{
 			str_copy(pOut, "Error while parsing JSON", Length);
@@ -262,6 +259,7 @@ public:
 			return false;
 		}
 		const bool Result = ParseResponse(Obj, pOut, Length);
+		json_value_free(Obj);
 		m_pHttpRequest = nullptr;
 
 		return Result;
@@ -282,10 +280,6 @@ public:
 
 		m_pHttpRequest = pGet;
 		Http.Run(pGet);
-	}
-	~CTranslateBackendFtapi() override
-	{
-		m_pHttpRequest = nullptr;
 	}
 };
 
@@ -375,9 +369,9 @@ void CTranslate::Translate(CChat::CLine &Line, bool ShowProgress)
 	Job.m_pLine->m_TranslateId = Job.m_pTranslateId;
 
 	if(str_comp_nocase(g_Config.m_ClTranslateBackend, "libretranslate") == 0)
-		Job.m_pBackend = new CTranslateBackendLibretranslate(*Http(), Job.m_pLine->m_aText);
+		Job.m_pBackend = std::make_unique<CTranslateBackendLibretranslate>(*Http(), Job.m_pLine->m_aText);
 	else if(str_comp_nocase(g_Config.m_ClTranslateBackend, "ftapi") == 0)
-		Job.m_pBackend = new CTranslateBackendFtapi(*Http(), Job.m_pLine->m_aText);
+		Job.m_pBackend = std::make_unique<CTranslateBackendFtapi>(*Http(), Job.m_pLine->m_aText);
 	else
 	{
 		GameClient()->m_Chat.Echo("Invalid translate backend");
@@ -395,7 +389,7 @@ void CTranslate::Translate(CChat::CLine &Line, bool ShowProgress)
 		Job.m_pLine->m_aTextTranslated[0] = '\0';
 	}
 
-	m_vJobs.emplace_back(Job);
+	m_vJobs.emplace_back(std::move(Job));
 }
 
 void CTranslate::OnRender()
