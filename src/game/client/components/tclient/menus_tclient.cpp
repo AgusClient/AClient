@@ -2286,11 +2286,11 @@ void CMenus::RenderSettingsStatusBar(CUIRect MainView)
 	CUIRect StatusItemButton;
 	static std::vector<CButtonContainer *> s_pItemButtons;
 	static std::vector<CButtonContainer> s_ItemButtons;
-	static vec2 s_ActivePos = vec2(0, 0);
+	static vec2 s_ActivePos = vec2(0.0f, 0.0f);
 	class CSwapItem
 	{
 	public:
-		vec2 m_InitialPosition = vec2();
+		vec2 m_InitialPosition = vec2(0.0f, 0.0f);
 		float m_Duration = 0.0f;
 	};
 
