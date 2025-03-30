@@ -153,7 +153,7 @@ void CGameClient::OnConsoleInit()
 					      &m_Hud,
 					      &m_Spectator,
 					      &m_Emoticon,
-					      &m_Bindchat,
+					      &m_BindChat,
 					      &m_Bindwheel,
 					      &m_WarList,
 					      &m_StatusBar,

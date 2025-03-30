@@ -1,12 +1,12 @@
-#include <algorithm>
-#include <atomic>
-#include <engine/shared/json.h>
-#include <engine/shared/jsonwriter.h>
 #include <game/client/gameclient.h>
 #include <game/client/lineinput.h>
 
-#include "base/system.h"
-#include "engine/shared/config.h"
+#include <engine/shared/json.h>
+#include <engine/shared/jsonwriter.h>
+
+#include <algorithm>
+#include <atomic>
+
 #include "translate.h"
 
 static void UrlEncode(const char *pText, char *pOut, size_t Length)
