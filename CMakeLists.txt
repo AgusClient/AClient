@@ -1690,6 +1690,7 @@ set(EXPECTED_DATA
   skins/santa_warpaint.png
   skins/teerasta.png
   skins/toptri.png
+  skins/tuzi.png
   skins/twinbop.png
   skins/twintri.png
   skins/veteran.png
