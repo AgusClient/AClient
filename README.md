@@ -2,22 +2,25 @@
 
 [![Build](https://github.com/sjrc6/TaterClient-ddnet/workflows/Build/badge.svg)](https://github.com/sjrc6/TaterClient-ddnet/actions/workflows/build.yaml)
 
-### Taters custom ddnet client with some small modifications 
-Not guarenteed to be bug free, but I will try to fix them. 
+### Taters custom ddnet client with some small modifications
 
-If ddnet devs are reading this and want to steal my changes please feel free.  
+Not guarenteed to be bug free, but I will try to fix them.
+
+If ddnet devs are reading this and want to steal my changes please feel free.
 
 Thanks to tela for the logo png <3 
 
-### Links:
+### Links
+
 [Discord](https://discord.gg/BgPSapKRkZ)
 [Website](https://tclient.app)
 
-# Installation:
+### Installation
 
-Download from https://github.com/sjrc6/TaterClient-ddnet/releases, or build it using the build instuctions from the main repository. 
+Download from https://github.com/sjrc6/TaterClient-ddnet/releases, or build it using the build instuctions from the main repository.
 
-# Settings Page: 
+### Settings Page
+
 ![image](https://github.com/user-attachments/assets/a6ccb206-9fed-48be-a2d2-8fc50a6be882)
 ![image](https://github.com/user-attachments/assets/9251509a-d852-41ac-bf6b-9a610db08945)
 ![image](https://github.com/user-attachments/assets/47dab977-1311-4963-a11a-81b78005b12b)
@@ -27,8 +30,8 @@ Download from https://github.com/sjrc6/TaterClient-ddnet/releases, or build it u
 
 ![image](https://user-images.githubusercontent.com/22122579/182528700-4c8238c3-836e-49c3-9996-68025e7f5d58.png)
 
+### Features
 
-# Features:
 ```
 tc_run_on_join_console
 tc_run_on_join_delay
