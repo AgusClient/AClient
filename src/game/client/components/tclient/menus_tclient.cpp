@@ -1643,12 +1643,12 @@ void CMenus::RenderSettingsInfo(CUIRect MainView)
 	static CButtonContainer s_Config, s_Profiles, s_Warlist, s_Chatbinds;
 	if(DoButtonLineSize_Menu(&s_Config, TCLocalize("TClient Settings"), 0, &TClientConfig, LineSize, false, 0, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
 	{
-		Storage()->GetCompletePath(IStorage::TYPE_SAVE, s_aConfigDomains[CONFIGDOMAIN::TATER].m_aConfigPath, aBuf, sizeof(aBuf));
+		Storage()->GetCompletePath(IStorage::TYPE_SAVE, s_aConfigDomains[ConfigDomain::TCLIENT].m_aConfigPath, aBuf, sizeof(aBuf));
 		Client()->ViewFile(aBuf);
 	}
 	if(DoButtonLineSize_Menu(&s_Profiles, TCLocalize("Profiles"), 0, &ProfilesFile, LineSize, false, 0, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
 	{
-		Storage()->GetCompletePath(IStorage::TYPE_SAVE, s_aConfigDomains[CONFIGDOMAIN::TATERPROFILES].m_aConfigPath, aBuf, sizeof(aBuf));
+		Storage()->GetCompletePath(IStorage::TYPE_SAVE, s_aConfigDomains[ConfigDomain::TCLIENTPROFILES].m_aConfigPath, aBuf, sizeof(aBuf));
 		Client()->ViewFile(aBuf);
 	}
 	LeftView.HSplitTop(MarginSmall, nullptr, &LeftView);
@@ -1658,12 +1658,12 @@ void CMenus::RenderSettingsInfo(CUIRect MainView)
 
 	if(DoButtonLineSize_Menu(&s_Warlist, TCLocalize("Warlist"), 0, &WarlistFile, LineSize, false, 0, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
 	{
-		Storage()->GetCompletePath(IStorage::TYPE_SAVE, s_aConfigDomains[CONFIGDOMAIN::TATERWARLIST].m_aConfigPath, aBuf, sizeof(aBuf));
+		Storage()->GetCompletePath(IStorage::TYPE_SAVE, s_aConfigDomains[ConfigDomain::TCLIENTWARLIST].m_aConfigPath, aBuf, sizeof(aBuf));
 		Client()->ViewFile(aBuf);
 	}
 	if(DoButtonLineSize_Menu(&s_Chatbinds, TCLocalize("Chatbinds"), 0, &ChatbindsFile, LineSize, false, 0, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
 	{
-		Storage()->GetCompletePath(IStorage::TYPE_SAVE, s_aConfigDomains[CONFIGDOMAIN::TATERCHATBINDS].m_aConfigPath, aBuf, sizeof(aBuf));
+		Storage()->GetCompletePath(IStorage::TYPE_SAVE, s_aConfigDomains[ConfigDomain::TCLIENTCHATBINDS].m_aConfigPath, aBuf, sizeof(aBuf));
 		Client()->ViewFile(aBuf);
 	}
 
@@ -2152,7 +2152,7 @@ void CMenus::RenderSettingsProfiles(CUIRect MainView)
 	FileButton.VSplitLeft(130.0f, &FileButton, nullptr);
 	if(DoButton_Menu(&s_ProfilesFile, TCLocalize("Profiles file"), 0, &FileButton))
 	{
-		Storage()->GetCompletePath(IStorage::TYPE_SAVE, s_aConfigDomains[CONFIGDOMAIN::TATERPROFILES].m_aConfigPath, aTempBuf, sizeof(aTempBuf));
+		Storage()->GetCompletePath(IStorage::TYPE_SAVE, s_aConfigDomains[ConfigDomain::TCLIENTPROFILES].m_aConfigPath, aTempBuf, sizeof(aTempBuf));
 		Client()->ViewFile(aTempBuf);
 	}
 }

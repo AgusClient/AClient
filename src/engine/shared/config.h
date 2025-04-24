@@ -64,7 +64,7 @@ enum
 
 struct SConfigVariable
 {
-	CONFIGDOMAIN m_ConfigDomain;
+	ConfigDomain m_ConfigDomain;
 	enum EVariableType
 	{
 		VAR_INT,
@@ -200,8 +200,8 @@ class CConfigManager : public IConfigManager
 	IConsole *m_pConsole;
 	class IStorage *m_pStorage;
 
-	IOHANDLE m_aConfigFile[CONFIGDOMAIN::NUM];
-	bool m_aFailed[CONFIGDOMAIN::NUM];
+	IOHANDLE m_aConfigFile[ConfigDomain::NUM];
+	bool m_aFailed[ConfigDomain::NUM];
 
 	struct SCallback
 	{
@@ -214,7 +214,7 @@ class CConfigManager : public IConfigManager
 		{
 		}
 	};
-	std::vector<SCallback> m_avCallbacks[CONFIGDOMAIN::NUM];
+	std::vector<SCallback> m_avCallbacks[ConfigDomain::NUM];
 
 	std::vector<SConfigVariable *> m_vpAllVariables;
 	std::vector<SConfigVariable *> m_vpGameVariables;
@@ -236,9 +236,9 @@ public:
 
 	CConfig *Values() override { return &g_Config; }
 
-	void RegisterCallback(SAVECALLBACKFUNC pfnFunc, void *pUserData, CONFIGDOMAIN ConfigDomain = CONFIGDOMAIN::DDNET) override;
+	void RegisterCallback(SAVECALLBACKFUNC pfnFunc, void *pUserData, ConfigDomain ConfigDomain = ConfigDomain::DDNET) override;
 
-	void WriteLine(const char *pLine, CONFIGDOMAIN ConfigDomain = CONFIGDOMAIN::DDNET) override;
+	void WriteLine(const char *pLine, ConfigDomain ConfigDomain = ConfigDomain::DDNET) override;
 
 	void StoreUnknownCommand(const char *pCommand) override;
 

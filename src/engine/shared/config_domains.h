@@ -6,7 +6,7 @@
 #endif
 
 CONFIG_DOMAIN(DDNET, "settings_ddnet.cfg", true)
-CONFIG_DOMAIN(TATER, "settings_tclient.cfg", true)
-CONFIG_DOMAIN(TATERPROFILES, "tclient_profiles.cfg", false)
-CONFIG_DOMAIN(TATERCHATBINDS, "tclient_chatbinds.cfg", false)
-CONFIG_DOMAIN(TATERWARLIST, "tclient_warlist.cfg", false)
+CONFIG_DOMAIN(TCLIENT, "settings_tclient.cfg", true)
+CONFIG_DOMAIN(TCLIENTPROFILES, "tclient_profiles.cfg", false)
+CONFIG_DOMAIN(TCLIENTCHATBINDS, "tclient_chatbinds.cfg", false)
+CONFIG_DOMAIN(TCLIENTWARLIST, "tclient_warlist.cfg", false)
