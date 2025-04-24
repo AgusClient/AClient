@@ -10,7 +10,6 @@
 
 #include <algorithm>
 #include <deque>
-#include <execution>
 #include <vector>
 
 #include <game/client/components/tclient/bg_draw_file.h>
@@ -349,22 +348,23 @@ bool CBgDraw::Save(const char *pFilename)
 	if(!Handle)
 		return false;
 	size_t Written = 0;
-	bool Ret = std::all_of(std::execution::seq, m_pvItems->begin(), m_pvItems->end(), [this, Handle, &Written](const CBgDrawItem &Item) {
+	bool Success = true;
+	for(const CBgDrawItem &Item : *m_pvItems) {
 		char aMsg[256];
 		if(!BgDrawFile::Write(Handle, Item.Data()))
 		{
 			str_format(aMsg, sizeof(aMsg), TCLocalize("Writing item %zu failed", "bgdraw"), Written);
 			GameClient()->Echo(aMsg);
-			return false;
+			Success = false;
+			break;
 		}
 		Written += 1;
-		return true;
-	});
+	}
 	char aMsg[256];
 	str_format(aMsg, sizeof(aMsg), TCLocalize("Written %zu items", "bgdraw"), Written);
 	GameClient()->Echo(aMsg);
 	io_close(Handle);
-	return Ret;
+	return Success;
 }
 
 bool CBgDraw::Load(const char *pFilename)
