@@ -642,7 +642,7 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClTinyTees, TCLocalize("Tiny tees"), &g_Config.m_ClTinyTees, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClTinyTeesOthers, TCLocalize("Tiny tees others"), &g_Config.m_ClTinyTeesOthers, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClWhiteFeet, TCLocalize("Render all custom colored feet as white feet skin"), &g_Config.m_ClWhiteFeet, &Column, LineSize);
-	
+
 	CUIRect FeetBox;
 	Column.HSplitTop(LineSize + MarginExtraSmall, &FeetBox, &Column);
 	if(g_Config.m_ClWhiteFeet)
