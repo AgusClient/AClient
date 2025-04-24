@@ -9,20 +9,21 @@
 #include <game/client/gameclient.h>
 
 #include <algorithm>
-#include <execution>
 #include <deque>
+#include <execution>
 #include <vector>
 
 #include <game/client/components/tclient/bg_draw_file.h>
 
-#include "bg_draw.h"
 #include "base/system.h"
 #include "base/vmath.h"
+#include "bg_draw.h"
 #include "game/localization.h"
 
 #define MAX_ITEMS_TO_LOAD 65536
 
-static float cross(vec2 A, vec2 B) {
+static float cross(vec2 A, vec2 B)
+{
 	return A.x * B.y - A.y * B.x;
 }
 
@@ -34,7 +35,7 @@ static bool line_intersects(vec2 A, vec2 B, vec2 C, vec2 D)
 	const float Denom = cross(R, S);
 	const float Num1 = cross(Ac, S);
 	const float Num2 = cross(Ac, R);
-	if (Denom == 0.0f)
+	if(Denom == 0.0f)
 		return false;
 	float T = Num1 / Denom;
 	float U = Num2 / Denom;
@@ -196,7 +197,7 @@ public:
 		if(m_Data.size() == 1)
 			return distance(m_Data[0].Pos(), Pos) < m_Data[0].w + Radius;
 		vec2 C, D = m_Data[0].Pos();
-		for (auto It = std::next(m_Data.begin()); It != m_Data.end(); ++It)
+		for(auto It = std::next(m_Data.begin()); It != m_Data.end(); ++It)
 		{
 			const CBgDrawItemDataPoint &Point = *It;
 			C = D;
@@ -222,7 +223,7 @@ public:
 			return distance(Closest, P) < m_Data[0].w;
 		}
 		vec2 C, D = m_Data[0].Pos();
-		for (auto It = std::next(m_Data.begin()); It != m_Data.end(); ++It)
+		for(auto It = std::next(m_Data.begin()); It != m_Data.end(); ++It)
 		{
 			const CBgDrawItemDataPoint &Point = *It;
 			C = D;
@@ -406,7 +407,7 @@ bool CBgDraw::Load(const char *pFilename)
 }
 
 template<typename... Args>
-CBgDrawItem *CBgDraw::AddItem(Args&&... args)
+CBgDrawItem *CBgDraw::AddItem(Args &&... args)
 {
 	MakeSpaceFor(1);
 	if(g_Config.m_ClBgDrawMaxItems == 0)
