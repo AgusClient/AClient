@@ -2,11 +2,11 @@
 #include <engine/shared/config.h>
 
 #include <game/client/animstate.h>
+#include <game/client/gameclient.h>
 #include <game/client/render.h>
 #include <game/generated/client_data.h>
 #include <game/generated/protocol.h>
-
-#include <game/client/gameclient.h>
+#include <game/localization.h>
 
 #include <algorithm>
 #include <deque>
@@ -15,10 +15,7 @@
 
 #include <game/client/components/tclient/bg_draw_file.h>
 
-#include "base/system.h"
-#include "base/vmath.h"
 #include "bg_draw.h"
-#include "game/localization.h"
 
 #define MAX_ITEMS_TO_LOAD 65536
 
