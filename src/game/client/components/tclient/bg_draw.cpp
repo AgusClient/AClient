@@ -118,7 +118,7 @@ public:
 		if(!m_Drawing)
 			return false;
 		m_Drawing = false;
-		const vec2 LastPos = m_Data.size() < 1 ? Point.Pos() : m_Data.back().Pos();
+		const vec2 LastPos = m_Data.empty() ? Point.Pos() : m_Data.back().Pos();
 		const float Distance = distance(LastPos, Point.Pos());
 		if(Distance < Point.w / 2.0f)
 		{
@@ -160,7 +160,7 @@ public:
 			return false;
 		if(m_Data.size() > BG_DRAW_MAX_POINTS_PER_ITEM)
 			return PenUp(Point.Pos());
-		const vec2 LastPos = m_Data.size() < 1 ? Point.Pos() : m_Data.back().Pos();
+		const vec2 LastPos = m_Data.empty() ? Point.Pos() : m_Data.back().Pos();
 		const float Distance = distance(LastPos, Point.Pos());
 		// Don't draw short segments
 		if(Distance < Point.w * 2.0f)
@@ -188,7 +188,7 @@ public:
 	}
 	bool PointIntersect(const vec2 Pos, const float Radius) const
 	{
-		if(m_Data.size() == 0)
+		if(m_Data.empty())
 			return true;
 		if(m_Data.size() == 1)
 			return distance(m_Data[0].Pos(), Pos) < m_Data[0].w + Radius;
@@ -208,7 +208,7 @@ public:
 	}
 	bool LineIntersect(const vec2 A, const vec2 B) const
 	{
-		if(m_Data.size() == 0)
+		if(m_Data.empty())
 			return true;
 		if(m_Data.size() == 1)
 		{
