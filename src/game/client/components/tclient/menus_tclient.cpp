@@ -630,6 +630,9 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 		Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
 	}
 
+	Column.HSplitTop(LineSize, &Button, &Column);
+	Ui()->DoScrollbarOption(&g_Config.m_ClCursorScale, &g_Config.m_ClCursorScale, &Button, TCLocalize("Ingame cursor scale"), 0, 500, &CUi::ms_LinearScrollbarScale, 0, "%");
+
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFreezeUpdateFix, TCLocalize("Update tee skin faster after being frozen"), &g_Config.m_ClFreezeUpdateFix, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClPingNameCircle, TCLocalize("Show ping colored circle before names"), &g_Config.m_ClPingNameCircle, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClRenderNameplateSpec, TCLocalize("Hide nameplates in spec"), &g_Config.m_ClRenderNameplateSpec, &Column, LineSize);
@@ -639,6 +642,7 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClTinyTees, TCLocalize("Tiny tees"), &g_Config.m_ClTinyTees, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClTinyTeesOthers, TCLocalize("Tiny tees others"), &g_Config.m_ClTinyTeesOthers, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClWhiteFeet, TCLocalize("Render all custom colored feet as white feet skin"), &g_Config.m_ClWhiteFeet, &Column, LineSize);
+	
 	CUIRect FeetBox;
 	Column.HSplitTop(LineSize + MarginExtraSmall, &FeetBox, &Column);
 	if(g_Config.m_ClWhiteFeet)
