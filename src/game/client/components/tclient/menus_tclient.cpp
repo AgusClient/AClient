@@ -1145,9 +1145,25 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 		}
 		Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
 	}
-
 	s_SectionBoxes.back().h = Column.y - s_SectionBoxes.back().y;
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	// ***** Pet ***** //
+	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	s_SectionBoxes.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("Finish Name"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClChangeNameNearFinish, TCLocalize("Attempt to change your name when near finish"), &g_Config.m_ClChangeNameNearFinish, &Column, LineSize);
+	// Column.HSplitTop(LineSize, &Button, &Column); // TODO finish scan radius
+	// Ui()->DoScrollbarOption(&g_Config.m_ClPetSize, &g_Config.m_ClPetSize, &Button, TCLocalize("Pet size"), 10, 500, &CUi::ms_LinearScrollbarScale, 0, "%");
+	Column.HSplitTop(LineSize + MarginExtraSmall, &Button, &Column);
+	Button.VSplitMid(&Label, &Button);
+	Ui()->DoLabel(&Label, TCLocalize("Finish Name:"), FontSize, TEXTALIGN_ML);
+	static CLineInput s_FinishName(g_Config.m_ClFinishName, sizeof(g_Config.m_ClFinishName));
+	Ui()->DoEditBox(&s_FinishName, &Button, EditBoxFontSize);
+	s_SectionBoxes.back().h = Column.y - s_SectionBoxes.back().y;
 
 	// ***** END OF PAGE 1 SETTINGS ***** //
 	RightView = Column;
