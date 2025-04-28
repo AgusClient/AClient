@@ -62,6 +62,7 @@
 #include "components/tclient/bindchat.h"
 #include "components/tclient/bindwheel.h"
 #include "components/tclient/outlines.h"
+#include "components/tclient/pet.h"
 #include "components/tclient/player_indicator.h"
 #include "components/tclient/rainbow.h"
 #include "components/tclient/skinprofiles.h"
@@ -198,6 +199,7 @@ public:
 	CTClient m_TClient;
 	CTrails m_Trails;
 	CTranslate m_Translate;
+	CPet m_Pet;
 	CPlayerIndicator m_PlayerIndicator;
 	COutlines m_Outlines;
 	CRainbow m_Rainbow;
