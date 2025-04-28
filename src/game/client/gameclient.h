@@ -143,6 +143,8 @@ enum class EClientIdFormat
 class CGameClient : public IGameClient
 {
 public:
+	friend class CTClient;
+
 	// all components
 	CInfoMessages m_InfoMessages;
 	CCamera m_Camera;
