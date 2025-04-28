@@ -20,11 +20,13 @@ void CPet::OnRender()
 
 	const float Delta = Client()->RenderFrameTime();
 
+	const float Scale = (float)g_Config.m_ClPetSize / 100.0f;
+
 	if(Player.m_Active)
 	{
 		m_Target = Player.m_RenderPos;
-		m_Target.x += 64.0f * (m_Position.x > m_Target.x ? 1 : -1);
-		m_Target.y -= 100.0f;
+		m_Target.x += (64.0f + Scale * 32.0f) * (m_Position.x > m_Target.x ? 1 : -1);
+		m_Target.y -= 100.0f + Scale * 32.0f;
 		m_Target.y += std::sin((float)Client()->GameTick(g_Config.m_ClDummy) / (float)Client()->GameTickSpeed() / 2.0f) * 8.0f;
 		if(m_Alpha == 0.0f)
 		{
@@ -78,7 +80,7 @@ void CPet::OnRender()
 	CTeeRenderInfo TeeRenderInfo;
 	TeeRenderInfo.Apply(m_pClient->m_Skins.Find(g_Config.m_ClPetSkin));
 	// TeeRenderInfo.ApplyColors(g_Config.m_ClPlayerUseCustomColor, g_Config.m_ClPlayerColorBody, g_Config.m_ClPlayerColorFeet);
-	TeeRenderInfo.m_Size = 64.0f * (float)g_Config.m_ClPetSize / 100.0f;
+	TeeRenderInfo.m_Size = 64.0f * Scale;
 	TeeRenderInfo.m_FeetFlipped = m_Velocity.x < 0.0f;
 	TeeRenderInfo.m_GotAirJump = m_Velocity.y > -10.0f;
 	RenderTools()->RenderTee(CAnimState::GetIdle(), &TeeRenderInfo, Character.m_Emote, m_Dir, m_Position, m_Alpha);
