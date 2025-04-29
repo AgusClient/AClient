@@ -47,7 +47,7 @@ void CPet::OnRender()
 		
 		const vec2 DeltaPosition = m_Target - m_Position;
 		const float DeltaLength = length(DeltaPosition);
-		if(DeltaLength > 512)
+		if(DeltaLength > 512.0f)
 			m_Alpha = 0.01f;
 
 		static const float k = 50.0f;
