@@ -13,6 +13,9 @@ void CPet::OnRender()
 {
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
+	if(g_Config.m_ClPetShow <= 0)
+		return;
+
 	const int PlayerId = GameClient()->m_aLocalIds[g_Config.m_ClDummy];
 	if(PlayerId < 0)
 		return;
