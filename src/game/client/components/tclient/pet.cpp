@@ -44,7 +44,7 @@ void CPet::OnRender()
 				m_Alpha = 1.0f;
 		}
 		m_Position += m_Velocity * Delta;
-		
+
 		const vec2 DeltaPosition = m_Target - m_Position;
 		const float DeltaLength = length(DeltaPosition);
 		if(DeltaLength > 512.0f)
@@ -86,7 +86,6 @@ void CPet::OnRender()
 	TeeRenderInfo.m_Size = 64.0f * Scale;
 	TeeRenderInfo.m_GotAirJump = m_Velocity.y > -10.0f;
 	RenderTools()->RenderTee(CAnimState::GetIdle(), &TeeRenderInfo, Character.m_Emote, m_Dir, m_Position, m_Alpha);
-
 }
 
 void CPet::OnMapLoad()
