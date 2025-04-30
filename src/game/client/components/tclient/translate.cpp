@@ -34,7 +34,7 @@ static void UrlEncode(const char *pText, char *pOut, size_t Length)
 	pOut[OutPos] = '\0';
 }
 
-const char *ITranslateBackend::ParseTarget(const char *pTarget) const
+const char *ITranslateBackend::EncodeTarget(const char *pTarget) const
 {
 	if(!pTarget || pTarget[0] == '\0')
 		return CConfig::ms_pClTranslateTarget;
@@ -47,15 +47,57 @@ bool ITranslateBackend::CompareTargets(const char *pA, const char *pB) const
 		return true;
 	if(!pA || !pB)
 		return false;
-	if(str_comp_nocase(ParseTarget(pA), ParseTarget(pB)) == 0)
+	if(str_comp_nocase(EncodeTarget(pA), EncodeTarget(pB)) == 0)
 		return true;
 	return false;
 }
 
-class CTranslateBackendLibretranslate : public ITranslateBackend
+class ITranslateBackendHttp : public ITranslateBackend
 {
+protected:
 	std::shared_ptr<CHttpRequest> m_pHttpRequest = nullptr;
-	bool ParseResponse(const json_value *pObj, char *pOut, size_t Length)
+	virtual bool ParseResponse(char *pOut, size_t Length) = 0;
+
+public:
+	std::optional<bool> Update(char *pOut, size_t Length) override
+	{
+		dbg_assert(m_pHttpRequest != nullptr, "m_pHttpRequest is nullptr");
+		if(m_pHttpRequest->State() == EHttpState::RUNNING || m_pHttpRequest->State() == EHttpState::QUEUED)
+			return std::nullopt;
+		if(m_pHttpRequest->State() == EHttpState::ABORTED)
+		{
+			str_copy(pOut, "Aborted", Length);
+			return false;
+		}
+		if(m_pHttpRequest->State() != EHttpState::DONE)
+		{
+			str_copy(pOut, "Curl error, see console", Length);
+			return false;
+		}
+		if(m_pHttpRequest->StatusCode() != 200)
+		{
+			str_format(pOut, Length, "Got http code %d", m_pHttpRequest->StatusCode());
+			return false;
+		}
+		return ParseResponse(pOut, Length);
+	}
+	void CreateHttpRequest(IHttp &Http, const char *pUrl)
+	{
+		auto pGet = std::make_shared<CHttpRequest>(pUrl);
+		pGet->LogProgress(HTTPLOG::FAILURE);
+		pGet->FailOnErrorStatus(false);
+		pGet->HeaderString("Content-Type", "application/json");
+		pGet->Timeout(CTimeout{10000, 0, 500, 10});
+
+		m_pHttpRequest = pGet;
+		Http.Run(pGet);
+	}
+};
+
+class CTranslateBackendLibretranslate : public ITranslateBackendHttp
+{
+private:
+	bool ParseResponseJson(const json_value *pObj, char *pOut, size_t Length)
 	{
 		if(pObj->type != json_object)
 		{
@@ -123,49 +165,19 @@ class CTranslateBackendLibretranslate : public ITranslateBackend
 		return true;
 	}
 
+protected:
+	bool ParseResponse(char *pOut, size_t Length) override
+	{
+		json_value *pObj = m_pHttpRequest->ResultJson();
+		bool Res = ParseResponseJson(pObj, pOut, Length);
+		json_value_free(pObj);
+		return Res;
+	}
+
 public:
 	const char *Name() const override
 	{
 		return "LibreTranslate";
-	}
-	std::optional<bool> Update(char *pOut, size_t Length) override
-	{
-		dbg_assert(m_pHttpRequest != nullptr, "m_pHttpRequest is nullptr");
-		if(m_pHttpRequest->State() == EHttpState::RUNNING || m_pHttpRequest->State() == EHttpState::QUEUED)
-		{
-			return std::nullopt;
-		}
-		if(m_pHttpRequest->State() == EHttpState::ABORTED)
-		{
-			str_copy(pOut, "Aborted", Length);
-			m_pHttpRequest = nullptr;
-			return false;
-		}
-		if(m_pHttpRequest->State() != EHttpState::DONE)
-		{
-			str_copy(pOut, "Curl error, see console", Length);
-			m_pHttpRequest = nullptr;
-			return false;
-		}
-		if(m_pHttpRequest->StatusCode() != 200)
-		{
-			str_format(pOut, Length, "Got http code %d", m_pHttpRequest->StatusCode());
-			m_pHttpRequest = nullptr;
-			return false;
-		}
-
-		json_value *pObj = m_pHttpRequest->ResultJson();
-		if(pObj == nullptr)
-		{
-			str_copy(pOut, "Error while parsing JSON", Length);
-			m_pHttpRequest = nullptr;
-			return false;
-		}
-		const bool Result = ParseResponse(pObj, pOut, Length);
-		json_value_free(pObj);
-		m_pHttpRequest = nullptr;
-
-		return Result;
 	}
 	CTranslateBackendLibretranslate(IHttp &Http, const char *pText)
 	{
@@ -176,7 +188,7 @@ public:
 		Json.WriteAttribute("source");
 		Json.WriteStrValue("auto");
 		Json.WriteAttribute("target");
-		Json.WriteStrValue(ParseTarget(g_Config.m_ClTranslateTarget));
+		Json.WriteStrValue(EncodeTarget(g_Config.m_ClTranslateTarget));
 		Json.WriteAttribute("format");
 		Json.WriteStrValue("text");
 		if(g_Config.m_ClTranslateKey[0] != '\0')
@@ -185,29 +197,19 @@ public:
 			Json.WriteStrValue(g_Config.m_ClTranslateKey);
 		}
 		Json.EndObject();
-		std::string &&JsonString = Json.GetOutputString();
-
-		auto pGet = std::make_shared<CHttpRequest>(g_Config.m_ClTranslateEndpoint[0] == '\0' ? "localhost:5000/translate" : g_Config.m_ClTranslateEndpoint);
-		pGet->LogProgress(HTTPLOG::FAILURE);
-		pGet->FailOnErrorStatus(false);
-		pGet->HeaderString("Content-Type", "application/json");
-		pGet->Post((const unsigned char *)JsonString.data(), JsonString.size());
-		pGet->Timeout(CTimeout{10000, 0, 500, 10});
-
-		m_pHttpRequest = pGet;
-		Http.Run(pGet);
+		CreateHttpRequest(Http, g_Config.m_ClTranslateEndpoint[0] == '\0' ? "localhost:5000/translate" : g_Config.m_ClTranslateEndpoint);
+		m_pHttpRequest->PostJson(Json.GetOutputString().c_str());
 	}
 };
 
-class CTranslateBackendFtapi : public ITranslateBackend
+class CTranslateBackendFtapi : public ITranslateBackendHttp
 {
-	std::shared_ptr<CHttpRequest> m_pHttpRequest = nullptr;
-	bool ParseResponse(const json_value *pObj, char *pOut, size_t Length)
+private:
+	bool ParseResponseJson(const json_value *pObj, char *pOut, size_t Length)
 	{
 		if(pObj->type != json_object)
 		{
 			str_copy(pOut, "Response is not object", Length);
-			m_pHttpRequest = nullptr;
 			return false;
 		}
 
@@ -241,8 +243,17 @@ class CTranslateBackendFtapi : public ITranslateBackend
 		return true;
 	}
 
+protected:
+	bool ParseResponse(char *pOut, size_t Length) override
+	{
+		json_value *pObj = m_pHttpRequest->ResultJson();
+		bool Res = ParseResponseJson(pObj, pOut, Length);
+		json_value_free(pObj);
+		return Res;
+	}
+
 public:
-	const char *ParseTarget(const char *pTarget) const override
+	const char *EncodeTarget(const char *pTarget) const override
 	{
 		if(!pTarget || pTarget[0] == '\0')
 			return CConfig::ms_pClTranslateTarget;
@@ -254,61 +265,16 @@ public:
 	{
 		return "FreeTranslateAPI";
 	}
-	std::optional<bool> Update(char *pOut, size_t Length) override
-	{
-		dbg_assert(m_pHttpRequest != nullptr, "m_pHttpRequest is nullptr");
-		if(m_pHttpRequest->State() == EHttpState::RUNNING || m_pHttpRequest->State() == EHttpState::QUEUED)
-		{
-			return std::nullopt;
-		}
-		if(m_pHttpRequest->State() == EHttpState::ABORTED)
-		{
-			str_copy(pOut, "Aborted", Length);
-			m_pHttpRequest = nullptr;
-			return false;
-		}
-		if(m_pHttpRequest->State() != EHttpState::DONE)
-		{
-			str_copy(pOut, "Curl error, see console", Length);
-			m_pHttpRequest = nullptr;
-			return false;
-		}
-		if(m_pHttpRequest->StatusCode() != 200)
-		{
-			str_format(pOut, Length, "Got http code %d", m_pHttpRequest->StatusCode());
-			m_pHttpRequest = nullptr;
-			return false;
-		}
-
-		json_value *pObj = m_pHttpRequest->ResultJson();
-		if(pObj == nullptr)
-		{
-			str_copy(pOut, "Error while parsing JSON", Length);
-			m_pHttpRequest = nullptr;
-			return false;
-		}
-		const bool Result = ParseResponse(pObj, pOut, Length);
-		json_value_free(pObj);
-		m_pHttpRequest = nullptr;
-
-		return Result;
-	}
 	CTranslateBackendFtapi(IHttp &Http, const char *pText)
 	{
 		char aBuf[2048];
 		str_format(aBuf, sizeof(aBuf), "%s/translate?dl=%s&text=",
-			g_Config.m_ClTranslateEndpoint[0] ? g_Config.m_ClTranslateEndpoint : "https://ftapi.pythonanywhere.com",
-			ParseTarget(g_Config.m_ClTranslateTarget));
+			g_Config.m_ClTranslateEndpoint[0] != '\0' ? g_Config.m_ClTranslateEndpoint : "https://ftapi.pythonanywhere.com",
+			EncodeTarget(g_Config.m_ClTranslateTarget));
 
 		UrlEncode(pText, aBuf + strlen(aBuf), sizeof(aBuf) - strlen(aBuf));
 
-		auto pGet = std::make_shared<CHttpRequest>(aBuf);
-		pGet->LogProgress(HTTPLOG::FAILURE);
-		pGet->FailOnErrorStatus(false);
-		pGet->Timeout(CTimeout{10000, 0, 500, 10});
-
-		m_pHttpRequest = pGet;
-		Http.Run(pGet);
+		CreateHttpRequest(Http, aBuf);
 	}
 };
 

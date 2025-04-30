@@ -14,7 +14,7 @@ class ITranslateBackend
 {
 public:
 	virtual ~ITranslateBackend() = default;
-	virtual const char *ParseTarget(const char *pTarget) const;
+	virtual const char *EncodeTarget(const char *pTarget) const;
 	virtual bool CompareTargets(const char *pA, const char *pB) const;
 	virtual const char *Name() const = 0;
 	// "[translated message]\0[guessed language code]"
