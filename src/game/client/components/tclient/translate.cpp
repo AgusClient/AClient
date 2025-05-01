@@ -92,6 +92,11 @@ public:
 		m_pHttpRequest = pGet;
 		Http.Run(pGet);
 	}
+	~ITranslateBackendHttp()
+	{
+		if(m_pHttpRequest)
+			m_pHttpRequest->Abort();
+	}
 };
 
 class CTranslateBackendLibretranslate : public ITranslateBackendHttp
