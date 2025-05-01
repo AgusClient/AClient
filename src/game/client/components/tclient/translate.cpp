@@ -58,6 +58,18 @@ protected:
 	std::shared_ptr<CHttpRequest> m_pHttpRequest = nullptr;
 	virtual bool ParseResponse(char *pOut, size_t Length) = 0;
 
+	void CreateHttpRequest(IHttp &Http, const char *pUrl)
+	{
+		auto pGet = std::make_shared<CHttpRequest>(pUrl);
+		pGet->LogProgress(HTTPLOG::FAILURE);
+		pGet->FailOnErrorStatus(false);
+		pGet->HeaderString("Content-Type", "application/json");
+		pGet->Timeout(CTimeout{10000, 0, 500, 10});
+
+		m_pHttpRequest = pGet;
+		Http.Run(pGet);
+	}
+
 public:
 	std::optional<bool> Update(char *pOut, size_t Length) override
 	{
@@ -80,17 +92,6 @@ public:
 			return false;
 		}
 		return ParseResponse(pOut, Length);
-	}
-	void CreateHttpRequest(IHttp &Http, const char *pUrl)
-	{
-		auto pGet = std::make_shared<CHttpRequest>(pUrl);
-		pGet->LogProgress(HTTPLOG::FAILURE);
-		pGet->FailOnErrorStatus(false);
-		pGet->HeaderString("Content-Type", "application/json");
-		pGet->Timeout(CTimeout{10000, 0, 500, 10});
-
-		m_pHttpRequest = pGet;
-		Http.Run(pGet);
 	}
 	~ITranslateBackendHttp()
 	{
