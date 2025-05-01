@@ -1,6 +1,4 @@
 #include "pet.h"
-#include "base/math.h"
-#include "base/vmath.h"
 
 #include <game/client/animstate.h>
 #include <game/client/gameclient.h>
