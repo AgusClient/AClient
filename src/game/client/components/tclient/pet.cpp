@@ -69,13 +69,25 @@ void CPet::OnRender()
 
 	const auto &Character = Player.m_RenderCur;
 
-	vec2 DirMouse = GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy];
-	if(length(DirMouse) > 1.0f)
-		DirMouse = normalize(DirMouse);
-	vec2 DirVel = m_Velocity / 8.0f;
-	if(length(DirVel) > 1.0f)
-		DirVel = normalize(DirVel);
-	const vec2 DirTarget = mix(DirMouse, DirVel, clamp(length(m_Velocity) / 32.0f, 0.0f, 1.0f));
+	vec2 DirTarget;
+	int Emote = 0;
+	if(GameClient()->m_Snap.m_SpecInfo.m_Active)
+	{
+		DirTarget = GameClient()->m_Camera.m_Center - m_Target;
+		if(length(DirTarget) > 1.0f)
+			DirTarget = normalize(DirTarget);
+	}
+	else
+	{
+		Emote = Character.m_Emote;
+		vec2 DirMouse = GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy];
+		if(length(DirMouse) > 1.0f)
+			DirMouse = normalize(DirMouse);
+		vec2 DirVel = m_Velocity;
+		if(length(DirVel) > 1.0f)
+			DirVel = normalize(DirVel);
+		DirTarget = mix(DirMouse, DirVel, clamp(length(m_Velocity) / 32.0f, 0.0f, 1.0f));
+	}
 	m_Dir = (DirTarget + m_Dir) / 2.0f; // TODO: stop being lazy
 
 	CTeeRenderInfo TeeRenderInfo;
@@ -83,7 +95,7 @@ void CPet::OnRender()
 	// TeeRenderInfo.ApplyColors(g_Config.m_ClPlayerUseCustomColor, g_Config.m_ClPlayerColorBody, g_Config.m_ClPlayerColorFeet);
 	TeeRenderInfo.m_Size = 64.0f * Scale;
 	TeeRenderInfo.m_GotAirJump = m_Velocity.y > -10.0f;
-	RenderTools()->RenderTee(CAnimState::GetIdle(), &TeeRenderInfo, Character.m_Emote, m_Dir, m_Position, m_Alpha);
+	RenderTools()->RenderTee(CAnimState::GetIdle(), &TeeRenderInfo, Emote, m_Dir, m_Position, m_Alpha);
 }
 
 void CPet::OnMapLoad()
