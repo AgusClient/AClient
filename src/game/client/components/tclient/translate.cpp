@@ -395,7 +395,7 @@ void CTranslate::Translate(CChat::CLine &Line, bool ShowProgress)
 void CTranslate::OnRender()
 {
 	auto Time = time();
-	auto ForEach = [GameClient = GameClient(), Time](CTranslateJob &Job) {
+	auto FForEach = [GameClient = GameClient(), Time](CTranslateJob &Job) {
 		if(Job.m_pLine->m_TranslateId != Job.m_pTranslateId)
 			return true; // Not the same line anymore
 		char aBuf[sizeof(CChat::CLine::m_aText)];
@@ -419,5 +419,5 @@ void CTranslate::OnRender()
 		GameClient->m_Chat.RebuildChat();
 		return true;
 	};
-	m_vJobs.erase(std::remove_if(m_vJobs.begin(), m_vJobs.end(), ForEach), m_vJobs.end());
+	m_vJobs.erase(std::remove_if(m_vJobs.begin(), m_vJobs.end(), FForEach), m_vJobs.end());
 }
