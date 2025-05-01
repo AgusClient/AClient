@@ -23,7 +23,7 @@ void CPet::OnRender()
 
 	const float Scale = (float)g_Config.m_ClPetSize / 100.0f;
 
-	if(Player.m_Active)
+	if(Player.m_Active && Player.m_Team != TEAM_SPECTATORS)
 	{
 		m_Target = Player.m_RenderPos;
 		m_Target.x += (64.0f + Scale * 32.0f) * (m_Position.x > m_Target.x ? 1 : -1);
