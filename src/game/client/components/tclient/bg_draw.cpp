@@ -163,7 +163,7 @@ public:
 		const vec2 LastPos = m_Data.empty() ? Point.Pos() : m_Data.back().Pos();
 		const float Distance = distance(LastPos, Point.Pos());
 		// Don't draw short segments
-		if(Distance < Point.w * 2.0f)
+		if(Distance < Point.w * 1.25f)
 			return true;
 		// Draw cap or bevel
 		if(m_Data.size() <= 1)
