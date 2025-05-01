@@ -95,7 +95,7 @@ void CPet::OnRender()
 	// TeeRenderInfo.ApplyColors(g_Config.m_ClPlayerUseCustomColor, g_Config.m_ClPlayerColorBody, g_Config.m_ClPlayerColorFeet);
 	TeeRenderInfo.m_Size = 64.0f * Scale;
 	TeeRenderInfo.m_GotAirJump = m_Velocity.y > -10.0f;
-	RenderTools()->RenderTee(CAnimState::GetIdle(), &TeeRenderInfo, Emote, m_Dir, m_Position, m_Alpha);
+	RenderTools()->RenderTee(CAnimState::GetIdle(), &TeeRenderInfo, Emote, m_Dir, m_Position, m_Alpha * (float)g_Config.m_ClPetAlpha / 100.0f);
 }
 
 void CPet::OnMapLoad()
