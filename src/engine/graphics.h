@@ -481,6 +481,10 @@ protected:
 		Tex.m_Id = Index;
 		return Tex;
 	}
+
+public:
+	// TClient
+	virtual void SetForcedAspect(bool Force) = 0;
 };
 
 class IEngineGraphics : public IGraphics
