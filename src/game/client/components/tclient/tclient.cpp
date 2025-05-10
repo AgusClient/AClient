@@ -461,3 +461,8 @@ void CTClient::OnStateChange(int OldState, int NewState)
 {
 	SetForcedAspect();
 }
+
+void CTClient::OnNewSnapshot()
+{
+	SetForcedAspect();
+}

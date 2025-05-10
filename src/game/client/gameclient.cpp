@@ -1950,8 +1950,6 @@ void CGameClient::OnNewSnapshot()
 		m_GameInfo = GetGameInfo(nullptr, 0, &ServerInfo);
 	}
 
-	m_TClient.SetForcedAspect();
-
 	for(CClientData &Client : m_aClients)
 	{
 		Client.UpdateSkinInfo();
