@@ -51,11 +51,10 @@ public:
 
 // ***** Part Types *****
 
-static constexpr float DEFAULT_PADDING = 5.0f;
-
 class CNamePlatePart
 {
 protected:
+	static constexpr float DEFAULT_PADDING = 5.0f;
 	vec2 m_Size = vec2(0.0f, 0.0f);
 	vec2 m_Padding = vec2(DEFAULT_PADDING, DEFAULT_PADDING);
 	bool m_NewLine = false; // Whether this part is a new line (doesn't do anything else)
