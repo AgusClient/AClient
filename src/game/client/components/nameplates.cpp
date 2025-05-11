@@ -300,7 +300,7 @@ private:
 protected:
 	bool UpdateNeeded(CGameClient &This, const CNamePlateData &Data) override
 	{
-		m_Visible = Data.m_ShowClientId && (Data.m_ClientIdSeperateLine == m_ClientIdSeperateLine);
+		m_Visible = Data.m_ShowClientId && Data.m_ClientIdSeperateLine == m_ClientIdSeperateLine;
 		if(!m_Visible)
 			return false;
 		m_Color = Data.m_Color;
