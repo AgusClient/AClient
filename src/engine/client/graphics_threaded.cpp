@@ -2197,7 +2197,6 @@ void CGraphics_Threaded::SetForcedAspect(bool Force)
 	if(g_GraphicsForcedAspect == Force)
 		return;
 	g_GraphicsForcedAspect = Force;
-	printf("got forced %d\n", Force);
 	GotResized(g_Config.m_GfxScreenWidth, g_Config.m_GfxScreenHeight, g_Config.m_GfxScreenRefreshRate);
 }
 
