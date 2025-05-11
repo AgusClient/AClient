@@ -13,7 +13,7 @@
 
 #include "nameplates.h"
 
-static constexpr float DEFAULT_PADDING = 5.0f;
+// ***** Data *****
 
 class CNamePlateData
 {
@@ -49,7 +49,9 @@ public:
 	float m_FontSizeHookStrongWeak;
 };
 
-// Part Types
+// ***** Part Types *****
+
+static constexpr float DEFAULT_PADDING = 5.0f;
 
 class CNamePlatePart
 {
@@ -212,7 +214,7 @@ public:
 	}
 };
 
-// Part Definitions
+// ***** Part Definitions *****
 
 class CNamePlatePartNewLine : public CNamePlatePart
 {
@@ -501,7 +503,7 @@ public:
 		CNamePlatePartText(This) {}
 };
 
-// TClient Parts
+// ***** TClient Parts *****
 
 class CNamePlatePartPing : public CNamePlatePart
 {
@@ -640,7 +642,7 @@ public:
 		CNamePlatePartText(This) {}
 };
 
-// Name Plates
+// ***** Name Plates *****
 
 class CNamePlate
 {
