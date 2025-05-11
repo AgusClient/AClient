@@ -852,7 +852,7 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 	Column.HSplitTop(LineSize, &Button, &Column);
 	Ui()->DoScrollbarOption(&g_Config.m_ClPetSize, &g_Config.m_ClPetSize, &Button, TCLocalize("Pet size"), 10, 500, &CUi::ms_LinearScrollbarScale, 0, "%");
 	Column.HSplitTop(LineSize, &Button, &Column);
-	Ui()->DoScrollbarOption(&g_Config.m_ClPetSize, &g_Config.m_ClPetSize, &Button, TCLocalize("Pet alpha"), 10, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
+	Ui()->DoScrollbarOption(&g_Config.m_ClPetAlpha, &g_Config.m_ClPetAlpha, &Button, TCLocalize("Pet alpha"), 10, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
 	Column.HSplitTop(LineSize + MarginExtraSmall, &Button, &Column);
 	Button.VSplitMid(&Label, &Button);
 	Ui()->DoLabel(&Label, TCLocalize("Pet Skin:"), FontSize, TEXTALIGN_ML);
