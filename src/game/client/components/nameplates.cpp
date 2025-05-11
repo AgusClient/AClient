@@ -300,7 +300,7 @@ private:
 protected:
 	bool UpdateNeeded(CGameClient &This, const CNamePlateData &Data) override
 	{
-		m_Visible = Data.m_ShowClientId && (Data.m_ClientIdSeperateLine == m_ClientIdSeperateLine);
+		m_Visible = Data.m_ShowClientId && Data.m_ClientIdSeperateLine == m_ClientIdSeperateLine;
 		if(!m_Visible)
 			return false;
 		m_Color = Data.m_Color;
@@ -310,10 +310,7 @@ protected:
 	{
 		m_FontSize = Data.m_FontSizeClientId;
 		m_ClientId = Data.m_ClientId;
-		if(m_ClientIdSeperateLine)
-			str_format(m_aText, sizeof(m_aText), "%d", m_ClientId);
-		else
-			str_format(m_aText, sizeof(m_aText), "%d:", m_ClientId);
+		str_format(m_aText, sizeof(m_aText), "%d", m_ClientId);
 		CTextCursor Cursor;
 		This.TextRender()->SetCursor(&Cursor, 0.0f, 0.0f, m_FontSize, TEXTFLAG_RENDER);
 		This.TextRender()->CreateOrAppendTextContainer(m_TextContainerIndex, &Cursor, m_aText);
@@ -324,6 +321,7 @@ public:
 		CNamePlatePartText(This)
 	{
 		m_ClientIdSeperateLine = ClientIdSeperateLine;
+		m_IsTag = !ClientIdSeperateLine;
 	}
 };
 
