@@ -1094,7 +1094,7 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 	s_SectionBoxes.push_back(Column);
 	Column.HSplitTop(HeadlineHeight, &Label, &Column);
-	Ui()->DoLabel(&Label, TCLocalize("BG Draw"), HeadlineFontSize, TEXTALIGN_ML);
+	Ui()->DoLabel(&Label, TCLocalize("Background Draw"), HeadlineFontSize, TEXTALIGN_ML);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
 	static CButtonContainer s_BgDrawColor;
@@ -1111,7 +1111,7 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 
 	{
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		static CKeyInfo s_Key = CKeyInfo{"BG draw", "+bg_draw", 0, 0};
+		static CKeyInfo s_Key = CKeyInfo{"Draw where mouse is", "+bg_draw", 0, 0};
 		s_Key.m_ModifierCombination = s_Key.m_KeyId = 0;
 		for(int Mod = 0; Mod < CBinds::MODIFIER_COMBINATION_COUNT; Mod++)
 		{
