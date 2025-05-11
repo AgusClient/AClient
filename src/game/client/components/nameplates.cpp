@@ -190,33 +190,34 @@ public:
 	}
 };
 
-enum Direction
-{
-	DIRECTION_LEFT,
-	DIRECTION_UP,
-	DIRECTION_RIGHT
-};
-
 class CNamePlatePartDirection : public CNamePlatePartIcon
 {
+public:
+	enum class EDirection
+	{
+		LEFT,
+		UP,
+		RIGHT
+	};
+
 private:
-	int m_Direction;
+	EDirection m_Direction;
 
 public:
-	CNamePlatePartDirection(CGameClient &This, Direction Dir) :
+	CNamePlatePartDirection(CGameClient &This, EDirection Direction) :
 		CNamePlatePartIcon(This)
 	{
 		m_Texture = g_pData->m_aImages[IMAGE_ARROW].m_Id;
-		m_Direction = Dir;
+		m_Direction = Direction;
 		switch(m_Direction)
 		{
-		case DIRECTION_LEFT:
+		case EDirection::LEFT:
 			m_Rotation = pi;
 			break;
-		case DIRECTION_UP:
+		case EDirection::UP:
 			m_Rotation = pi / -2.0f;
 			break;
-		case DIRECTION_RIGHT:
+		case EDirection::RIGHT:
 			m_Rotation = 0.0f;
 			break;
 		}
@@ -234,13 +235,13 @@ public:
 		m_Padding.y = m_Size.y / 2.0f;
 		switch(m_Direction)
 		{
-		case DIRECTION_LEFT:
+		case EDirection::LEFT:
 			m_Visible = Data.m_DirLeft;
 			break;
-		case DIRECTION_UP:
+		case EDirection::UP:
 			m_Visible = Data.m_DirJump;
 			break;
-		case DIRECTION_RIGHT:
+		case EDirection::RIGHT:
 			m_Visible = Data.m_DirRight;
 			break;
 		}
@@ -642,9 +643,9 @@ private:
 			return;
 		m_Inited = true;
 
-		AddPart<CNamePlatePartDirection>(This, DIRECTION_LEFT);
-		AddPart<CNamePlatePartDirection>(This, DIRECTION_UP);
-		AddPart<CNamePlatePartDirection>(This, DIRECTION_RIGHT);
+		AddPart<CNamePlatePartDirection>(This, CNamePlatePartDirection::EDirection::LEFT);
+		AddPart<CNamePlatePartDirection>(This, CNamePlatePartDirection::EDirection::UP);
+		AddPart<CNamePlatePartDirection>(This, CNamePlatePartDirection::EDirection::RIGHT);
 		AddPart<CNamePlatePartNewLine>(This);
 
 		AddPart<CNamePlatePartPing>(This); // TClient
