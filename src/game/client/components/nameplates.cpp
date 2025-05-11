@@ -82,11 +82,10 @@ public:
 
 using PartsVector = std::vector<std::unique_ptr<CNamePlatePart>>;
 
-static constexpr ColorRGBA s_OutlineColor = ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f);
-
 class CNamePlatePartText : public CNamePlatePart
 {
 protected:
+	static constexpr ColorRGBA OUTLINE_COLOR = ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f);
 	STextContainerIndex m_TextContainerIndex;
 	virtual bool UpdateNeeded(CGameClient &This, const CNamePlateData &Data) = 0;
 	virtual void UpdateText(CGameClient &This, const CNamePlateData &Data) = 0;
@@ -146,7 +145,7 @@ public:
 
 		ColorRGBA OutlineColor, Color;
 		Color = m_Color;
-		OutlineColor = s_OutlineColor.WithMultipliedAlpha(m_Color.a);
+		OutlineColor = OUTLINE_COLOR.WithMultipliedAlpha(m_Color.a);
 		This.TextRender()->RenderTextContainer(m_TextContainerIndex,
 			Color, OutlineColor,
 			Pos.x - Size().x / 2.0f, Pos.y - Size().y / 2.0f);
