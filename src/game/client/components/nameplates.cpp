@@ -135,7 +135,7 @@ public:
 		const STextBoundingBox Container = This.TextRender()->GetBoundingBoxTextContainer(m_TextContainerIndex);
 		m_Size = vec2(Container.m_W, Container.m_H);
 		if(m_IsTag)
-			m_Size += vec2(m_Size.y, 2.0f); // Extra padding
+			m_Size += vec2(m_Size.y * 0.8f, 0.0f); // Extra padding
 	}
 	void Reset(CGameClient &This) override
 	{
@@ -147,11 +147,25 @@ public:
 			return;
 
 		ColorRGBA OutlineColor, Color;
-		Color = m_Color;
-		OutlineColor = OUTLINE_COLOR.WithMultipliedAlpha(m_Color.a);
-		This.TextRender()->RenderTextContainer(m_TextContainerIndex,
-			Color, OutlineColor,
-			Pos.x - Size().x / 2.0f, Pos.y - Size().y / 2.0f);
+		if(m_IsTag)
+		{
+			ColorRGBA BackgroundColor = m_Color.WithMultipliedAlpha(0.75f);
+			Color = ColorRGBA(0.0f, 0.0f, 0.0f, m_Color.a);
+			OutlineColor = ColorRGBA(0.0f, 0.0f, 0.0f, 0.0f);
+			This.Graphics()->DrawRect(Pos.x - Size().x / 2.0f, Pos.y - Size().y / 2.0f - 2.0f, Size().x, Size().y + 4.0f,
+				BackgroundColor, IGraphics::CORNER_ALL, Size().y / 3.0f);
+			This.TextRender()->RenderTextContainer(m_TextContainerIndex,
+				Color, OutlineColor,
+				Pos.x - Size().x / 2.0f + Size().y * 0.4f, Pos.y - Size().y / 2.0f);
+		}
+		else
+		{
+			Color = m_Color;
+			OutlineColor = OUTLINE_COLOR.WithMultipliedAlpha(m_Color.a);
+			This.TextRender()->RenderTextContainer(m_TextContainerIndex,
+				Color, OutlineColor,
+				Pos.x - Size().x / 2.0f, Pos.y - Size().y / 2.0f);
+		}
 	}
 };
 
