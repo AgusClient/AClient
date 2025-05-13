@@ -91,6 +91,7 @@ protected:
 	virtual void UpdateText(CGameClient &This, const CNamePlateData &Data) = 0;
 	ColorRGBA m_Color = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
 	bool m_IsTag = false; // Use color as background, add some extra padding
+	int m_QuadContainer = -1; // For tag background
 	CNamePlatePartText(CGameClient &This) :
 		CNamePlatePart(This)
 	{
@@ -100,46 +101,128 @@ protected:
 public:
 	void Update(CGameClient &This, const CNamePlateData &Data) override
 	{
-		if(!UpdateNeeded(This, Data) && m_TextContainerIndex.Valid())
+		bool NeedsUpdate = false;
+		// Change in tag means change in size
+		if(m_IsTag)
+		{
+			if(m_QuadContainer == -1)
+			{
+				m_QuadContainer = This.Graphics()->CreateQuadContainer();
+				NeedsUpdate = true;
+			}
+		}
+		else
+		{
+			if(m_QuadContainer != -1)
+			{
+				This.Graphics()->DeleteQuadContainer(m_QuadContainer);
+				NeedsUpdate = true;
+			}
+		}
+		// If text container is invalid
+		if(!m_TextContainerIndex.Valid())
+			NeedsUpdate = true;
+		// If text has changed
+		if(UpdateNeeded(This, Data))
+			NeedsUpdate = true;
+		// Do nothing if no update needed
+		if(!NeedsUpdate)
 			return;
 
 		// Set flags
-		unsigned int Flags = ETextRenderFlags::TEXT_RENDER_FLAG_NO_FIRST_CHARACTER_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_LAST_CHARACTER_ADVANCE;
+		unsigned Flags = ETextRenderFlags::TEXT_RENDER_FLAG_NO_FIRST_CHARACTER_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_LAST_CHARACTER_ADVANCE;
 		if(Data.m_InGame)
 			Flags |= ETextRenderFlags::TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT; // Prevent jittering from rounding
 		This.TextRender()->SetRenderFlags(Flags);
 
+		// Create text at standard zoom
+		float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
 		if(Data.m_InGame)
 		{
-			// Create text at standard zoom
-			float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
 			This.Graphics()->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
 			This.RenderTools()->MapScreenToInterface(This.m_Camera.m_Center.x, This.m_Camera.m_Center.y);
-			This.TextRender()->DeleteTextContainer(m_TextContainerIndex);
-			UpdateText(This, Data);
-			This.Graphics()->MapScreen(ScreenX0, ScreenY0, ScreenX1, ScreenY1);
+		}
+
+		// Update text
+		This.TextRender()->DeleteTextContainer(m_TextContainerIndex);
+		UpdateText(This, Data);
+		if(m_TextContainerIndex.Valid())
+		{
+			const STextBoundingBox Bounding = This.TextRender()->GetBoundingBoxTextContainer(m_TextContainerIndex);
+			m_Size = vec2(Bounding.m_W, Bounding.m_H);
+			if(m_IsTag)
+				m_Size += vec2(m_Size.y * 0.8f, 0.0f); // Extra padding
 		}
 		else
 		{
-			UpdateText(This, Data);
+			m_Size = vec2(0.0f, 0.0f);
 		}
 
+		if(Data.m_InGame)
+		{
+			This.Graphics()->MapScreen(ScreenX0, ScreenY0, ScreenX1, ScreenY1);
+		}
 		This.TextRender()->SetRenderFlags(0);
 
-		if(!m_TextContainerIndex.Valid())
+		if(m_TextContainerIndex.Valid() && m_IsTag)
 		{
-			m_Visible = false;
-			return;
-		}
+			This.Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
+			This.Graphics()->QuadContainerReset(m_QuadContainer);
+			const float x = 0.0f; // NOLINT(readability-identifier-naming)
+			const float y = -1.0f; // NOLINT(readability-identifier-naming)
+			const float r = 5.0f; // NOLINT(readability-identifier-naming)
+			const float w = m_Size.x;
+			const float h = m_Size.y + 2.0f;
+			// TODO: Move this to graphics/rendertools
+			const int NumSegments = 8;
+			const float SegmentsAngle = pi / 2 / NumSegments;
 
-		const STextBoundingBox Container = This.TextRender()->GetBoundingBoxTextContainer(m_TextContainerIndex);
-		m_Size = vec2(Container.m_W, Container.m_H);
-		if(m_IsTag)
-			m_Size += vec2(m_Size.y * 0.8f, 0.0f); // Extra padding
+			for(int i = 0; i < NumSegments; i += 2)
+			{
+				float a1 = i * SegmentsAngle;
+				float a2 = (i + 1) * SegmentsAngle;
+				float a3 = (i + 2) * SegmentsAngle;
+				float Ca1 = std::cos(a1);
+				float Ca2 = std::cos(a2);
+				float Ca3 = std::cos(a3);
+				float Sa1 = std::sin(a1);
+				float Sa2 = std::sin(a2);
+				float Sa3 = std::sin(a3);
+
+				IGraphics::CFreeformItem aFreeformItems[4] = {
+					{x + r, y + r,
+						x + (1 - Ca1) * r, y + (1 - Sa1) * r,
+						x + (1 - Ca3) * r, y + (1 - Sa3) * r,
+						x + (1 - Ca2) * r, y + (1 - Sa2) * r},
+					{x + w - r, y + r,
+						x + w - r + Ca1 * r, y + (1 - Sa1) * r,
+						x + w - r + Ca3 * r, y + (1 - Sa3) * r,
+						x + w - r + Ca2 * r, y + (1 - Sa2) * r},
+					{x + r, y + h - r,
+						x + (1 - Ca1) * r, y + h - r + Sa1 * r,
+						x + (1 - Ca3) * r, y + h - r + Sa3 * r,
+						x + (1 - Ca2) * r, y + h - r + Sa2 * r},
+					{x + w - r, y + h - r,
+						x + w - r + Ca1 * r, y + h - r + Sa1 * r,
+						x + w - r + Ca3 * r, y + h - r + Sa3 * r,
+						x + w - r + Ca2 * r, y + h - r + Sa2 * r},
+				};
+				This.Graphics()->QuadContainerAddQuads(m_QuadContainer, aFreeformItems, 4);
+			}
+			IGraphics::CQuadItem aQuads[5] = {
+				{x + r, y + r, w - r * 2, h - r * 2}, // center
+				{x + r, y, w - r * 2, r}, // top
+				{x + r, y + h - r, w - r * 2, r}, // bottom
+				{x, y + r, r, h - r * 2}, // left
+				{x + w - r, y + r, r, h - r * 2}, // right
+			};
+			This.Graphics()->QuadContainerAddQuads(m_QuadContainer, aQuads, 5);
+		}
 	}
 	void Reset(CGameClient &This) override
 	{
 		This.TextRender()->DeleteTextContainer(m_TextContainerIndex);
+		This.Graphics()->DeleteQuadContainer(m_QuadContainer);
 	}
 	void Render(CGameClient &This, vec2 Pos) const override
 	{
@@ -150,10 +233,13 @@ public:
 		if(m_IsTag)
 		{
 			ColorRGBA BackgroundColor = m_Color.WithMultipliedAlpha(0.75f);
+			This.Graphics()->SetColor(BackgroundColor);
+			This.Graphics()->TextureClear();
+			This.Graphics()->RenderQuadContainerEx(m_QuadContainer, 0, -1,
+				Pos.x - Size().x / 2.0f, Pos.y - Size().y / 2.0f);
+
 			Color = ColorRGBA(0.0f, 0.0f, 0.0f, m_Color.a);
 			OutlineColor = ColorRGBA(0.0f, 0.0f, 0.0f, 0.0f);
-			This.Graphics()->DrawRect(Pos.x - Size().x / 2.0f, Pos.y - Size().y / 2.0f - 2.0f, Size().x, Size().y + 4.0f,
-				BackgroundColor, IGraphics::CORNER_ALL, Size().y / 3.0f);
 			This.TextRender()->RenderTextContainer(m_TextContainerIndex,
 				Color, OutlineColor,
 				Pos.x - Size().x / 2.0f + Size().y * 0.4f, Pos.y - Size().y / 2.0f);
