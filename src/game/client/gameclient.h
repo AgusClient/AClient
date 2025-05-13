@@ -65,6 +65,7 @@
 #include "components/tclient/pet.h"
 #include "components/tclient/player_indicator.h"
 #include "components/tclient/rainbow.h"
+#include "components/tclient/conditional.h"
 #include "components/tclient/skinprofiles.h"
 #include "components/tclient/statusbar.h"
 #include "components/tclient/tclient.h"
@@ -124,6 +125,8 @@ public:
 	bool m_NoSkinChangeForFrozen;
 
 	bool m_DDRaceTeam;
+
+	char m_aGameType[16];
 };
 
 class CSnapEntities
@@ -206,6 +209,7 @@ public:
 	COutlines m_Outlines;
 	CRainbow m_Rainbow;
 	CWarList m_WarList;
+	CConditional m_Conditional;
 
 private:
 	std::vector<class CComponent *> m_vpAll;

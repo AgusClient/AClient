@@ -2468,6 +2468,8 @@ if(CLIENT)
     components/tclient/bindchat.h
     components/tclient/bindwheel.cpp
     components/tclient/bindwheel.h
+    components/tclient/conditional.cpp
+    components/tclient/conditional.h
     components/tclient/menus_tclient.cpp
     components/tclient/outlines.cpp
     components/tclient/outlines.h

@@ -168,6 +168,7 @@ void CGameClient::OnConsoleInit()
 					      &m_Motd,
 					      &m_Menus,
 					      &m_Tooltips,
+					      &m_Conditional,
 					      &CMenus::m_Binder,
 					      &m_GameConsole,
 					      &m_MenuBackground});
@@ -1567,6 +1568,9 @@ static CGameInfo GetGameInfo(const CNetObj_GameInfoEx *pInfoEx, int InfoExSize, 
 	{
 		Info.m_DDRaceTeam = Flags2 & GAMEINFOFLAG2_DDRACE_TEAM;
 	}
+
+	// Solly
+	str_copy(Info.m_aGameType, pFallbackServerInfo->m_aGameType);
 
 	return Info;
 }
