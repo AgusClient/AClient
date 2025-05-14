@@ -101,8 +101,32 @@ protected:
 public:
 	void Update(CGameClient &This, const CNamePlateData &Data) override
 	{
-		// Update if the text container is invalid or update is requested
-		if(m_TextContainerIndex.Valid() && !UpdateNeeded(This, Data))
+		bool NeedsUpdate = false;
+		// Change in tag means change in size
+		if(m_IsTag)
+		{
+			if(m_QuadContainer == -1)
+			{
+				m_QuadContainer = This.Graphics()->CreateQuadContainer();
+				NeedsUpdate = true;
+			}
+		}
+		else
+		{
+			if(m_QuadContainer != -1)
+			{
+				This.Graphics()->DeleteQuadContainer(m_QuadContainer);
+				NeedsUpdate = true;
+			}
+		}
+		// If text container is invalid
+		if(!m_TextContainerIndex.Valid())
+			NeedsUpdate = true;
+		// If text has changed
+		if(UpdateNeeded(This, Data))
+			NeedsUpdate = true;
+		// Do nothing if no update needed
+		if(!NeedsUpdate)
 			return;
 
 		// Set flags
@@ -131,11 +155,6 @@ public:
 			m_Size = vec2(Bounding.m_W, Bounding.m_H);
 			if(m_IsTag)
 				m_Size += vec2(m_Size.y * 0.8f, 0.0f); // Extra padding
-
-			if(m_IsTag && m_QuadContainer == -1)
-				m_QuadContainer = This.Graphics()->CreateQuadContainer();
-			else if(!m_IsTag && m_QuadContainer != -1)
-				This.Graphics()->DeleteQuadContainer(m_QuadContainer);
 
 			if(m_IsTag)
 			{
@@ -203,6 +222,7 @@ public:
 	void Reset(CGameClient &This) override
 	{
 		This.TextRender()->DeleteTextContainer(m_TextContainerIndex);
+		This.Graphics()->DeleteQuadContainer(m_QuadContainer);
 	}
 	void Render(CGameClient &This, vec2 Pos) const override
 	{
@@ -212,14 +232,17 @@ public:
 		ColorRGBA OutlineColor, Color;
 		if(m_IsTag)
 		{
-			ColorRGBA BackgroundColor = m_Color.WithMultipliedAlpha(0.75f);
 			Color = ColorRGBA(0.0f, 0.0f, 0.0f, m_Color.a);
 			OutlineColor = ColorRGBA(0.0f, 0.0f, 0.0f, 0.0f);
-			This.Graphics()->SetColor(BackgroundColor);
-			This.Graphics()->TextureClear();
 
-			This.Graphics()->RenderQuadContainerEx(m_QuadContainer, 0, -1,
-				Pos.x - Size().x / 2.0f, Pos.y - Size().y / 2.0f);
+			if(m_QuadContainer > 0)
+			{
+				ColorRGBA BackgroundColor = m_Color.WithMultipliedAlpha(0.75f);
+				This.Graphics()->SetColor(BackgroundColor);
+				This.Graphics()->TextureClear();
+				This.Graphics()->RenderQuadContainerEx(m_QuadContainer, 0, -1,
+					Pos.x - Size().x / 2.0f, Pos.y - Size().y / 2.0f);
+			}
 			This.TextRender()->RenderTextContainer(m_TextContainerIndex,
 				Color, OutlineColor,
 				Pos.x - Size().x / 2.0f + Size().y * 0.4f, Pos.y - Size().y / 2.0f);
