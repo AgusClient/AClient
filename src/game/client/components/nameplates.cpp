@@ -135,17 +135,23 @@ public:
 			Flags |= ETextRenderFlags::TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT; // Prevent jittering from rounding
 		This.TextRender()->SetRenderFlags(Flags);
 
-		// Create text at standard zoom
-		float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
+		This.TextRender()->DeleteTextContainer(m_TextContainerIndex);
 		if(Data.m_InGame)
 		{
+			// Create text at standard zoom when in game
+			float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
 			This.Graphics()->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
 			This.RenderTools()->MapScreenToInterface(This.m_Camera.m_Center.x, This.m_Camera.m_Center.y);
+			UpdateText(This, Data);
+			This.Graphics()->MapScreen(ScreenX0, ScreenY0, ScreenX1, ScreenY1);
 		}
+		else
+		{
+			m_Size = vec2(0.0f, 0.0f);
+		}
+		This.TextRender()->SetRenderFlags(0);
 
-		// Update text
-		This.TextRender()->DeleteTextContainer(m_TextContainerIndex);
-		UpdateText(This, Data);
+		// Calculate size
 		if(m_TextContainerIndex.Valid())
 		{
 			const STextBoundingBox Bounding = This.TextRender()->GetBoundingBoxTextContainer(m_TextContainerIndex);
@@ -158,12 +164,7 @@ public:
 			m_Size = vec2(0.0f, 0.0f);
 		}
 
-		if(Data.m_InGame)
-		{
-			This.Graphics()->MapScreen(ScreenX0, ScreenY0, ScreenX1, ScreenY1);
-		}
-		This.TextRender()->SetRenderFlags(0);
-
+		// Create tag
 		if(m_TextContainerIndex.Valid() && m_IsTag)
 		{
 			This.Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
