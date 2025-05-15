@@ -2471,6 +2471,8 @@ if(CLIENT)
     components/tclient/conditional.cpp
     components/tclient/conditional.h
     components/tclient/menus_tclient.cpp
+    components/tclient/mod.cpp
+    components/tclient/mod.h
     components/tclient/outlines.cpp
     components/tclient/outlines.h
     components/tclient/pet.cpp

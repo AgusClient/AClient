@@ -70,6 +70,8 @@ void CBindChat::ConBindchatDefaults(IConsole::IResult *pResult, void *pUserData)
 		pThis->AddBind(BindDefault.m_Bind);
 	for(const CBindDefault &BindDefault : s_aDefaultBindChatOther)
 		pThis->AddBind(BindDefault.m_Bind);
+	for(const CBindDefault &BindDefault : s_aDefaultBindChatMod)
+		pThis->AddBind(BindDefault.m_Bind);
 }
 
 void CBindChat::AddBind(const char *pName, const char *pCommand)
