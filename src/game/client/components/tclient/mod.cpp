@@ -24,10 +24,14 @@ static int UnitLengthSeconds(char Unit)
 {
 	switch(Unit)
 	{
-	case 's': case 'S': return 1;
-	case 'm': case 'M': return 60;
-	case 'h': case 'H': return 60 * 60;
-	case 'd': case 'D': return 60 * 60 * 24;
+	case 's':
+	case 'S': return 1;
+	case 'm':
+	case 'M': return 60;
+	case 'h':
+	case 'H': return 60 * 60;
+	case 'd':
+	case 'D': return 60 * 60 * 24;
 	default: return -1;
 	}
 }
@@ -74,13 +78,17 @@ void CMod::ConModCmd(IConsole::IResult *pResult, const char *pCmd, bool IsName, 
 
 void CMod::OnInit()
 {
-	#define ADD_MOD_CMD(Cmd, Unit) \
-		Console()->Register("mod_rcon_" Cmd, "i[id] s[time (" #Unit ")] r?[reason]", CFGFLAG_CLIENT, [](IConsole::IResult *pResult, void *pUserData) { \
-			static_cast<CMod*>(pUserData)->ConModCmd(pResult, Cmd, false, #Unit[0]); \
-		}, this, "RCON " Cmd " someone"); \
-		Console()->Register("mod_rcon_" Cmd "_name", "s[name] s[time (" #Unit ")] r?[reason]", CFGFLAG_CLIENT, [](IConsole::IResult *pResult, void *pUserData) { \
-			static_cast<CMod*>(pUserData)->ConModCmd(pResult, Cmd, true, #Unit[0]); \
-		}, this, "RCON " Cmd " someone")
+#define ADD_MOD_CMD(Cmd, Unit) \
+	Console()->Register( \
+		"mod_rcon_" Cmd, "i[id] s[time (" #Unit ")] r?[reason]", CFGFLAG_CLIENT, [](IConsole::IResult *pResult, void *pUserData) { \
+			static_cast<CMod *>(pUserData)->ConModCmd(pResult, Cmd, false, #Unit[0]); \
+		}, \
+		this, "RCON " Cmd " someone"); \
+	Console()->Register( \
+		"mod_rcon_" Cmd "_name", "s[name] s[time (" #Unit ")] r?[reason]", CFGFLAG_CLIENT, [](IConsole::IResult *pResult, void *pUserData) { \
+			static_cast<CMod *>(pUserData)->ConModCmd(pResult, Cmd, true, #Unit[0]); \
+		}, \
+		this, "RCON " Cmd " someone")
 	ADD_MOD_CMD("mute", s);
 	ADD_MOD_CMD("kick", m);
 	ADD_MOD_CMD("ban", m);

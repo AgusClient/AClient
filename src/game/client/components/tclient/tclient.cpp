@@ -522,7 +522,7 @@ void CTClient::RenderMiniVoteHud()
 
 	CUIRect Row, LeftColumn, RightColumn, ProgressSpinner;
 	char aBuf[256];
-	
+
 	// Vote description
 	View.HSplitTop(6.0f, &Row, &View);
 	StripStr(GameClient()->m_Voting.VoteDescription(), aBuf, aBuf + sizeof(aBuf));
