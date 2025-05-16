@@ -443,6 +443,7 @@ void CTClient::FinishTClientInfo()
 
 void CTClient::SetForcedAspect()
 {
+	return; // TODO: fix set forced aspect
 	int State = Client()->State();
 	bool Force = true;
 	if(State == CClient::EClientState::STATE_DEMOPLAYBACK)
