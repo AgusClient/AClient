@@ -78,18 +78,18 @@ void CMod::ConModCmd(IConsole::IResult *pResult, const char *pCmd, bool IsName, 
 
 void CMod::OnInit()
 {
-#define ADD_MOD_CMD(Cmd, Unit) \
+#define ADD_MOD_CMD(Name, Cmd, Unit) \
 	Console()->Register( \
-		"mod_rcon_" Cmd, "i[id] s[time (" #Unit ")] r?[reason]", CFGFLAG_CLIENT, [](IConsole::IResult *pResult, void *pUserData) { \
+		"mod_rcon_" Name, "i[id] s[time (" #Unit ")] ?r[reason]", CFGFLAG_CLIENT, [](IConsole::IResult *pResult, void *pUserData) { \
 			static_cast<CMod *>(pUserData)->ConModCmd(pResult, Cmd, false, #Unit[0]); \
 		}, \
-		this, "RCON " Cmd " someone"); \
+		this, "RCON " Name " someone"); \
 	Console()->Register( \
-		"mod_rcon_" Cmd "_name", "s[name] s[time (" #Unit ")] r?[reason]", CFGFLAG_CLIENT, [](IConsole::IResult *pResult, void *pUserData) { \
+		"mod_rcon_" Name "_name", "s[name] s[time (" #Unit ")] ?r[reason]", CFGFLAG_CLIENT, [](IConsole::IResult *pResult, void *pUserData) { \
 			static_cast<CMod *>(pUserData)->ConModCmd(pResult, Cmd, true, #Unit[0]); \
 		}, \
-		this, "RCON " Cmd " someone")
-	ADD_MOD_CMD("mute", s);
-	ADD_MOD_CMD("kick", m);
-	ADD_MOD_CMD("ban", m);
+		this, "RCON " Name " someone")
+	ADD_MOD_CMD("mute", "muteid", s);
+	ADD_MOD_CMD("ban", "ban", m);
+#undef ADD_MOD_CMD
 }
