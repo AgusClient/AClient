@@ -2,13 +2,13 @@
 
 [![Build](https://github.com/sjrc6/TaterClient-ddnet/workflows/Build/badge.svg)](https://github.com/sjrc6/TaterClient-ddnet/actions/workflows/build.yaml)
 
-### Taters custom ddnet client with some small modifications
+### Taters custom ddnet client with some modifications
 
 Not guarenteed to be bug free, but I will try to fix them.
 
 If ddnet devs are reading this and want to steal my changes please feel free.
 
-Thanks to tela for the logo png <3 
+Thanks to tela for the logo png <3
 
 ### Links
 
@@ -17,7 +17,9 @@ Thanks to tela for the logo png <3
 
 ### Installation
 
-Download from https://github.com/sjrc6/TaterClient-ddnet/releases, or build it using the build instuctions from the main repository.
+* Download the latest [release](https://github.com/sjrc6/TaterClient-ddnet/releases)
+* Download a [nightly (dev/unstable) build](https://github.com/sjrc6/TaterClient-ddnet/actions/workflows/fast-build.yml?query=branch%3Amaster)
+* [Clone](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) this repo and build using the [guide from DDNet](https://github.com/ddnet/ddnet?tab=readme-ov-file#cloning)
 
 ### Settings Page
 
