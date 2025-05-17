@@ -8,7 +8,7 @@ Not guarenteed to be bug free, but I will try to fix them.
 
 If ddnet devs are reading this and want to steal my changes please feel free.
 
-Thanks to tela for the logo png <3
+Thanks to tela for the logo design, and solly for svg <3
 
 ### Links
 
