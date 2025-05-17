@@ -872,6 +872,7 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 	Ui()->DoLabel(&Label, TCLocalize("HUD"), HeadlineFontSize, TEXTALIGN_ML);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClMiniVoteHud, TCLocalize("Show mini vote HUD"), &g_Config.m_ClMiniVoteHud, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClShowCenterLines, TCLocalize("Show screen center"), &g_Config.m_ClShowCenterLines, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClMiniDebug, TCLocalize("Show position and angle (mini debug)"), &g_Config.m_ClMiniDebug, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClRenderCursorSpec, TCLocalize("Show your cursor when in free spectate"), &g_Config.m_ClRenderCursorSpec, &Column, LineSize);
