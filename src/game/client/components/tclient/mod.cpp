@@ -9,7 +9,8 @@
 class CMod::CIden
 {
 private:
-	enum class EType {
+	enum class EType
+	{
 		ID,
 		ADDR,
 		NAME,
@@ -20,7 +21,8 @@ private:
 	std::string m_Content;
 
 public:
-	[[nodiscard]] std::string Printable() const {
+	[[nodiscard]] std::string Printable() const
+	{
 		switch(m_Type)
 		{
 		case EType::ID:
@@ -35,7 +37,8 @@ public:
 			dbg_break();
 		}
 	}
-	[[nodiscard]] std::string RCon() const {
+	[[nodiscard]] std::string RCon() const
+	{
 		switch(m_Type)
 		{
 		case EType::ID:
@@ -50,16 +53,19 @@ public:
 			dbg_break();
 		}
 	}
-	[[nodiscard]] const char *Error() const {
+	[[nodiscard]] const char *Error() const
+	{
 		return m_Type == EType::ERROR ? m_Content.c_str() : nullptr;
 	}
 	CIden() = delete;
-	enum class EParseMode {
+	enum class EParseMode
+	{
 		NAME,
 		ID_OR_ADDR,
 		ID,
 	};
-	CIden(const CMod *pThis, const char *pStr, EParseMode Mode) {
+	CIden(const CMod *pThis, const char *pStr, EParseMode Mode)
+	{
 		CGameClient &This = *pThis->GameClient();
 		if(Mode == EParseMode::NAME)
 		{
@@ -243,7 +249,6 @@ void CMod::Mute(const CMod::CIden &Iden, const char *pTime, const char *pReason)
 	GameClient()->Echo(aBuf);
 }
 
-
 void CMod::OnInit()
 {
 	class CModCmd
@@ -255,41 +260,49 @@ void CMod::OnInit()
 		IConsole::FCommandCallback &m_FCallback;
 	};
 	std::vector<CModCmd> vModCmds;
-	#define ADD_MOD_CMD(NAME, PARAMS, HELP) \
-		static IConsole::FCommandCallback F ## NAME; \
-		vModCmds.emplace_back(CModCmd{#NAME, PARAMS, HELP, F ## NAME}); \
-		F ## NAME = (IConsole::FCommandCallback)(void (*)(IConsole::IResult *, CMod *))[](IConsole::IResult *pResult, CMod *pThis)
+#define ADD_MOD_CMD(NAME, PARAMS, HELP) \
+	static IConsole::FCommandCallback F##NAME; \
+	vModCmds.emplace_back(CModCmd{#NAME, PARAMS, HELP, F##NAME}); \
+	F##NAME = (IConsole::FCommandCallback)(void (*)(IConsole::IResult *, CMod *))[](IConsole::IResult * pResult, CMod * pThis)
 	{
-		ADD_MOD_CMD(mod_rcon_ban, "s[id|ip] s[time (minutes)] ?r[reason]", "RCon ban someone") {
+		ADD_MOD_CMD(mod_rcon_ban, "s[id|ip] s[time (minutes)] ?r[reason]", "RCon ban someone")
+		{
 			pThis->Ban(CIden(pThis, pResult->GetString(0), CIden::EParseMode::ID_OR_ADDR), pResult->GetString(1), pResult->GetString(2));
 		};
-		ADD_MOD_CMD(mod_rcon_ban_name, "s[name] s[time (minutes)] ?r[reason]", "RCon ban someone by name") {
+		ADD_MOD_CMD(mod_rcon_ban_name, "s[name] s[time (minutes)] ?r[reason]", "RCon ban someone by name")
+		{
 			pThis->Ban(CIden(pThis, pResult->GetString(0), CIden::EParseMode::NAME), pResult->GetString(1), pResult->GetString(2));
 		};
-		ADD_MOD_CMD(mod_rcon_kick, "s[id|ip] ?r[reason]", "RCon kick someone") {
+		ADD_MOD_CMD(mod_rcon_kick, "s[id|ip] ?r[reason]", "RCon kick someone")
+		{
 			pThis->Kick(CIden(pThis, pResult->GetString(0), CIden::EParseMode::ID), pResult->GetString(2));
 		};
-		ADD_MOD_CMD(mod_rcon_kick_name, "s[name] ?r[reason]", "RCon kick someone by name") {
+		ADD_MOD_CMD(mod_rcon_kick_name, "s[name] ?r[reason]", "RCon kick someone by name")
+		{
 			pThis->Kick(CIden(pThis, pResult->GetString(0), CIden::EParseMode::NAME), pResult->GetString(2));
 		};
-		ADD_MOD_CMD(mod_rcon_mute, "s[id] s[time (minutes)] ?r[reason]", "RCon mute someone") {
+		ADD_MOD_CMD(mod_rcon_mute, "s[id] s[time (minutes)] ?r[reason]", "RCon mute someone")
+		{
 			pThis->Mute(CIden(pThis, pResult->GetString(0), CIden::EParseMode::ID), pResult->GetString(1), pResult->GetString(2));
 		};
-		ADD_MOD_CMD(mod_rcon_mute_name, "s[name] s[time (minutes)] ?r[reason]", "RCon mute someone by name") {
+		ADD_MOD_CMD(mod_rcon_mute_name, "s[name] s[time (minutes)] ?r[reason]", "RCon mute someone by name")
+		{
 			pThis->Mute(CIden(pThis, pResult->GetString(0), CIden::EParseMode::NAME), pResult->GetString(1), pResult->GetString(2));
 		};
-		ADD_MOD_CMD(mod_rcon_kill, "s[id/ip] ?s[2] ?s[3] ?s[4] ?s[5] ?s[6] ?s[7] ?s[8]", "RCon kill people") {
+		ADD_MOD_CMD(mod_rcon_kill, "s[id/ip] ?s[2] ?s[3] ?s[4] ?s[5] ?s[6] ?s[7] ?s[8]", "RCon kill people")
+		{
 			for(int i = 0; i < 8; ++i)
 				if(pResult->GetString(i)[0] != '\0')
 					pThis->Kill(CIden(pThis, pResult->GetString(i), CIden::EParseMode::ID), true);
 		};
-		ADD_MOD_CMD(mod_rcon_kill_name, "s[name] ?s[2] ?s[3] ?s[4] ?s[5] ?s[6] ?s[7] ?s[8]", "RCon kill people by name") {
+		ADD_MOD_CMD(mod_rcon_kill_name, "s[name] ?s[2] ?s[3] ?s[4] ?s[5] ?s[6] ?s[7] ?s[8]", "RCon kill people by name")
+		{
 			for(int i = 0; i < 8; ++i)
 				if(pResult->GetString(i)[0] != '\0')
 					pThis->Kill(CIden(pThis, pResult->GetString(i), CIden::EParseMode::NAME), true);
 		};
 	}
-	#undef ADD_MOD_CMD
+#undef ADD_MOD_CMD
 	for(const CModCmd &Cmd : vModCmds)
 		Console()->Register(Cmd.m_pName, Cmd.m_pParams, CFGFLAG_CLIENT, Cmd.m_FCallback, this, Cmd.m_pHelp);
 }
