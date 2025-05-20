@@ -150,7 +150,7 @@ void CGameClient::OnConsoleInit()
 					      &m_DamageInd,
 					      &m_PlayerIndicator,
 					      &m_Verify,
-					      &m_TClient,
+					      &m_TClient, // Must be before chat
 					      &m_Hud,
 					      &m_Spectator,
 					      &m_Emoticon,
