@@ -334,12 +334,23 @@ void CTClient::SpecId(int ClientId)
 	GameClient()->m_Chat.SendChat(0, aBuf);
 }
 
+void CTClient::ConEmoteCycle(IConsole::IResult *pResult, void *pUserData)
+{
+	CTClient &This = *(CTClient *)pUserData;
+	This.m_EmoteCycle += 1;
+	if(This.m_EmoteCycle > 15)
+		This.m_EmoteCycle = 0;
+	This.GameClient()->m_Emoticon.Emote(This.m_EmoteCycle);
+}
+
 void CTClient::OnConsoleInit()
 {
 	Console()->Register("tc_random_player", "s[type]", CFGFLAG_CLIENT, ConRandomTee, this, "Randomize player color (0 = all, 1 = body, 2 = feet, 3 = skin, 4 = flag) example: 0011 = randomize skin and flag [number is position]");
 	Console()->Chain("tc_random_player", ConchainRandomColor, this);
 
 	Console()->Register("spec_id", "v[id]", CFGFLAG_CLIENT, ConSpecId, this, "Spectate a player by Id");
+
+	Console()->Register("emote_cycle", "", CFGFLAG_CLIENT, ConEmoteCycle, this, "Cycle through emotes");
 }
 
 void CTClient::RandomBodyColor()
