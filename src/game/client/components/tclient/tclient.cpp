@@ -251,15 +251,13 @@ void CTClient::OnMessage(int MsgType, void *pRawMsg)
 	}
 
 	auto &vServerCommands = GameClient()->m_Chat.m_vServerCommands;
-	auto HasServerCommand = [&](const char *pNeedle)
-	{
-		for(const auto& Command : vServerCommands)
+	auto HasServerCommand = [&](const char *pNeedle) {
+		for(const auto &Command : vServerCommands)
 			if(str_comp_nocase(pNeedle, Command.m_aName) == 0)
 				return true;
 		return false;
 	};
-	auto AddSpecId = [&](bool Enable)
-	{
+	auto AddSpecId = [&](bool Enable) {
 		static const CChat::CCommand SpecId("specid", "v[id]", "Spectate a player");
 		vServerCommands.erase(std::remove_if(vServerCommands.begin(), vServerCommands.end(), [](const CChat::CCommand &Command) { return Command == SpecId; }), vServerCommands.end());
 		if(Enable)
@@ -303,7 +301,7 @@ bool CTClient::ChatDoSpecId(const char *pInput)
 	str_copy(pEntry->m_aText, pInput, Length + 1);
 
 	int ClientId = 0;
-	if (!str_toint(pNumber, &ClientId))
+	if(!str_toint(pNumber, &ClientId))
 		return true;
 
 	SpecId(ClientId);
