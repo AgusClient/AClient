@@ -1,8 +1,6 @@
 #ifndef GAME_CLIENT_COMPONENTS_TCLIENT_MOD_H
 #define GAME_CLIENT_COMPONENTS_TCLIENT_MOD_H
 
-#include <string>
-
 #include <game/client/component.h>
 
 #include <engine/shared/console.h>
