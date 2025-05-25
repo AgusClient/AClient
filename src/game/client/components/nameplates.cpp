@@ -471,6 +471,8 @@ public:
 			If in preview
 				Show ping if ping circle and name enabled
 		*/
+		m_Radius = Data.m_FontSize / 2.5f;
+		m_Size = vec2(m_Radius, m_Radius) * 2.0f;
 		m_Visible = Data.m_InGame ? (
 						    This.Client()->State() != IClient::STATE_DEMOPLAYBACK && ((Data.m_ShowName && g_Config.m_ClPingNameCircle > 0) ||
 														     (This.m_Scoreboard.IsActive() && !This.m_Snap.m_apPlayerInfos[Data.m_ClientId]->m_Local))) :
@@ -490,10 +492,7 @@ public:
 		This.Graphics()->QuadsEnd();
 	}
 	CNamePlatePartPing(CGameClient &This) :
-		CNamePlatePart(This)
-	{
-		m_Size = vec2(m_Radius, m_Radius) * 2.0f;
-	}
+		CNamePlatePart(This) {}
 };
 
 class CNamePlatePartSkin : public CNamePlatePartText
