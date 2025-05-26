@@ -688,9 +688,11 @@ Changing name to %s near finish
 Custom Font: 
 == 自定义字体: 
 
+[bgdraw]
 Failed to create bgdraw folder
 ==
 
+[bgdraw]
 Failed to open %s for %s
 ==
 
@@ -712,15 +714,18 @@ Horizontal Position
 Ingame cursor scale
 == 游戏内光标缩放
 
+[bgdraw]
 Loaded %zu items
 == 加载了 %zu 项
 
+[bgdraw]
 Loaded %zu items (discarded %zu items)
 == 加载了 %zu 项（丢弃了 %zu 项）
 
 Normal
 == 正常模式
 
+[bgdraw]
 Opening %s for %s
 == Opening %s for %s
 
@@ -766,15 +771,19 @@ Wheel animate
 Width
 == 宽度
 
+[bgdraw]
 Writing item %zu failed
 == 写入项目 %zu 失败
 
+[bgdraw]
 Written %zu items
 == 写入了 %zu 项
 
+[bgdraw]
 reading
 == 正在读取
 
+[bgdraw]
 writing
 == 正在写入
 
