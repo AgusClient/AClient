@@ -34,8 +34,7 @@ class CTranslate : public CComponent
 	std::vector<CTranslateJob> m_vJobs;
 
 	static void ConTranslate(IConsole::IResult *pResult, void *pUserData);
-
-	CChat::CLine *FindMessage(const char *pName);
+	static void ConTranslateId(IConsole::IResult *pResult, void *pUserData);
 
 public:
 	int Sizeof() const override { return sizeof(*this); }
@@ -43,6 +42,7 @@ public:
 	void OnConsoleInit() override;
 	void OnRender() override;
 
+	void Translate(int Id, bool ShowProgress = true);
 	void Translate(const char *pName, bool ShowProgress = true);
 	void Translate(CChat::CLine &Line, bool ShowProgress = true);
 };
