@@ -1,5 +1,6 @@
 #include <game/client/gameclient.h>
 #include <game/client/lineinput.h>
+#include <game/localization.h>
 
 #include <engine/shared/json.h>
 #include <engine/shared/jsonwriter.h>
@@ -423,7 +424,7 @@ void CTranslate::OnRender()
 		{
 			Job.m_pTranslateResponse->m_Text[0] = '\0';
 			char aBuf[1024];
-			str_format(aBuf, sizeof(aBuf), "[%s to %s failed: %s]", Job.m_pBackend->Name(), g_Config.m_ClTranslateTarget, Out.m_Text);
+			str_format(aBuf, sizeof(aBuf), TCLocalize("[%s to %s failed: %s]", "translate"), Job.m_pBackend->Name(), g_Config.m_ClTranslateTarget, Out.m_Text);
 			GameClient->m_Chat.Echo(aBuf);
 		}
 		Job.m_pLine->m_Time = Time;
