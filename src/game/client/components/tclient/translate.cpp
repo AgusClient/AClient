@@ -395,7 +395,7 @@ void CTranslate::Translate(CChat::CLine &Line, bool ShowProgress)
 
 	if(ShowProgress)
 	{
-		str_format(Job.m_pTranslateResponse->m_Text, sizeof(Job.m_pTranslateResponse->m_Text), "[%s translating to %s]", Job.m_pBackend->Name(), g_Config.m_ClTranslateTarget);
+		str_format(Job.m_pTranslateResponse->m_Text, sizeof(Job.m_pTranslateResponse->m_Text), TCLocalize("[%s translating to %s]", "translate"), Job.m_pBackend->Name(), g_Config.m_ClTranslateTarget);
 		Job.m_pLine->m_Time = time();
 		GameClient()->m_Chat.RebuildChat();
 	}
