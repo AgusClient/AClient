@@ -17,7 +17,6 @@ public:
 	virtual const char *EncodeTarget(const char *pTarget) const;
 	virtual bool CompareTargets(const char *pA, const char *pB) const;
 	virtual const char *Name() const = 0;
-	// "[translated message]\0[guessed language code]"
 	virtual std::optional<bool> Update(CTranslateResponse &Out) = 0;
 };
 
