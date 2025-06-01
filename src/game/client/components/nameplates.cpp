@@ -499,31 +499,47 @@ class CNamePlatePartSkin : public CNamePlatePartText
 {
 private:
 	char m_aText[MAX_CLAN_LENGTH] = "";
+	int m_ColorBody, m_ColorFeet;
 	float m_FontSize = -INFINITY;
 
 protected:
 	bool UpdateNeeded(CGameClient &This, const CNamePlateData &Data) override
 	{
-		m_Visible = Data.m_InGame ? g_Config.m_ClShowSkinName > (This.m_Snap.m_apPlayerInfos[Data.m_ClientId]->m_Local ? 1 : 0) : g_Config.m_ClShowSkinName > 0;
+		m_Visible = Data.m_InGame ? g_Config.m_ClNameplatesSkinInfo > (This.m_Snap.m_apPlayerInfos[Data.m_ClientId]->m_Local ? 1 : 0) : false;
 		if(!m_Visible)
 			return false;
-		m_Color = Data.m_Color;
-		const char *pSkin = Data.m_InGame ? This.m_aClients[Data.m_ClientId].m_aSkinName : (Data.m_ClientId == 0 ? g_Config.m_ClPlayerSkin : g_Config.m_ClDummySkin);
-		return m_FontSize != Data.m_FontSizeClan || str_comp(m_aText, pSkin) != 0;
+		m_Color.a = Data.m_Color.a;
+		const auto &Player = This.m_aClients[Data.m_ClientId];
+		return m_FontSize != Data.m_FontSizeClan || str_comp(m_aText, Player.m_aSkinName) != 0 || m_ColorBody != Player.m_ColorBody || m_ColorFeet != Player.m_ColorFeet;
 	}
 	void UpdateText(CGameClient &This, const CNamePlateData &Data) override
 	{
 		m_FontSize = Data.m_FontSizeClan;
-		const char *pSkin = Data.m_InGame ? This.m_aClients[Data.m_ClientId].m_aSkinName : (Data.m_ClientId == 0 ? g_Config.m_ClPlayerSkin : g_Config.m_ClDummySkin);
-		str_copy(m_aText, pSkin, sizeof(m_aText));
+		const auto &Player = This.m_aClients[Data.m_ClientId];
+		str_copy(m_aText, Player.m_aSkinName, sizeof(m_aText));
+		m_ColorFeet = Player.m_ColorFeet;
+		m_ColorBody = Player.m_ColorBody;
 		CTextCursor Cursor;
 		This.TextRender()->SetCursor(&Cursor, 0.0f, 0.0f, m_FontSize, TEXTFLAG_RENDER);
 		This.TextRender()->CreateOrAppendTextContainer(m_TextContainerIndex, &Cursor, m_aText);
+		auto FAddColor = [&](int Color) {
+			char aBuf[9]; // $RRGGBB
+			ColorRGBA Parsed = color_cast<ColorRGBA>(ColorHSLA(Color));
+			str_format(aBuf, sizeof(aBuf), "$%02X%02X%02X", (int)std::round(Parsed.r * 255), (int)std::round(Parsed.g * 255), (int)std::round(Parsed.b * 255));
+			This.TextRender()->TextColor(Parsed);
+			This.TextRender()->CreateOrAppendTextContainer(m_TextContainerIndex, &Cursor, aBuf);
+		};
+		FAddColor(m_ColorFeet);
+		FAddColor(m_ColorBody);
+		This.TextRender()->TextColor(This.TextRender()->DefaultTextColor());
 	}
 
 public:
 	CNamePlatePartSkin(CGameClient &This) :
-		CNamePlatePartText(This) {}
+		CNamePlatePartText(This)
+	{
+		m_Color = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
+	}
 };
 
 class CNamePlatePartReason : public CNamePlatePartText
