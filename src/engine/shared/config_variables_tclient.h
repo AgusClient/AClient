@@ -236,3 +236,6 @@ MACRO_CONFIG_INT(ClTClientSettingsTabs, tc_tclient_settings_tabs, 0, 0, 65536, C
 
 // AAAAAAA
 MACRO_CONFIG_INT(ClAmIFrozen, EEEfrz, 0, 0, 1, CFGFLAG_CLIENT, "")
+
+// Mod
+MACRO_CONFIG_INT(ClShowPlayerHitBoxes, tc_show_player_hit_boxes, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show player hit boxes (1 = predicted, 2 = predicted and unpredicted)")
