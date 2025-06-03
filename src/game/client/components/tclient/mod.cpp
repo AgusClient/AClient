@@ -324,7 +324,9 @@ void CMod::OnRender()
 
 		for(const auto &Player : GameClient()->m_aClients)
 		{
-			if(!Player.m_Active)
+			const int ClientId = Player.ClientId();
+			const auto &Char = m_pClient->m_Snap.m_aCharacters[ClientId];
+			if(!Char.m_Active || !Player.m_Active)
 				continue;
 			if(Player.m_Team < 0)
 				continue;
@@ -337,7 +339,6 @@ void CMod::OnRender()
 			if(g_Config.m_ClShowPlayerHitBoxes > 1)
 			{
 				// From CPlayers::RenderPlayer
-				const int ClientId = Player.ClientId();
 				vec2 ShadowPosition = mix(
 					vec2(m_pClient->m_Snap.m_aCharacters[ClientId].m_Prev.m_X, m_pClient->m_Snap.m_aCharacters[ClientId].m_Prev.m_Y),
 					vec2(m_pClient->m_Snap.m_aCharacters[ClientId].m_Cur.m_X, m_pClient->m_Snap.m_aCharacters[ClientId].m_Cur.m_Y),
