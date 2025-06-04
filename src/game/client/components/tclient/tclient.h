@@ -50,6 +50,7 @@ public:
 	bool NeedUpdate();
 
 	void RenderMiniVoteHud();
+	void RenderCenterLines();
 
 	bool ChatDoSpecId(const char *pInput);
 

@@ -663,3 +663,29 @@ void CTClient::RenderMiniVoteHud()
 
 	TextRender()->TextColor(TextRender()->DefaultTextColor());
 }
+
+void CTClient::RenderCenterLines()
+{
+	if(g_Config.m_ClShowCenterLines <= 0)
+		return;
+
+	if(m_pClient->m_Scoreboard.IsActive())
+		return;
+
+	Graphics()->TextureClear();
+	Graphics()->LinesBegin();
+	Graphics()->SetColor(1.0f, 0.0f, 0.0f, 1.0f);
+
+	float X0, Y0, X1, Y1;
+	Graphics()->GetScreen(&X0, &Y0, &X1, &Y1);
+	const float XMid = (X0 + X1) / 2.0f;
+	const float YMid = (Y0 + Y1) / 2.0f;
+
+	IGraphics::CLineItem aLines[2] = {
+		IGraphics::CLineItem(XMid, Y0, XMid, Y1),
+		IGraphics::CLineItem(X0, YMid, X1, YMid)};
+
+	Graphics()->LinesDraw(aLines, std::size(aLines));
+
+	Graphics()->LinesEnd();
+}
