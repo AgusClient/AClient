@@ -878,7 +878,6 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClMiniVoteHud, TCLocalize("Show mini vote HUD"), &g_Config.m_ClMiniVoteHud, &Column, LineSize);
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClShowCenterLines, TCLocalize("Show screen center"), &g_Config.m_ClShowCenterLines, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClMiniDebug, TCLocalize("Show position and angle (mini debug)"), &g_Config.m_ClMiniDebug, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClRenderCursorSpec, TCLocalize("Show your cursor when in free spectate"), &g_Config.m_ClRenderCursorSpec, &Column, LineSize);
 
@@ -911,6 +910,21 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 	{
 		Column.HSplitTop(LineSize * 3.0f, nullptr, &Column);
 	}
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClShowCenter, TCLocalize("Show screen center lines"), &g_Config.m_ClShowCenter, &Column, LineSize);
+	Column.HSplitTop(LineSize + MarginSmall, &Button, &Column);
+	if(g_Config.m_ClShowCenter)
+	{
+		static CButtonContainer s_ShowCenterLineColor;
+		DoLine_ColorPicker(&s_ShowCenterLineColor, ColorPickerLineSize, ColorPickerLabelSize, ColorPickerLineSpacing, &Button, TCLocalize("Screen center line color"), &g_Config.m_ClShowCenterColor, CConfig::ms_ClShowCenterColor, false, nullptr, true);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		Ui()->DoScrollbarOption(&g_Config.m_ClShowCenterWidth, &g_Config.m_ClShowCenterWidth, &Button, TCLocalize("Screen center line width"), 0, 20);
+	}
+	else
+	{
+		Column.HSplitTop(LineSize, nullptr, &Column);
+	}
+
 	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
 	s_SectionBoxes.back().h = Column.y - s_SectionBoxes.back().y;
 
