@@ -6,6 +6,7 @@
 #include <optional>
 
 #include "conditional.h"
+#include "game/generated/protocol.h"
 
 static std::optional<bool> RegexMatch(const char *pString, const char *pRegex)
 {
@@ -38,6 +39,14 @@ void CConditional::ParseString(const char *pString, char *pOut, int Length)
 		str_copy(pOut, Client()->GetCurrentMap(), Length);
 	else if(str_comp_nocase("$(server_ip)", pString) == 0)
 		net_addr_str(&Client()->ServerAddress(), pOut, Length, true);
+	else if(str_comp_nocase("$(players_connected)", pString) == 0)
+		str_format(pOut, Length, "%d", GameClient()->m_Snap.m_NumPlayers);
+	else if (str_comp_nocase("$(players_cap)", pString) == 0)
+	{
+		CServerInfo CurrentServerInfo;
+		Client()->GetServerInfo(&CurrentServerInfo);
+		str_format(pOut, Length, "%d", CurrentServerInfo.m_MaxClients);
+	}
 	else if(str_comp_nocase("$(server_name)", pString) == 0)
 	{
 		CServerInfo CurrentServerInfo;
