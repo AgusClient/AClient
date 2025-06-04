@@ -46,8 +46,6 @@ MACRO_CONFIG_INT(ClPredGhostsAlpha, tc_pred_ghosts_alpha, 100, 0, 100, CFGFLAG_C
 MACRO_CONFIG_INT(ClUnpredGhostsAlpha, tc_unpred_ghosts_alpha, 50, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Alpha of unpredicted ghosts (0-100)")
 MACRO_CONFIG_INT(ClRenderGhostAsCircle, tc_render_ghost_as_circle, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Render Ghosts as circles instead of tee")
 
-// MACRO_CONFIG_INT(ClHookLineSize, tc_hook_line_width, 0, 0, 20, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Adjustable hookline width, set to 0 for old default rendering")
-
 MACRO_CONFIG_INT(ClShowCenterLines, tc_show_center, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draws lines to show the center of your screen/hitbox")
 MACRO_CONFIG_INT(ClNameplatesSkinInfo, tc_nameplates_skin_info, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Shows skin name and colors in nameplates")
 
