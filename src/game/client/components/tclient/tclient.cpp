@@ -1,4 +1,6 @@
-﻿#include <game/client/gameclient.h>
+﻿#include <base/log.h>
+
+#include <game/client/gameclient.h>
 #include <game/client/animstate.h>
 #include <game/client/components/chat.h>
 #include <game/client/render.h>
@@ -9,6 +11,7 @@
 #include <game/version.h>
 
 #include <engine/client/enums.h>
+#include <engine/external/tinyexpr.h>
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
 #include <engine/shared/json.h>
@@ -341,8 +344,20 @@ void CTClient::ConEmoteCycle(IConsole::IResult *pResult, void *pUserData)
 	This.GameClient()->m_Emoticon.Emote(This.m_EmoteCycle);
 }
 
+void CTClient::ConCalc(IConsole::IResult *pResult, void *pUserData)
+{
+	int Error = 0;
+	double Out = te_interp(pResult->GetString(0), &Error);
+	if(Out == NAN || Error != 0)
+		log_info("tclient", "Calc error: %d", Error);
+	else
+		log_info("tclient", "Calc result: %lf", Out);
+}
+
 void CTClient::OnConsoleInit()
 {
+	Console()->Register("calc", "r[expression]", CFGFLAG_CLIENT, ConCalc, this, "Evaluate an expression");
+
 	Console()->Register("tc_random_player", "s[type]", CFGFLAG_CLIENT, ConRandomTee, this, "Randomize player color (0 = all, 1 = body, 2 = feet, 3 = skin, 4 = flag) example: 0011 = randomize skin and flag [number is position]");
 	Console()->Chain("tc_random_player", ConchainRandomColor, this);
 
