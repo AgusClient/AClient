@@ -21,6 +21,47 @@ Thanks to tela for the logo design, and solly for svg <3
 * Download a [nightly (dev/unstable) build](https://github.com/sjrc6/TaterClient-ddnet/actions/workflows/fast-build.yml?query=branch%3Amaster)
 * [Clone](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) this repo and build using the [guide from DDNet](https://github.com/ddnet/ddnet?tab=readme-ov-file#cloning)
 
+### Conditional Tutorial
+
+There are certain vars you can write which get substituted before execution, these are wrapped in `$(` and `)`.  
+Here is an example
+```sh
+echo There are $(players_connected) players connected
+I chat/client: — There are 7 players connected
+```
+
+Here is a list of variables which are available:  
+`game_mode`, `game_mode_pvp`, `game_mode_race`, `eye_wheel_allowed`, `zoom_allowed`, `dummy_allowed`, `dummy_connected`, `rcon_authed`, `map`, `server_ip`, `players_connected`, `players_cap`, `server_name`, `community`, `location`  
+These are limited to not let you do things like adding extra control capabilities
+
+| Name | Args | Description |
+| --- | --- | --- |
+| `ifeq` | `s[a] s[b] r[command]` | Comapre 2 values, if equal run the command |
+| `ifneq` | `s[a] s[b] r[command]` | Comapre 2 values, if not equal run the command |
+| `ifreq` | `s[a] s[b] r[command]` | Comapre 2 values, if a matches the regex b run the command |
+| `ifrneq` | `s[a] s[b] r[command]` | Comapre 2 values, if a doesnt match the regex b run the command |
+(Note the regex engine is [Remimu](https://github.com/wareya/Remimu))
+
+With the commands listed above and the substitutions you can create simple comparisons, here is an examples I use to login
+
+```
+ifreq $(server_ip) "^(49\.13\.73\.199|188\.245\.101\.41|188\.245\.66\.93|20\.215\.41\.104):\d+$" say /login AWB CODE
+ifeq $(community) kog say /login KOG CODE
+```
+
+```
+ifeq "$(community) $(game_mode)" "ddnet DDraceNetwork" rcon_login USER PASS
+```
+
+I also use it to enable sewerslide on PVP maps
+```
+exec scripts/sewerslide_off.cfg
+ifeq $(game_mode_pvp) 1 exec scripts/sewerslide_on.cfg
+ifeq $(map) Linear exec scripts/sewerslide_on.cfg
+ifreq $(map) "^.*?Copy Love Box.*?$" exec scripts/sewerslide_on.cfg
+ifeq $(game_mode) 0XF exec scripts/sewerslide_on.cfg
+```
+
 ### Settings Page
 
 ![image](https://github.com/user-attachments/assets/a6ccb206-9fed-48be-a2d2-8fc50a6be882)
