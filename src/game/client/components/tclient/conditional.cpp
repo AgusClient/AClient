@@ -24,9 +24,9 @@ int CConditional::ParseValue(const char *pString, char *pOut, int Length)
 		return str_copy(pOut, GameClient()->m_GameInfo.m_Pvp ? "1" : "0", Length);
 	else if(str_comp_nocase("game_mode_race", pString) == 0)
 		return str_copy(pOut, GameClient()->m_GameInfo.m_Race ? "1" : "0", Length);
-	else if(str_comp_nocase("allow_eye_wheel", pString) == 0)
+	else if(str_comp_nocase("eye_wheel_allowed", pString) == 0)
 		return str_copy(pOut, GameClient()->m_GameInfo.m_AllowEyeWheel ? "1" : "0", Length);
-	else if(str_comp_nocase("allow_zoom", pString) == 0)
+	else if(str_comp_nocase("zoom_allowed", pString) == 0)
 		return str_copy(pOut, GameClient()->m_GameInfo.m_AllowZoom ? "1" : "0", Length);
 	else if(str_comp_nocase("dummy_allowed", pString) == 0)
 		return str_copy(pOut, Client()->DummyAllowed() ? "1" : "0", Length);
