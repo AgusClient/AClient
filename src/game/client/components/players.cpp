@@ -26,7 +26,10 @@
 
 #include <base/color.h>
 #include <base/math.h>
+
+// TClient
 #include <game/client/components/tclient/rainbow.h>
+#include <game/client/prediction/entities/character.h>
 
 void CPlayers::RenderHand(const CTeeRenderInfo *pInfo, vec2 CenterPos, vec2 Dir, float AngleOffset, vec2 PostRotOffset, float Alpha)
 {
@@ -180,6 +183,9 @@ void CPlayers::RenderHookCollLine(
 	int ClientId,
 	float Intra)
 {
+	if(GameClient()->m_aClients[ClientId].m_DeepFrozen && (g_Config.m_ClVolleyBallBetterBall == 2 || (g_Config.m_ClVolleyBallBetterBall == 1 && str_startswith_nocase(Client()->GetCurrentMap(), "volleyball"))))
+		return;
+
 	CNetObj_Character Prev;
 	CNetObj_Character Player;
 	Prev = *pPrevChar;
@@ -519,6 +525,42 @@ void CPlayers::RenderPlayer(
 	vec2 Vel = mix(vec2(Prev.m_VelX / 256.0f, Prev.m_VelY / 256.0f), vec2(Player.m_VelX / 256.0f, Player.m_VelY / 256.0f), IntraTick);
 
 	m_pClient->m_Flow.Add(Position, Vel * 100.0f, 10.0f);
+
+	// TClient
+	if(GameClient()->m_aClients[ClientId].m_DeepFrozen && (g_Config.m_ClVolleyBallBetterBall == 2 || (g_Config.m_ClVolleyBallBetterBall == 1 && str_startswith_nocase(Client()->GetCurrentMap(), "volleyball"))))
+	{
+		// Update
+		const float Delta = Client()->IntraGameTickSincePrev(g_Config.m_ClDummy);
+		auto &ClientData = GameClient()->m_aClients[ClientId];
+		ClientData.m_VolleyBallAngle += Vel.x * Delta / 48.0f;
+		if(ClientData.m_VolleyBallAngle < 0.0f)
+			ClientData.m_VolleyBallAngle += 2.0f * pi;
+		else if(ClientData.m_VolleyBallAngle > 2.0f * pi)
+			ClientData.m_VolleyBallAngle -= 2.0f * pi;
+		// Render
+		const CSkin *pSkin = m_pClient->m_Skins.Find(g_Config.m_ClVolleyBallBetterBallSkin);
+		if(!pSkin)
+			pSkin = m_pClient->m_Skins.Find("x_ninja");
+		if(!pSkin)
+			pSkin = m_pClient->m_Skins.Find("default");
+		if(!pSkin)
+			return;
+		const float Size = pRenderInfo->m_Size * 1.2f;
+		Graphics()->SetColor(ColorRGBA(1.0f, 1.0f, 1.0f, Alpha));
+		Graphics()->TextureSet(pSkin->m_OriginalSkin.m_BodyOutline);
+		Graphics()->QuadsBegin();
+		IEngineGraphics::CQuadItem QuadOutline{Position.x, Position.y, Size, Size};
+		Graphics()->QuadsSetRotation(ClientData.m_VolleyBallAngle);
+		Graphics()->QuadsDraw(&QuadOutline, 1);
+		Graphics()->QuadsEnd();
+		Graphics()->TextureSet(pSkin->m_OriginalSkin.m_Body);
+		Graphics()->QuadsBegin();
+		Graphics()->QuadsSetRotation(ClientData.m_VolleyBallAngle);
+		IEngineGraphics::CQuadItem Quad{Position.x, Position.y, Size, Size};
+		Graphics()->QuadsDraw(&Quad, 1);
+		Graphics()->QuadsEnd();
+		return;
+	}
 
 	RenderInfo.m_GotAirJump = Player.m_Jumped & 2 ? false : true;
 
