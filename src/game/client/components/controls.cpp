@@ -457,8 +457,8 @@ void CControls::ClampMousePos()
 			Width /= 2.0f;
 			if(g_Config.m_ClLimitMouseToScreen == 2)
 				Width = Height;
-			m_aMousePos[g_Config.m_ClDummy].y = clamp(m_aMousePos[g_Config.m_ClDummy].y, -Height, Height);
-			m_aMousePos[g_Config.m_ClDummy].x = clamp(m_aMousePos[g_Config.m_ClDummy].x, -Width, Width);
+			m_aMousePos[g_Config.m_ClDummy].y = std::clamp(m_aMousePos[g_Config.m_ClDummy].y, -Height, Height);
+			m_aMousePos[g_Config.m_ClDummy].x = std::clamp(m_aMousePos[g_Config.m_ClDummy].x, -Width, Width);
 		}
 	}
 }

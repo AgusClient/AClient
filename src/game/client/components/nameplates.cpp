@@ -483,7 +483,7 @@ public:
 		if(!m_Visible)
 			return;
 		int ping = Data.m_InGame ? This.m_Snap.m_apPlayerInfos[Data.m_ClientId]->m_Latency : (1 + Data.m_ClientId) * 25;
-		m_Color = color_cast<ColorRGBA>(ColorHSLA((float)(300 - clamp(ping, 0, 300)) / 1000.0f, 1.0f, 0.5f, Data.m_Color.a));
+		m_Color = color_cast<ColorRGBA>(ColorHSLA((float)(300 - std::clamp(ping, 0, 300)) / 1000.0f, 1.0f, 0.5f, Data.m_Color.a));
 	}
 	void Render(CGameClient &This, vec2 Pos) const override
 	{
