@@ -139,6 +139,10 @@ public:
 
 	virtual int FlagMask() const = 0;
 	virtual void SetFlagMask(int FlagMask) = 0;
+
+	// TClient
+
+	bool m_Return;
 };
 
 std::unique_ptr<IConsole> CreateConsole(int FlagMask);

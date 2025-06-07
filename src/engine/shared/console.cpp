@@ -722,9 +722,13 @@ bool CConsole::ExecuteFile(const char *pFilename, int ClientId, bool LogFailure,
 		str_format(aBuf, sizeof(aBuf), "executing '%s'", pFilename);
 		Print(IConsole::OUTPUT_LEVEL_STANDARD, "console", aBuf);
 
+		m_Return = false; // TClient
 		while(const char *pLine = LineReader.Get())
 		{
 			ExecuteLine(pLine, ClientId);
+			// TClient
+			if(m_Return)
+				break;
 		}
 
 		Success = true;
