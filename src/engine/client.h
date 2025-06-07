@@ -60,9 +60,9 @@ public:
 	};
 
 	/**
-	 * More precise state for @see STATE_LOADING
-	 * Sets what is actually happening in the client right now
-	 */
+	* More precise state for @see STATE_LOADING
+	* Sets what is actually happening in the client right now
+	*/
 	enum ELoadingStateDetail
 	{
 		LOADING_STATE_DETAIL_INITIAL,
@@ -272,7 +272,7 @@ public:
 
 	virtual IGraphics::CTextureHandle GetDebugFont() const = 0; // TODO: remove this function
 
-	// DDRace
+	//DDRace
 
 	virtual const char *GetCurrentMap() const = 0;
 	virtual const char *GetCurrentMapPath() const = 0;
@@ -309,6 +309,7 @@ public:
 	virtual IFriends *Foes() = 0;
 
 	virtual void GetSmoothTick(int *pSmoothTick, float *pSmoothIntraTick, float MixAmount) = 0;
+	// TClient
 	virtual void GetSmoothFreezeTick(int *pSmoothTick, float *pSmoothIntraTick, float MixAmount) = 0;
 
 	virtual void AddWarning(const SWarning &Warning) = 0;
@@ -406,6 +407,7 @@ public:
 	virtual int OnDemoRecSnap7(class CSnapshot *pFrom, class CSnapshot *pTo, int Conn) = 0;
 	virtual int TranslateSnap(class CSnapshot *pSnapDstSix, class CSnapshot *pSnapSrcSeven, int Conn, bool Dummy) = 0;
 
+	// TClient
 	virtual bool CheckNewInput() = 0;
 	virtual void InitializeLanguage() = 0;
 };

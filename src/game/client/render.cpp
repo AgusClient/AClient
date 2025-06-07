@@ -12,6 +12,7 @@
 #include <game/client/gameclient.h>
 
 #include <engine/shared/config.h>
+
 #include <game/generated/client_data.h>
 #include <game/generated/client_data7.h>
 #include <game/generated/protocol.h>
@@ -91,7 +92,7 @@ bool CSkinDescriptor::CSixup::operator==(const CSixup &Other) const
 	       m_XmasHat == Other.m_XmasHat;
 }
 
-void CRenderTools::Init(class IGraphics *pGraphics, class ITextRender *pTextRender, class CGameClient *pGameClient)
+void CRenderTools::Init(IGraphics *pGraphics, ITextRender *pTextRender, CGameClient *pGameClient)
 {
 	m_pGraphics = pGraphics;
 	m_pTextRender = pTextRender;
@@ -707,7 +708,9 @@ void CRenderTools::RenderTee6(const CAnimState *pAnim, const CTeeRenderInfo *pIn
 				Graphics()->TextureSet(OutLine == 1 ? pWhiteFeetTextures->m_FeetOutline : pWhiteFeetTextures->m_Feet);
 			}
 			else
+			{
 				Graphics()->TextureSet(OutLine == 1 ? pSkinTextures->m_FeetOutline : pSkinTextures->m_Feet);
+			}
 
 			Graphics()->RenderQuadContainerAsSprite(m_TeeQuadContainerIndex, QuadOffset, Position.x + pFoot->m_X * AnimScale, Position.y + pFoot->m_Y * AnimScale, w / 64.f, h / 32.f);
 		}
