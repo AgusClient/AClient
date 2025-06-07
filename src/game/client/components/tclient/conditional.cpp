@@ -234,5 +234,5 @@ void CConditional::OnConsoleInit()
 	Console()->Register("return", "", CFGFLAG_CLIENT, ConReturn, this, "Stop executing the current script, does nothing in other contexts");
 
 	s_pThis = this;
-	g_pConditionalCompose = ConditionalCompose;
+	Console()->m_pConditionalCompose = ConditionalCompose;
 }

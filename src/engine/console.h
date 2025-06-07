@@ -143,11 +143,11 @@ public:
 	// TClient
 
 	bool m_Return;
+	void (*m_pConditionalCompose)(const char *pString, char *pOut, int Length) = nullptr;
 };
 
 std::unique_ptr<IConsole> CreateConsole(int FlagMask);
 
 // TClient
-extern void (*g_pConditionalCompose)(const char *pString, char *pOut, int Length);
 
 #endif // FILE_ENGINE_CONSOLE_H
