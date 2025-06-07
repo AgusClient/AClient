@@ -1092,7 +1092,7 @@ void CChat::OnPrepareLines(float y)
 				// Move finder to end
 				pFinder = pMarkerEnd + 2;
 			}
-			if(std::holds_alternative<ColorRGBA>(ColoredParts.m_vParts[0]))
+			if(!ColoredParts.m_vParts.empty() && std::holds_alternative<ColorRGBA>(ColoredParts.m_vParts[0]))
 				Line.m_CustomColor = std::get<ColorRGBA>(ColoredParts.m_vParts[0]);
 		}
 		else
