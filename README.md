@@ -40,6 +40,7 @@ These are limited to not let you do things like adding extra control capabilitie
 | `ifneq` | `s[a] s[b] r[command]` | Comapre 2 values, if not equal run the command |
 | `ifreq` | `s[a] s[b] r[command]` | Comapre 2 values, if a matches the regex b run the command |
 | `ifrneq` | `s[a] s[b] r[command]` | Comapre 2 values, if a doesnt match the regex b run the command |
+
 (Note the regex engine is [Remimu](https://github.com/wareya/Remimu))
 
 With the commands listed above and the substitutions you can create simple comparisons, here is an examples I use to login
@@ -60,6 +61,17 @@ ifeq $(game_mode_pvp) 1 exec scripts/sewerslide_on.cfg
 ifeq $(map) Linear exec scripts/sewerslide_on.cfg
 ifreq $(map) "^.*?Copy Love Box.*?$" exec scripts/sewerslide_on.cfg
 ifeq $(game_mode) 0XF exec scripts/sewerslide_on.cfg
+```
+
+There is also a `return` which lets you early return from scripts.
+* Have "elses" without spamming `ifeq`
+* Have early returns while still remaining compatible with DDNet
+
+Here is an example which I use for dummy connecting
+```
+ifneq $(dummy_connected) 0 return
+dummy_connect
+exec "scripts/dummy/reset.cfg"
 ```
 
 ### Settings Page
