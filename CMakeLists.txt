@@ -1388,6 +1388,18 @@ set(EXPECTED_DATA
   countryflags/VU.png
   countryflags/WF.png
   countryflags/WS.png
+  countryflags/X-AROACE.png
+  countryflags/X-BLACK.png
+  countryflags/X-FINISH.png
+  countryflags/X-GAY.png
+  countryflags/X-LESBIAN.png
+  countryflags/X-PIRATE.png
+  countryflags/X-PROGRESS.png
+  countryflags/X-RAINBOW.png
+  countryflags/X-TOTAR.png
+  countryflags/X-TRANS.png
+  countryflags/X-TROLL.png
+  countryflags/X-WHITE.png
   countryflags/YE.png
   countryflags/ZA.png
   countryflags/ZM.png

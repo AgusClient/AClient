@@ -6,6 +6,48 @@
 default
 == -1
 
+##### unicode #####
+
+X-WHITE
+== -101
+
+X-BLACK
+== -102
+
+X-RAINBOW
+== -103
+
+X-PIRATE
+== -104
+
+X-FINISH
+== -105
+
+##### pride #####
+
+X-PROGRESS
+== -201
+
+X-GAY
+== -202
+
+X-LESBIAN
+== -203
+
+X-TRANS
+== -204
+
+X-AROACE
+== -205
+
+##### other #####
+
+X-TOTAR
+== -301
+
+X-TROLL
+== -302
+
 ##### ISO 3166-2 subdivisions #####
 
 GB-ENG
