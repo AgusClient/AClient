@@ -1909,12 +1909,12 @@ void CMenus::RenderSettingsProfiles(CUIRect MainView)
 	ColorRGBA Color(1.0f, 1.0f, 1.0f, 1.0f);
 	m_pClient->m_CountryFlags.Render(m_Dummy ? g_Config.m_ClDummyCountry : g_Config.m_PlayerCountry, Color, FlagRect.x, FlagRect.y, FlagRect.w, FlagRect.h);
 
-	bool DoSkin = g_Config.m_ClApplyProfileSkin;
-	bool DoColors = g_Config.m_ClApplyProfileColors;
-	bool DoEmote = g_Config.m_ClApplyProfileEmote;
-	bool DoName = g_Config.m_ClApplyProfileName;
-	bool DoClan = g_Config.m_ClApplyProfileClan;
-	bool DoFlag = g_Config.m_ClApplyProfileFlag;
+	bool DoSkin = g_Config.m_ClProfileSkin;
+	bool DoColors = g_Config.m_ClProfileColors;
+	bool DoEmote = g_Config.m_ClProfileEmote;
+	bool DoName = g_Config.m_ClProfileName;
+	bool DoClan = g_Config.m_ClProfileClan;
+	bool DoFlag = g_Config.m_ClProfileFlag;
 
 	// After load
 	if(s_SelectedProfile != -1 && s_SelectedProfile < (int)GameClient()->m_SkinProfiles.m_Profiles.size())
@@ -2005,12 +2005,12 @@ void CMenus::RenderSettingsProfiles(CUIRect MainView)
 	LabelMid.VSplitLeft(20.0f, nullptr, &LabelMid);
 	LabelMid.VSplitLeft(160.0f, &LabelMid, &LabelRight);
 
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClApplyProfileSkin, TCLocalize("Save/Load Skin"), &g_Config.m_ClApplyProfileSkin, &LabelMid, LineSize);
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClApplyProfileColors, TCLocalize("Save/Load Colors"), &g_Config.m_ClApplyProfileColors, &LabelMid, LineSize);
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClApplyProfileEmote, TCLocalize("Save/Load Emote"), &g_Config.m_ClApplyProfileEmote, &LabelMid, LineSize);
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClApplyProfileName, TCLocalize("Save/Load Name"), &g_Config.m_ClApplyProfileName, &LabelMid, LineSize);
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClApplyProfileClan, TCLocalize("Save/Load Clan"), &g_Config.m_ClApplyProfileClan, &LabelMid, LineSize);
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClApplyProfileFlag, TCLocalize("Save/Load Flag"), &g_Config.m_ClApplyProfileFlag, &LabelMid, LineSize);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClProfileSkin, TCLocalize("Save/Load Skin"), &g_Config.m_ClProfileSkin, &LabelMid, LineSize);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClProfileColors, TCLocalize("Save/Load Colors"), &g_Config.m_ClProfileColors, &LabelMid, LineSize);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClProfileEmote, TCLocalize("Save/Load Emote"), &g_Config.m_ClProfileEmote, &LabelMid, LineSize);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClProfileName, TCLocalize("Save/Load Name"), &g_Config.m_ClProfileName, &LabelMid, LineSize);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClProfileClan, TCLocalize("Save/Load Clan"), &g_Config.m_ClProfileClan, &LabelMid, LineSize);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClProfileFlag, TCLocalize("Save/Load Flag"), &g_Config.m_ClProfileFlag, &LabelMid, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClProfileOverwriteClanWithEmpty, TCLocalize("Overwrite clan even if empty"), &g_Config.m_ClProfileOverwriteClanWithEmpty, &LabelMid, LineSize);
 
 	CUIRect Button;
