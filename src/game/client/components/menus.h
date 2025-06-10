@@ -669,7 +669,7 @@ protected:
 public:
 	void RenderBackground();
 
-	static CMenusKeyBinder m_Binder;
+	CMenusKeyBinder m_Binder;
 
 	CMenus();
 	virtual int Sizeof() const override { return sizeof(*this); }

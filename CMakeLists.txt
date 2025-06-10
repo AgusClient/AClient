@@ -2076,7 +2076,7 @@ set_src(BASE GLOB_RECURSE src/base
   unicode/confusables.h
   unicode/confusables_data.h
   unicode/tolower.cpp
-  unicode/tolower.h
+  unicode/tolower_data.cpp
   unicode/tolower_data.h
   vmath.h
 )
@@ -2458,6 +2458,8 @@ if(CLIENT)
     components/players.h
     components/race_demo.cpp
     components/race_demo.h
+    components/render_layer.cpp
+    components/render_layer.h
     components/scoreboard.cpp
     components/scoreboard.h
     components/skins.cpp
@@ -2860,6 +2862,7 @@ if(SERVER)
     gamemodes/mod.h
     gameworld.cpp
     gameworld.h
+    mutes.cpp
     player.cpp
     player.h
     save.cpp
