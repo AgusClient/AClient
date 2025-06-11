@@ -151,6 +151,7 @@ void CGameClient::OnConsoleInit()
 					      &m_PlayerIndicator,
 					      &m_Verify,
 					      &m_TClient, // Must be before chat
+					      &m_Mod,
 					      &m_Translate,
 					      &m_Hud,
 					      &m_Spectator,
@@ -170,7 +171,6 @@ void CGameClient::OnConsoleInit()
 					      &m_Menus,
 					      &m_Tooltips,
 					      &m_Conditional,
-					      &m_Mod,
 					      &m_Menus.m_Binder,
 					      &m_GameConsole,
 					      &m_MenuBackground});

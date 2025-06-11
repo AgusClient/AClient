@@ -303,20 +303,19 @@ void CMod::OnRender()
 	if(g_Config.m_ClShowPlayerHitBoxes > 0)
 	{
 		auto FRenderHitbox = [&](vec2 Position, float Alpha) {
-			const float Radius = 16.0f;
+			if(Alpha <= 0.0f)
+				return;
+			const float RadiusInner = 16.0f;
+			const float RadiusOuter = 30.0f;
 			Graphics()->QuadsBegin();
 			Graphics()->SetColor(ColorRGBA(0.0f, 1.0f, 0.0f, 0.2f * Alpha));
-			Graphics()->DrawCircle(Position.x, Position.y, Radius, 20);
+			Graphics()->DrawCircle(Position.x, Position.y, RadiusInner, 20);
+			Graphics()->DrawCircle(Position.x, Position.y, RadiusOuter, 20);
 			Graphics()->QuadsEnd();
-			IEngineGraphics::CLineItem aLines[22];
-			aLines[0] = {Position.x, Position.y - Radius, Position.x, Position.y + Radius};
-			aLines[1] = {Position.x - Radius, Position.y, Position.x + Radius, Position.y};
-			for(int i = 0; i < 20; ++i)
-			{
-				const float Angle = (float)i / 20.0f * 2.0f * pi;
-				const float NextAngle = (float)(i + 1) / 20.0f * 2.0f * pi;
-				aLines[i + 2] = {Position.x + std::sin(Angle) * Radius, Position.y + std::cos(Angle) * Radius, Position.x + std::sin(NextAngle) * Radius, Position.y + std::cos(NextAngle) * Radius};
-			}
+			IEngineGraphics::CLineItem aLines[] = {
+				{Position.x, Position.y - RadiusOuter, Position.x, Position.y + RadiusOuter},
+				{Position.x - RadiusOuter, Position.y, Position.x + RadiusOuter, Position.y},
+			};
 			Graphics()->LinesBegin();
 			Graphics()->SetColor(ColorRGBA(1.0f, 0.0f, 0.0f, 0.8f * Alpha));
 			Graphics()->LinesDraw(aLines, std::size(aLines));
@@ -335,7 +334,11 @@ void CMod::OnRender()
 			if(!(in_range(Player.m_RenderPos.x, ScreenX0, ScreenX1) && in_range(Player.m_RenderPos.y, ScreenY0, ScreenY1)))
 				continue;
 
-			FRenderHitbox(Player.m_RenderPos, 1.0f);
+			float Alpha = 1.0f;
+			if(GameClient()->IsOtherTeam(ClientId))
+				Alpha *= (float)g_Config.m_ClShowOthersAlpha / 100.0f;
+
+			FRenderHitbox(Player.m_RenderPos, Alpha);
 
 			if(g_Config.m_ClShowPlayerHitBoxes > 1)
 			{
@@ -344,7 +347,7 @@ void CMod::OnRender()
 					vec2(m_pClient->m_Snap.m_aCharacters[ClientId].m_Prev.m_X, m_pClient->m_Snap.m_aCharacters[ClientId].m_Prev.m_Y),
 					vec2(m_pClient->m_Snap.m_aCharacters[ClientId].m_Cur.m_X, m_pClient->m_Snap.m_aCharacters[ClientId].m_Cur.m_Y),
 					Client()->IntraGameTick(g_Config.m_ClDummy));
-				FRenderHitbox(ShadowPosition, 0.75f);
+				FRenderHitbox(ShadowPosition, Alpha * 0.75f);
 			}
 		}
 	}
