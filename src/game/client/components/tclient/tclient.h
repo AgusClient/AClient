@@ -31,6 +31,8 @@ class CTClient : public CComponent
 	float m_FinishTextTimeout = 0.0f;
 	void DoFinishCheck();
 
+	bool ServerCommandExists(const char *pCommand);
+
 public:
 	CTClient();
 	int Sizeof() const override { return sizeof(*this); }

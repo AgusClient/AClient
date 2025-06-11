@@ -254,12 +254,6 @@ void CTClient::OnMessage(int MsgType, void *pRawMsg)
 	}
 
 	auto &vServerCommands = GameClient()->m_Chat.m_vServerCommands;
-	auto HasServerCommand = [&](const char *pNeedle) {
-		for(const auto &Command : vServerCommands)
-			if(str_comp_nocase(pNeedle, Command.m_aName) == 0)
-				return true;
-		return false;
-	};
 	auto AddSpecId = [&](bool Enable) {
 		static const CChat::CCommand SpecId("specid", "v[id]", "Spectate a player");
 		vServerCommands.erase(std::remove_if(vServerCommands.begin(), vServerCommands.end(), [](const CChat::CCommand &Command) { return Command == SpecId; }), vServerCommands.end());
@@ -271,7 +265,7 @@ void CTClient::OnMessage(int MsgType, void *pRawMsg)
 	{
 		CNetMsg_Sv_CommandInfo *pMsg = (CNetMsg_Sv_CommandInfo *)pRawMsg;
 		if(str_comp_nocase(pMsg->m_pName, "spec") == 0)
-			AddSpecId(!HasServerCommand("specid"));
+			AddSpecId(!ServerCommandExists("specid"));
 		else if(str_comp_nocase(pMsg->m_pName, "specid") == 0)
 			AddSpecId(false);
 		return;
@@ -282,7 +276,7 @@ void CTClient::OnMessage(int MsgType, void *pRawMsg)
 		if(str_comp_nocase(pMsg->m_pName, "spec") == 0)
 			AddSpecId(false);
 		else if(str_comp_nocase(pMsg->m_pName, "specid") == 0)
-			AddSpecId(HasServerCommand("spec"));
+			AddSpecId(ServerCommandExists("spec"));
 		return;
 	}
 }
@@ -457,6 +451,13 @@ void CTClient::DoFinishCheck()
 	str_format(aBuf, sizeof(aBuf), TCLocalize("Changing name to %s near finish"), NewName);
 	GameClient()->Echo(aBuf);
 	SendUrgentRename(Dummy, NewName);
+}
+
+bool CTClient::ServerCommandExists(const char *pCommand) {
+	for(const auto &Command : GameClient()->m_Chat.m_vServerCommands)
+		if(str_comp_nocase(pCommand, Command.m_aName) == 0)
+			return true;
+	return false;
 }
 
 void CTClient::OnRender()
