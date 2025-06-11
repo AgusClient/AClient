@@ -164,15 +164,10 @@ void CTClient::OnMessage(int MsgType, void *pRawMsg)
 		{
 			char aBuf[256];
 			if(pMsg->m_Team == TEAM_WHISPER_RECV || ServerCommandExists("w"))
-			{
 				str_format(aBuf, sizeof(aBuf), "/w %s %s", aPlayerName, g_Config.m_ClAutoReplyMutedMessage);
-				SendNonDuplicateMessage(0, aBuf);
-			}
 			else
-			{
 				str_format(aBuf, sizeof(aBuf), "%s: %s", aPlayerName, g_Config.m_ClAutoReplyMutedMessage);
-				SendNonDuplicateMessage(0, aBuf);
-			}
+			SendNonDuplicateMessage(0, aBuf);
 			return;
 		}
 
@@ -181,15 +176,10 @@ void CTClient::OnMessage(int MsgType, void *pRawMsg)
 		{
 			char aBuf[256];
 			if(pMsg->m_Team == TEAM_WHISPER_RECV || ServerCommandExists("w"))
-			{
 				str_format(aBuf, sizeof(aBuf), "/w %s %s", aPlayerName, g_Config.m_ClAutoReplyMinimizedMessage);
-				SendNonDuplicateMessage(0, aBuf);
-			}
 			else
-			{
 				str_format(aBuf, sizeof(aBuf), "%s: %s", aPlayerName, g_Config.m_ClAutoReplyMinimizedMessage);
-				SendNonDuplicateMessage(0, aBuf);
-			}
+			SendNonDuplicateMessage(0, aBuf);
 			return;
 		}
 	}
