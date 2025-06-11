@@ -2003,7 +2003,7 @@ void CMenus::RenderSettingsProfiles(CUIRect MainView)
 	}
 
 	LabelMid.VSplitLeft(20.0f, nullptr, &LabelMid);
-	LabelMid.VSplitLeft(160.0f, &LabelMid, &LabelRight);
+	LabelMid.VSplitLeft(250.0f, &LabelMid, &LabelRight);
 
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClProfileSkin, TCLocalize("Save/Load Skin"), &g_Config.m_ClProfileSkin, &LabelMid, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClProfileColors, TCLocalize("Save/Load Colors"), &g_Config.m_ClProfileColors, &LabelMid, LineSize);
