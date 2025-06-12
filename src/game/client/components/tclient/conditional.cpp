@@ -63,6 +63,8 @@ int CConditional::ParseValue(const char *pString, char *pOut, int Length)
 	}
 	else if(str_comp_nocase("location", pString) == 0)
 	{
+		if(GameClient()->m_GameInfo.m_Race)
+			return str_copy(pOut, "Forbidden", Length);
 		float w = 100.0f, h = 100.0f;
 		float x = 50.0f, y = 50.0f;
 		{
