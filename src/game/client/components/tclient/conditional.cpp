@@ -6,6 +6,7 @@
 #include <optional>
 
 #include "conditional.h"
+#include "base/system.h"
 
 static std::optional<bool> RegexMatch(const char *pString, const char *pRegex)
 {
@@ -18,78 +19,10 @@ static std::optional<bool> RegexMatch(const char *pString, const char *pRegex)
 
 int CConditional::ParseValue(const char *pString, char *pOut, int Length)
 {
-	if(str_comp_nocase("game_mode", pString) == 0)
-		return str_copy(pOut, GameClient()->m_GameInfo.m_aGameType, Length);
-	else if(str_comp_nocase("game_mode_pvp", pString) == 0)
-		return str_copy(pOut, GameClient()->m_GameInfo.m_Pvp ? "1" : "0", Length);
-	else if(str_comp_nocase("game_mode_race", pString) == 0)
-		return str_copy(pOut, GameClient()->m_GameInfo.m_Race ? "1" : "0", Length);
-	else if(str_comp_nocase("eye_wheel_allowed", pString) == 0)
-		return str_copy(pOut, GameClient()->m_GameInfo.m_AllowEyeWheel ? "1" : "0", Length);
-	else if(str_comp_nocase("zoom_allowed", pString) == 0)
-		return str_copy(pOut, GameClient()->m_GameInfo.m_AllowZoom ? "1" : "0", Length);
-	else if(str_comp_nocase("dummy_allowed", pString) == 0)
-		return str_copy(pOut, Client()->DummyAllowed() ? "1" : "0", Length);
-	else if(str_comp_nocase("dummy_connected", pString) == 0)
-		return str_copy(pOut, Client()->DummyConnected() ? "1" : "0", Length);
-	else if(str_comp_nocase("rcon_authed", pString) == 0)
-		return str_copy(pOut, Client()->RconAuthed() ? "1" : "0", Length);
-	else if(str_comp_nocase("map", pString) == 0)
-		return str_copy(pOut, Client()->GetCurrentMap(), Length);
-	else if(str_comp_nocase("server_ip", pString) == 0)
-	{
-		net_addr_str(&Client()->ServerAddress(), pOut, Length, true);
-		return str_length(pOut);
-	}
-	else if(str_comp_nocase("players_connected", pString) == 0)
-		return str_format(pOut, Length, "%d", GameClient()->m_Snap.m_NumPlayers);
-	else if(str_comp_nocase("players_cap", pString) == 0)
-	{
-		CServerInfo CurrentServerInfo;
-		Client()->GetServerInfo(&CurrentServerInfo);
-		return str_format(pOut, Length, "%d", CurrentServerInfo.m_MaxClients);
-	}
-	else if(str_comp_nocase("server_name", pString) == 0)
-	{
-		CServerInfo CurrentServerInfo;
-		Client()->GetServerInfo(&CurrentServerInfo);
-		return str_copy(pOut, CurrentServerInfo.m_aName, Length);
-	}
-	else if(str_comp_nocase("community", pString) == 0)
-	{
-		CServerInfo CurrentServerInfo;
-		Client()->GetServerInfo(&CurrentServerInfo);
-		return str_copy(pOut, CurrentServerInfo.m_aCommunityId, Length);
-	}
-	else if(str_comp_nocase("location", pString) == 0)
-	{
-		if(GameClient()->m_GameInfo.m_Race)
-			return str_copy(pOut, "Forbidden", Length);
-		float w = 100.0f, h = 100.0f;
-		float x = 50.0f, y = 50.0f;
-		{
-			const CLayers *pLayers = GameClient()->m_MapLayersForeground.m_pLayers;
-			const CMapItemLayerTilemap *pLayer = pLayers->GameLayer();
-			if(pLayer)
-			{
-				w = (float)pLayer->m_Width * 30.0f;
-				h = (float)pLayer->m_Height * 30.0f;
-			}
-		}
-		{
-			x = GameClient()->m_Camera.m_Center.x;
-			y = GameClient()->m_Camera.m_Center.y;
-		}
-		static const char *s_apLocations[] = {
-			"NW", "N", "NE",
-			"W", "C", "E",
-			"SW", "S", "SE"};
-		dbg_msg("conditional", "%f %f / %f %f\n", x, y, w, h);
-		int i = std::clamp((int)(y / h * 3.0f), 0, 2) * 3 + std::clamp((int)(x / w * 3.0f), 0, 2);
-		return str_copy(pOut, s_apLocations[i], Length);
-	}
-	else
-		return str_format(pOut, Length, "$(%s)", pString);
+	for(const auto &[Key, FFunc] : m_vVariables)
+		if(str_comp_nocase(pString, Key.c_str()) == 0)
+			return FFunc(pOut, Length);
+	return str_format(pOut, Length, "$(%s)", pString);
 }
 
 void CConditional::ParseString(const char *pString, char *pOut, int Length)
@@ -222,6 +155,82 @@ void CConditional::ConReturn(IConsole::IResult *pResult, void *pUserData)
 
 void CConditional::OnConsoleInit()
 {
+	m_vVariables.emplace_back("game_mode", [&](char *pOut, int Length) {
+		return str_copy(pOut, GameClient()->m_GameInfo.m_aGameType, Length);
+	});
+	m_vVariables.emplace_back("game_mode_pvp", [&](char *pOut, int Length) {
+		return str_copy(pOut, GameClient()->m_GameInfo.m_Pvp ? "1" : "0", Length);
+	});
+	m_vVariables.emplace_back("game_mode_race", [&](char *pOut, int Length) {
+		return str_copy(pOut, GameClient()->m_GameInfo.m_Race ? "1" : "0", Length);
+	});
+	m_vVariables.emplace_back("eye_wheel_allowed", [&](char *pOut, int Length) {
+		return str_copy(pOut, GameClient()->m_GameInfo.m_AllowEyeWheel ? "1" : "0", Length);
+	});
+	m_vVariables.emplace_back("zoom_allowed", [&](char *pOut, int Length) {
+		return str_copy(pOut, GameClient()->m_GameInfo.m_AllowZoom ? "1" : "0", Length);
+	});
+	m_vVariables.emplace_back("dummy_allowed", [&](char *pOut, int Length) {
+		return str_copy(pOut, Client()->DummyAllowed() ? "1" : "0", Length);
+	});
+	m_vVariables.emplace_back("dummy_connected", [&](char *pOut, int Length) {
+		return str_copy(pOut, Client()->DummyConnected() ? "1" : "0", Length);
+	});
+	m_vVariables.emplace_back("rcon_authed", [&](char *pOut, int Length) {
+		return str_copy(pOut, Client()->RconAuthed() ? "1" : "0", Length);
+	});
+	m_vVariables.emplace_back("map", [&](char *pOut, int Length) {
+		return str_copy(pOut, Client()->GetCurrentMap(), Length);
+	});
+	m_vVariables.emplace_back("server_ip", [&](char *pOut, int Length) {
+		net_addr_str(&Client()->ServerAddress(), pOut, Length, true);
+		return str_length(pOut);
+	});
+	m_vVariables.emplace_back("players_connected", [&](char *pOut, int Length) {
+		return str_format(pOut, Length, "%d", GameClient()->m_Snap.m_NumPlayers);
+	});
+	m_vVariables.emplace_back("players_cap", [&](char *pOut, int Length) {
+		CServerInfo CurrentServerInfo;
+		Client()->GetServerInfo(&CurrentServerInfo);
+		return str_format(pOut, Length, "%d", CurrentServerInfo.m_MaxClients);
+	});
+	m_vVariables.emplace_back("server_name", [&](char *pOut, int Length) {
+		CServerInfo CurrentServerInfo;
+		Client()->GetServerInfo(&CurrentServerInfo);
+		return str_copy(pOut, CurrentServerInfo.m_aName, Length);
+	});
+	m_vVariables.emplace_back("community", [&](char *pOut, int Length) {
+		CServerInfo CurrentServerInfo;
+		Client()->GetServerInfo(&CurrentServerInfo);
+		return str_copy(pOut, CurrentServerInfo.m_aCommunityId, Length);
+	});
+	m_vVariables.emplace_back("location", [&](char *pOut, int Length) {
+		if(GameClient()->m_GameInfo.m_Race)
+			return str_copy(pOut, "Forbidden", Length);
+		float w = 100.0f, h = 100.0f;
+		float x = 50.0f, y = 50.0f;
+		{
+			const CLayers *pLayers = GameClient()->m_MapLayersForeground.m_pLayers;
+			const CMapItemLayerTilemap *pLayer = pLayers->GameLayer();
+			if(pLayer)
+			{
+				w = (float)pLayer->m_Width * 30.0f;
+				h = (float)pLayer->m_Height * 30.0f;
+			}
+		}
+		{
+			x = GameClient()->m_Camera.m_Center.x;
+			y = GameClient()->m_Camera.m_Center.y;
+		}
+		static const char *s_apLocations[] = {
+			"NW", "N", "NE",
+			"W", "C", "E",
+			"SW", "S", "SE"};
+		dbg_msg("conditional", "%f %f / %f %f\n", x, y, w, h);
+		int i = std::clamp((int)(y / h * 3.0f), 0, 2) * 3 + std::clamp((int)(x / w * 3.0f), 0, 2);
+		return str_copy(pOut, s_apLocations[i], Length);
+	});
+
 	Console()->Register("ifeq", "s[a] s[b] r[command]", CFGFLAG_CLIENT, ConIfeq, this, "Comapre 2 values, if equal run the command");
 	Console()->Register("ifneq", "s[a] s[b] r[command]", CFGFLAG_CLIENT, ConIfneq, this, "Comapre 2 values, if not equal run the command");
 	Console()->Register("ifreq", "s[a] s[b] r[command]", CFGFLAG_CLIENT, ConIfreq, this, "Comapre 2 values, if a matches the regex b run the command");

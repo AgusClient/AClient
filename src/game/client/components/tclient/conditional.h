@@ -4,9 +4,15 @@
 #include <engine/console.h>
 #include <game/client/component.h>
 
+#include <functional>
+#include <string>
+#include <vector>
+
 class CConditional : public CComponent
 {
 private:
+	// TODO use maps
+	std::vector<std::pair<std::string, std::function<int(char *pOut, int Length)>>> m_vVariables;
 	int ParseValue(const char *pString, char *pOut, int Length);
 
 public:
