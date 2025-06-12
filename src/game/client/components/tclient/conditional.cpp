@@ -220,13 +220,6 @@ void CConditional::ConReturn(IConsole::IResult *pResult, void *pUserData)
 	pThis->Console()->m_Return = true;
 }
 
-
-static CConditional *s_pThis = nullptr;
-static void ConditionalCompose(const char *pStr, char *pOut, int Length)
-{
-	s_pThis->ParseString(pStr, pOut, Length);
-}
-
 void CConditional::OnConsoleInit()
 {
 	Console()->Register("ifeq", "s[a] s[b] r[command]", CFGFLAG_CLIENT, ConIfeq, this, "Comapre 2 values, if equal run the command");
@@ -235,6 +228,8 @@ void CConditional::OnConsoleInit()
 	Console()->Register("ifrneq", "s[a] s[b] r[command]", CFGFLAG_CLIENT, ConIfrneq, this, "Comapre 2 values, if a doesnt match the regex b run the command");
 	Console()->Register("return", "", CFGFLAG_CLIENT, ConReturn, this, "Stop executing the current script, does nothing in other contexts");
 
-	s_pThis = this;
-	Console()->m_pConditionalCompose = ConditionalCompose;
+	Console()->m_FConditionalCompose = [&](const char *pStr, char *pOut, int Length)
+	{
+		ParseString(pStr, pOut, Length);
+	};
 }

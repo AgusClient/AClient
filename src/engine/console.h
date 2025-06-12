@@ -8,6 +8,7 @@
 #include <engine/storage.h>
 
 #include <memory>
+#include <functional>
 
 static constexpr ColorRGBA gs_ConsoleDefaultColor(1, 1, 1, 1);
 
@@ -143,7 +144,7 @@ public:
 	// TClient
 
 	bool m_Return;
-	void (*m_pConditionalCompose)(const char *pString, char *pOut, int Length) = nullptr;
+	std::function<void(const char *pString, char *pOut, int Length)> m_FConditionalCompose = nullptr;
 };
 
 std::unique_ptr<IConsole> CreateConsole(int FlagMask);
