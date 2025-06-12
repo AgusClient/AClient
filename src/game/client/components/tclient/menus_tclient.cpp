@@ -647,11 +647,12 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClColorFreeze, TCLocalize("Color frozen tee skins"), &g_Config.m_ClColorFreeze, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClHammerRotatesWithCursor, TCLocalize("Make hammer rotate with cursor"), &g_Config.m_ClHammerRotatesWithCursor, &Column, LineSize);
 
-		// ***** Tiny Tee's ***** //
+	// ***** Tiny Tee's ***** //
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClTinyTees, TCLocalize("Tiny tees"), &g_Config.m_ClTinyTees, &Column, LineSize);
-	if(g_Config.m_ClTinyTees) {
-			Column.HSplitTop(LineSize, &TinyTeeConfig, &Column);
-			Ui()->DoScrollbarOption(&g_Config.m_ClTinyTeeSize, &g_Config.m_ClTinyTeeSize, &TinyTeeConfig, TCLocalize("Tiny Tee Size"), 85, 115);
+	if(g_Config.m_ClTinyTees)
+	{
+		Column.HSplitTop(LineSize, &TinyTeeConfig, &Column);
+		Ui()->DoScrollbarOption(&g_Config.m_ClTinyTeeSize, &g_Config.m_ClTinyTeeSize, &TinyTeeConfig, TCLocalize("Tiny Tee Size"), 85, 115);
 	}
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClTinyTeesOthers, TCLocalize("Tiny tees others"), &g_Config.m_ClTinyTeesOthers, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClWhiteFeet, TCLocalize("Render all custom colored feet as white feet skin"), &g_Config.m_ClWhiteFeet, &Column, LineSize);

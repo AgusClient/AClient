@@ -43,7 +43,7 @@ int CConditional::ParseValue(const char *pString, char *pOut, int Length)
 	}
 	else if(str_comp_nocase("players_connected", pString) == 0)
 		return str_format(pOut, Length, "%d", GameClient()->m_Snap.m_NumPlayers);
-	else if (str_comp_nocase("players_cap", pString) == 0)
+	else if(str_comp_nocase("players_cap", pString) == 0)
 	{
 		CServerInfo CurrentServerInfo;
 		Client()->GetServerInfo(&CurrentServerInfo);
@@ -108,7 +108,7 @@ void CConditional::ParseString(const char *pString, char *pOut, int Length)
 	bool ValueStart = false;
 	bool ValueBracket = false;
 	std::string Value;
-	for (/* empty */; *pString != '\0' && pOut < pEnd - 1; ++pString)
+	for(/* empty */; *pString != '\0' && pOut < pEnd - 1; ++pString)
 	{
 		const char c = *pString;
 		if(ValueBracket)
@@ -158,7 +158,7 @@ void CConditional::ParseString(const char *pString, char *pOut, int Length)
 			if(pOut < pEnd - 1)
 			{
 				*(pOut++) = '(';
-				for (const char c : Value)
+				for(const char c : Value)
 				{
 					if(pOut >= pEnd - 1)
 						break;
@@ -228,8 +228,7 @@ void CConditional::OnConsoleInit()
 	Console()->Register("ifrneq", "s[a] s[b] r[command]", CFGFLAG_CLIENT, ConIfrneq, this, "Comapre 2 values, if a doesnt match the regex b run the command");
 	Console()->Register("return", "", CFGFLAG_CLIENT, ConReturn, this, "Stop executing the current script, does nothing in other contexts");
 
-	Console()->m_FConditionalCompose = [&](const char *pStr, char *pOut, int Length)
-	{
+	Console()->m_FConditionalCompose = [&](const char *pStr, char *pOut, int Length) {
 		ParseString(pStr, pOut, Length);
 	};
 }

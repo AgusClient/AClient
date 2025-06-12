@@ -1010,8 +1010,7 @@ void CChat::OnPrepareLines(float y)
 		if(Line.m_ClientId == CLIENT_MSG)
 		{
 			// TODO: extract from src/engine/shared/console.cpp
-			auto GetColor = [](const char *pStr) -> std::optional<ColorHSLA>
-			{
+			auto GetColor = [](const char *pStr) -> std::optional<ColorHSLA> {
 				if(str_isallnum(pStr) || ((pStr[0] == '-' || pStr[0] == '+') && str_isallnum(pStr + 1))) // Teeworlds Color (Packed HSL)
 				{
 					unsigned long Value = str_toulong_base(pStr, 10);
@@ -1052,7 +1051,8 @@ void CChat::OnPrepareLines(float y)
 			mem_copy(pFinder, pText, strlen(pText) + 1);
 			ColoredParts.m_pStringStorage = pFinder;
 			char *pWritten = pFinder;
-			while (*pFinder) {
+			while(*pFinder)
+			{
 				char *pMarkerStart = strstr(pFinder, "[[");
 				if(!pMarkerStart)
 				{
@@ -1298,7 +1298,6 @@ void CChat::OnPrepareLines(float y)
 					TextRender()->CreateOrAppendTextContainer(Line.m_TextContainerIndex, &AppendCursor, std::get<const char *>(Part));
 				else
 					TextRender()->TextColor(std::get<ColorRGBA>(Part));
-				
 			}
 			TextRender()->TextColor(TextRender()->DefaultTextColor());
 		}

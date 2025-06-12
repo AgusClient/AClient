@@ -7,8 +7,8 @@
 #include <base/color.h>
 #include <engine/storage.h>
 
-#include <memory>
 #include <functional>
+#include <memory>
 
 static constexpr ColorRGBA gs_ConsoleDefaultColor(1, 1, 1, 1);
 

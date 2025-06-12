@@ -1,8 +1,8 @@
 ﻿#include <base/log.h>
 
-#include <game/client/gameclient.h>
 #include <game/client/animstate.h>
 #include <game/client/components/chat.h>
+#include <game/client/gameclient.h>
 #include <game/client/render.h>
 #include <game/client/ui.h>
 
@@ -443,7 +443,8 @@ void CTClient::DoFinishCheck()
 	SendUrgentRename(Dummy, NewName);
 }
 
-bool CTClient::ServerCommandExists(const char *pCommand) {
+bool CTClient::ServerCommandExists(const char *pCommand)
+{
 	for(const auto &Command : GameClient()->m_Chat.m_vServerCommands)
 		if(str_comp_nocase(pCommand, Command.m_aName) == 0)
 			return true;
