@@ -92,20 +92,6 @@ void CBindChat::AddBind(const CBind &Bind)
 	AddBind(Bind.m_aName, Bind.m_aCommand);
 }
 
-void CBindChat::RemoveBindCommand(const char *pCommand)
-{
-	if(pCommand[0] == '\0')
-		return;
-	for(auto It = m_vBinds.begin(); It != m_vBinds.end(); ++It)
-	{
-		if(str_comp(It->m_aCommand, pCommand) == 0)
-		{
-			m_vBinds.erase(It);
-			return;
-		}
-	}
-}
-
 void CBindChat::RemoveBind(const char *pName)
 {
 	if(pName[0] == '\0')

@@ -64,7 +64,6 @@ public:
 	void AddBind(const char *pName, const char *pCommand);
 	void AddBind(const CBind &Bind);
 
-	void RemoveBindCommand(const char *pCommand);
 	void RemoveBind(const char *pName);
 	void RemoveBind(int Index);
 	void RemoveAllBinds();
