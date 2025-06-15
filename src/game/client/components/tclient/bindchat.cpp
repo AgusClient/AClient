@@ -11,11 +11,11 @@ CBindChat::CBindChat()
 
 void CBindChat::ConAddBindchat(IConsole::IResult *pResult, void *pUserData)
 {
-	const char *aName = pResult->GetString(0);
-	const char *aCommand = pResult->GetString(1);
+	const char *pName = pResult->GetString(0);
+	const char *pCommand = pResult->GetString(1);
 
 	CBindChat *pThis = static_cast<CBindChat *>(pUserData);
-	pThis->AddBind(aName, aCommand);
+	pThis->AddBind(pName, pCommand);
 }
 
 void CBindChat::ConBindchats(IConsole::IResult *pResult, void *pUserData)
