@@ -84,7 +84,7 @@ static CBindChat::CBindDefault s_aDefaultBindChatKaomoji[] = {
 	{"Lenny:", "!lenny", "say ( ͡° ͜ʖ ͡°)"},
 };
 
-static CBindChat::CBindDefault s_aDefaultBindChatWar[] = {
+static CBindChat::CBindDefault s_aDefaultBindChatWarlist[] = {
 	// These don't get displayed in settings
 	{nullptr, "!war", "war_name_index 1"},
 	{nullptr, "!warclan", "war_clan_index 1"},

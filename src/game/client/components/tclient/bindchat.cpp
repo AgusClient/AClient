@@ -66,7 +66,7 @@ void CBindChat::ConBindchatDefaults(IConsole::IResult *pResult, void *pUserData)
 
 	for(const CBindDefault &BindDefault : s_aDefaultBindChatKaomoji)
 		pThis->AddBind(BindDefault.m_Bind);
-	for(const CBindDefault &BindDefault : s_aDefaultBindChatWar)
+	for(const CBindDefault &BindDefault : s_aDefaultBindChatWarlist)
 		pThis->AddBind(BindDefault.m_Bind);
 	for(const CBindDefault &BindDefault : s_aDefaultBindChatOther)
 		pThis->AddBind(BindDefault.m_Bind);
