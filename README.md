@@ -23,16 +23,10 @@ Thanks to tela for the logo design, and solly for svg <3
 
 ### Conditional Tutorial
 
-There are certain vars you can write which get substituted before execution, these are wrapped in `$(` and `)`.  
-Here is an example
-```sh
-echo There are $(players_connected) players connected
-I chat/client: — There are 7 players connected
-```
-
+There are certain vars you can write which get substituted before execution, these are wrapped in `{` and `)`  
+These are limited to not let you do things like adding extra control capabilities  
 Here is a list of variables which are available:  
 `game_mode`, `game_mode_pvp`, `game_mode_race`, `eye_wheel_allowed`, `zoom_allowed`, `dummy_allowed`, `dummy_connected`, `rcon_authed`, `map`, `server_ip`, `players_connected`, `players_cap`, `server_name`, `community`, `location`  
-These are limited to not let you do things like adding extra control capabilities
 
 | Name | Args | Description |
 | --- | --- | --- |
@@ -43,24 +37,28 @@ These are limited to not let you do things like adding extra control capabilitie
 
 (Note the regex engine is [Remimu](https://github.com/wareya/Remimu))
 
-With the commands listed above and the substitutions you can create simple comparisons, here is an examples I use to login
+With the commands listed above and the substitutions you can create simple comparisons, here is a few examples.
 
 ```
-ifreq $(server_ip) "^(49\.13\.73\.199|188\.245\.101\.41|188\.245\.66\.93|20\.215\.41\.104):\d+$" say /login AWB CODE
-ifeq $(community) kog say /login KOG CODE
+echo There are {players_connected} players connected
+I chat/client: — There are 7 players connected
+```
+
+```
+ifreq {server_ip} "^(49\.13\.73\.199|188\.245\.101\.41|188\.245\.66\.93|20\.215\.41\.104):\d+$" say /login AWB CODE
+ifeq {community} kog say /login KOG CODE
 ```
 
 ```
 ifeq "$(community) $(game_mode)" "ddnet DDraceNetwork" rcon_login USER PASS
 ```
 
-I also use it to enable sewerslide on PVP maps
 ```
 exec scripts/sewerslide_off.cfg
-ifeq $(game_mode_pvp) 1 exec scripts/sewerslide_on.cfg
-ifeq $(map) Linear exec scripts/sewerslide_on.cfg
-ifreq $(map) "^.*?Copy Love Box.*?$" exec scripts/sewerslide_on.cfg
-ifeq $(game_mode) 0XF exec scripts/sewerslide_on.cfg
+ifeq {game_mode_pvp} 1 exec scripts/sewerslide_on.cfg
+ifeq {map} Linear exec scripts/sewerslide_on.cfg
+ifreq {map} "^.*?Copy Love Box.*?$" exec scripts/sewerslide_on.cfg
+ifeq {game_mode} 0XF exec scripts/sewerslide_on.cfg
 ```
 
 There is also a `return` which lets you early return from scripts.
@@ -69,7 +67,7 @@ There is also a `return` which lets you early return from scripts.
 
 Here is an example which I use for dummy connecting
 ```
-ifneq $(dummy_connected) 0 return
+ifneq {dummy_connected} 0 return
 dummy_connect
 exec "scripts/dummy/reset.cfg"
 ```
