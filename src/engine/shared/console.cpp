@@ -422,7 +422,8 @@ bool CConsole::LineIsValid(const char *pStr)
 	char aComposedBuf[CONSOLE_MAX_STR_LENGTH];
 	if(m_FConditionalCompose)
 	{
-		m_FConditionalCompose(pStr, aComposedBuf, sizeof(aComposedBuf));
+		str_copy(aComposedBuf, pStr);
+		m_FConditionalCompose(aComposedBuf, sizeof(aComposedBuf));
 		pStr = aComposedBuf;
 	}
 
@@ -475,7 +476,8 @@ void CConsole::ExecuteLineStroked(int Stroke, const char *pStr, int ClientId, bo
 	char aComposedBuf[CONSOLE_MAX_STR_LENGTH];
 	if(m_FConditionalCompose)
 	{
-		m_FConditionalCompose(pStr, aComposedBuf, sizeof(aComposedBuf));
+		str_copy(aComposedBuf, pStr);
+		m_FConditionalCompose(aComposedBuf, sizeof(aComposedBuf));
 		pStr = aComposedBuf;
 	}
 

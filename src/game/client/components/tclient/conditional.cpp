@@ -6,7 +6,6 @@
 #include <optional>
 
 #include "conditional.h"
-#include "base/system.h"
 
 static std::optional<bool> RegexMatch(const char *pString, const char *pRegex)
 {
@@ -17,90 +16,123 @@ static std::optional<bool> RegexMatch(const char *pString, const char *pRegex)
 	return regex_match(aTokens, pString, 0, 0, 0, 0) != -1;
 }
 
-int CConditional::ParseValue(const char *pString, char *pOut, int Length)
+int CConditional::ParseValue(char *pBuf, int Length)
 {
-	for(const auto &[Key, FFunc] : m_vVariables)
-		if(str_comp_nocase(pString, Key.c_str()) == 0)
-			return FFunc(pOut, Length);
-	return str_format(pOut, Length, "$(%s)", pString);
+	const char *pFirstSpace = nullptr;
+	for(const char *p = pBuf; *p != '\0'; ++p)
+	{
+		if(*p == ' ')
+		{
+			pFirstSpace = p;
+			break;
+		}
+	}
+	if(pFirstSpace && *(pFirstSpace + 1) != '\0')
+	{
+		// Is a function, only function calls have spaces
+		const int FuncLength = pFirstSpace - pBuf;
+		char aParam[256];
+		str_copy(aParam, pFirstSpace + 1);
+		ParseString(aParam, sizeof(aParam));
+		for(const auto &[Key, FFunc] : m_vFunctions)
+			if(str_comp_nocase_num(pBuf, Key.c_str(), FuncLength) == 0)
+				return FFunc(aParam, pBuf, Length);
+	}
+	else
+	{
+		// Is a variable
+		for(const auto &[Key, FFunc] : m_vVariables)
+			if(str_comp_nocase(pBuf, Key.c_str()) == 0)
+				return FFunc(pBuf, Length);
+	}
+	return -1;
 }
 
-void CConditional::ParseString(const char *pString, char *pOut, int Length)
+void CConditional::ParseString(char *pBuf, int Length)
 {
-	bool HasValue = false;
-	for(const char *p = pString; *p != '\0'; ++p)
-		if(*p == '$')
-			HasValue = true;
-	if(!HasValue)
-	{
-		str_copy(pOut, pString, Length);
+	// May give incorrect values on buffer overflow
+	if(!pBuf || Length <= 0)
 		return;
-	}
-	pOut[0] = '\0';
-	const char *pEnd = pOut + Length;
-	bool ValueStart = false;
-	bool ValueBracket = false;
-	std::string Value;
-	for(/* empty */; *pString != '\0' && pOut < pEnd - 1; ++pString)
+
+	std::vector<std::pair<int, int>> vParsedRanges;
+	const auto IsInParsedRegion = [&vParsedRanges](int Pos)
 	{
-		const char c = *pString;
-		if(ValueBracket)
+		return std::any_of(vParsedRanges.begin(), vParsedRanges.end(), [Pos](const auto &ParsedRange)
 		{
-			if(c == ')')
-			{
-				pOut += ParseValue(Value.c_str(), pOut, pEnd - pOut - 1);
-				Value = "";
-				ValueBracket = false;
-				continue;
-			}
-			Value += c;
-			continue;
-		}
-		else if(ValueStart)
+			return Pos >= ParsedRange.first && Pos < ParsedRange.second;
+		});
+	};
+
+	int Len = strnlen(pBuf, Length);
+	while(true)
+	{
+		int LastOpen = -1;
+		int ClosePos = -1;
+
+		// Find the innermost {...} not inside any parsed range
+		for(int i = 0; i < Len; ++i)
 		{
-			ValueStart = false;
-			if(c == '(')
+			if(pBuf[i] == '{' && !IsInParsedRegion(i))
 			{
-				ValueBracket = true;
-				continue;
+				LastOpen = i;
 			}
-			else
+			else if(pBuf[i] == '}' && LastOpen != -1 && !IsInParsedRegion(i))
 			{
-				*(pOut++) = '$';
-				if(pOut >= pEnd - 1)
-					break;
+				ClosePos = i;
+				break;
 			}
 		}
-		else if(c == '$')
+
+		if(LastOpen == -1 || ClosePos <= LastOpen)
+			break;
+
+		int ExprLen = ClosePos - LastOpen - 1;
+
+		char aTemp[512];
+		int CopyLen = std::min(ExprLen, (int)sizeof(aTemp) - 1);
+		mem_copy(aTemp, pBuf + LastOpen + 1, CopyLen);
+		aTemp[CopyLen] = '\0';
+
+		int ResultLen = ParseValue(aTemp, sizeof(aTemp));
+		if(ResultLen == -1)
 		{
-			ValueStart = true;
-			continue;
+			ResultLen = CopyLen;
 		}
-		*(pOut++) = c;
-	}
-	if(ValueStart == true)
-	{
-		if(pOut < pEnd - 1)
-			*(pOut++) = '$';
-	}
-	else if(ValueBracket == true)
-	{
-		if(pOut < pEnd - 1)
+		else
 		{
-			*(pOut++) = '$';
-			if(pOut < pEnd - 1)
+			int TailLen = Len - ClosePos - 1;
+			int NewLen = LastOpen + ResultLen + TailLen;
+
+			if(NewLen >= Length)
 			{
-				*(pOut++) = '(';
-				for(const char c : Value)
+				ResultLen = Length - 1 - LastOpen - TailLen;
+				if(ResultLen < 0) ResultLen = 0;
+				NewLen = LastOpen + ResultLen + TailLen;
+			}
+
+			// Move tail forward/backward
+			mem_move(pBuf + LastOpen + ResultLen, pBuf + ClosePos + 1, TailLen);
+			pBuf[NewLen] = '\0';
+
+			// Copy result
+			mem_copy(pBuf + LastOpen, aTemp, ResultLen);
+			Len = NewLen;
+
+			// Shift existing ranges after ClosePos
+			for(auto &ParsedRange : vParsedRanges)
+			{
+				if(ParsedRange.first > ClosePos)
 				{
-					if(pOut >= pEnd - 1)
-						break;
-					*(pOut++) = c;
+					int Delta = ResultLen - (ClosePos + 1 - LastOpen);
+					ParsedRange.first += Delta;
+					ParsedRange.second += Delta;
 				}
 			}
 		}
+
+		// Add this region to parsed ranges
+		vParsedRanges.emplace_back(LastOpen, LastOpen + ResultLen);
 	}
-	*pOut = '\0';
 }
 
 void CConditional::ConIfeq(IConsole::IResult *pResult, void *pUserData)
@@ -231,13 +263,40 @@ void CConditional::OnConsoleInit()
 		return str_copy(pOut, s_apLocations[i], Length);
 	});
 
+	m_vFunctions.emplace_back("id", [&](const char *pParam, char *pOut, int Length) {
+		if(Client()->State() != CClient::STATE_ONLINE && Client()->State() != CClient::STATE_DEMOPLAYBACK)
+			return str_copy(pOut, "Not connected", Length);
+		for(const auto &Player : GameClient()->m_aClients)
+		{
+			if(!Player.m_Active)
+				continue;
+			if(str_comp(Player.m_aName, pParam))
+				continue;
+			return str_format(pOut, Length, "%d", Player.ClientId());
+		}
+		return str_copy(pOut, "Invalid Name", Length);
+	});
+	m_vFunctions.emplace_back("name", [&](const char *pParam, char *pOut, int Length) {
+		if(Client()->State() != CClient::STATE_ONLINE && Client()->State() != CClient::STATE_DEMOPLAYBACK)
+			return str_copy(pOut, "Not connected", Length);
+		int ClientId;
+		if(!str_toint(pParam, &ClientId))
+			return str_copy(pOut, "Invalid ID", Length);
+		if(ClientId < 0 || ClientId >= (int)std::size(GameClient()->m_aClients))
+			return str_copy(pOut, "ID out of range", Length);
+		const auto &Player = GameClient()->m_aClients[ClientId];
+		if(!Player.m_Active)
+			return str_copy(pOut, "ID not connected", Length);
+		return str_copy(pOut, Player.m_aName, Length);
+	});
+
 	Console()->Register("ifeq", "s[a] s[b] r[command]", CFGFLAG_CLIENT, ConIfeq, this, "Comapre 2 values, if equal run the command");
 	Console()->Register("ifneq", "s[a] s[b] r[command]", CFGFLAG_CLIENT, ConIfneq, this, "Comapre 2 values, if not equal run the command");
 	Console()->Register("ifreq", "s[a] s[b] r[command]", CFGFLAG_CLIENT, ConIfreq, this, "Comapre 2 values, if a matches the regex b run the command");
 	Console()->Register("ifrneq", "s[a] s[b] r[command]", CFGFLAG_CLIENT, ConIfrneq, this, "Comapre 2 values, if a doesnt match the regex b run the command");
 	Console()->Register("return", "", CFGFLAG_CLIENT, ConReturn, this, "Stop executing the current script, does nothing in other contexts");
 
-	Console()->m_FConditionalCompose = [&](const char *pStr, char *pOut, int Length) {
-		ParseString(pStr, pOut, Length);
+	Console()->m_FConditionalCompose = [this](char *pBuf, int Length) {
+		ParseString(pBuf, Length);
 	};
 }

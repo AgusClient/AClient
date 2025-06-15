@@ -144,7 +144,7 @@ public:
 	// TClient
 
 	bool m_Return;
-	std::function<void(const char *pString, char *pOut, int Length)> m_FConditionalCompose = nullptr;
+	std::function<void(char *pBuf, int Length)> m_FConditionalCompose = nullptr;
 };
 
 std::unique_ptr<IConsole> CreateConsole(int FlagMask);

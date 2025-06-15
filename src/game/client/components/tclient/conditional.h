@@ -13,10 +13,11 @@ class CConditional : public CComponent
 private:
 	// TODO use maps
 	std::vector<std::pair<std::string, std::function<int(char *pOut, int Length)>>> m_vVariables;
-	int ParseValue(const char *pString, char *pOut, int Length);
+	std::vector<std::pair<std::string, std::function<int(const char *pParam, char *pOut, int Length)>>> m_vFunctions;
+	int ParseValue(char *pBuf, int Length);
 
 public:
-	void ParseString(const char *pString, char *pOut, int Length);
+	void ParseString(char *pBuf, int Length);
 	static void ConIfeq(IConsole::IResult *pResult, void *pUserData);
 	static void ConIfneq(IConsole::IResult *pResult, void *pUserData);
 	static void ConIfreq(IConsole::IResult *pResult, void *pUserData);
