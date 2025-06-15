@@ -289,35 +289,13 @@ void CMenus::RenderSettingsTClient(CUIRect MainView)
 		Column.HSplitTop(HeadlineHeight, &Label, &Column);
 		Ui()->DoLabel(&Label, TCLocalize("Warlist"), HeadlineFontSize, TEXTALIGN_ML);
 
-		static CLineInput s_Warlist1, s_Warlist2, s_Warlist3, s_Warlist4, s_Warlist5, s_Warlist6, s_Warlist7, s_Warlist8,
-			s_Warlist9, s_Warlist10, s_Warlist11, s_Warlist12;
-
-		char aBuf[128];
-		char aGroup1Name[MAX_WARLIST_TYPE_LENGTH]; // Enemy by default
-		char aGroup2Name[MAX_WARLIST_TYPE_LENGTH]; // Team by default
-		str_copy(aGroup1Name, GameClient()->m_WarList.m_WarTypes[1]->m_aWarName);
-		str_copy(aGroup2Name, GameClient()->m_WarList.m_WarTypes[2]->m_aWarName);
-		str_format(aBuf, sizeof(aBuf), TCLocalize("Add %s name:"), aGroup1Name);
-		DoBindchat(s_Warlist1, aBuf, "!war", "war_name_index 1");
-		str_format(aBuf, sizeof(aBuf), TCLocalize("Add %s clan:"), aGroup1Name);
-		DoBindchat(s_Warlist2, aBuf, "!warclan", "war_clan_index 1");
-		str_format(aBuf, sizeof(aBuf), TCLocalize("Add %s name:"), aGroup2Name);
-		DoBindchat(s_Warlist3, aBuf, "!team", "war_name_index 2");
-		str_format(aBuf, sizeof(aBuf), TCLocalize("Add %s clan:"), aGroup2Name);
-		DoBindchat(s_Warlist4, aBuf, "!teamclan", "war_clan_index 2");
-		str_format(aBuf, sizeof(aBuf), TCLocalize("Remove %s name:"), aGroup1Name);
-		DoBindchat(s_Warlist5, aBuf, "!delwar", "remove_war_name_index 1");
-		str_format(aBuf, sizeof(aBuf), TCLocalize("Remove %s clan:"), aGroup1Name);
-		DoBindchat(s_Warlist6, aBuf, "!delwarclan", "remove_war_clan_index 1");
-		str_format(aBuf, sizeof(aBuf), TCLocalize("Remove %s name:"), aGroup2Name);
-		DoBindchat(s_Warlist7, aBuf, "!delteam", "remove_war_name_index 2");
-		str_format(aBuf, sizeof(aBuf), TCLocalize("Remove %s clan:"), aGroup2Name);
-		DoBindchat(s_Warlist8, aBuf, "!delteamclan", "remove_war_clan_index 2");
-
-		DoBindchat(s_Warlist9, TCLocalize("Add [group] [name] [reason]"), "!name", "war_name");
-		DoBindchat(s_Warlist10, TCLocalize("Add [group] [clan] [reason]"), "!clan", "war_clan");
-		DoBindchat(s_Warlist11, TCLocalize("Remove [group] [name]"), "!delname", "remove_war_name");
-		DoBindchat(s_Warlist12, TCLocalize("Remove [group] [clan]"), "!delclan", "remove_war_clan");
+		static const int s_WarlistCount = sizeof(s_aDefaultBindChatWarlist) / sizeof(s_aDefaultBindChatWarlist[0]);
+		static CLineInput s_Warlist[s_WarlistCount];
+		for(int i = 0; i < s_WarlistCount; ++i)
+		{
+			const CBindChat::CBindDefault &BindDefault = s_aDefaultBindChatWarlist[i];
+			DoBindchat(s_Warlist[i], TCLocalize(BindDefault.m_pTitle), BindDefault.m_Bind.m_aName, BindDefault.m_Bind.m_aCommand);
+		}
 	}
 
 	if(s_CurCustomTab == TCLIENT_TAB_BINDWHEEL)

@@ -85,19 +85,18 @@ static CBindChat::CBindDefault s_aDefaultBindChatKaomoji[] = {
 };
 
 static CBindChat::CBindDefault s_aDefaultBindChatWarlist[] = {
-	// These don't get displayed in settings
-	{nullptr, "!war", "war_name_index 1"},
-	{nullptr, "!warclan", "war_clan_index 1"},
-	{nullptr, "!team", "war_name_index 2"},
-	{nullptr, "!teamclan", "war_clan_index 2"},
-	{nullptr, "!delwar", "remove_war_name_index 1"},
-	{nullptr, "!delwarclan", "remove_war_clan_index 1"},
-	{nullptr, "!delteam", "remove_war_name_index 2"},
-	{nullptr, "!delteamclan", "remove_war_clan_index 2"},
-	{nullptr, "!name", "war_name"},
-	{nullptr, "!clan", "war_clan"},
-	{nullptr, "!delname", "remove_war_name"},
-	{nullptr, "!delclan", "remove_war_clan"},
+	{"Add war name", "!war", "war_name_index 1"},
+	{"Add war clan", "!warclan", "war_clan_index 1"},
+	{"Add team name", "!team", "war_name_index 2"},
+	{"Add team clan", "!teamclan", "war_clan_index 2"},
+	{"Remove war name", "!delwar", "remove_war_name_index 1"},
+	{"Remove war name", "!delwarclan", "remove_war_clan_index 1"},
+	{"Remove team name", "!delteam", "remove_war_name_index 2"},
+	{"Remove team clan", "!delteamclan", "remove_war_clan_index 2"},
+	{"Add [group] [name] [reason]", "!name", "war_name"},
+	{"Add [group] [clan] [reason]", "!clan", "war_clan"},
+	{"Remove [group] [name]", "!delname", "remove_war_name"},
+	{"Remove [group] [clan]", "!delclan", "remove_war_clan"},
 };
 
 static CBindChat::CBindDefault s_aDefaultBindChatMod[] = {
