@@ -41,6 +41,18 @@ int CConditional::ParseValue(char *pBuf, int Length)
 	else
 	{
 		// Is a variable
+		if(m_pResult)
+		{
+			// Check for numerics
+			int Index;
+			if(str_toint(pBuf, &Index))
+			{
+				if(Index >= 0 && Index < m_pResult->NumArguments())
+					return str_copy(pBuf, m_pResult->GetString(Index), Length);
+				else
+					return str_copy(pBuf, "", Length);
+			}
+		}
 		for(const auto &[Key, FFunc] : m_vVariables)
 			if(str_comp_nocase(pBuf, Key.c_str()) == 0)
 				return FFunc(pBuf, Length);

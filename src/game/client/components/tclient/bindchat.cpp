@@ -15,7 +15,18 @@ void CBindChat::ConAddBindchat(IConsole::IResult *pResult, void *pUserData)
 	const char *pCommand = pResult->GetString(1);
 
 	CBindChat *pThis = static_cast<CBindChat *>(pUserData);
-	pThis->AddBind(pName, pCommand);
+	pThis->AddBind(pName, nullptr, nullptr, pCommand, false);
+}
+
+void CBindChat::ConAddBindchatEx(IConsole::IResult *pResult, void *pUserData)
+{
+	const char *pName = pResult->GetString(0);
+	const char *pParams = pResult->GetString(1);
+	const char *pHelp = pResult->GetString(2);
+	const char *pCommand = pResult->GetString(3);
+
+	CBindChat *pThis = static_cast<CBindChat *>(pUserData);
+	pThis->AddBind(pName, pParams, pHelp, pCommand, true);
 }
 
 void CBindChat::ConBindchats(IConsole::IResult *pResult, void *pUserData)
@@ -74,7 +85,7 @@ void CBindChat::ConBindchatDefaults(IConsole::IResult *pResult, void *pUserData)
 		pThis->AddBind(BindDefault.m_Bind);
 }
 
-void CBindChat::AddBind(const char *pName, const char *pCommand)
+void CBindChat::AddBind(const char *pName, const char *pParams, const char *pHelp, const char *pCommand, bool IsEx)
 {
 	if((pName[0] == '\0' && pCommand[0] == '\0') || m_vBinds.size() >= BINDCHAT_MAX_BINDS)
 		return;
@@ -83,13 +94,18 @@ void CBindChat::AddBind(const char *pName, const char *pCommand)
 
 	CBind Bind;
 	str_copy(Bind.m_aName, pName);
+	str_copy(Bind.m_aParams, pParams ? pParams : "?r[args]");
+	str_copy(Bind.m_aHelp, pHelp ? pHelp : "Bound with bindchat");
 	str_copy(Bind.m_aCommand, pCommand);
-	m_vBinds.push_back(Bind);
+	Bind.m_IsEx = IsEx;
+	
+	AddBind(Bind);
 }
 
+// You must ensure input is valid and not a duplicate externally
 void CBindChat::AddBind(const CBind &Bind)
 {
-	AddBind(Bind.m_aName, Bind.m_aCommand);
+	m_vBinds.push_back(Bind);
 }
 
 void CBindChat::RemoveBind(const char *pName)
@@ -106,36 +122,19 @@ void CBindChat::RemoveBind(const char *pName)
 	}
 }
 
-void CBindChat::RemoveBind(int Index)
-{
-	if(Index >= static_cast<int>(m_vBinds.size()) || Index < 0)
-		return;
-	auto It = m_vBinds.begin() + Index;
-	m_vBinds.erase(It);
-}
-
 void CBindChat::RemoveAllBinds()
 {
 	m_vBinds.clear();
 }
 
-int CBindChat::GetBind(const char *pCommand)
+CBindChat::CBind *CBindChat::GetBind(const char *pCommand)
 {
 	if(pCommand[0] == '\0')
-		return -1;
-	for(auto It = m_vBinds.begin(); It != m_vBinds.end(); ++It)
-	{
-		if(str_comp_nocase(It->m_aCommand, pCommand) == 0)
-			return &*It - m_vBinds.data();
-	}
-	return -1;
-}
-
-CBindChat::CBind *CBindChat::Get(int Index)
-{
-	if(Index < 0 || Index >= (int)m_vBinds.size())
 		return nullptr;
-	return &m_vBinds[Index];
+	for(auto &Bind : m_vBinds)
+		if(str_comp_nocase(Bind.m_aCommand, pCommand) == 0)
+			return &Bind;
+	return nullptr;
 }
 
 void CBindChat::OnConsoleInit()
@@ -145,6 +144,7 @@ void CBindChat::OnConsoleInit()
 		pConfigManager->RegisterCallback(ConfigSaveCallback, this, ConfigDomain::TCLIENTCHATBINDS);
 
 	Console()->Register("bindchat", "s[name] r[command]", CFGFLAG_CLIENT, ConAddBindchat, this, "Add a chat bind");
+	Console()->Register("bindchat_ex", "s[name] s[params] s[help] r[command]", CFGFLAG_CLIENT, ConAddBindchatEx, this, "Add a chat bind");
 	Console()->Register("bindchats", "?s[name]", CFGFLAG_CLIENT, ConBindchats, this, "Print command executed by this name or all chat binds");
 	Console()->Register("unbindchat", "s[name] r[command]", CFGFLAG_CLIENT, ConRemoveBindchat, this, "Remove a chat bind");
 	Console()->Register("unbindchatall", "", CFGFLAG_CLIENT, ConRemoveBindchatAll, this, "Removes all chat binds");
@@ -153,10 +153,37 @@ void CBindChat::OnConsoleInit()
 	ConBindchatDefaults(nullptr, this);
 }
 
-void CBindChat::ExecuteBind(int Bind, const char *pArgs)
+class CBindChatExCallbackData
+{
+public:
+	CBindChat &m_This;
+	const CBindChat::CBind &m_Bind;
+};
+
+void CBindChat::ExecuteBindExCallback(CConsole::IResult *pResult, void *pUserData)
+{
+	if(pUserData == nullptr)
+		return;
+	const auto &Data = *(CBindChatExCallbackData *)pUserData;
+	Data.m_This.GameClient()->m_Conditional.m_pResult = pResult;
+	Data.m_This.Console()->ExecuteLine(Data.m_Bind.m_aCommand);
+	Data.m_This.GameClient()->m_Conditional.m_pResult = nullptr;
+}
+
+void CBindChat::ExecuteBind(const CBindChat::CBind &Bind, const char *pArgs)
 {
 	char aBuf[BINDCHAT_MAX_CMD] = "";
-	str_append(aBuf, m_vBinds[Bind].m_aCommand);
+	CBindChatExCallbackData ExCallbackData{*this, Bind};
+	if(Bind.m_IsEx)
+	{
+		// Not use after stack free, the command is used and invalidated
+		Console()->Register("bindchat_ex_temp", Bind.m_aParams, CFGFLAG_CLIENT, ExecuteBindExCallback, &ExCallbackData, "Internal command, do not use");
+		str_append(aBuf, "bindchat_ex_temp");
+	}
+	else
+	{
+		str_append(aBuf, Bind.m_aCommand);
+	}
 	if(pArgs && pArgs[0] != '\0')
 	{
 		str_append(aBuf, " ");
@@ -166,6 +193,10 @@ void CBindChat::ExecuteBind(int Bind, const char *pArgs)
 			aBuf[str_length(aBuf) - 1] = '\0';
 	}
 	Console()->ExecuteLine(aBuf);
+	if(Bind.m_IsEx)
+	{
+		Console()->Register("bindchat_ex_temp", "", CFGFLAG_CLIENT, ExecuteBindExCallback, nullptr, "Internal command, do not use");
+	}
 }
 
 bool CBindChat::CheckBindChat(const char *pText)
@@ -193,7 +224,7 @@ bool CBindChat::ChatDoBinds(const char *pText)
 		if(str_startswith_nocase(pText, Bind.m_aName) &&
 			str_comp_nocase_num(pText, Bind.m_aName, SpaceIndex) == 0)
 		{
-			ExecuteBind(&Bind - m_vBinds.data(), pSpace ? pSpace + 1 : nullptr);
+			ExecuteBind(Bind, pSpace ? pSpace + 1 : nullptr);
 			// Add to history (see CChat::SendChatQueued)
 			const int Length = str_length(pText);
 			CChat::CHistoryEntry *pEntry = Chat.m_History.Allocate(sizeof(CChat::CHistoryEntry) + Length);
@@ -292,15 +323,38 @@ void CBindChat::ConfigSaveCallback(IConfigManager *pConfigManager, void *pUserDa
 		char aBuf[BINDCHAT_MAX_CMD * 2] = "";
 		char *pEnd = aBuf + sizeof(aBuf);
 		char *pDst;
-		str_append(aBuf, "bindchat \"");
-		// Escape name
-		pDst = aBuf + str_length(aBuf);
-		str_escape(&pDst, Bind.m_aName, pEnd);
-		str_append(aBuf, "\" \"");
-		// Escape command
-		pDst = aBuf + str_length(aBuf);
-		str_escape(&pDst, Bind.m_aCommand, pEnd);
-		str_append(aBuf, "\"");
+		if(Bind.m_IsEx)
+		{
+			str_append(aBuf, "bindchat_ex \"");
+			// Escape name
+			pDst = aBuf + str_length(aBuf);
+			str_escape(&pDst, Bind.m_aName, pEnd);
+			str_append(aBuf, "\" \"");
+			// Escape params
+			pDst = aBuf + str_length(aBuf);
+			str_escape(&pDst, Bind.m_aParams, pEnd);
+			str_append(aBuf, "\" \"");
+			// Escape help
+			pDst = aBuf + str_length(aBuf);
+			str_escape(&pDst, Bind.m_aHelp, pEnd);
+			str_append(aBuf, "\" \"");
+			// Escape command
+			pDst = aBuf + str_length(aBuf);
+			str_escape(&pDst, Bind.m_aCommand, pEnd);
+			str_append(aBuf, "\"");
+		}
+		else
+		{
+			str_append(aBuf, "bindchat \"");
+			// Escape name
+			pDst = aBuf + str_length(aBuf);
+			str_escape(&pDst, Bind.m_aName, pEnd);
+			str_append(aBuf, "\" \"");
+			// Escape command
+			pDst = aBuf + str_length(aBuf);
+			str_escape(&pDst, Bind.m_aCommand, pEnd);
+			str_append(aBuf, "\"");
+		}
 		pConfigManager->WriteLine(aBuf, ConfigDomain::TCLIENTCHATBINDS);
 	}
 }

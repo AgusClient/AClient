@@ -10,36 +10,29 @@ class IConfigManager;
 enum
 {
 	BINDCHAT_MAX_NAME = 64,
+	BINDCHAT_MAX_PARAMS = 64,
+	BINDCHAT_MAX_HELP = 128,
 	BINDCHAT_MAX_CMD = 1024,
 	BINDCHAT_MAX_BINDS = 256,
 };
 
 class CBindChat : public CComponent
 {
-	static void ConAddBindchat(IConsole::IResult *pResult, void *pUserData);
-	static void ConBindchats(IConsole::IResult *pResult, void *pUserData);
-	static void ConRemoveBindchat(IConsole::IResult *pResult, void *pUserData);
-	static void ConRemoveBindchatAll(IConsole::IResult *pResult, void *pUserData);
-	static void ConBindchatDefaults(IConsole::IResult *pResult, void *pUserData);
-
-	static void ConfigSaveCallback(IConfigManager *pConfigManager, void *pUserData);
-
-	void ExecuteBind(int Bind, const char *pArgs);
-
 public:
 	class CBind
 	{
 	public:
+		bool m_IsEx = false;
 		char m_aName[BINDCHAT_MAX_NAME];
+		char m_aParams[BINDCHAT_MAX_PARAMS];
+		char m_aHelp[BINDCHAT_MAX_HELP];
 		char m_aCommand[BINDCHAT_MAX_CMD];
-		bool operator==(const CBind &Other) const
-		{
-			return str_comp(m_aName, Other.m_aName) == 0 && str_comp(m_aCommand, Other.m_aCommand) == 0;
-		}
 		CBind() = default;
 		CBind(const char *pName, const char *pCommand)
 		{
 			str_copy(m_aName, pName);
+			m_aParams[0] = '\0';
+			m_aHelp[0] = '\0';
 			str_copy(m_aCommand, pCommand);
 		}
 	};
@@ -55,21 +48,33 @@ public:
 		}
 	};
 
+private:
+	static void ConAddBindchat(IConsole::IResult *pResult, void *pUserData);
+	static void ConAddBindchatEx(IConsole::IResult *pResult, void *pUserData);
+	static void ConBindchats(IConsole::IResult *pResult, void *pUserData);
+	static void ConRemoveBindchat(IConsole::IResult *pResult, void *pUserData);
+	static void ConRemoveBindchatAll(IConsole::IResult *pResult, void *pUserData);
+	static void ConBindchatDefaults(IConsole::IResult *pResult, void *pUserData);
+
+	static void ConfigSaveCallback(IConfigManager *pConfigManager, void *pUserData);
+
+	static void ExecuteBindExCallback(IConsole::IResult *pResult, void *pUserData);
+	void ExecuteBind(const CBind &Bind, const char *pArgs);
+
+public:
 	std::vector<CBind> m_vBinds;
 
 	CBindChat();
 	int Sizeof() const override { return sizeof(*this); }
 	void OnConsoleInit() override;
 
-	void AddBind(const char *pName, const char *pCommand);
+	void AddBind(const char *pName, const char *pParams, const char *pHelp, const char *pCommand, bool IsEx);
 	void AddBind(const CBind &Bind);
 
 	void RemoveBind(const char *pName);
-	void RemoveBind(int Index);
 	void RemoveAllBinds();
 
-	int GetBind(const char *pCommand);
-	CBind *Get(int Index);
+	CBind *GetBind(const char *pCommand);
 
 	bool CheckBindChat(const char *pText);
 	bool ChatDoBinds(const char *pText);

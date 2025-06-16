@@ -17,6 +17,8 @@ private:
 	int ParseValue(char *pBuf, int Length);
 
 public:
+	const IConsole::IResult *m_pResult = nullptr;
+
 	void ParseString(char *pBuf, int Length);
 	static void ConIfeq(IConsole::IResult *pResult, void *pUserData);
 	static void ConIfneq(IConsole::IResult *pResult, void *pUserData);

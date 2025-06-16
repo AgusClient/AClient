@@ -231,32 +231,29 @@ void CMenus::RenderSettingsTClient(CUIRect MainView)
 
 		Column = LeftView;
 
-		auto DoBindchat = [&](CLineInput &LineInput, const char *pLabel, const char *pName, const char *pCommand) {
+		const auto DoBindchat = [&](CLineInput &LineInput, const char *pLabel, const CBindChat::CBind &BindDefault) {
 			Column.HSplitTop(MarginSmall, nullptr, &Column);
 			Column.HSplitTop(LineSize, &Button, &Column);
-			char *BindCommand;
-			int BindIndex = GameClient()->m_BindChat.GetBind(pCommand);
-			bool BindNew = BindIndex == -1;
-			static char s_aBindCommandTemp[BINDCHAT_MAX_CMD] = "";
-			if(BindNew)
+			CBindChat::CBind *pOldBind = GameClient()->m_BindChat.GetBind(BindDefault.m_aCommand);
+			static char s_aTempName[BINDCHAT_MAX_CMD];
+			char *pName;
+			if(pOldBind == nullptr)
 			{
-				BindCommand = s_aBindCommandTemp;
-				BindNew = true; // Make a new bind, as we arent editing one
+				s_aTempName[0] = '\0';
+				pName = s_aTempName;
 			}
 			else
 			{
-				auto *Bind = GameClient()->m_BindChat.Get(BindIndex);
-				BindCommand = Bind->m_aName;
+				pName = pOldBind->m_aName;
+				str_copy(s_aTempName, pName);
 			}
-			if(DoEditBoxWithLabel(&LineInput, &Button, pLabel, pName, BindCommand, BINDCHAT_MAX_CMD))
+			if(DoEditBoxWithLabel(&LineInput, &Button, pLabel, BindDefault.m_aName, pName, sizeof(s_aTempName)))
 			{
-				if(BindNew && BindCommand[0] != '\0' && LineInput.IsActive())
-				{
-					GameClient()->m_BindChat.AddBind(BindCommand, pCommand);
-					BindCommand[0] = '\0'; // Reset for new usage
-				}
-				if(!BindNew && BindCommand[0] == '\0')
-					GameClient()->m_BindChat.RemoveBind(BindIndex);
+				if(pOldBind)
+					GameClient()->m_BindChat.RemoveBind(s_aTempName);
+				auto BindNew = BindDefault;
+				str_copy(BindNew.m_aName, pName);
+				GameClient()->m_BindChat.AddBind(BindNew);
 			}
 		};
 
@@ -269,7 +266,7 @@ void CMenus::RenderSettingsTClient(CUIRect MainView)
 		for(int i = 0; i < s_KaomojiCount; ++i)
 		{
 			const CBindChat::CBindDefault &BindDefault = s_aDefaultBindChatKaomoji[i];
-			DoBindchat(s_aKaomoji[i], TCLocalize(BindDefault.m_pTitle), BindDefault.m_Bind.m_aName, BindDefault.m_Bind.m_aCommand);
+			DoBindchat(s_aKaomoji[i], TCLocalize(BindDefault.m_pTitle), BindDefault.m_Bind);
 		}
 
 		Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
@@ -281,7 +278,7 @@ void CMenus::RenderSettingsTClient(CUIRect MainView)
 		for(int i = 0; i < s_OtherCount; ++i)
 		{
 			const CBindChat::CBindDefault &BindDefault = s_aDefaultBindChatOther[i];
-			DoBindchat(s_Other[i], TCLocalize(BindDefault.m_pTitle), BindDefault.m_Bind.m_aName, BindDefault.m_Bind.m_aCommand);
+			DoBindchat(s_Other[i], TCLocalize(BindDefault.m_pTitle), BindDefault.m_Bind);
 		}
 
 		Column = RightView;
@@ -294,7 +291,7 @@ void CMenus::RenderSettingsTClient(CUIRect MainView)
 		for(int i = 0; i < s_WarlistCount; ++i)
 		{
 			const CBindChat::CBindDefault &BindDefault = s_aDefaultBindChatWarlist[i];
-			DoBindchat(s_Warlist[i], TCLocalize(BindDefault.m_pTitle), BindDefault.m_Bind.m_aName, BindDefault.m_Bind.m_aCommand);
+			DoBindchat(s_Warlist[i], TCLocalize(BindDefault.m_pTitle), BindDefault.m_Bind);
 		}
 	}
 
