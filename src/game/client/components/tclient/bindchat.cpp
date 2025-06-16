@@ -146,7 +146,7 @@ void CBindChat::OnConsoleInit()
 	Console()->Register("bindchat", "s[name] r[command]", CFGFLAG_CLIENT, ConAddBindchat, this, "Add a chat bind");
 	Console()->Register("bindchat_ex", "s[name] s[params] s[help] r[command]", CFGFLAG_CLIENT, ConAddBindchatEx, this, "Add a chat bind");
 	Console()->Register("bindchats", "?s[name]", CFGFLAG_CLIENT, ConBindchats, this, "Print command executed by this name or all chat binds");
-	Console()->Register("unbindchat", "s[name] r[command]", CFGFLAG_CLIENT, ConRemoveBindchat, this, "Remove a chat bind");
+	Console()->Register("unbindchat", "s[name]", CFGFLAG_CLIENT, ConRemoveBindchat, this, "Remove a chat bind");
 	Console()->Register("unbindchatall", "", CFGFLAG_CLIENT, ConRemoveBindchatAll, this, "Removes all chat binds");
 	Console()->Register("bindchatdefaults", "", CFGFLAG_CLIENT, ConBindchatDefaults, this, "Adds default chat binds");
 
