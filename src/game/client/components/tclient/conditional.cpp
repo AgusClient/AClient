@@ -199,6 +199,12 @@ void CConditional::ConReturn(IConsole::IResult *pResult, void *pUserData)
 
 void CConditional::OnConsoleInit()
 {
+	m_vVariables.emplace_back("l", [&](char *pOut, int Length) {
+		return str_copy(pOut, "{", Length);
+	});
+	m_vVariables.emplace_back("r", [&](char *pOut, int Length) {
+		return str_copy(pOut, "}", Length);
+	});
 	m_vVariables.emplace_back("game_mode", [&](char *pOut, int Length) {
 		return str_copy(pOut, GameClient()->m_GameInfo.m_aGameType, Length);
 	});
