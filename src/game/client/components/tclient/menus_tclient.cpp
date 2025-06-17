@@ -622,14 +622,7 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClColorFreeze, TCLocalize("Color frozen tee skins"), &g_Config.m_ClColorFreeze, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFreezeKatana, TCLocalize("Show katan on frozen players"), &g_Config.m_ClFreezeKatana, &Column, LineSize);
 
-	// ***** Tiny Tee's ***** //
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClTinyTees, TCLocalize("Tiny tees"), &g_Config.m_ClTinyTees, &Column, LineSize);
-	Column.HSplitTop(LineSize, &TinyTeeConfig, &Column);
-	if(g_Config.m_ClTinyTees)
-		Ui()->DoScrollbarOption(&g_Config.m_ClTinyTeeSize, &g_Config.m_ClTinyTeeSize, &TinyTeeConfig, TCLocalize("Tiny Tee Size"), 85, 115);
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClTinyTeesOthers, TCLocalize("Tiny tees others"), &g_Config.m_ClTinyTeesOthers, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClWhiteFeet, TCLocalize("Render all custom colored feet as white feet skin"), &g_Config.m_ClWhiteFeet, &Column, LineSize);
-
 	CUIRect FeetBox;
 	Column.HSplitTop(LineSize + MarginExtraSmall, &FeetBox, &Column);
 	if(g_Config.m_ClWhiteFeet)
@@ -640,6 +633,23 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 		s_WhiteFeet.SetEmptyText("x_ninja");
 		Ui()->DoEditBox(&s_WhiteFeet, &FeetBox, EditBoxFontSize);
 	}
+
+	// ***** Tiny Tee's ***** //
+	static std::vector<CButtonContainer> s_vButtonContainersTinyTees = {{}, {}, {}};
+	int Value = g_Config.m_ClTinyTees ? (g_Config.m_ClTinyTeesOthers ? 2 : 1) : 0;
+	if(DoLine_RadioMenu(Column, Localize("Tiny Tees"),
+		s_vButtonContainersTinyTees,
+		{Localize("None"), Localize("Own"), Localize("All")},
+		{0, 1, 2},
+		Value))
+	{
+		g_Config.m_ClTinyTees = Value > 0 ? 1 : 0;
+		g_Config.m_ClTinyTeesOthers = Value > 1 ? 1 : 0;
+	}
+	Column.HSplitTop(LineSize, &TinyTeeConfig, &Column);
+	if(g_Config.m_ClTinyTees > 0)
+		Ui()->DoScrollbarOption(&g_Config.m_ClTinyTeeSize, &g_Config.m_ClTinyTeeSize, &TinyTeeConfig, TCLocalize("Tiny Tee Size"), 85, 115);
+
 	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
 	s_SectionBoxes.back().h = Column.y - s_SectionBoxes.back().y;
 
