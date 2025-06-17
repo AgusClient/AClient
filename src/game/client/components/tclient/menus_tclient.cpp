@@ -624,11 +624,9 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 
 	// ***** Tiny Tee's ***** //
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClTinyTees, TCLocalize("Tiny tees"), &g_Config.m_ClTinyTees, &Column, LineSize);
+	Column.HSplitTop(LineSize, &TinyTeeConfig, &Column);
 	if(g_Config.m_ClTinyTees)
-	{
-		Column.HSplitTop(LineSize, &TinyTeeConfig, &Column);
 		Ui()->DoScrollbarOption(&g_Config.m_ClTinyTeeSize, &g_Config.m_ClTinyTeeSize, &TinyTeeConfig, TCLocalize("Tiny Tee Size"), 85, 115);
-	}
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClTinyTeesOthers, TCLocalize("Tiny tees others"), &g_Config.m_ClTinyTeesOthers, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClWhiteFeet, TCLocalize("Render all custom colored feet as white feet skin"), &g_Config.m_ClWhiteFeet, &Column, LineSize);
 
