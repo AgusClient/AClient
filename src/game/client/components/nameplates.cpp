@@ -1043,6 +1043,8 @@ void CNamePlates::OnRender()
 			// TClient
 			if(GameClient()->m_aClients[i].m_DeepFrozen && (g_Config.m_ClVolleyBallBetterBall == 2 || (g_Config.m_ClVolleyBallBetterBall == 1 && str_startswith_nocase(Client()->GetCurrentMap(), "volleyball"))))
 				continue;
+			if(g_Config.m_ClRenderNameplateSpec > 0)
+				continue;
 			const vec2 RenderPos = GameClient()->m_aClients[i].m_RenderPos;
 			RenderNamePlateGame(RenderPos, pInfo, 1.0f);
 		}
