@@ -1388,6 +1388,14 @@ void CPlayers::OnRender()
 		if(m_pClient->m_aClients[i].m_Predicted.m_Invincible)
 			aRenderInfo[i].m_TeeRenderFlags |= TEE_EFFECT_SPARKLE;
 
+
+		// TClient
+		if(g_Config.m_ClFreezeKatana > 0 && m_pClient->m_aClients[i].m_Predicted.m_FreezeEnd != 0)
+		{
+			m_pClient->m_aClients[i].m_RenderCur.m_Weapon = WEAPON_NINJA;
+			aRenderInfo[i].m_TeeRenderFlags &= ~TEE_NO_WEAPON;
+		}
+
 		const bool Frozen = m_pClient->m_aClients[i].m_Predicted.m_FreezeEnd != 0;
 		if((m_pClient->m_aClients[i].m_RenderCur.m_Weapon == WEAPON_NINJA || (Frozen && !m_pClient->m_GameInfo.m_NoSkinChangeForFrozen)) && g_Config.m_ClShowNinja)
 		{
