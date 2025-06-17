@@ -620,6 +620,7 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClNameplatesSkinInfo, TCLocalize("Shows skin name and colors in nameplates"), &g_Config.m_ClNameplatesSkinInfo, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFreezeStars, TCLocalize("Freeze stars"), &g_Config.m_ClFreezeStars, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClColorFreeze, TCLocalize("Color frozen tee skins"), &g_Config.m_ClColorFreeze, &Column, LineSize);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFreezeKatana, TCLocalize("Show katan on frozen players"), &g_Config.m_ClFreezeKatana, &Column, LineSize);
 
 	// ***** Tiny Tee's ***** //
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClTinyTees, TCLocalize("Tiny tees"), &g_Config.m_ClTinyTees, &Column, LineSize);
