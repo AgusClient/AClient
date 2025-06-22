@@ -229,6 +229,12 @@ void CConditional::OnConsoleInit()
 	m_vVariables.emplace_back("rcon_authed", [&](char *pOut, int Length) {
 		return str_copy(pOut, Client()->RconAuthed() ? "1" : "0", Length);
 	});
+	m_vVariables.emplace_back("team", [&](char *pOut, int Length) {
+		return str_format(pOut, Length, "%d", GameClient()->m_aClients[GameClient()->m_aLocalIds[g_Config.m_ClDummy]].m_Team);
+	});
+	m_vVariables.emplace_back("ddnet_team", [&](char *pOut, int Length) {
+		return str_format(pOut, Length, "%d", GameClient()->m_Teams.Team(GameClient()->m_aLocalIds[g_Config.m_ClDummy]));
+	});
 	m_vVariables.emplace_back("map", [&](char *pOut, int Length) {
 		return str_copy(pOut, Client()->GetCurrentMap(), Length);
 	});
