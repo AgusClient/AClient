@@ -255,8 +255,7 @@ void CMenus::RenderSettingsTClient(CUIRect MainView)
 			}
 		};
 
-		auto DoBindchatDefaults = [&](CUIRect &Column, const char *pTitle, std::vector<CBindChat::CBindDefault> &vBindchatDefaults)
-		{
+		auto DoBindchatDefaults = [&](CUIRect &Column, const char *pTitle, std::vector<CBindChat::CBindDefault> &vBindchatDefaults) {
 			Column.HSplitTop(HeadlineHeight, &Label, &Column);
 			Ui()->DoLabel(&Label, pTitle, HeadlineFontSize, TEXTALIGN_ML);
 			Column.HSplitTop(MarginSmall, nullptr, &Column);
@@ -266,7 +265,7 @@ void CMenus::RenderSettingsTClient(CUIRect MainView)
 		};
 
 		float SizeL = 0.0f, SizeR = 0.0f;
-		for (auto &[pTitle, vBindDefaults] : CBindChat::BIND_DEFAULTS)
+		for(auto &[pTitle, vBindDefaults] : CBindChat::BIND_DEFAULTS)
 		{
 			if(str_comp(pTitle, "Mod") == 0)
 				continue;
@@ -619,10 +618,10 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 	static std::vector<CButtonContainer> s_vButtonContainersTinyTees = {{}, {}, {}};
 	int Value = g_Config.m_ClTinyTees ? (g_Config.m_ClTinyTeesOthers ? 2 : 1) : 0;
 	if(DoLine_RadioMenu(Column, Localize("Tiny Tees"),
-		s_vButtonContainersTinyTees,
-		{Localize("None"), Localize("Own"), Localize("All")},
-		{0, 1, 2},
-		Value))
+		   s_vButtonContainersTinyTees,
+		   {Localize("None"), Localize("Own"), Localize("All")},
+		   {0, 1, 2},
+		   Value))
 	{
 		g_Config.m_ClTinyTees = Value > 0 ? 1 : 0;
 		g_Config.m_ClTinyTeesOthers = Value > 1 ? 1 : 0;

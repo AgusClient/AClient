@@ -67,10 +67,8 @@ void CConditional::ParseString(char *pBuf, int Length)
 		return;
 
 	std::vector<std::pair<int, int>> vParsedRanges;
-	const auto IsInParsedRegion = [&vParsedRanges](int Pos)
-	{
-		return std::any_of(vParsedRanges.begin(), vParsedRanges.end(), [Pos](const auto &ParsedRange)
-		{
+	const auto IsInParsedRegion = [&vParsedRanges](int Pos) {
+		return std::any_of(vParsedRanges.begin(), vParsedRanges.end(), [Pos](const auto &ParsedRange) {
 			return Pos >= ParsedRange.first && Pos < ParsedRange.second;
 		});
 	};
@@ -118,7 +116,8 @@ void CConditional::ParseString(char *pBuf, int Length)
 			if(NewLen >= Length)
 			{
 				ResultLen = Length - 1 - LastOpen - TailLen;
-				if(ResultLen < 0) ResultLen = 0;
+				if(ResultLen < 0)
+					ResultLen = 0;
 				NewLen = LastOpen + ResultLen + TailLen;
 			}
 

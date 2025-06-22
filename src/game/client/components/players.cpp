@@ -1388,7 +1388,6 @@ void CPlayers::OnRender()
 		if(m_pClient->m_aClients[i].m_Predicted.m_Invincible)
 			aRenderInfo[i].m_TeeRenderFlags |= TEE_EFFECT_SPARKLE;
 
-
 		// TClient
 		if(g_Config.m_ClFreezeKatana > 0 && m_pClient->m_aClients[i].m_Predicted.m_FreezeEnd != 0)
 		{
