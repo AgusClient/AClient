@@ -235,25 +235,26 @@ void CMenus::RenderSettingsTClient(CUIRect MainView)
 			Column.HSplitTop(MarginSmall, nullptr, &Column);
 			Column.HSplitTop(LineSize, &Button, &Column);
 			CBindChat::CBind *pOldBind = GameClient()->m_BindChat.GetBind(BindDefault.m_aCommand);
-			static char s_aTempName[BINDCHAT_MAX_CMD];
+			static char s_aTempName[BINDCHAT_MAX_NAME] = "";
 			char *pName;
 			if(pOldBind == nullptr)
-			{
-				s_aTempName[0] = '\0';
 				pName = s_aTempName;
-			}
 			else
-			{
 				pName = pOldBind->m_aName;
-				str_copy(s_aTempName, pName);
-			}
-			if(DoEditBoxWithLabel(&LineInput, &Button, pLabel, BindDefault.m_aName, pName, sizeof(s_aTempName)))
+			if(DoEditBoxWithLabel(&LineInput, &Button, pLabel, BindDefault.m_aName, pName, BINDCHAT_MAX_NAME) && LineInput.IsActive())
 			{
-				if(pOldBind)
-					GameClient()->m_BindChat.RemoveBind(s_aTempName);
-				auto BindNew = BindDefault;
-				str_copy(BindNew.m_aName, pName);
-				GameClient()->m_BindChat.AddBind(BindNew);
+				if(!pOldBind && pName[0] != '\0')
+				{
+					auto BindNew = BindDefault;
+					str_copy(BindNew.m_aName, pName);
+					GameClient()->m_BindChat.RemoveBind(pName); // Prevent duplicates
+					GameClient()->m_BindChat.AddBind(BindNew);
+					s_aTempName[0] = '\0';
+				}
+				if(pOldBind && pName[0] == '\0')
+				{
+					GameClient()->m_BindChat.RemoveBind(pName);
+				}
 			}
 		};
 

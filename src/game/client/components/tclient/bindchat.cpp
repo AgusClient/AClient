@@ -112,8 +112,6 @@ void CBindChat::AddBind(const CBind &Bind)
 
 bool CBindChat::RemoveBind(const char *pName)
 {
-	if(pName[0] == '\0')
-		return false;
 	for(auto It = m_vBinds.begin(); It != m_vBinds.end(); ++It)
 	{
 		if(str_comp(It->m_aName, pName) == 0)
