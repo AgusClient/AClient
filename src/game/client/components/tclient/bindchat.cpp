@@ -3,6 +3,7 @@
 #include <game/client/gameclient.h>
 
 #include "bindchat.h"
+#include "base/log.h"
 
 CBindChat::CBindChat()
 {
@@ -62,7 +63,8 @@ void CBindChat::ConRemoveBindchat(IConsole::IResult *pResult, void *pUserData)
 {
 	const char *aName = pResult->GetString(0);
 	CBindChat *pThis = static_cast<CBindChat *>(pUserData);
-	pThis->RemoveBind(aName);
+	if(!pThis->RemoveBind(aName))
+		log_info("bindchat", "bindchat \"%s\" not found", aName);
 }
 
 void CBindChat::ConRemoveBindchatAll(IConsole::IResult *pResult, void *pUserData)
@@ -108,18 +110,19 @@ void CBindChat::AddBind(const CBind &Bind)
 	m_vBinds.push_back(Bind);
 }
 
-void CBindChat::RemoveBind(const char *pName)
+bool CBindChat::RemoveBind(const char *pName)
 {
 	if(pName[0] == '\0')
-		return;
+		return false;
 	for(auto It = m_vBinds.begin(); It != m_vBinds.end(); ++It)
 	{
 		if(str_comp(It->m_aName, pName) == 0)
 		{
 			m_vBinds.erase(It);
-			return;
+			return true;
 		}
 	}
+	return false;
 }
 
 void CBindChat::RemoveAllBinds()

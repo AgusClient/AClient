@@ -71,7 +71,7 @@ public:
 	void AddBind(const char *pName, const char *pParams, const char *pHelp, const char *pCommand, bool IsEx);
 	void AddBind(const CBind &Bind);
 
-	void RemoveBind(const char *pName);
+	bool RemoveBind(const char *pName);
 	void RemoveAllBinds();
 
 	CBind *GetBind(const char *pCommand);
