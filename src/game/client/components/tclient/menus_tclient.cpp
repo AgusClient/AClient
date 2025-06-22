@@ -2084,7 +2084,7 @@ void CMenus::RenderSettingsProfiles(CUIRect MainView)
 	std::vector<CProfile> *pProfileList = &GameClient()->m_SkinProfiles.m_Profiles;
 
 	static CListBox s_ListBox;
-	s_ListBox.DoStart(50.0f, pProfileList->size(), 4, 3, s_SelectedProfile, &SelectorRect, true);
+	s_ListBox.DoStart(50.0f, pProfileList->size(), 4, 3, s_SelectedProfile, &SelectorRect, true, IGraphics::CORNER_ALL, true);
 
 	static bool s_Indexs[1024];
 
