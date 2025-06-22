@@ -12,27 +12,25 @@
 #include <engine/updater.h>
 
 #include <game/generated/protocol.h>
+#include <game/localization.h>
 
 #include <game/client/animstate.h>
 #include <game/client/components/chat.h>
+#include <game/client/components/countryflags.h>
 #include <game/client/components/menu_background.h>
+#include <game/client/components/menus.h>
+#include <game/client/components/skins.h>
 #include <game/client/components/sounds.h>
+#include <game/client/components/tclient/bindchat.h>
 #include <game/client/components/tclient/bindwheel.h>
 #include <game/client/components/tclient/trails.h>
+
 #include <game/client/gameclient.h>
 #include <game/client/render.h>
 #include <game/client/skin.h>
 #include <game/client/ui.h>
 #include <game/client/ui_listbox.h>
 #include <game/client/ui_scrollregion.h>
-#include <game/localization.h>
-
-#include "../binds.h"
-#include "../countryflags.h"
-#include "../menus.h"
-#include "../skins.h"
-#include "game/client/components/tclient/bindchat.h"
-#include "game/client/ui_rect.h"
 
 #include <vector>
 
