@@ -6,6 +6,8 @@
 
 #include "bindchat.h"
 
+static constexpr LOG_COLOR BINDCHAT_PRINT_COLOR{255, 255, 204};
+
 CBindChat::CBindChat()
 {
 	OnReset();
@@ -34,7 +36,6 @@ void CBindChat::ConAddBindchatEx(IConsole::IResult *pResult, void *pUserData)
 void CBindChat::ConBindchats(IConsole::IResult *pResult, void *pUserData)
 {
 	CBindChat *pThis = static_cast<CBindChat *>(pUserData);
-	char aBuf[BINDCHAT_MAX_NAME + BINDCHAT_MAX_CMD + 32];
 	if(pResult->NumArguments() == 1)
 	{
 		const char *pName = pResult->GetString(0);
@@ -42,21 +43,16 @@ void CBindChat::ConBindchats(IConsole::IResult *pResult, void *pUserData)
 		{
 			if(str_comp_nocase(Bind.m_aName, pName) == 0)
 			{
-				str_format(aBuf, sizeof(aBuf), "%s = %s", Bind.m_aName, Bind.m_aCommand);
-				pThis->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "bindchat", aBuf);
+				log_info_color(BINDCHAT_PRINT_COLOR, "bindchat", "%s = %s", Bind.m_aName, Bind.m_aCommand);
 				return;
 			}
 		}
-		str_format(aBuf, sizeof(aBuf), "%s is not bound", pName);
-		pThis->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "bindchat", aBuf);
+		log_info_color(BINDCHAT_PRINT_COLOR, "bindchat", "%s is not bound", pName);
 	}
 	else
 	{
 		for(const CBind &Bind : pThis->m_vBinds)
-		{
-			str_format(aBuf, sizeof(aBuf), "%s = %s", Bind.m_aName, Bind.m_aCommand);
-			pThis->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "bindchat", aBuf);
-		}
+			log_info_color(BINDCHAT_PRINT_COLOR, "bindchat", "%s = %s", Bind.m_aName, Bind.m_aCommand);
 	}
 }
 
@@ -65,7 +61,7 @@ void CBindChat::ConRemoveBindchat(IConsole::IResult *pResult, void *pUserData)
 	const char *aName = pResult->GetString(0);
 	CBindChat *pThis = static_cast<CBindChat *>(pUserData);
 	if(!pThis->RemoveBind(aName))
-		log_info("bindchat", "bindchat \"%s\" not found", aName);
+		log_info_color(BINDCHAT_PRINT_COLOR, "bindchat", "bindchat \"%s\" not found", aName);
 }
 
 void CBindChat::ConRemoveBindchatAll(IConsole::IResult *pResult, void *pUserData)
