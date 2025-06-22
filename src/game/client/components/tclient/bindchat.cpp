@@ -2,8 +2,9 @@
 
 #include <game/client/gameclient.h>
 
+#include <base/log.h>
+
 #include "bindchat.h"
-#include "base/log.h"
 
 CBindChat::CBindChat()
 {
