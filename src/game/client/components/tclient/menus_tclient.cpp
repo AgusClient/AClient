@@ -512,8 +512,7 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 		Section.x -= Padding * 0.5f;
 		Section.y -= Padding * 0.5f;
 		Section.y -= s_PrevScrollOffset.y - ScrollOffset.y;
-		float Shade = 0.0f;
-		Section.Draw(ColorRGBA(Shade, Shade, Shade, 0.25f), IGraphics::CORNER_ALL, 10.0f);
+		Section.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 10.0f);
 	}
 	s_PrevScrollOffset = ScrollOffset;
 	s_SectionBoxes.clear();
