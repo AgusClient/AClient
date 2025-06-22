@@ -1752,7 +1752,6 @@ void CMenus::RenderSettingsInfo(CUIRect MainView)
 			Client()->ViewLink("https://github.com/danielkempf");
 		RenderDevSkin(TeeRect.Center(), 50.0f, "greyfox", "greyfox", true, 0, 0, 2, false, ColorRGBA(0.00f, 0.09f, 1.00f, 1.00f), ColorRGBA(1.00f, 0.92f, 0.00f, 1.00f));
 	}
-
 	{
 		RightView.HSplitTop(CardSize, &DevCardRect, &RightView);
 		DevCardRect.VSplitLeft(CardSize, &TeeRect, &Label);
@@ -1774,21 +1773,19 @@ void CMenus::RenderSettingsInfo(CUIRect MainView)
 	RightView.VSplitMid(&LeftSettings, &RightSettings, MarginSmall);
 	RightView.HSplitTop(LineSize * 3.5f, nullptr, &RightView);
 
-	static int s_ShowSettings = IsFlagSet(g_Config.m_ClTClientSettingsTabs, TCLIENT_TAB_SETTINGS);
-	DoButton_CheckBoxAutoVMarginAndSet(&s_ShowSettings, TCLocalize("Settings"), &s_ShowSettings, &LeftSettings, LineSize);
-	SetFlag(g_Config.m_ClTClientSettingsTabs, TCLIENT_TAB_SETTINGS, s_ShowSettings);
-	static int s_ShowBindWheel = IsFlagSet(g_Config.m_ClTClientSettingsTabs, TCLIENT_TAB_BINDWHEEL);
-	DoButton_CheckBoxAutoVMarginAndSet(&s_ShowBindWheel, TCLocalize("Bind Wheel"), &s_ShowBindWheel, &RightSettings, LineSize);
-	SetFlag(g_Config.m_ClTClientSettingsTabs, TCLIENT_TAB_BINDWHEEL, s_ShowBindWheel);
-	static int s_ShowWarlist = IsFlagSet(g_Config.m_ClTClientSettingsTabs, TCLIENT_TAB_WARLIST);
-	DoButton_CheckBoxAutoVMarginAndSet(&s_ShowWarlist, TCLocalize("War List"), &s_ShowWarlist, &LeftSettings, LineSize);
-	SetFlag(g_Config.m_ClTClientSettingsTabs, TCLIENT_TAB_WARLIST, s_ShowWarlist);
-	static int s_ShowBindChat = IsFlagSet(g_Config.m_ClTClientSettingsTabs, TCLIENT_TAB_BINDCHAT);
-	DoButton_CheckBoxAutoVMarginAndSet(&s_ShowBindChat, TCLocalize("Chat Binds"), &s_ShowBindChat, &RightSettings, LineSize);
-	SetFlag(g_Config.m_ClTClientSettingsTabs, TCLIENT_TAB_BINDCHAT, s_ShowBindChat);
-	static int s_ShowStatusBar = IsFlagSet(g_Config.m_ClTClientSettingsTabs, TCLIENT_TAB_STATUSBAR);
-	DoButton_CheckBoxAutoVMarginAndSet(&s_ShowStatusBar, TCLocalize("Status Bar"), &s_ShowStatusBar, &LeftSettings, LineSize);
-	SetFlag(g_Config.m_ClTClientSettingsTabs, TCLIENT_TAB_STATUSBAR, s_ShowStatusBar);
+	const char *apTabNames[] = {
+		TCLocalize("Settings"),
+		TCLocalize("Bind Wheel"),
+		TCLocalize("War List"),
+		TCLocalize("Chat Binds"),
+		TCLocalize("Status Bar"),
+		TCLocalize("Info")};
+	static int s_aShowTabs[NUMBER_OF_TCLIENT_TABS] = {};
+	for(int i = 0; i < NUMBER_OF_TCLIENT_TABS; ++i)
+	{
+		DoButton_CheckBoxAutoVMarginAndSet(&s_aShowTabs[i], apTabNames[i], &s_aShowTabs[i], i % 2 == 0 ? &LeftSettings : &RightSettings, LineSize);
+		SetFlag(g_Config.m_ClTClientSettingsTabs, i, s_aShowTabs[i]);
+	}
 
 	RightView.HSplitTop(HeadlineHeight, &Label, &RightView);
 	Ui()->DoLabel(&Label, TCLocalize("Integration"), HeadlineFontSize, TEXTALIGN_ML);
