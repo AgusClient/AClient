@@ -197,6 +197,38 @@ void CConditional::ConReturn(IConsole::IResult *pResult, void *pUserData)
 	pThis->Console()->m_Return = true;
 }
 
+static int UnitLengthSeconds(char Unit)
+{
+	switch(Unit)
+	{
+	case 's':
+	case 'S': return 1;
+	case 'm':
+	case 'M': return 60;
+	case 'h':
+	case 'H': return 60 * 60;
+	case 'd':
+	case 'D': return 60 * 60 * 24;
+	default: return -1;
+	}
+}
+
+static int TimeFromStr(const char *pStr, char OutUnit)
+{
+	double Time = -1;
+	char InUnit = OutUnit;
+	std::sscanf(pStr, "%lf%c", &Time, &InUnit);
+	if(Time < 0)
+		return -1;
+	int InUnitLength = UnitLengthSeconds(InUnit);
+	if(InUnitLength < 0)
+		return -1;
+	int OutUnitLength = UnitLengthSeconds(OutUnit);
+	if(OutUnitLength < 0)
+		return -1;
+	return std::round(Time * (float)InUnitLength / (float)OutUnitLength);
+}
+
 void CConditional::OnConsoleInit()
 {
 	m_vVariables.emplace_back("l", [&](char *pOut, int Length) {
@@ -312,6 +344,18 @@ void CConditional::OnConsoleInit()
 		if(!Player.m_Active)
 			return str_copy(pOut, "ID not connected", Length);
 		return str_copy(pOut, Player.m_aName, Length);
+	});
+	m_vFunctions.emplace_back("seconds", [&](const char *pParam, char *pOut, int Length) {
+		return str_format(pOut, Length, "%d", TimeFromStr(pParam, 's'));
+	});
+	m_vFunctions.emplace_back("minutes", [&](const char *pParam, char *pOut, int Length) {
+		return str_format(pOut, Length, "%d", TimeFromStr(pParam, 'm'));
+	});
+	m_vFunctions.emplace_back("hours", [&](const char *pParam, char *pOut, int Length) {
+		return str_format(pOut, Length, "%d", TimeFromStr(pParam, 'h'));
+	});
+	m_vFunctions.emplace_back("days", [&](const char *pParam, char *pOut, int Length) {
+		return str_format(pOut, Length, "%d", TimeFromStr(pParam, 'd'));
 	});
 
 	Console()->Register("ifeq", "s[a] s[b] r[command]", CFGFLAG_CLIENT, ConIfeq, this, "Comapre 2 values, if equal run the command");
