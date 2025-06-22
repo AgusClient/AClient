@@ -184,7 +184,7 @@ void CMenus::RenderSettingsTClient(CUIRect MainView)
 
 	static int s_CurCustomTab = 0;
 
-	CUIRect TabBar, LeftView, RightView, Button, Label;
+	CUIRect TabBar, Button, Label;
 	int TabCount = NUMBER_OF_TCLIENT_TABS;
 	for(int Tab = 0; Tab < NUMBER_OF_TCLIENT_TABS; ++Tab)
 	{
@@ -218,7 +218,7 @@ void CMenus::RenderSettingsTClient(CUIRect MainView)
 			s_CurCustomTab = Tab;
 	}
 
-	MainView.HSplitTop(MarginSmall, nullptr, &MainView);
+	MainView.HSplitTop(Margin, nullptr, &MainView);
 
 	if(s_CurCustomTab == TCLIENT_TAB_SETTINGS)
 	{
@@ -227,7 +227,7 @@ void CMenus::RenderSettingsTClient(CUIRect MainView)
 
 	if(s_CurCustomTab == TCLIENT_TAB_BINDCHAT)
 	{
-		MainView.HSplitTop(MarginBetweenSections, nullptr, &MainView);
+		CUIRect LeftView, RightView;
 		MainView.VSplitMid(&LeftView, &RightView, Margin);
 
 		auto DoBindchatDefault = [&](CUIRect &Column, CBindChat::CBindDefault &BindDefault) {
@@ -259,12 +259,12 @@ void CMenus::RenderSettingsTClient(CUIRect MainView)
 
 		auto DoBindchatDefaults = [&](CUIRect &Column, const char *pTitle, std::vector<CBindChat::CBindDefault> &vBindchatDefaults)
 		{
-			Column.HSplitTop(MarginSmall, &Label, &Column);
+			Column.HSplitTop(HeadlineHeight, &Label, &Column);
 			Ui()->DoLabel(&Label, pTitle, HeadlineFontSize, TEXTALIGN_ML);
 			Column.HSplitTop(MarginSmall, nullptr, &Column);
 			for(CBindChat::CBindDefault &BindchatDefault : vBindchatDefaults)
 				DoBindchatDefault(Column, BindchatDefault);
-			Column.HSplitTop(HeadlineHeight, nullptr, &Column);
+			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 		};
 
 		float SizeL = 0.0f, SizeR = 0.0f;
@@ -281,7 +281,7 @@ void CMenus::RenderSettingsTClient(CUIRect MainView)
 
 	if(s_CurCustomTab == TCLIENT_TAB_BINDWHEEL)
 	{
-		MainView.HSplitTop(MarginBetweenSections, nullptr, &MainView);
+		CUIRect LeftView, RightView;
 		MainView.VSplitLeft(MainView.w / 2.1f, &LeftView, &RightView);
 
 		const float Radius = minimum(RightView.w, RightView.h) / 2.0f;
