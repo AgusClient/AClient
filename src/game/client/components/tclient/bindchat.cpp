@@ -4,9 +4,33 @@
 
 #include <base/log.h>
 
+#include <unordered_set>
+
+#include "base/system.h"
 #include "bindchat.h"
 
 static constexpr LOG_COLOR BINDCHAT_PRINT_COLOR{255, 255, 204};
+
+CBindChat::CBind::CBind(const char *pName, const char *pCommand)
+{
+	str_copy(m_aName, pName);
+	m_aParams[0] = '\0';
+	m_aHelp[0] = '\0';
+	str_copy(m_aCommand, pCommand);
+}
+
+bool CBindChat::CBind::CompContent(const CBind &Other) const
+{
+	if(m_IsEx != Other.m_IsEx)
+		return false;
+	if(str_comp(m_aCommand, Other.m_aCommand) != 0)
+		return false;
+	if(m_IsEx && str_comp(m_aParams, Other.m_aParams) != 0)
+		return false;
+	if(m_IsEx && str_comp(m_aHelp, Other.m_aHelp) != 0)
+		return false;
+	return true;
+}
 
 decltype(CBindChat::BIND_DEFAULTS) CBindChat::BIND_DEFAULTS = {
 	{"Kaomoji", {{"Shrug:", "!shrug", "say ¯\\_(ツ)_/¯"},
@@ -343,9 +367,29 @@ bool CBindChat::ChatDoAutocomplete(bool ShiftPressed)
 void CBindChat::ConfigSaveCallback(IConfigManager *pConfigManager, void *pUserData)
 {
 	CBindChat *pThis = (CBindChat *)pUserData;
-	pConfigManager->WriteLine("unbindchatall", ConfigDomain::TCLIENTCHATBINDS);
+
+	auto FCompare = [&](const CBindChat::CBind &A, const CBindChat::CBind &B) {
+		const int Res = str_utf8_comp_nocase(A.m_aName, B.m_aName);
+		return Res < 0 || (Res == 0 && str_comp(A.m_aName, B.m_aName) < 0);
+	};
+
+	std::vector<std::reference_wrapper<const CBindChat::CBind>> vDefaultBinds;
+	for(const auto &[_, vBindDefaults] : CBindChat::BIND_DEFAULTS)
+		for(const CBindChat::CBindDefault &BindDefault : vBindDefaults)
+			vDefaultBinds.emplace_back(BindDefault.m_Bind);
+	std::sort(vDefaultBinds.begin(), vDefaultBinds.end(), FCompare);
+
+	std::sort(pThis->m_vBinds.begin(), pThis->m_vBinds.end(), FCompare);
 	for(CBind &Bind : pThis->m_vBinds)
 	{
+		const auto It = std::lower_bound(vDefaultBinds.begin(), vDefaultBinds.end(), Bind, FCompare);
+		if(It != vDefaultBinds.end() && str_utf8_comp_nocase(It->get().m_aName, Bind.m_aName) == 0)
+		{
+			vDefaultBinds.erase(It);
+			if(Bind.CompContent(Bind)) // Don't write default binds
+				continue;
+		}
+
 		char aBuf[BINDCHAT_MAX_CMD * 2] = "";
 		char *pEnd = aBuf + sizeof(aBuf);
 		char *pDst;
@@ -381,6 +425,20 @@ void CBindChat::ConfigSaveCallback(IConfigManager *pConfigManager, void *pUserDa
 			str_escape(&pDst, Bind.m_aCommand, pEnd);
 			str_append(aBuf, "\"");
 		}
+		pConfigManager->WriteLine(aBuf, ConfigDomain::TCLIENTCHATBINDS);
+	}
+	for(const auto &Bind : vDefaultBinds)
+	{
+		char aBuf[BINDCHAT_MAX_CMD * 2 + 32] = "";
+		char *pEnd = aBuf + sizeof(aBuf);
+		char *pDst;
+		
+		str_append(aBuf, "unbindchat \"");
+		// Escape name
+		pDst = aBuf + str_length(aBuf);
+		str_escape(&pDst, Bind.get().m_aName, pEnd);
+		str_append(aBuf, "\"");
+		
 		pConfigManager->WriteLine(aBuf, ConfigDomain::TCLIENTCHATBINDS);
 	}
 }

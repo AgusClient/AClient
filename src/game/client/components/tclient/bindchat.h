@@ -29,13 +29,8 @@ public:
 		char m_aHelp[BINDCHAT_MAX_HELP];
 		char m_aCommand[BINDCHAT_MAX_CMD];
 		CBind() = default;
-		CBind(const char *pName, const char *pCommand)
-		{
-			str_copy(m_aName, pName);
-			m_aParams[0] = '\0';
-			m_aHelp[0] = '\0';
-			str_copy(m_aCommand, pCommand);
-		}
+		CBind(const char *pName, const char *pCommand);
+		bool CompContent(const CBind &Other) const;
 	};
 	class CBindDefault
 	{
