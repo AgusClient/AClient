@@ -201,8 +201,8 @@ void CMenus::RenderSettingsTClient(CUIRect MainView)
 	static CButtonContainer s_aPageTabs[NUMBER_OF_TCLIENT_TABS] = {};
 	const char *apTabNames[] = {
 		TCLocalize("Settings"),
-		TCLocalize("Bindwheel"),
-		TCLocalize("Warlist"),
+		TCLocalize("Bind Wheel"),
+		TCLocalize("War List"),
 		TCLocalize("Chat Binds"),
 		TCLocalize("Status Bar"),
 		TCLocalize("Info")};
@@ -1697,12 +1697,12 @@ void CMenus::RenderSettingsInfo(CUIRect MainView)
 	LeftView.HSplitTop(LineSize * 2.0f, &Button, &LeftView);
 	Button.VSplitMid(&WarlistFile, &ChatbindsFile, MarginSmall);
 
-	if(DoButtonLineSize_Menu(&s_Warlist, TCLocalize("Warlist"), 0, &WarlistFile, LineSize, false, 0, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
+	if(DoButtonLineSize_Menu(&s_Warlist, TCLocalize("War List"), 0, &WarlistFile, LineSize, false, 0, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
 	{
 		Storage()->GetCompletePath(IStorage::TYPE_SAVE, s_aConfigDomains[ConfigDomain::TCLIENTWARLIST].m_aConfigPath, aBuf, sizeof(aBuf));
 		Client()->ViewFile(aBuf);
 	}
-	if(DoButtonLineSize_Menu(&s_Chatbinds, TCLocalize("Chatbinds"), 0, &ChatbindsFile, LineSize, false, 0, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
+	if(DoButtonLineSize_Menu(&s_Chatbinds, TCLocalize("Chat Binds"), 0, &ChatbindsFile, LineSize, false, 0, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
 	{
 		Storage()->GetCompletePath(IStorage::TYPE_SAVE, s_aConfigDomains[ConfigDomain::TCLIENTCHATBINDS].m_aConfigPath, aBuf, sizeof(aBuf));
 		Client()->ViewFile(aBuf);
@@ -1778,10 +1778,10 @@ void CMenus::RenderSettingsInfo(CUIRect MainView)
 	DoButton_CheckBoxAutoVMarginAndSet(&s_ShowSettings, TCLocalize("Settings"), &s_ShowSettings, &LeftSettings, LineSize);
 	SetFlag(g_Config.m_ClTClientSettingsTabs, TCLIENT_TAB_SETTINGS, s_ShowSettings);
 	static int s_ShowBindWheel = IsFlagSet(g_Config.m_ClTClientSettingsTabs, TCLIENT_TAB_BINDWHEEL);
-	DoButton_CheckBoxAutoVMarginAndSet(&s_ShowBindWheel, TCLocalize("Bindwheel"), &s_ShowBindWheel, &RightSettings, LineSize);
+	DoButton_CheckBoxAutoVMarginAndSet(&s_ShowBindWheel, TCLocalize("Bind Wheel"), &s_ShowBindWheel, &RightSettings, LineSize);
 	SetFlag(g_Config.m_ClTClientSettingsTabs, TCLIENT_TAB_BINDWHEEL, s_ShowBindWheel);
 	static int s_ShowWarlist = IsFlagSet(g_Config.m_ClTClientSettingsTabs, TCLIENT_TAB_WARLIST);
-	DoButton_CheckBoxAutoVMarginAndSet(&s_ShowWarlist, TCLocalize("Warlist"), &s_ShowWarlist, &LeftSettings, LineSize);
+	DoButton_CheckBoxAutoVMarginAndSet(&s_ShowWarlist, TCLocalize("War List"), &s_ShowWarlist, &LeftSettings, LineSize);
 	SetFlag(g_Config.m_ClTClientSettingsTabs, TCLIENT_TAB_WARLIST, s_ShowWarlist);
 	static int s_ShowBindChat = IsFlagSet(g_Config.m_ClTClientSettingsTabs, TCLIENT_TAB_BINDCHAT);
 	DoButton_CheckBoxAutoVMarginAndSet(&s_ShowBindChat, TCLocalize("Chat Binds"), &s_ShowBindChat, &RightSettings, LineSize);
