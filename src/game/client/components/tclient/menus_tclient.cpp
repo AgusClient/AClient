@@ -196,7 +196,7 @@ void CMenus::RenderSettingsTClient(CUIRect MainView)
 		}
 	}
 
-	MainView.HSplitTop(LineSize * 1.2f, &TabBar, &MainView);
+	MainView.HSplitTop(LineSize, &TabBar, &MainView);
 	const float TabWidth = TabBar.w / TabCount;
 	static CButtonContainer s_aPageTabs[NUMBER_OF_TCLIENT_TABS] = {};
 	const char *apTabNames[] = {
