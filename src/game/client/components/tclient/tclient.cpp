@@ -348,6 +348,11 @@ void CTClient::OnConsoleInit()
 	Console()->Register("spec_id", "v[id]", CFGFLAG_CLIENT, ConSpecId, this, "Spectate a player by Id");
 
 	Console()->Register("emote_cycle", "", CFGFLAG_CLIENT, ConEmoteCycle, this, "Cycle through emotes");
+
+	Console()->Chain("tc_allow_any_resolution", [](IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData) {
+		pfnCallback(pResult, pCallbackUserData);
+		((CTClient *)pUserData)->SetForcedAspect();
+	}, this);
 }
 
 void CTClient::RandomBodyColor()
@@ -544,18 +549,15 @@ void CTClient::FinishTClientInfo()
 
 void CTClient::SetForcedAspect()
 {
-	return; // TODO: fix set forced aspect
+	// TODO: Fix flashing on windows
 	int State = Client()->State();
 	bool Force = true;
-	if(State == CClient::EClientState::STATE_DEMOPLAYBACK)
-	{
+	if(g_Config.m_ClAllowAnyRes == 0)
+		;
+	else if(State == CClient::EClientState::STATE_DEMOPLAYBACK)
 		Force = false;
-	}
-	else if(State == CClient::EClientState::STATE_ONLINE)
-	{
-		if(GameClient()->m_GameInfo.m_AllowZoom && !GameClient()->m_Menus.IsActive())
-			Force = false;
-	}
+	else if(State == CClient::EClientState::STATE_ONLINE && GameClient()->m_GameInfo.m_AllowZoom && !GameClient()->m_Menus.IsActive())
+		Force = false;
 	Graphics()->SetForcedAspect(Force);
 }
 
