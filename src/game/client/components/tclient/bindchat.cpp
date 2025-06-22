@@ -8,6 +8,48 @@
 
 static constexpr LOG_COLOR BINDCHAT_PRINT_COLOR{255, 255, 204};
 
+decltype(CBindChat::BIND_DEFAULTS) CBindChat::BIND_DEFAULTS = {
+	{ "Kaomoji", {
+		{ "Shrug:", "!shrug", "say ¯\\_(ツ)_/¯" },
+		{ "Flip:", "!flip", "say (╯°□°)╯︵ ┻━┻" },
+		{ "Unflip:", "!unflip", "say ┬─┬ノ( º _ ºノ)" },
+		{ "Cute:", "!cute", "say ૮ ˶ᵔ ᵕ ᵔ˶ ა" },
+		{ "Lenny:", "!lenny", "say ( ͡° ͜ʖ ͡°)" }
+	}},
+	{ "Warlist", {
+		{ "Add war name:", "!war", "war_name_index 1" },
+		{ "Add war clan:", "!warclan", "war_clan_index 1" },
+		{ "Add team name:", "!team", "war_name_index 2" },
+		{ "Add team clan:", "!teamclan", "war_clan_index 2" },
+		{ "Remove war name:", "!delwar", "remove_war_name_index 1" },
+		{ "Remove war name:", "!delwarclan", "remove_war_clan_index 1" },
+		{ "Remove team name:", "!delteam", "remove_war_name_index 2" },
+		{ "Remove team clan:", "!delteamclan", "remove_war_clan_index 2" },
+		{ "Add [group] [name] [reason]:", "!name", "war_name" },
+		{ "Add [group] [clan] [reason]:", "!clan", "war_clan" },
+		{ "Remove [group] [name]:", "!delname", "remove_war_name" },
+		{ "Remove [group] [clan]:", "!delclan", "remove_war_clan" }
+	}},
+	{ "Mod", {
+		{ "Mute ID:", "!mmute", "mod_rcon_mute" },
+		{ "Mute Name:", "!mmuten", "mod_rcon_mute_name" },
+		{ "Unmute Last:", "!munmutelast", "rcon unmute 0" },
+		{ "Kick ID:", "!mkick", "mod_rcon_kick" },
+		{ "Kick Name:", "!mkickn", "mod_rcon_kick_name" },
+		{ "Ban ID:", "!mban", "mod_rcon_ban" },
+		{ "Ban Name:", "!mbann", "mod_rcon_ban_name" },
+		{ "Unban Last:", "!munbanlast", "rcon unban 0" },
+		{ "Kill Ids:", "!mkill", "rcon mod_rcon_kill" },
+		{ "Kill Names:", "!mkilln", "rcon mod_rcon_kill_name" }
+	}},
+	{ "Other", {
+		{ "Translate:", "!translate", "translate" },
+		{ "Translate ID:", "!translateid", "translate_id" },
+		{ "Mute:", "!mute", "add_foe" },
+		{ "Unmute:", "!unmute", "remove_foe" }
+	}}
+};
+
 CBindChat::CBindChat()
 {
 	OnReset();
@@ -74,14 +116,9 @@ void CBindChat::ConBindchatDefaults(IConsole::IResult *pResult, void *pUserData)
 {
 	CBindChat *pThis = static_cast<CBindChat *>(pUserData);
 
-	for(const CBindDefault &BindDefault : s_aDefaultBindChatKaomoji)
-		pThis->AddBind(BindDefault.m_Bind);
-	for(const CBindDefault &BindDefault : s_aDefaultBindChatWarlist)
-		pThis->AddBind(BindDefault.m_Bind);
-	for(const CBindDefault &BindDefault : s_aDefaultBindChatOther)
-		pThis->AddBind(BindDefault.m_Bind);
-	for(const CBindDefault &BindDefault : s_aDefaultBindChatMod)
-		pThis->AddBind(BindDefault.m_Bind);
+	for (const auto &[_, vBindDefaults] : CBindChat::BIND_DEFAULTS)
+		for (const CBindChat::CBindDefault& BindDefault : vBindDefaults)
+			pThis->AddBind(BindDefault.m_Bind);
 }
 
 void CBindChat::AddBind(const char *pName, const char *pParams, const char *pHelp, const char *pCommand, bool IsEx)

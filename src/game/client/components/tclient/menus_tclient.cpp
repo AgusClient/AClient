@@ -32,6 +32,7 @@
 #include "../menus.h"
 #include "../skins.h"
 #include "game/client/components/tclient/bindchat.h"
+#include "game/client/ui_rect.h"
 
 #include <vector>
 
@@ -183,7 +184,7 @@ void CMenus::RenderSettingsTClient(CUIRect MainView)
 
 	static int s_CurCustomTab = 0;
 
-	CUIRect TabBar, Column, LeftView, RightView, Button, Label;
+	CUIRect TabBar, LeftView, RightView, Button, Label;
 	int TabCount = NUMBER_OF_TCLIENT_TABS;
 	for(int Tab = 0; Tab < NUMBER_OF_TCLIENT_TABS; ++Tab)
 	{
@@ -229,23 +230,21 @@ void CMenus::RenderSettingsTClient(CUIRect MainView)
 		MainView.HSplitTop(MarginBetweenSections, nullptr, &MainView);
 		MainView.VSplitMid(&LeftView, &RightView, Margin);
 
-		Column = LeftView;
-
-		const auto DoBindchat = [&](CLineInput &LineInput, const char *pLabel, const CBindChat::CBind &BindDefault) {
+		auto DoBindchatDefault = [&](CUIRect &Column, CBindChat::CBindDefault &BindDefault) {
 			Column.HSplitTop(MarginSmall, nullptr, &Column);
 			Column.HSplitTop(LineSize, &Button, &Column);
-			CBindChat::CBind *pOldBind = GameClient()->m_BindChat.GetBind(BindDefault.m_aCommand);
+			CBindChat::CBind *pOldBind = GameClient()->m_BindChat.GetBind(BindDefault.m_Bind.m_aCommand);
 			static char s_aTempName[BINDCHAT_MAX_NAME] = "";
 			char *pName;
 			if(pOldBind == nullptr)
 				pName = s_aTempName;
 			else
 				pName = pOldBind->m_aName;
-			if(DoEditBoxWithLabel(&LineInput, &Button, pLabel, BindDefault.m_aName, pName, BINDCHAT_MAX_NAME) && LineInput.IsActive())
+			if(DoEditBoxWithLabel(&BindDefault.m_LineInput, &Button, BindDefault.m_pTitle, BindDefault.m_Bind.m_aName, pName, BINDCHAT_MAX_NAME) && BindDefault.m_LineInput.IsActive())
 			{
 				if(!pOldBind && pName[0] != '\0')
 				{
-					auto BindNew = BindDefault;
+					auto BindNew = BindDefault.m_Bind;
 					str_copy(BindNew.m_aName, pName);
 					GameClient()->m_BindChat.RemoveBind(pName); // Prevent duplicates
 					GameClient()->m_BindChat.AddBind(BindNew);
@@ -258,41 +257,25 @@ void CMenus::RenderSettingsTClient(CUIRect MainView)
 			}
 		};
 
-		Column.HSplitTop(HeadlineHeight, &Label, &Column);
-		Ui()->DoLabel(&Label, TCLocalize("Kaomoji"), HeadlineFontSize, TEXTALIGN_ML);
-		Column.HSplitTop(MarginSmall, nullptr, &Column);
-
-		static const int s_KaomojiCount = sizeof(s_aDefaultBindChatKaomoji) / sizeof(s_aDefaultBindChatKaomoji[0]);
-		static CLineInput s_aKaomoji[s_KaomojiCount];
-		for(int i = 0; i < s_KaomojiCount; ++i)
+		auto DoBindchatDefaults = [&](CUIRect &Column, const char *pTitle, std::vector<CBindChat::CBindDefault> &vBindchatDefaults)
 		{
-			const CBindChat::CBindDefault &BindDefault = s_aDefaultBindChatKaomoji[i];
-			DoBindchat(s_aKaomoji[i], TCLocalize(BindDefault.m_pTitle), BindDefault.m_Bind);
-		}
+			Column.HSplitTop(MarginSmall, &Label, &Column);
+			Ui()->DoLabel(&Label, pTitle, HeadlineFontSize, TEXTALIGN_ML);
+			Column.HSplitTop(MarginSmall, nullptr, &Column);
+			for(CBindChat::CBindDefault &BindchatDefault : vBindchatDefaults)
+				DoBindchatDefault(Column, BindchatDefault);
+			Column.HSplitTop(HeadlineHeight, nullptr, &Column);
+		};
 
-		Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
-		Column.HSplitTop(HeadlineHeight, &Label, &Column);
-		Ui()->DoLabel(&Label, TCLocalize("Other Commands"), HeadlineFontSize, TEXTALIGN_ML);
-
-		static const int s_OtherCount = sizeof(s_aDefaultBindChatOther) / sizeof(s_aDefaultBindChatOther[0]);
-		static CLineInput s_Other[s_OtherCount];
-		for(int i = 0; i < s_OtherCount; ++i)
+		float SizeL = 0.0f, SizeR = 0.0f;
+		for (auto &[pTitle, vBindDefaults] : CBindChat::BIND_DEFAULTS)
 		{
-			const CBindChat::CBindDefault &BindDefault = s_aDefaultBindChatOther[i];
-			DoBindchat(s_Other[i], TCLocalize(BindDefault.m_pTitle), BindDefault.m_Bind);
-		}
-
-		Column = RightView;
-
-		Column.HSplitTop(HeadlineHeight, &Label, &Column);
-		Ui()->DoLabel(&Label, TCLocalize("Warlist"), HeadlineFontSize, TEXTALIGN_ML);
-
-		static const int s_WarlistCount = sizeof(s_aDefaultBindChatWarlist) / sizeof(s_aDefaultBindChatWarlist[0]);
-		static CLineInput s_Warlist[s_WarlistCount];
-		for(int i = 0; i < s_WarlistCount; ++i)
-		{
-			const CBindChat::CBindDefault &BindDefault = s_aDefaultBindChatWarlist[i];
-			DoBindchat(s_Warlist[i], TCLocalize(BindDefault.m_pTitle), BindDefault.m_Bind);
+			if(str_comp(pTitle, "Mod") == 0)
+				continue;
+			float &Size = SizeL > SizeR ? SizeR : SizeL;
+			CUIRect &Column = SizeL > SizeR ? RightView : LeftView;
+			DoBindchatDefaults(Column, pTitle, vBindDefaults);
+			Size += vBindDefaults.size() * (MarginSmall + LineSize) + HeadlineHeight + HeadlineFontSize + MarginSmall * 2.0f;
 		}
 	}
 

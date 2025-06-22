@@ -2,6 +2,7 @@
 #define GAME_CLIENT_COMPONENTS_TCLIENT_BINDCHAT_H
 
 #include <game/client/component.h>
+#include <game/client/lineinput.h>
 
 #include <engine/console.h>
 
@@ -41,12 +42,14 @@ public:
 	public:
 		const char *m_pTitle;
 		CBind m_Bind;
+		CLineInput m_LineInput;
 		CBindDefault(const char *pTitle, const char *pName, const char *pCommand)
 		{
 			m_pTitle = pTitle;
 			m_Bind = CBind(pName, pCommand);
 		}
 	};
+	static std::vector<std::pair<const char *, std::vector<CBindDefault>>> BIND_DEFAULTS;
 
 private:
 	static void ConAddBindchat(IConsole::IResult *pResult, void *pUserData);
@@ -79,49 +82,6 @@ public:
 	bool CheckBindChat(const char *pText);
 	bool ChatDoBinds(const char *pText);
 	bool ChatDoAutocomplete(bool ShiftPressed);
-};
-
-static CBindChat::CBindDefault s_aDefaultBindChatKaomoji[] = {
-	{"Shrug:", "!shrug", "say ¯\\_(ツ)_/¯"},
-	{"Flip:", "!flip", "say (╯°□°)╯︵ ┻━┻"},
-	{"Unflip:", "!unflip", "say ┬─┬ノ( º _ ºノ)"},
-	{"Cute:", "!cute", "say ૮ ˶ᵔ ᵕ ᵔ˶ ა"},
-	{"Lenny:", "!lenny", "say ( ͡° ͜ʖ ͡°)"},
-};
-
-static CBindChat::CBindDefault s_aDefaultBindChatWarlist[] = {
-	{"Add war name", "!war", "war_name_index 1"},
-	{"Add war clan", "!warclan", "war_clan_index 1"},
-	{"Add team name", "!team", "war_name_index 2"},
-	{"Add team clan", "!teamclan", "war_clan_index 2"},
-	{"Remove war name", "!delwar", "remove_war_name_index 1"},
-	{"Remove war name", "!delwarclan", "remove_war_clan_index 1"},
-	{"Remove team name", "!delteam", "remove_war_name_index 2"},
-	{"Remove team clan", "!delteamclan", "remove_war_clan_index 2"},
-	{"Add [group] [name] [reason]", "!name", "war_name"},
-	{"Add [group] [clan] [reason]", "!clan", "war_clan"},
-	{"Remove [group] [name]", "!delname", "remove_war_name"},
-	{"Remove [group] [clan]", "!delclan", "remove_war_clan"},
-};
-
-static CBindChat::CBindDefault s_aDefaultBindChatMod[] = {
-	{"Mute ID:", "!mmute", "mod_rcon_mute"},
-	{"Mute Name:", "!mmuten", "mod_rcon_mute_name"},
-	{"Unmute Last:", "!munmutelast", "rcon unmute 0"},
-	{"Kick ID:", "!mkick", "mod_rcon_kick"},
-	{"Kick Name:", "!mkickn", "mod_rcon_kick_name"},
-	{"Ban ID:", "!mban", "mod_rcon_ban"},
-	{"Ban Name:", "!mbann", "mod_rcon_ban_name"},
-	{"Unban Last:", "!munbanlast", "rcon unban 0"},
-	{"Kill Ids:", "!mkill", "rcon mod_rcon_kill"},
-	{"Kill Names:", "!mkilln", "rcon mod_rcon_kill_name"},
-};
-
-static CBindChat::CBindDefault s_aDefaultBindChatOther[] = {
-	{"Translate:", "!translate", "translate"},
-	{"Translate ID:", "!translateid", "translate_id"},
-	{"Mute:", "!mute", "add_foe"},
-	{"Unmute:", "!unmute", "remove_foe"},
 };
 
 #endif
