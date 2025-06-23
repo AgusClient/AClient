@@ -349,10 +349,12 @@ void CTClient::OnConsoleInit()
 
 	Console()->Register("emote_cycle", "", CFGFLAG_CLIENT, ConEmoteCycle, this, "Cycle through emotes");
 
-	Console()->Chain("tc_allow_any_resolution", [](IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData) {
-		pfnCallback(pResult, pCallbackUserData);
-		((CTClient *)pUserData)->SetForcedAspect();
-	}, this);
+	Console()->Chain(
+		"tc_allow_any_resolution", [](IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData) {
+			pfnCallback(pResult, pCallbackUserData);
+			((CTClient *)pUserData)->SetForcedAspect();
+		},
+		this);
 }
 
 void CTClient::RandomBodyColor()
