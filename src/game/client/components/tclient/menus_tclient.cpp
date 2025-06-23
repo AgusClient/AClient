@@ -1778,7 +1778,7 @@ void CMenus::RenderSettingsInfo(CUIRect MainView)
 		TCLocalize("Status Bar"),
 		TCLocalize("Info")};
 	static int s_aShowTabs[NUMBER_OF_TCLIENT_TABS] = {};
-	for(int i = 0; i < NUMBER_OF_TCLIENT_TABS; ++i)
+	for(int i = 0; i < NUMBER_OF_TCLIENT_TABS - 1; ++i)
 	{
 		DoButton_CheckBoxAutoVMarginAndSet(&s_aShowTabs[i], apTabNames[i], &s_aShowTabs[i], i % 2 == 0 ? &LeftSettings : &RightSettings, LineSize);
 		SetFlag(g_Config.m_ClTClientSettingsTabs, i, s_aShowTabs[i]);
