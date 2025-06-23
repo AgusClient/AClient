@@ -705,16 +705,16 @@ Remove team clan:
 == 
 
 Add [group] [name] [reason]:
-== 
+== Añadir [grupo] [nombre] [razón]
 
 Add [group] [clan] [reason]:
-== 
+== Añadir [grupo] [clan] [razón]
 
 Remove [group] [name]:
-== 
+== Quitar [grupo] [nombre]
 
 Remove [group] [clan]:
-== 
+== Quitar [grupo] [clan]
 
 Mod
 == 

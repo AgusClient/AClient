@@ -714,16 +714,16 @@ Remove team clan:
 == 
 
 Add [group] [name] [reason]:
-== 
+== Добавить [группа] [клан] [причина]:
 
 Add [group] [clan] [reason]:
-== 
+== Добавить [группа] [клан] [причина]:
 
 Remove [group] [name]:
-== 
+== Убрать игрока [группа] [имя]:
 
 Remove [group] [clan]:
-== 
+== Убрать клан [группа] [клан]:
 
 Mod
 == 
@@ -765,10 +765,10 @@ Translate ID:
 == 
 
 Unmute:
-== 
+== Quitar silencio:
 
 Bind Wheel
-== 
+== Колесо биндов
 
 War List
 == 
