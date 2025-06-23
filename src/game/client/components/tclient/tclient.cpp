@@ -542,6 +542,7 @@ void CTClient::FinishTClientInfo()
 			m_aVersionStr[0] = '0';
 			m_aVersionStr[1] = '\0';
 		}
+		m_FetchedTClientInfo = true;
 	}
 
 	json_value_free(pJson);
