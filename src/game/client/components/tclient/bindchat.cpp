@@ -1,12 +1,11 @@
 #include <engine/shared/config.h>
 
 #include <game/client/gameclient.h>
+#include <game/localization.h>
 
 #include <base/log.h>
+#include <base/system.h>
 
-#include <unordered_set>
-
-#include "base/system.h"
 #include "bindchat.h"
 
 static constexpr LOG_COLOR BINDCHAT_PRINT_COLOR{255, 255, 204};
@@ -31,39 +30,47 @@ bool CBindChat::CBind::CompContent(const CBind &Other) const
 		return false;
 	return true;
 }
-
 decltype(CBindChat::BIND_DEFAULTS) CBindChat::BIND_DEFAULTS = {
-	{"Kaomoji", {{"Shrug:", "!shrug", "say ¯\\_(ツ)_/¯"},
-			    {"Flip:", "!flip", "say (╯°□°)╯︵ ┻━┻"},
-			    {"Unflip:", "!unflip", "say ┬─┬ノ( º _ ºノ)"},
-			    {"Cute:", "!cute", "say ૮ ˶ᵔ ᵕ ᵔ˶ ა"},
-			    {"Lenny:", "!lenny", "say ( ͡° ͜ʖ ͡°)"}}},
-	{"Warlist", {{"Add war name:", "!war", "war_name_index 1"},
-			    {"Add war clan:", "!warclan", "war_clan_index 1"},
-			    {"Add team name:", "!team", "war_name_index 2"},
-			    {"Add team clan:", "!teamclan", "war_clan_index 2"},
-			    {"Remove war name:", "!delwar", "remove_war_name_index 1"},
-			    {"Remove war name:", "!delwarclan", "remove_war_clan_index 1"},
-			    {"Remove team name:", "!delteam", "remove_war_name_index 2"},
-			    {"Remove team clan:", "!delteamclan", "remove_war_clan_index 2"},
-			    {"Add [group] [name] [reason]:", "!name", "war_name"},
-			    {"Add [group] [clan] [reason]:", "!clan", "war_clan"},
-			    {"Remove [group] [name]:", "!delname", "remove_war_name"},
-			    {"Remove [group] [clan]:", "!delclan", "remove_war_clan"}}},
-	{"Mod", {{"Mute ID:", "!mmute", "mod_rcon_mute"},
-			{"Mute Name:", "!mmuten", "mod_rcon_mute_name"},
-			{"Unmute Last:", "!munmutelast", "rcon unmute 0"},
-			{"Kick ID:", "!mkick", "mod_rcon_kick"},
-			{"Kick Name:", "!mkickn", "mod_rcon_kick_name"},
-			{"Ban ID:", "!mban", "mod_rcon_ban"},
-			{"Ban Name:", "!mbann", "mod_rcon_ban_name"},
-			{"Unban Last:", "!munbanlast", "rcon unban 0"},
-			{"Kill Ids:", "!mkill", "rcon mod_rcon_kill"},
-			{"Kill Names:", "!mkilln", "rcon mod_rcon_kill_name"}}},
-	{"Other", {{"Translate:", "!translate", "translate"},
-			  {"Translate ID:", "!translateid", "translate_id"},
-			  {"Mute:", "!mute", "add_foe"},
-			  {"Unmute:", "!unmute", "remove_foe"}}}};
+	{TCLocalize("Kaomoji"), {
+					{TCLocalize("Shrug:"), "!shrug", "say ¯\\_(ツ)_/¯"},
+					{TCLocalize("Flip:"), "!flip", "say (╯°□°)╯︵ ┻━┻"},
+					{TCLocalize("Unflip:"), "!unflip", "say ┬─┬ノ( º _ ºノ)"},
+					{TCLocalize("Cute:"), "!cute", "say ૮ ˶ᵔ ᵕ ᵔ˶ ა"},
+					{TCLocalize("Lenny:"), "!lenny", "say ( ͡° ͜ʖ ͡°)"},
+				}},
+	{TCLocalize("Warlist"), {
+					{TCLocalize("Add war name:"), "!war", "war_name_index 1"},
+					{TCLocalize("Add war clan:"), "!warclan", "war_clan_index 1"},
+					{TCLocalize("Add team name:"), "!team", "war_name_index 2"},
+					{TCLocalize("Add team clan:"), "!teamclan", "war_clan_index 2"},
+					{TCLocalize("Remove war name:"), "!delwar", "remove_war_name_index 1"},
+					{TCLocalize("Remove war name:"), "!delwarclan", "remove_war_clan_index 1"},
+					{TCLocalize("Remove team name:"), "!delteam", "remove_war_name_index 2"},
+					{TCLocalize("Remove team clan:"), "!delteamclan", "remove_war_clan_index 2"},
+					{TCLocalize("Add [group] [name] [reason]:"), "!name", "war_name"},
+					{TCLocalize("Add [group] [clan] [reason]:"), "!clan", "war_clan"},
+					{TCLocalize("Remove [group] [name]:"), "!delname", "remove_war_name"},
+					{TCLocalize("Remove [group] [clan]:"), "!delclan", "remove_war_clan"},
+				}},
+	{TCLocalize("Mod"), {
+				    {TCLocalize("Mute ID:"), "!mmute", "mod_rcon_mute"},
+				    {TCLocalize("Mute Name:"), "!mmuten", "mod_rcon_mute_name"},
+				    {TCLocalize("Unmute Last:"), "!munmutelast", "rcon unmute 0"},
+				    {TCLocalize("Kick ID:"), "!mkick", "mod_rcon_kick"},
+				    {TCLocalize("Kick Name:"), "!mkickn", "mod_rcon_kick_name"},
+				    {TCLocalize("Ban ID:"), "!mban", "mod_rcon_ban"},
+				    {TCLocalize("Ban Name:"), "!mbann", "mod_rcon_ban_name"},
+				    {TCLocalize("Unban Last:"), "!munbanlast", "rcon unban 0"},
+				    {TCLocalize("Kill Ids:"), "!mkill", "rcon mod_rcon_kill"},
+				    {TCLocalize("Kill Names:"), "!mkilln", "rcon mod_rcon_kill_name"},
+			    }},
+	{TCLocalize("Other"), {
+				      {TCLocalize("Translate:"), "!translate", "translate"},
+				      {TCLocalize("Translate ID:"), "!translateid", "translate_id"},
+				      {TCLocalize("Mute:"), "!mute", "add_foe"},
+				      {TCLocalize("Unmute:"), "!unmute", "remove_foe"},
+			      }},
+};
 
 CBindChat::CBindChat()
 {
@@ -432,13 +439,13 @@ void CBindChat::ConfigSaveCallback(IConfigManager *pConfigManager, void *pUserDa
 		char aBuf[BINDCHAT_MAX_CMD * 2 + 32] = "";
 		char *pEnd = aBuf + sizeof(aBuf);
 		char *pDst;
-		
+
 		str_append(aBuf, "unbindchat \"");
 		// Escape name
 		pDst = aBuf + str_length(aBuf);
 		str_escape(&pDst, Bind.get().m_aName, pEnd);
 		str_append(aBuf, "\"");
-		
+
 		pConfigManager->WriteLine(aBuf, ConfigDomain::TCLIENTCHATBINDS);
 	}
 }
