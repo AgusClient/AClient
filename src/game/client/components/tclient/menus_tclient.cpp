@@ -422,7 +422,7 @@ void CMenus::RenderSettingsTClient(CUIRect MainView)
 		Ui()->DoLabel(&Label, TCLocalize("Use middle mouse select without copy"), FontSize, TEXTALIGN_ML);
 
 		// Do Settings Key
-		CKeyInfo Key = CKeyInfo{"Bind Wheel Key", "+bindwheel", 0, 0};
+		CKeyInfo Key = CKeyInfo{TCLocalize("Bind Wheel Key"), "+bindwheel", 0, 0};
 		for(int Mod = 0; Mod < CBinds::MODIFIER_COMBINATION_COUNT; Mod++)
 		{
 			for(int KeyId = 0; KeyId < KEY_LAST; KeyId++)
@@ -617,7 +617,7 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 	// ***** Tiny Tee's ***** //
 	static std::vector<CButtonContainer> s_vButtonContainersTinyTees = {{}, {}, {}};
 	int Value = g_Config.m_ClTinyTees ? (g_Config.m_ClTinyTeesOthers ? 2 : 1) : 0;
-	if(DoLine_RadioMenu(Column, Localize("Tiny Tees"),
+	if(DoLine_RadioMenu(Column, TCLocalize("Tiny Tees"),
 		   s_vButtonContainersTinyTees,
 		   {Localize("None"), Localize("Own"), Localize("All")},
 		   {0, 1, 2},
@@ -977,7 +977,7 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClRenderGhostAsCircle, TCLocalize("Render ghosts as circles"), &g_Config.m_ClRenderGhostAsCircle, &Column, LineSize);
 
 	{
-		static CKeyInfo s_Key = CKeyInfo{"Toggle ghosts key", "toggle tc_show_others_ghosts 0 1", 0, 0};
+		static CKeyInfo s_Key = CKeyInfo{TCLocalize("Toggle ghosts key"), "toggle tc_show_others_ghosts 0 1", 0, 0};
 		s_Key.m_ModifierCombination = s_Key.m_KeyId = 0;
 		for(int Mod = 0; Mod < CBinds::MODIFIER_COMBINATION_COUNT; Mod++)
 		{
@@ -1113,7 +1113,7 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 
 	{
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		static CKeyInfo s_Key = CKeyInfo{"Draw where mouse is", "+bg_draw", 0, 0};
+		static CKeyInfo s_Key = CKeyInfo{TCLocalize("Draw where mouse is"), "+bg_draw", 0, 0};
 		s_Key.m_ModifierCombination = s_Key.m_KeyId = 0;
 		for(int Mod = 0; Mod < CBinds::MODIFIER_COMBINATION_COUNT; Mod++)
 		{
