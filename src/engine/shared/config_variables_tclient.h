@@ -226,7 +226,7 @@ MACRO_CONFIG_STR(ClTranslateEndpoint, tc_translate_endpoint, 256, "", CFGFLAG_CL
 MACRO_CONFIG_STR(ClTranslateKey, tc_translate_key, 256, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "For backends which need it, api key to use")
 
 // Animations
-MACRO_CONFIG_INT(ClAnimateWheelTime, tc_animate_wheel_time, 200, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Duration of emote and bind wheel animations, in milliseconds (0 == no animation, 1000 = 1 second)")
+MACRO_CONFIG_INT(ClAnimateWheelTime, tc_animate_wheel_time, 80, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Duration of emote and bind wheel animations, in milliseconds (0 == no animation, 1000 = 1 second)")
 
 // Pets
 MACRO_CONFIG_INT(ClPetShow, tc_pet_show, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show a pet")
