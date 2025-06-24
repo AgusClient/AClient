@@ -151,7 +151,6 @@ void CGameClient::OnConsoleInit()
 					      &m_PlayerIndicator,
 					      &m_TClient, // Must be before chat
 					      &m_Mod,
-					      //&m_Translate,
 					      &m_Hud,
 					      &m_Spectator,
 					      &m_Emoticon,
