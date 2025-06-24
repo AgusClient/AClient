@@ -176,7 +176,6 @@ public:
 	CDamageInd m_DamageInd;
 	CTouchControls m_TouchControls;
 	CVoting m_Voting;
-	CVerify m_Verify;
 	CSpectator m_Spectator;
 
 	CPlayers m_Players;

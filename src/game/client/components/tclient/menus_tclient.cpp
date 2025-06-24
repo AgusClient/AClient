@@ -427,7 +427,7 @@ void CMenus::RenderSettingsTClient(CUIRect MainView)
 		{
 			for(int KeyId = 0; KeyId < KEY_LAST; KeyId++)
 			{
-				const char *pBind = m_pClient->m_Binds.Get(KeyId, Mod);
+				const char *pBind = GameClient()->m_Binds.Get(KeyId, Mod);
 				if(!pBind[0])
 					continue;
 
@@ -453,9 +453,9 @@ void CMenus::RenderSettingsTClient(CUIRect MainView)
 		if(NewId != OldId || NewModifierCombination != OldModifierCombination)
 		{
 			if(OldId != 0 || NewId == 0)
-				m_pClient->m_Binds.Bind(OldId, "", false, OldModifierCombination);
+				GameClient()->m_Binds.Bind(OldId, "", false, OldModifierCombination);
 			if(NewId != 0)
-				m_pClient->m_Binds.Bind(NewId, Key.m_pCommand, false, NewModifierCombination);
+				GameClient()->m_Binds.Bind(NewId, Key.m_pCommand, false, NewModifierCombination);
 		}
 		LeftView.HSplitBottom(LineSize, &LeftView, &Button);
 
@@ -983,7 +983,7 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 		{
 			for(int KeyId = 0; KeyId < KEY_LAST; KeyId++)
 			{
-				const char *pBind = m_pClient->m_Binds.Get(KeyId, Mod);
+				const char *pBind = GameClient()->m_Binds.Get(KeyId, Mod);
 				if(!pBind[0])
 					continue;
 
@@ -1007,9 +1007,9 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 		if(NewId != OldId || NewModifierCombination != OldModifierCombination)
 		{
 			if(OldId != 0 || NewId == 0)
-				m_pClient->m_Binds.Bind(OldId, "", false, OldModifierCombination);
+				GameClient()->m_Binds.Bind(OldId, "", false, OldModifierCombination);
 			if(NewId != 0)
-				m_pClient->m_Binds.Bind(NewId, s_Key.m_pCommand, false, NewModifierCombination);
+				GameClient()->m_Binds.Bind(NewId, s_Key.m_pCommand, false, NewModifierCombination);
 		}
 		Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
 	}
@@ -1119,7 +1119,7 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 		{
 			for(int KeyId = 0; KeyId < KEY_LAST; KeyId++)
 			{
-				const char *pBind = m_pClient->m_Binds.Get(KeyId, Mod);
+				const char *pBind = GameClient()->m_Binds.Get(KeyId, Mod);
 				if(!pBind[0])
 					continue;
 
@@ -1143,9 +1143,9 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 		if(NewId != OldId || NewModifierCombination != OldModifierCombination)
 		{
 			if(OldId != 0 || NewId == 0)
-				m_pClient->m_Binds.Bind(OldId, "", false, OldModifierCombination);
+				GameClient()->m_Binds.Bind(OldId, "", false, OldModifierCombination);
 			if(NewId != 0)
-				m_pClient->m_Binds.Bind(NewId, s_Key.m_pCommand, false, NewModifierCombination);
+				GameClient()->m_Binds.Bind(NewId, s_Key.m_pCommand, false, NewModifierCombination);
 		}
 		Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
 	}
@@ -1346,7 +1346,7 @@ void CMenus::RenderSettingsWarList(CUIRect MainView)
 		}
 	}
 
-	Ui()->DoEditBox_Search(&s_EntriesFilterInput, &EntriesSearch, 14.0f, !Ui()->IsPopupOpen() && !m_pClient->m_GameConsole.IsActive());
+	Ui()->DoEditBox_Search(&s_EntriesFilterInput, &EntriesSearch, 14.0f, !Ui()->IsPopupOpen() && !GameClient()->m_GameConsole.IsActive());
 
 	// ======WAR ENTRY EDITING======
 	Column2.HSplitTop(HeadlineHeight, &Label, &Column2);
@@ -1578,10 +1578,10 @@ void CMenus::RenderSettingsWarList(CUIRect MainView)
 
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
-		if(!m_pClient->m_Snap.m_apPlayerInfos[i])
+		if(!GameClient()->m_Snap.m_apPlayerInfos[i])
 			continue;
 
-		CTeeRenderInfo TeeInfo = m_pClient->m_aClients[i].m_RenderInfo;
+		CTeeRenderInfo TeeInfo = GameClient()->m_aClients[i].m_RenderInfo;
 
 		const CListboxItem Item = s_PlayerListBox.DoNextItem(&s_vPlayerItemIds[i], false);
 		if(!Item.m_Visible)
@@ -1811,7 +1811,7 @@ void CMenus::RenderSettingsProfiles(CUIRect MainView)
 
 	// skin info
 	CTeeRenderInfo OwnSkinInfo;
-	const CSkin *pSkin = m_pClient->m_Skins.Find(pSkinName);
+	const CSkin *pSkin = GameClient()->m_Skins.Find(pSkinName);
 	OwnSkinInfo.m_OriginalRenderSkin = pSkin->m_OriginalSkin;
 	OwnSkinInfo.m_ColorableRenderSkin = pSkin->m_ColorableSkin;
 	OwnSkinInfo.m_SkinMetrics = pSkin->m_Metrics;
@@ -1868,7 +1868,7 @@ void CMenus::RenderSettingsProfiles(CUIRect MainView)
 	FlagRect.HSplitBottom(25.0f, nullptr, &FlagRect);
 	FlagRect.y -= 10.0f;
 	ColorRGBA Color(1.0f, 1.0f, 1.0f, 1.0f);
-	m_pClient->m_CountryFlags.Render(m_Dummy ? g_Config.m_ClDummyCountry : g_Config.m_PlayerCountry, Color, FlagRect.x, FlagRect.y, FlagRect.w, FlagRect.h);
+	GameClient()->m_CountryFlags.Render(m_Dummy ? g_Config.m_ClDummyCountry : g_Config.m_PlayerCountry, Color, FlagRect.x, FlagRect.y, FlagRect.w, FlagRect.h);
 
 	bool DoSkin = g_Config.m_ClProfileSkin;
 	bool DoColors = g_Config.m_ClProfileColors;
@@ -1891,7 +1891,7 @@ void CMenus::RenderSettingsProfiles(CUIRect MainView)
 
 		if(DoSkin && strlen(LoadProfile.m_SkinName) != 0)
 		{
-			const CSkin *pLoadSkin = m_pClient->m_Skins.Find(LoadProfile.m_SkinName);
+			const CSkin *pLoadSkin = GameClient()->m_Skins.Find(LoadProfile.m_SkinName);
 			OwnSkinInfo.m_OriginalRenderSkin = pLoadSkin->m_OriginalSkin;
 			OwnSkinInfo.m_ColorableRenderSkin = pLoadSkin->m_ColorableSkin;
 			OwnSkinInfo.m_SkinMetrics = pLoadSkin->m_Metrics;
@@ -1934,7 +1934,7 @@ void CMenus::RenderSettingsProfiles(CUIRect MainView)
 		int RenderFlag = m_Dummy ? g_Config.m_ClDummyCountry : g_Config.m_PlayerCountry;
 		if(DoFlag && LoadProfile.m_CountryFlag != -2)
 			RenderFlag = LoadProfile.m_CountryFlag;
-		m_pClient->m_CountryFlags.Render(RenderFlag, Color, FlagRect.x, FlagRect.y, FlagRect.w, FlagRect.h);
+		GameClient()->m_CountryFlags.Render(RenderFlag, Color, FlagRect.x, FlagRect.y, FlagRect.w, FlagRect.h);
 
 		str_format(aName, sizeof(aName), "%s", m_Dummy ? g_Config.m_ClDummyName : g_Config.m_PlayerName);
 		str_format(aClan, sizeof(aClan), "%s", m_Dummy ? g_Config.m_ClDummyClan : g_Config.m_PlayerClan);
@@ -2095,7 +2095,7 @@ void CMenus::RenderSettingsProfiles(CUIRect MainView)
 		else
 			str_copy(RenderSkin, CurrentProfile.m_SkinName, sizeof(RenderSkin));
 
-		const CSkin *pSkinToBeDraw = m_pClient->m_Skins.Find(RenderSkin);
+		const CSkin *pSkinToBeDraw = GameClient()->m_Skins.Find(RenderSkin);
 
 		CListboxItem Item = s_ListBox.DoNextItem(&s_Indexs[i], s_SelectedProfile >= 0 && (size_t)s_SelectedProfile == i);
 
@@ -2143,7 +2143,7 @@ void CMenus::RenderSettingsProfiles(CUIRect MainView)
 			SLabelProperties Props;
 			Props.m_MaxWidth = Item.m_Rect.w;
 			if(CurrentProfile.m_CountryFlag != -2)
-				m_pClient->m_CountryFlags.Render(CurrentProfile.m_CountryFlag, Color, FlagRect.x, FlagRect.y, FlagRect.w, FlagRect.h);
+				GameClient()->m_CountryFlags.Render(CurrentProfile.m_CountryFlag, Color, FlagRect.x, FlagRect.y, FlagRect.w, FlagRect.h);
 
 			if(CurrentProfile.m_BodyColor != -1 && CurrentProfile.m_FeetColor != -1)
 			{
@@ -2424,9 +2424,9 @@ void CMenus::RenderDevSkin(vec2 RenderPos, float Size, const char *pSkinName, co
 	float DefTick = std::fmod(s_Time, 1.0f);
 
 	CTeeRenderInfo SkinInfo;
-	const CSkin *pSkin = m_pClient->m_Skins.Find(pSkinName);
+	const CSkin *pSkin = GameClient()->m_Skins.Find(pSkinName);
 	if(str_comp(pSkin->GetName(), pSkinName) != 0)
-		pSkin = m_pClient->m_Skins.Find(pBackupSkin);
+		pSkin = GameClient()->m_Skins.Find(pBackupSkin);
 
 	SkinInfo.m_OriginalRenderSkin = pSkin->m_OriginalSkin;
 	SkinInfo.m_ColorableRenderSkin = pSkin->m_ColorableSkin;

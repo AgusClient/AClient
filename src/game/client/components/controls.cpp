@@ -216,8 +216,8 @@ int CControls::SnapInput(int *pData)
 
 		// set the target anyway though so that we can keep seeing our surroundings,
 		// even if chat or menu are activated
-		vec2 Pos = m_pClient->m_Controls.m_aMousePos[g_Config.m_ClDummy];
-		if(g_Config.m_ClScaleMouseDistance && !m_pClient->m_Snap.m_SpecInfo.m_Active)
+		vec2 Pos = GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy];
+		if(g_Config.m_ClScaleMouseDistance && !GameClient()->m_Snap.m_SpecInfo.m_Active)
 		{
 			const int MaxDistance = g_Config.m_ClDyncam ? g_Config.m_ClDyncamMaxDistance : g_Config.m_ClMouseMaxDistance;
 			if(MaxDistance > 5 && MaxDistance < 1000) // Don't scale if angle bind or reduces precision
@@ -237,13 +237,13 @@ int CControls::SnapInput(int *pData)
 		vec2 Pos;
 		if(g_Config.m_ClSubTickAiming && m_aMousePosOnAction[g_Config.m_ClDummy] != vec2(0.0f, 0.0f))
 		{
-			Pos = m_pClient->m_Controls.m_aMousePos[g_Config.m_ClDummy];
+			Pos = GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy];
 			m_aMousePosOnAction[g_Config.m_ClDummy] = vec2(0.0f, 0.0f);
 		}
 		else
 
-			Pos = m_pClient->m_Controls.m_aMousePos[g_Config.m_ClDummy];
-		if(g_Config.m_ClScaleMouseDistance && !m_pClient->m_Snap.m_SpecInfo.m_Active)
+			Pos = GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy];
+		if(g_Config.m_ClScaleMouseDistance && !GameClient()->m_Snap.m_SpecInfo.m_Active)
 		{
 			const int MaxDistance = g_Config.m_ClDyncam ? g_Config.m_ClDyncamMaxDistance : g_Config.m_ClMouseMaxDistance;
 			if(MaxDistance > 5 && MaxDistance < 1000) // Don't scale if angle bind or reduces precision

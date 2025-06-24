@@ -267,9 +267,9 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 			m_ServerCommandsNeedSorting = false;
 		}
 
-		if(m_pClient->m_BindChat.ChatDoBinds(m_Input.GetString()))
+		if(GameClient()->m_BindChat.ChatDoBinds(m_Input.GetString()))
 			; // Do nothing as bindchat was executed
-		else if(m_pClient->m_TClient.ChatDoSpecId(m_Input.GetString()))
+		else if(GameClient()->m_TClient.ChatDoSpecId(m_Input.GetString()))
 			; // Do nothing as specid was executed
 		else
 			SendChatQueued(m_Input.GetString());
@@ -322,7 +322,7 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 				});
 		}
 
-		if(m_pClient->m_BindChat.ChatDoAutocomplete(ShiftPressed))
+		if(GameClient()->m_BindChat.ChatDoAutocomplete(ShiftPressed))
 		{
 		}
 		else if(m_aCompletionBuffer[0] == '/' && !m_vServerCommands.empty())
@@ -434,7 +434,7 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 
 				// quote the name
 				char aQuoted[128];
-				if((m_Input.GetString()[0] == '/' || m_pClient->m_BindChat.CheckBindChat(m_Input.GetString())) && (str_find(pCompletionString, " ") || str_find(pCompletionString, "\"")))
+				if((m_Input.GetString()[0] == '/' || GameClient()->m_BindChat.CheckBindChat(m_Input.GetString())) && (str_find(pCompletionString, " ") || str_find(pCompletionString, "\"")))
 				{
 					// escape the name
 					str_copy(aQuoted, "\"");
@@ -560,7 +560,7 @@ void CChat::OnMessage(int MsgType, void *pRawMsg)
 			RegexToken aTokens[512];
 			int16_t TokenCount = 512;
 			if(regex_parse(g_Config.m_ClRegexChatIgnore, aTokens, &TokenCount, 0))
-				m_pClient->Echo("Regex error");
+				GameClient()->Echo("Regex error");
 			else if(regex_match(aTokens, pMsg->m_pMessage, 0, 0, 0, 0) != -1)
 				return;
 		}
