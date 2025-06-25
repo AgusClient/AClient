@@ -30,6 +30,7 @@ public:
 		char m_aCommand[BINDCHAT_MAX_CMD];
 		CBind() = default;
 		CBind(const char *pName, const char *pCommand);
+		CBind(const char *pName, const char *pParams, const char *pHelp, const char *pCommand);
 		bool CompContent(const CBind &Other) const;
 	};
 	class CBindDefault
@@ -38,11 +39,6 @@ public:
 		const char *m_pTitle;
 		CBind m_Bind;
 		CLineInput m_LineInput;
-		CBindDefault(const char *pTitle, const char *pName, const char *pCommand)
-		{
-			m_pTitle = pTitle;
-			m_Bind = CBind(pName, pCommand);
-		}
 	};
 	static std::vector<std::pair<const char *, std::vector<CBindDefault>>> BIND_DEFAULTS;
 
