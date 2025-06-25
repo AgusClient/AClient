@@ -791,10 +791,12 @@ private:
 	// found in menus_tclient.cpp
 	void RenderSettingsTClient(CUIRect MainView);
 	void RenderSettingsTClientSettngs(CUIRect MainView);
-	void RenderSettingsProfiles(CUIRect MainView);
-	void RenderSettingsWarList(CUIRect MainView);
-	void RenderSettingsInfo(CUIRect MainView);
-	void RenderSettingsStatusBar(CUIRect MainView);
+	void RenderSettingsTClientBindWheel(CUIRect MainView);
+	void RenderSettingsTClientChatBinds(CUIRect MainView);
+	void RenderSettingsTClientWarList(CUIRect MainView);
+	void RenderSettingsTClientInfo(CUIRect MainView);
+	void RenderSettingsTClientStatusBar(CUIRect MainView);
+	void RenderSettingsTClientProfiles(CUIRect MainView);
 
 	const CWarType *m_pRemoveWarType = nullptr;
 	void PopupConfirmRemoveWarType();

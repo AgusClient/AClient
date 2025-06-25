@@ -2063,7 +2063,7 @@ void CMenus::RenderSettings(CUIRect MainView)
 	else if(g_Config.m_UiSettingsPage == SETTINGS_PROFILES)
 	{
 		GameClient()->m_MenuBackground.ChangePosition(14);
-		RenderSettingsProfiles(MainView);
+		RenderSettingsTClientProfiles(MainView);
 	}
 	else
 	{
