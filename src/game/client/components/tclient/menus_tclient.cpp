@@ -336,7 +336,6 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 	LeftView.VSplitLeft(MarginSmall, nullptr, &LeftView);
 	RightView.VSplitRight(MarginSmall, &RightView, nullptr);
 
-	// RightView.VSplitRight(10.0f, &RightView, nullptr);
 	for(CUIRect &Section : s_SectionBoxes)
 	{
 		float Padding = MarginBetweenViews * 0.6666f;
@@ -1207,7 +1206,42 @@ void CMenus::RenderSettingsTClientBindWheel(CUIRect MainView)
 void CMenus::RenderSettingsTClientChatBinds(CUIRect MainView)
 {
 	CUIRect LeftView, RightView, Button, Label;
-	MainView.VSplitMid(&LeftView, &RightView, Margin);
+
+	static CScrollRegion s_ScrollRegion;
+	vec2 ScrollOffset(0.0f, 0.0f);
+	CScrollRegionParams ScrollParams;
+	ScrollParams.m_ScrollUnit = 120.0f;
+	ScrollParams.m_Flags = CScrollRegionParams::FLAG_CONTENT_STATIC_WIDTH;
+	ScrollParams.m_ScrollbarMargin = 5.0f;
+	s_ScrollRegion.Begin(&MainView, &ScrollOffset, &ScrollParams);
+
+	static std::vector<CUIRect> s_SectionBoxes;
+	static vec2 s_PrevScrollOffset(0.0f, 0.0f);
+
+	MainView.y += ScrollOffset.y;
+
+	MainView.HSplitTop(Margin, nullptr, &MainView);
+	MainView.VSplitRight(5.0f, &MainView, nullptr); // Padding for scrollbar
+	MainView.VSplitLeft(5.0f, nullptr, &MainView); // Padding for scrollbar
+
+	MainView.VSplitMid(&LeftView, &RightView, MarginBetweenViews);
+	LeftView.VSplitLeft(MarginSmall, nullptr, &LeftView);
+	RightView.VSplitRight(MarginSmall, &RightView, nullptr);
+
+	for(CUIRect &Section : s_SectionBoxes)
+	{
+		float Padding = MarginBetweenViews * 0.6666f;
+		Section.w += Padding;
+		Section.h += Padding;
+		Section.x -= Padding * 0.5f;
+		Section.y -= Padding * 0.5f;
+		Section.y -= s_PrevScrollOffset.y - ScrollOffset.y;
+		Section.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 10.0f);
+	}
+	s_PrevScrollOffset = ScrollOffset;
+	s_SectionBoxes.clear();
+
+	// ***** All the stuff ***** //
 
 	auto DoBindchatDefault = [&](CUIRect &Column, CBindChat::CBindDefault &BindDefault) {
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
@@ -1237,24 +1271,33 @@ void CMenus::RenderSettingsTClientChatBinds(CUIRect MainView)
 	};
 
 	auto DoBindchatDefaults = [&](CUIRect &Column, const char *pTitle, std::vector<CBindChat::CBindDefault> &vBindchatDefaults) {
+		s_SectionBoxes.push_back(Column);
 		Column.HSplitTop(HeadlineHeight, &Label, &Column);
 		Ui()->DoLabel(&Label, pTitle, HeadlineFontSize, TEXTALIGN_ML);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		for(CBindChat::CBindDefault &BindchatDefault : vBindchatDefaults)
 			DoBindchatDefault(Column, BindchatDefault);
+		s_SectionBoxes.back().h = Column.y - s_SectionBoxes.back().y;
 		Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 	};
 
 	float SizeL = 0.0f, SizeR = 0.0f;
 	for(auto &[pTitle, vBindDefaults] : CBindChat::BIND_DEFAULTS)
 	{
-		if(str_comp(pTitle, "Mod") == 0)
-			continue;
 		float &Size = SizeL > SizeR ? SizeR : SizeL;
 		CUIRect &Column = SizeL > SizeR ? RightView : LeftView;
 		DoBindchatDefaults(Column, pTitle, vBindDefaults);
 		Size += vBindDefaults.size() * (MarginSmall + LineSize) + HeadlineHeight + HeadlineFontSize + MarginSmall * 2.0f;
 	}
+
+	// Scroll
+	CUIRect ScrollRegion;
+	ScrollRegion.x = MainView.x;
+	ScrollRegion.y = maximum(LeftView.y, RightView.y) + MarginSmall * 2.0f;
+	ScrollRegion.w = MainView.w;
+	ScrollRegion.h = 0.0f;
+	s_ScrollRegion.AddRect(ScrollRegion);
+	s_ScrollRegion.End();
 }
 
 void CMenus::RenderSettingsTClientWarList(CUIRect MainView)
