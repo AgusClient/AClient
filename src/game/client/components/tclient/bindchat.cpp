@@ -70,8 +70,8 @@ decltype(CBindChat::BIND_DEFAULTS) CBindChat::BIND_DEFAULTS = {
 				    {TCLocalize("Ban ID:"), {"!mban", "mod_rcon_ban"}},
 				    {TCLocalize("Ban Name:"), {"!mbann", "mod_rcon_ban_name"}},
 				    {TCLocalize("Unban Last:"), {"!munbanlast", "rcon unban 0"}},
-				    {TCLocalize("Kill Ids:"), {"!mkill", "rcon mod_rcon_kill"}},
-				    {TCLocalize("Kill Names:"), {"!mkilln", "rcon mod_rcon_kill_name"}},
+				    {TCLocalize("Kill Ids:"), {"!mkill", "mod_rcon_kill"}},
+				    {TCLocalize("Kill Names:"), {"!mkilln", "mod_rcon_kill_name"}},
 			    }},
 	{TCLocalize("Other"), {
 				      {TCLocalize("Translate:"), {"!translate", "translate"}},
