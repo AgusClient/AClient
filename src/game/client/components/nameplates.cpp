@@ -531,7 +531,7 @@ public:
 class CNamePlatePartReason : public CNamePlatePartText
 {
 private:
-	char m_aText[MAX_CLAN_LENGTH] = "";
+	char m_aText[MAX_WARLIST_REASON_LENGTH] = "";
 	float m_FontSize = -INFINITY;
 
 protected:
