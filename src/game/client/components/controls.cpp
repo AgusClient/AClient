@@ -241,8 +241,8 @@ int CControls::SnapInput(int *pData)
 			m_aMousePosOnAction[g_Config.m_ClDummy] = vec2(0.0f, 0.0f);
 		}
 		else
-
 			Pos = GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy];
+
 		if(g_Config.m_ClScaleMouseDistance && !GameClient()->m_Snap.m_SpecInfo.m_Active)
 		{
 			const int MaxDistance = g_Config.m_ClDyncam ? g_Config.m_ClDyncamMaxDistance : g_Config.m_ClMouseMaxDistance;
