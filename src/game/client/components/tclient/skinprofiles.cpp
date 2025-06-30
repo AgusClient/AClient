@@ -43,6 +43,45 @@ void CSkinProfiles::AddProfile(int BodyColor, int FeetColor, int CountryFlag, in
 	m_Profiles.push_back(Profile);
 }
 
+void CSkinProfiles::ApplyProfile(int Dummy, const CProfile &Profile)
+{
+	char aCommand[2048] = "";
+	auto FAddPart = [&](const char *pName, const char *pValue){
+		str_append(aCommand, Dummy ? "dummy" : "player");
+		str_append(aCommand, "_");
+		str_append(aCommand, pName);
+		str_append(aCommand, " \"");
+		char *pDst = aCommand + str_length(aCommand);
+		str_escape(&pDst, pValue, aCommand + sizeof(aCommand) - 1); // 1 extra for end quote
+		str_append(aCommand, "\";");
+	};
+	auto FAddPartNumber = [&](const char *pName, int Value){
+		str_append(aCommand, Dummy ? "dummy" : "player");
+		str_append(aCommand, "_");
+		str_append(aCommand, pName);
+		str_append(aCommand, " ");
+		int Length = str_length(aCommand);
+		str_format(aCommand + Length, sizeof(aCommand) - Length, "%d", Value);
+		str_append(aCommand, ";");
+	};
+	if(g_Config.m_ClProfileSkin && strlen(Profile.m_SkinName) != 0)
+		FAddPart("skin", Profile.m_SkinName);
+	if(g_Config.m_ClProfileColors && Profile.m_BodyColor != -1 && Profile.m_FeetColor != -1)
+	{
+		FAddPartNumber("color_body", Profile.m_BodyColor);
+		FAddPartNumber("color_feet", Profile.m_FeetColor);
+	}
+	if(g_Config.m_ClProfileEmote && Profile.m_Emote != -1)
+		FAddPartNumber("default_eyes", Profile.m_Emote);
+	if(g_Config.m_ClProfileName && strlen(Profile.m_Name) != 0)
+		FAddPart("name", Profile.m_Name);
+	if(g_Config.m_ClProfileClan && (strlen(Profile.m_Clan) != 0 || g_Config.m_ClProfileOverwriteClanWithEmpty))
+		FAddPart("clan", Profile.m_Clan);
+	if(g_Config.m_ClProfileFlag && Profile.m_CountryFlag != -2)
+		FAddPartNumber("country", Profile.m_CountryFlag);
+	Console()->ExecuteLine(aCommand);
+}
+
 void CSkinProfiles::ConfigSaveCallback(IConfigManager *pConfigManager, void *pUserData)
 {
 	CSkinProfiles *pThis = (CSkinProfiles *)pUserData;

@@ -2205,13 +2205,6 @@ void CMenus::RenderSettingsTClientProfiles(CUIRect MainView)
 	ColorRGBA Color(1.0f, 1.0f, 1.0f, 1.0f);
 	GameClient()->m_CountryFlags.Render(m_Dummy ? g_Config.m_ClDummyCountry : g_Config.m_PlayerCountry, Color, FlagRect.x, FlagRect.y, FlagRect.w, FlagRect.h);
 
-	bool DoSkin = g_Config.m_ClProfileSkin;
-	bool DoColors = g_Config.m_ClProfileColors;
-	bool DoEmote = g_Config.m_ClProfileEmote;
-	bool DoName = g_Config.m_ClProfileName;
-	bool DoClan = g_Config.m_ClProfileClan;
-	bool DoFlag = g_Config.m_ClProfileFlag;
-
 	// After load
 	if(s_SelectedProfile != -1 && s_SelectedProfile < (int)GameClient()->m_SkinProfiles.m_Profiles.size())
 	{
@@ -2224,14 +2217,14 @@ void CMenus::RenderSettingsTClientProfiles(CUIRect MainView)
 		MainView.HSplitTop(50.0f, &Label, &MainView);
 		Label.VSplitLeft(250.0f, &Label, nullptr);
 
-		if(DoSkin && strlen(LoadProfile.m_SkinName) != 0)
+		if(g_Config.m_ClProfileSkin && strlen(LoadProfile.m_SkinName) != 0)
 		{
 			const CSkin *pLoadSkin = GameClient()->m_Skins.Find(LoadProfile.m_SkinName);
 			OwnSkinInfo.m_OriginalRenderSkin = pLoadSkin->m_OriginalSkin;
 			OwnSkinInfo.m_ColorableRenderSkin = pLoadSkin->m_ColorableSkin;
 			OwnSkinInfo.m_SkinMetrics = pLoadSkin->m_Metrics;
 		}
-		if(*pUseCustomColor && DoColors && LoadProfile.m_BodyColor != -1 && LoadProfile.m_FeetColor != -1)
+		if(*pUseCustomColor && g_Config.m_ClProfileColors && LoadProfile.m_BodyColor != -1 && LoadProfile.m_FeetColor != -1)
 		{
 			OwnSkinInfo.m_ColorBody = color_cast<ColorRGBA>(ColorHSLA(LoadProfile.m_BodyColor).UnclampLighting(ColorHSLA::DARKEST_LGT));
 			OwnSkinInfo.m_ColorFeet = color_cast<ColorRGBA>(ColorHSLA(LoadProfile.m_FeetColor).UnclampLighting(ColorHSLA::DARKEST_LGT));
@@ -2240,13 +2233,13 @@ void CMenus::RenderSettingsTClientProfiles(CUIRect MainView)
 		CRenderTools::GetRenderTeeOffsetToRenderedTee(pIdleState, &OwnSkinInfo, OffsetToMid);
 		TeeRenderPos = vec2(Label.x + LineSize, Label.y + Label.h / 2.0f + OffsetToMid.y);
 		int LoadEmote = Emote;
-		if(DoEmote && LoadProfile.m_Emote != -1)
+		if(g_Config.m_ClProfileEmote && LoadProfile.m_Emote != -1)
 			LoadEmote = LoadProfile.m_Emote;
 		RenderTools()->RenderTee(pIdleState, &OwnSkinInfo, LoadEmote, vec2(1.0f, 0.0f), TeeRenderPos);
 
-		if(DoName && strlen(LoadProfile.m_Name) != 0)
+		if(g_Config.m_ClProfileName && strlen(LoadProfile.m_Name) != 0)
 			str_format(aName, sizeof(aName), "%s", LoadProfile.m_Name);
-		if(DoClan && (strlen(LoadProfile.m_Clan) != 0 || g_Config.m_ClProfileOverwriteClanWithEmpty))
+		if(g_Config.m_ClProfileClan && (strlen(LoadProfile.m_Clan) != 0 || g_Config.m_ClProfileOverwriteClanWithEmpty))
 			str_format(aClan, sizeof(aClan), "%s", LoadProfile.m_Clan);
 
 		Label.VSplitLeft(90.0f, &FlagRect, &Label);
@@ -2260,14 +2253,14 @@ void CMenus::RenderSettingsTClientProfiles(CUIRect MainView)
 		Ui()->DoLabel(&Section, aTempBuf, FontSize, TEXTALIGN_ML);
 
 		Label.HSplitTop(LineSize, &Section, &Label);
-		str_format(aTempBuf, sizeof(aTempBuf), TCLocalize("Skin: %s"), (DoSkin && strlen(LoadProfile.m_SkinName) != 0) ? LoadProfile.m_SkinName : pSkinName);
+		str_format(aTempBuf, sizeof(aTempBuf), TCLocalize("Skin: %s"), (g_Config.m_ClProfileSkin && strlen(LoadProfile.m_SkinName) != 0) ? LoadProfile.m_SkinName : pSkinName);
 		Ui()->DoLabel(&Section, aTempBuf, FontSize, TEXTALIGN_ML);
 
 		FlagRect.VSplitRight(50.0f, nullptr, &FlagRect);
 		FlagRect.HSplitBottom(25.0f, nullptr, &FlagRect);
 		FlagRect.y -= 10.0f;
 		int RenderFlag = m_Dummy ? g_Config.m_ClDummyCountry : g_Config.m_PlayerCountry;
-		if(DoFlag && LoadProfile.m_CountryFlag != -2)
+		if(g_Config.m_ClProfileFlag && LoadProfile.m_CountryFlag != -2)
 			RenderFlag = LoadProfile.m_CountryFlag;
 		GameClient()->m_CountryFlags.Render(RenderFlag, Color, FlagRect.x, FlagRect.y, FlagRect.w, FlagRect.h);
 
@@ -2320,44 +2313,8 @@ void CMenus::RenderSettingsTClientProfiles(CUIRect MainView)
 		if(s_SelectedProfile != -1 && s_SelectedProfile < (int)GameClient()->m_SkinProfiles.m_Profiles.size())
 		{
 			CProfile LoadProfile = GameClient()->m_SkinProfiles.m_Profiles[s_SelectedProfile];
-			if(!m_Dummy)
-			{
-				if(DoSkin && strlen(LoadProfile.m_SkinName) != 0)
-					str_copy(g_Config.m_ClPlayerSkin, LoadProfile.m_SkinName, sizeof(g_Config.m_ClPlayerSkin));
-				if(DoColors && LoadProfile.m_BodyColor != -1 && LoadProfile.m_FeetColor != -1)
-				{
-					g_Config.m_ClPlayerColorBody = LoadProfile.m_BodyColor;
-					g_Config.m_ClPlayerColorFeet = LoadProfile.m_FeetColor;
-				}
-				if(DoEmote && LoadProfile.m_Emote != -1)
-					g_Config.m_ClPlayerDefaultEyes = LoadProfile.m_Emote;
-				if(DoName && strlen(LoadProfile.m_Name) != 0)
-					str_copy(g_Config.m_PlayerName, LoadProfile.m_Name, sizeof(g_Config.m_PlayerName));
-				if(DoClan && (strlen(LoadProfile.m_Clan) != 0 || g_Config.m_ClProfileOverwriteClanWithEmpty))
-					str_copy(g_Config.m_PlayerClan, LoadProfile.m_Clan, sizeof(g_Config.m_PlayerClan));
-				if(DoFlag && LoadProfile.m_CountryFlag != -2)
-					g_Config.m_PlayerCountry = LoadProfile.m_CountryFlag;
-			}
-			else
-			{
-				if(DoSkin && strlen(LoadProfile.m_SkinName) != 0)
-					str_copy(g_Config.m_ClDummySkin, LoadProfile.m_SkinName, sizeof(g_Config.m_ClDummySkin));
-				if(DoColors && LoadProfile.m_BodyColor != -1 && LoadProfile.m_FeetColor != -1)
-				{
-					g_Config.m_ClDummyColorBody = LoadProfile.m_BodyColor;
-					g_Config.m_ClDummyColorFeet = LoadProfile.m_FeetColor;
-				}
-				if(DoEmote && LoadProfile.m_Emote != -1)
-					g_Config.m_ClDummyDefaultEyes = LoadProfile.m_Emote;
-				if(DoName && strlen(LoadProfile.m_Name) != 0)
-					str_copy(g_Config.m_ClDummyName, LoadProfile.m_Name, sizeof(g_Config.m_ClDummyName));
-				if(DoClan && (strlen(LoadProfile.m_Clan) != 0 || g_Config.m_ClProfileOverwriteClanWithEmpty))
-					str_copy(g_Config.m_ClDummyClan, LoadProfile.m_Clan, sizeof(g_Config.m_ClDummyClan));
-				if(DoFlag && LoadProfile.m_CountryFlag != -2)
-					g_Config.m_ClDummyCountry = LoadProfile.m_CountryFlag;
-			}
+			GameClient()->m_SkinProfiles.ApplyProfile(m_Dummy, LoadProfile);
 		}
-		SetNeedSendInfo();
 	}
 	LabelRight.HSplitTop(5.0f, nullptr, &LabelRight);
 
@@ -2366,13 +2323,13 @@ void CMenus::RenderSettingsTClientProfiles(CUIRect MainView)
 	if(DoButton_Menu(&s_SaveButton, TCLocalize("Save"), 0, &Button))
 	{
 		GameClient()->m_SkinProfiles.AddProfile(
-			DoColors ? *pColorBody : -1,
-			DoColors ? *pColorFeet : -1,
-			DoFlag ? CurrentFlag : -2,
-			DoEmote ? Emote : -1,
-			DoSkin ? pSkinName : "",
-			DoName ? aName : "",
-			DoClan ? aClan : "");
+			g_Config.m_ClProfileColors ? *pColorBody : -1,
+			g_Config.m_ClProfileColors ? *pColorFeet : -1,
+			g_Config.m_ClProfileFlag ? CurrentFlag : -2,
+			g_Config.m_ClProfileEmote ? Emote : -1,
+			g_Config.m_ClProfileSkin ? pSkinName : "",
+			g_Config.m_ClProfileName ? aName : "",
+			g_Config.m_ClProfileClan ? aClan : "");
 	}
 	LabelRight.HSplitTop(5.0f, nullptr, &LabelRight);
 
@@ -2396,13 +2353,13 @@ void CMenus::RenderSettingsTClientProfiles(CUIRect MainView)
 			if(s_SelectedProfile != -1 && s_SelectedProfile < (int)GameClient()->m_SkinProfiles.m_Profiles.size())
 			{
 				GameClient()->m_SkinProfiles.m_Profiles[s_SelectedProfile] = CProfile(
-					DoColors ? *pColorBody : -1,
-					DoColors ? *pColorFeet : -1,
-					DoFlag ? CurrentFlag : -2,
-					DoEmote ? Emote : -1,
-					DoSkin ? pSkinName : "",
-					DoName ? aName : "",
-					DoClan ? aClan : "");
+					g_Config.m_ClProfileColors ? *pColorBody : -1,
+					g_Config.m_ClProfileColors ? *pColorFeet : -1,
+					g_Config.m_ClProfileFlag ? CurrentFlag : -2,
+					g_Config.m_ClProfileEmote ? Emote : -1,
+					g_Config.m_ClProfileSkin ? pSkinName : "",
+					g_Config.m_ClProfileName ? aName : "",
+					g_Config.m_ClProfileClan ? aClan : "");
 			}
 		}
 	}
