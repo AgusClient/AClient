@@ -1156,6 +1156,8 @@ void CMenus::RenderSettingsTClientBindWheel(CUIRect MainView)
 
 	LeftView.HSplitTop(MarginSmall, nullptr, &LeftView);
 	LeftView.HSplitTop(LineSize, &Label, &LeftView);
+	Ui()->DoLabel(&Label, TCLocalize("The command is ran in console not chat"), FontSize, TEXTALIGN_ML);
+	LeftView.HSplitTop(LineSize, &Label, &LeftView);
 	Ui()->DoLabel(&Label, TCLocalize("Use left mouse to select"), FontSize, TEXTALIGN_ML);
 	LeftView.HSplitTop(LineSize, &Label, &LeftView);
 	Ui()->DoLabel(&Label, TCLocalize("Use right mouse to swap with selected"), FontSize, TEXTALIGN_ML);
