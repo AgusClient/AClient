@@ -1201,7 +1201,7 @@ void CMenus::RenderSettingsTClientBindWheel(CUIRect MainView)
 			GameClient()->m_Binds.Bind(NewId, Key.m_pCommand, false, NewModifierCombination);
 	}
 	LeftView.HSplitBottom(LineSize, &LeftView, &Button);
-
+	Button.w = MainView.w;
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClResetBindWheelMouse, TCLocalize("Reset position of mouse when opening bindwheel"), &g_Config.m_ClResetBindWheelMouse, &Button, LineSize);
 }
 
