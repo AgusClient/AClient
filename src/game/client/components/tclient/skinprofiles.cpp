@@ -46,7 +46,7 @@ void CSkinProfiles::AddProfile(int BodyColor, int FeetColor, int CountryFlag, in
 void CSkinProfiles::ApplyProfile(int Dummy, const CProfile &Profile)
 {
 	char aCommand[2048] = "";
-	auto FAddPart = [&](const char *pName, const char *pValue){
+	auto FAddPart = [&](const char *pName, const char *pValue) {
 		str_append(aCommand, Dummy ? "dummy" : "player");
 		str_append(aCommand, "_");
 		str_append(aCommand, pName);
@@ -55,7 +55,7 @@ void CSkinProfiles::ApplyProfile(int Dummy, const CProfile &Profile)
 		str_escape(&pDst, pValue, aCommand + sizeof(aCommand) - 1); // 1 extra for end quote
 		str_append(aCommand, "\";");
 	};
-	auto FAddPartNumber = [&](const char *pName, int Value){
+	auto FAddPartNumber = [&](const char *pName, int Value) {
 		str_append(aCommand, Dummy ? "dummy" : "player");
 		str_append(aCommand, "_");
 		str_append(aCommand, pName);

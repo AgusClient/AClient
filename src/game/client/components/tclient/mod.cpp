@@ -4,7 +4,13 @@
 
 #include <base/system.h>
 
+#include <game/generated/protocol.h>
+#include <game/localization.h>
+
+#include "engine/textrender.h"
 #include "mod.h"
+
+static constexpr const float MOD_WEAPON_TIME = 1.5f;
 
 class CMod::CIden
 {
@@ -286,6 +292,11 @@ void CMod::OnConsoleInit()
 			if(pResult->GetString(i)[0] != '\0')
 				pThis->Kill(CIden(pThis, pResult->GetString(i), CIden::EParseMode::NAME), true);
 	});
+
+	Console()->Chain("+fire", [](IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData) {
+		pfnCallback(pResult, pCallbackUserData);
+		((CMod *)pUserData)->OnFire(pResult->GetInteger(0));
+	}, this);
 }
 
 void CMod::OnRender()
@@ -300,6 +311,48 @@ void CMod::OnRender()
 
 	Graphics()->TextureClear();
 
+	// Mod Weapon
+	if(Client()->State() == IClient::STATE_ONLINE && m_ModWeaponActiveId >= 0 && m_ModWeaponActiveTimeLeft > 0.0f)
+	{
+		const auto &Player = GameClient()->m_aClients[m_ModWeaponActiveId];
+		if(!Player.m_Active) // Cancel if not active
+		{
+			m_ModWeaponActiveId = -1;
+		}
+		else
+		{
+			const float Delta = Client()->RenderFrameTime();
+			if(Delta < 1.0f / 30.0f) // Don't do anything if lagging
+			{
+				m_ModWeaponActiveTimeLeft -= Delta;
+				if(m_ModWeaponActiveTimeLeft <= 0.0f)
+				{
+					ModWeapon(m_ModWeaponActiveId);
+					m_ModWeaponActiveId = -1;
+				}
+			}
+			char aBuf[32];
+			str_format(aBuf, sizeof(aBuf), "%.2f", m_ModWeaponActiveTimeLeft);
+			STextContainerIndex TextContainer;
+			TextContainer.Reset();
+			CTextCursor Cursor;
+			TextRender()->SetCursor(&Cursor, 0.0f, 0.0f, 25.0f, TEXTFLAG_RENDER);
+			TextRender()->SetRenderFlags(TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT | TEXT_RENDER_FLAG_ONE_TIME_USE);
+			TextRender()->CreateTextContainer(TextContainer, &Cursor, aBuf);
+			TextRender()->SetRenderFlags(0);
+			if(TextContainer.Valid())
+			{
+				const auto Color = color_cast<ColorRGBA>(ColorHSLA(m_ModWeaponActiveTimeLeft / MOD_WEAPON_TIME, 0.5f, 0.5f, 1.0f));
+				const auto BoundingBox = TextRender()->GetBoundingBoxTextContainer(TextContainer);
+				TextRender()->RenderTextContainer(TextContainer,
+					Color, TextRender()->DefaultTextOutlineColor(),
+					Player.m_RenderPos.x - BoundingBox.m_W / 2.0f, Player.m_RenderPos.y + 30.0f + BoundingBox.m_H);
+			}
+			TextRender()->DeleteTextContainer(TextContainer);
+		}
+	}
+
+	// Hitboxes
 	if(g_Config.m_ClShowPlayerHitBoxes > 0)
 	{
 		auto FRenderHitbox = [&](vec2 Position, float Alpha) {
@@ -351,4 +404,113 @@ void CMod::OnRender()
 			}
 		}
 	}
+}
+
+void CMod::OnStateChange(int OldState, int NewState)
+{
+	m_ModWeaponActiveId = -1;
+	m_ModWeaponActiveTimeLeft = -1.0f;
+}
+
+void CMod::ModWeapon(int Id)
+{
+	char aBuf[256];
+
+	const auto &Player = GameClient()->m_aClients[Id];
+	if(!Player.m_Active)
+		return;
+
+	str_format(aBuf, sizeof(aBuf), TCLocalize("Activating mod weapon on %d: %s\n"), Player.ClientId(), Player.m_aClan);
+	GameClient()->Echo(aBuf);
+
+	class CResultModFire : public CConsole::IResult
+	{
+	public:
+		const char *m_pBuf;
+		CResultModFire(const char *pBuf) : IResult(0), m_pBuf(pBuf) {}
+		int NumArguments() const
+		{
+			return 1;
+		}
+		const char *GetString(unsigned Index) const override
+		{
+			if(Index == 0)
+				return m_pBuf;
+			return "";
+		}
+		int GetInteger(unsigned Index) const override { return 0; };
+		float GetFloat(unsigned Index) const override { return 0.0f; };
+		std::optional<ColorHSLA> GetColor(unsigned Index, float DarkestLighting) const override { return std::nullopt; };
+		void RemoveArgument(unsigned Index) override {};
+		int GetVictim() const override { return -1; };
+	};
+
+	str_format(aBuf, sizeof(aBuf), "%d", Id);
+	CResultModFire ResultModFire(aBuf);
+	GameClient()->m_Conditional.m_pResult = &ResultModFire;
+	Console()->ExecuteLine(g_Config.m_ClModWeaponCommand);
+	GameClient()->m_Conditional.m_pResult = nullptr;
+}
+
+void CMod::OnFire(bool Pressed)
+{
+	if(Client()->State() != IClient::STATE_ONLINE)
+		return;
+	if(!Pressed)
+	{
+		m_ModWeaponActiveId = -1;
+		return;
+	}
+	if(m_ModWeaponActiveId >= 0)
+		return;
+
+	auto FGetBestClient = [&]() -> const CGameClient::CClientData * {
+		if(Client()->State() != IClient::STATE_ONLINE)
+			return nullptr;
+		if(g_Config.m_ClModWeapon == -1)
+			return nullptr;
+		if(!Client()->RconAuthed())
+			return nullptr;
+		if(GameClient()->m_aLocalIds[g_Config.m_ClDummy] < 0)
+			return nullptr;
+		const auto &Player = GameClient()->m_aClients[GameClient()->m_Snap.m_LocalClientId];
+		if(!Player.m_Active)
+			return nullptr;
+		if(Player.m_Team == TEAM_SPECTATORS)
+			return nullptr;
+		if(Player.m_RenderPrev.m_Weapon != g_Config.m_ClModWeapon)
+			return nullptr;
+		const vec2 Pos = Player.m_RenderPos;
+		const vec2 Angle = normalize(GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy]);
+		// Find person who we have shot
+		const CGameClient::CClientData *pBestClient = nullptr;
+		float BestClientScore = -INFINITY;
+		for(const CGameClient::CClientData &Other : GameClient()->m_aClients)
+		{
+			if(!Other.m_Active || !GameClient()->m_Snap.m_aCharacters[Other.ClientId()].m_Active || Player.ClientId() == Other.ClientId() || GameClient()->IsOtherTeam(Other.ClientId()))
+				continue;
+			const float PosDelta = distance(Other.m_RenderPos, Pos);
+			const float MaxRange = (g_Config.m_ClModWeapon == 0 ? 100.0f : 750.0f);
+			if(PosDelta > MaxRange)
+				continue;
+			const float AngleDelta = dot(normalize(Other.m_RenderPos - Pos), Angle);
+			if(AngleDelta < 0.9f)
+				continue;
+			const float Score = (AngleDelta - 1.0f) * 10.0f * MaxRange
+				+ (MaxRange - PosDelta);
+			if(Score > BestClientScore)
+			{
+				BestClientScore = Score;
+				pBestClient = &Other;
+			}
+		}
+		return pBestClient;
+	};
+
+	const CGameClient::CClientData *pBestClient = FGetBestClient();
+	if(!pBestClient)
+		return;
+
+	m_ModWeaponActiveId = pBestClient->ClientId();
+	m_ModWeaponActiveTimeLeft = MOD_WEAPON_TIME;
 }
