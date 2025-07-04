@@ -317,6 +317,27 @@ void CConditional::OnConsoleInit()
 		int i = std::clamp((int)(y / h * 3.0f), 0, 2) * 3 + std::clamp((int)(x / w * 3.0f), 0, 2);
 		return str_copy(pOut, s_apLocations[i], Length);
 	});
+	m_vVariables.emplace_back("state", [&](char *pOut, int Length) {
+		switch(Client()->State())
+		{
+		case IClient::EClientState::STATE_CONNECTING:
+			return str_copy(pOut, "connecting", Length);
+		case IClient::STATE_OFFLINE:
+			return str_copy(pOut, "offline", Length);
+		case IClient::STATE_LOADING:
+			return str_copy(pOut, "loading", Length);
+		case IClient::STATE_ONLINE:
+			return str_copy(pOut, "online", Length);
+		case IClient::STATE_DEMOPLAYBACK:
+			return str_copy(pOut, "demo", Length);
+		case IClient::STATE_QUITTING:
+			return str_copy(pOut, "quitting", Length);
+		case IClient::STATE_RESTARTING:
+			return str_copy(pOut, "restarting", Length);
+		}
+		dbg_assert(false, "Invalid client state");
+		dbg_break();
+	});
 
 	m_vFunctions.emplace_back("id", [&](const char *pParam, char *pOut, int Length) {
 		if(Client()->State() != CClient::STATE_ONLINE && Client()->State() != CClient::STATE_DEMOPLAYBACK)
