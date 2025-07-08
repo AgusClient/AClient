@@ -70,7 +70,7 @@ void CConditional::ParseString(char *pBuf, int Length)
 			HasBrackets = true;
 	if(!HasBrackets)
 		return;
-	
+
 	// May give malformed result on buffer overflow
 
 	int Len = strnlen(pBuf, Length);
@@ -86,15 +86,15 @@ void CConditional::ParseString(char *pBuf, int Length)
 				continue;
 			// Count number of backslashes before this character
 			int BackslashCount = 0;
-			for (int j = i - 1; j >= 0 && pBuf[j] == '\\'; --j)
+			for(int j = i - 1; j >= 0 && pBuf[j] == '\\'; --j)
 				BackslashCount++;
 			if(BackslashCount % 2 != 0)
 				continue;
-			if (pBuf[i] == '{')
+			if(pBuf[i] == '{')
 			{
 				LastOpen = i;
 			}
-			else if (pBuf[i] == '}' && LastOpen != -1)
+			else if(pBuf[i] == '}' && LastOpen != -1)
 			{
 				ClosePos = i;
 				break;
@@ -141,7 +141,7 @@ void CConditional::ParseString(char *pBuf, int Length)
 int CConditional::EscapeString(char *pIn, char *pBuf, int Length)
 {
 	int WriteIndex = 0;
-	for (int i = 0; pIn[i] != '\0'; ++i)
+	for(int i = 0; pIn[i] != '\0'; ++i)
 	{
 		char c = pIn[i];
 
@@ -166,12 +166,12 @@ int CConditional::EscapeString(char *pIn, char *pBuf, int Length)
 void CConditional::UnescapeString(char *pString, int Length)
 {
 	int WritePos = 0; // Position to write the unescaped char
-	for (int ReadPos = 0; ReadPos < Length - 1; ReadPos++)
+	for(int ReadPos = 0; ReadPos < Length - 1; ReadPos++)
 	{
-		if (pString[ReadPos] == '\\' && ReadPos + 1 < Length)
+		if(pString[ReadPos] == '\\' && ReadPos + 1 < Length)
 		{
 			char NextChar = pString[ReadPos + 1];
-			if (NextChar == '\\' || NextChar == '{' || NextChar == '}')
+			if(NextChar == '\\' || NextChar == '{' || NextChar == '}')
 			{
 				// Replace the escape sequence by the actual character
 				pString[WritePos++] = NextChar;

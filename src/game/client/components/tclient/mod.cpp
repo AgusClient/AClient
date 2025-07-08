@@ -300,10 +300,12 @@ void CMod::OnConsoleInit()
 				This.Kill(CIden(This, pResult->GetString(i), CIden::EParseMode::NAME), true);
 	});
 
-	Console()->Chain("+fire", [](IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData) {
-		pfnCallback(pResult, pCallbackUserData);
-		((CMod *)pUserData)->OnFire(pResult->GetInteger(0));
-	}, this);
+	Console()->Chain(
+		"+fire", [](IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData) {
+			pfnCallback(pResult, pCallbackUserData);
+			((CMod *)pUserData)->OnFire(pResult->GetInteger(0));
+		},
+		this);
 }
 
 void CMod::OnRender()
@@ -434,7 +436,8 @@ void CMod::ModWeapon(int Id)
 	{
 	public:
 		const char *m_pBuf;
-		CResultModFire(const char *pBuf) : IResult(0), m_pBuf(pBuf) {}
+		CResultModFire(const char *pBuf) :
+			IResult(0), m_pBuf(pBuf) {}
 		int NumArguments() const
 		{
 			return 1;
@@ -448,7 +451,7 @@ void CMod::ModWeapon(int Id)
 		int GetInteger(unsigned Index) const override { return 0; };
 		float GetFloat(unsigned Index) const override { return 0.0f; };
 		std::optional<ColorHSLA> GetColor(unsigned Index, float DarkestLighting) const override { return std::nullopt; };
-		void RemoveArgument(unsigned Index) override {};
+		void RemoveArgument(unsigned Index) override{};
 		int GetVictim() const override { return -1; };
 	};
 
@@ -503,8 +506,7 @@ void CMod::OnFire(bool Pressed)
 			const float AngleDelta = dot(normalize(Other.m_RenderPos - Pos), Angle);
 			if(AngleDelta < 0.9f)
 				continue;
-			const float Score = (AngleDelta - 1.0f) * 10.0f * MaxRange
-				+ (MaxRange - PosDelta);
+			const float Score = (AngleDelta - 1.0f) * 10.0f * MaxRange + (MaxRange - PosDelta);
 			if(Score > BestClientScore)
 			{
 				BestClientScore = Score;
