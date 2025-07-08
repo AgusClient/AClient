@@ -166,7 +166,7 @@ int CConditional::EscapeString(char *pIn, char *pBuf, int Length)
 void CConditional::UnescapeString(char *pString, int Length)
 {
 	int WritePos = 0; // Position to write the unescaped char
-	for (int ReadPos = 0; ReadPos < Length; ReadPos++)
+	for (int ReadPos = 0; ReadPos < Length - 1; ReadPos++)
 	{
 		if (pString[ReadPos] == '\\' && ReadPos + 1 < Length)
 		{
