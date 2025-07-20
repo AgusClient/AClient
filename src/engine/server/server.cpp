@@ -50,8 +50,6 @@
 
 using namespace std::chrono_literals;
 
-extern bool IsInterrupted();
-
 #if defined(CONF_PLATFORM_ANDROID)
 extern std::vector<std::string> FetchAndroidServerCommandQueue();
 #endif
@@ -1789,9 +1787,9 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 				}
 				else
 				{
-					CMsgPacker Msgp(protocol7::NETMSG_SERVERINFO, true, true);
-					GetServerInfoSixup(&Msgp, -1, false);
-					SendMsg(&Msgp, MSGFLAG_VITAL | MSGFLAG_FLUSH, ClientId);
+					CMsgPacker ServerInfoMessage(protocol7::NETMSG_SERVERINFO, true, true);
+					GetServerInfoSixup(&ServerInfoMessage, false);
+					SendMsg(&ServerInfoMessage, MSGFLAG_VITAL | MSGFLAG_FLUSH, ClientId);
 				}
 				GameServer()->OnClientEnter(ClientId);
 			}
@@ -2505,17 +2503,8 @@ void CServer::SendServerInfo(const NETADDR *pAddr, int Token, int Type, bool Sen
 	}
 }
 
-void CServer::GetServerInfoSixup(CPacker *pPacker, int Token, bool SendClients)
+void CServer::GetServerInfoSixup(CPacker *pPacker, bool SendClients)
 {
-	if(Token != -1)
-	{
-		pPacker->Reset();
-		pPacker->AddRaw(SERVERBROWSE_INFO, sizeof(SERVERBROWSE_INFO));
-		pPacker->AddInt(Token);
-	}
-
-	SendClients = SendClients && Token != -1;
-
 	CCache::CCacheChunk &FirstChunk = m_aSixupServerInfoCache[SendClients].m_vCache.front();
 	pPacker->AddRaw(FirstChunk.m_vData.data(), FirstChunk.m_vData.size());
 }
@@ -2668,9 +2657,9 @@ void CServer::UpdateServerInfo(bool Resend)
 					SendServerInfo(ClientAddr(i), -1, SERVERINFO_INGAME, false);
 				else
 				{
-					CMsgPacker Msg(protocol7::NETMSG_SERVERINFO, true, true);
-					GetServerInfoSixup(&Msg, -1, false);
-					SendMsg(&Msg, MSGFLAG_VITAL | MSGFLAG_FLUSH, i);
+					CMsgPacker ServerInfoMessage(protocol7::NETMSG_SERVERINFO, true, true);
+					GetServerInfoSixup(&ServerInfoMessage, false);
+					SendMsg(&ServerInfoMessage, MSGFLAG_VITAL | MSGFLAG_FLUSH, i);
 				}
 			}
 		}
@@ -2727,8 +2716,10 @@ void CServer::PumpNetwork(bool PacketWaiting)
 						}
 
 						CPacker Packer;
-						GetServerInfoSixup(&Packer, SrvBrwsToken, RateLimitServerInfoConnless());
-
+						Packer.Reset();
+						Packer.AddRaw(SERVERBROWSE_INFO, sizeof(SERVERBROWSE_INFO));
+						Packer.AddInt(SrvBrwsToken);
+						GetServerInfoSixup(&Packer, RateLimitServerInfoConnless());
 						CNetBase::SendPacketConnlessWithToken7(m_NetServer.Socket(), &Packet.m_Address, Packer.Data(), Packer.Size(), ResponseToken, m_NetServer.GetToken(Packet.m_Address));
 					}
 					else if(Type != -1)
@@ -3166,6 +3157,7 @@ int CServer::Run()
 						{
 							GameServer()->OnClientPredictedEarlyInput(c, Input.m_aData);
 							ClientHadInput = true;
+							break;
 						}
 					}
 					if(!ClientHadInput)
