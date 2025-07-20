@@ -543,15 +543,16 @@ void CPlayers::RenderPlayer(
 		if(!pSkin)
 			return;
 		const float Size = pRenderInfo->m_Size * 1.2f;
-		Graphics()->SetColor(ColorRGBA(1.0f, 1.0f, 1.0f, Alpha));
 		Graphics()->TextureSet(pSkin->m_OriginalSkin.m_BodyOutline);
 		Graphics()->QuadsBegin();
+		Graphics()->SetColor(ColorRGBA(1.0f, 1.0f, 1.0f, Alpha));
 		IEngineGraphics::CQuadItem QuadOutline{Position.x, Position.y, Size, Size};
 		Graphics()->QuadsSetRotation(ClientData.m_VolleyBallAngle);
 		Graphics()->QuadsDraw(&QuadOutline, 1);
 		Graphics()->QuadsEnd();
 		Graphics()->TextureSet(pSkin->m_OriginalSkin.m_Body);
 		Graphics()->QuadsBegin();
+		Graphics()->SetColor(ColorRGBA(1.0f, 1.0f, 1.0f, Alpha));
 		Graphics()->QuadsSetRotation(ClientData.m_VolleyBallAngle);
 		IEngineGraphics::CQuadItem Quad{Position.x, Position.y, Size, Size};
 		Graphics()->QuadsDraw(&Quad, 1);
