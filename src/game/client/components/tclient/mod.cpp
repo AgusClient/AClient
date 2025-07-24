@@ -484,33 +484,53 @@ void CMod::OnFire(bool Pressed)
 		if(GameClient()->m_aLocalIds[g_Config.m_ClDummy] < 0)
 			return nullptr;
 		const auto &Player = GameClient()->m_aClients[GameClient()->m_Snap.m_LocalClientId];
-		if(!Player.m_Active)
-			return nullptr;
-		if(Player.m_Team == TEAM_SPECTATORS)
-			return nullptr;
 		if(Player.m_RenderPrev.m_Weapon != g_Config.m_ClModWeapon)
 			return nullptr;
-		const vec2 Pos = Player.m_RenderPos;
-		const vec2 Angle = normalize(GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy]);
+		if(!Player.m_Active)
+			return nullptr;
 		// Find person who we have shot
 		const CGameClient::CClientData *pBestClient = nullptr;
 		float BestClientScore = -INFINITY;
-		for(const CGameClient::CClientData &Other : GameClient()->m_aClients)
+		if(GameClient()->m_Snap.m_SpecInfo.m_Active || Player.m_Team == TEAM_SPECTATORS)
 		{
-			if(!Other.m_Active || !GameClient()->m_Snap.m_aCharacters[Other.ClientId()].m_Active || Player.ClientId() == Other.ClientId() || GameClient()->IsOtherTeam(Other.ClientId()))
-				continue;
-			const float PosDelta = distance(Other.m_RenderPos, Pos);
-			const float MaxRange = (g_Config.m_ClModWeapon == 0 ? 100.0f : 750.0f);
-			if(PosDelta > MaxRange)
-				continue;
-			const float AngleDelta = dot(normalize(Other.m_RenderPos - Pos), Angle);
-			if(AngleDelta < 0.9f)
-				continue;
-			const float Score = (AngleDelta - 1.0f) * 10.0f * MaxRange + (MaxRange - PosDelta);
-			if(Score > BestClientScore)
+			const vec2 Pos = GameClient()->m_Camera.m_Center;
+			for(const CGameClient::CClientData &Other : GameClient()->m_aClients)
 			{
-				BestClientScore = Score;
-				pBestClient = &Other;
+				if(!Other.m_Active || !GameClient()->m_Snap.m_aCharacters[Other.ClientId()].m_Active || Player.ClientId() == Other.ClientId())
+					continue;
+				const float PosDelta = distance(Other.m_RenderPos, Pos);
+				const float MaxRange = 100.0f;
+				if(PosDelta > MaxRange)
+					continue;
+				const float Score = MaxRange - PosDelta;
+				if(Score > BestClientScore)
+				{
+					BestClientScore = Score;
+					pBestClient = &Other;
+				}
+			}
+		}
+		else
+		{
+			const vec2 Pos = Player.m_RenderPos;
+			const vec2 Angle = normalize(GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy]);
+			for(const CGameClient::CClientData &Other : GameClient()->m_aClients)
+			{
+				if(!Other.m_Active || !GameClient()->m_Snap.m_aCharacters[Other.ClientId()].m_Active || Player.ClientId() == Other.ClientId() || GameClient()->IsOtherTeam(Other.ClientId()))
+					continue;
+				const float PosDelta = distance(Other.m_RenderPos, Pos);
+				const float MaxRange = (g_Config.m_ClModWeapon == 0 ? 100.0f : 750.0f);
+				if(PosDelta > MaxRange)
+					continue;
+				const float AngleDelta = dot(normalize(Other.m_RenderPos - Pos), Angle);
+				if(AngleDelta < 0.9f)
+					continue;
+				const float Score = (AngleDelta - 1.0f) * 10.0f * MaxRange + (MaxRange - PosDelta);
+				if(Score > BestClientScore)
+				{
+					BestClientScore = Score;
+					pBestClient = &Other;
+				}
 			}
 		}
 		return pBestClient;
