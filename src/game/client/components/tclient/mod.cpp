@@ -256,44 +256,44 @@ void CMod::Mute(const CMod::CIden &Iden, const char *pTime, const char *pReason)
 
 void CMod::OnConsoleInit()
 {
-	auto FRegisterModCommand = [&](const char *pName, const char *pParams, const char *pHelp, void (*FCallback)(IConsole::IResult *, void *)) {
+	auto RegisterModCommand = [&](const char *pName, const char *pParams, const char *pHelp, void (*FCallback)(IConsole::IResult *, void *)) {
 		Console()->Register(pName, pParams, CFGFLAG_CLIENT, (CConsole::FCommandCallback)FCallback, this, pHelp);
 	};
 
-	FRegisterModCommand("mod_rcon_ban", "s[id|ip] s[time (minutes)] ?r[reason]", "RCon ban someone", [](IConsole::IResult *pResult, void *pUserData) {
+	RegisterModCommand("mod_rcon_ban", "s[id|ip] s[time (minutes)] ?r[reason]", "RCon ban someone", [](IConsole::IResult *pResult, void *pUserData) {
 		CMod &This = *(CMod *)pUserData;
 		This.Ban(CIden(This, pResult->GetString(0), CIden::EParseMode::ID_OR_ADDR), pResult->GetString(1), pResult->GetString(2));
 	});
-	FRegisterModCommand("mod_rcon_ban_name", "s[name] s[time (minutes)] ?r[reason]", "RCon ban someone by name", [](IConsole::IResult *pResult, void *pUserData) {
+	RegisterModCommand("mod_rcon_ban_name", "s[name] s[time (minutes)] ?r[reason]", "RCon ban someone by name", [](IConsole::IResult *pResult, void *pUserData) {
 		CMod &This = *(CMod *)pUserData;
 		This.Ban(CIden(This, pResult->GetString(0), CIden::EParseMode::NAME), pResult->GetString(1), pResult->GetString(2));
 	});
 
-	FRegisterModCommand("mod_rcon_kick", "s[id|ip] ?r[reason]", "RCon kick someone", [](IConsole::IResult *pResult, void *pUserData) {
+	RegisterModCommand("mod_rcon_kick", "s[id|ip] ?r[reason]", "RCon kick someone", [](IConsole::IResult *pResult, void *pUserData) {
 		CMod &This = *(CMod *)pUserData;
 		This.Kick(CIden(This, pResult->GetString(0), CIden::EParseMode::ID), pResult->GetString(2));
 	});
-	FRegisterModCommand("mod_rcon_kick_name", "s[name] ?r[reason]", "RCon kick someone by name", [](IConsole::IResult *pResult, void *pUserData) {
+	RegisterModCommand("mod_rcon_kick_name", "s[name] ?r[reason]", "RCon kick someone by name", [](IConsole::IResult *pResult, void *pUserData) {
 		CMod &This = *(CMod *)pUserData;
 		This.Kick(CIden(This, pResult->GetString(0), CIden::EParseMode::NAME), pResult->GetString(2));
 	});
 
-	FRegisterModCommand("mod_rcon_mute", "s[id] s[time (minutes)] ?r[reason]", "RCon mute someone", [](IConsole::IResult *pResult, void *pUserData) {
+	RegisterModCommand("mod_rcon_mute", "s[id] s[time (minutes)] ?r[reason]", "RCon mute someone", [](IConsole::IResult *pResult, void *pUserData) {
 		CMod &This = *(CMod *)pUserData;
 		This.Mute(CIden(This, pResult->GetString(0), CIden::EParseMode::ID), pResult->GetString(1), pResult->GetString(2));
 	});
-	FRegisterModCommand("mod_rcon_mute_name", "s[name] s[time (minutes)] ?r[reason]", "RCon mute someone by name", [](IConsole::IResult *pResult, void *pUserData) {
+	RegisterModCommand("mod_rcon_mute_name", "s[name] s[time (minutes)] ?r[reason]", "RCon mute someone by name", [](IConsole::IResult *pResult, void *pUserData) {
 		CMod &This = *(CMod *)pUserData;
 		This.Mute(CIden(This, pResult->GetString(0), CIden::EParseMode::NAME), pResult->GetString(1), pResult->GetString(2));
 	});
 
-	FRegisterModCommand("mod_rcon_kill", "s[id/ip] ?s[2] ?s[3] ?s[4] ?s[5] ?s[6] ?s[7] ?s[8]", "RCon kill people", [](IConsole::IResult *pResult, void *pUserData) {
+	RegisterModCommand("mod_rcon_kill", "s[id/ip] ?s[2] ?s[3] ?s[4] ?s[5] ?s[6] ?s[7] ?s[8]", "RCon kill people", [](IConsole::IResult *pResult, void *pUserData) {
 		CMod &This = *(CMod *)pUserData;
 		for(int i = 0; i < 8; ++i)
 			if(pResult->GetString(i)[0] != '\0')
 				This.Kill(CIden(This, pResult->GetString(i), CIden::EParseMode::ID), true);
 	});
-	FRegisterModCommand("mod_rcon_kill_name", "s[name] ?s[2] ?s[3] ?s[4] ?s[5] ?s[6] ?s[7] ?s[8]", "RCon kill people by name", [](IConsole::IResult *pResult, void *pUserData) {
+	RegisterModCommand("mod_rcon_kill_name", "s[name] ?s[2] ?s[3] ?s[4] ?s[5] ?s[6] ?s[7] ?s[8]", "RCon kill people by name", [](IConsole::IResult *pResult, void *pUserData) {
 		CMod &This = *(CMod *)pUserData;
 		for(int i = 0; i < 8; ++i)
 			if(pResult->GetString(i)[0] != '\0')
@@ -364,7 +364,7 @@ void CMod::OnRender()
 	// Hitboxes
 	if(g_Config.m_ClShowPlayerHitBoxes > 0)
 	{
-		auto FRenderHitbox = [&](vec2 Position, float Alpha) {
+		auto RenderHitbox = [&](vec2 Position, float Alpha) {
 			if(Alpha <= 0.0f)
 				return;
 			const float RadiusInner = 16.0f;
@@ -400,7 +400,7 @@ void CMod::OnRender()
 			if(GameClient()->IsOtherTeam(ClientId))
 				Alpha *= (float)g_Config.m_ClShowOthersAlpha / 100.0f;
 
-			FRenderHitbox(Player.m_RenderPos, Alpha);
+			RenderHitbox(Player.m_RenderPos, Alpha);
 
 			if(g_Config.m_ClShowPlayerHitBoxes > 1)
 			{
@@ -409,7 +409,7 @@ void CMod::OnRender()
 					vec2(GameClient()->m_Snap.m_aCharacters[ClientId].m_Prev.m_X, GameClient()->m_Snap.m_aCharacters[ClientId].m_Prev.m_Y),
 					vec2(GameClient()->m_Snap.m_aCharacters[ClientId].m_Cur.m_X, GameClient()->m_Snap.m_aCharacters[ClientId].m_Cur.m_Y),
 					Client()->IntraGameTick(g_Config.m_ClDummy));
-				FRenderHitbox(ShadowPosition, Alpha * 0.75f);
+				RenderHitbox(ShadowPosition, Alpha * 0.75f);
 			}
 		}
 	}
@@ -474,7 +474,7 @@ void CMod::OnFire(bool Pressed)
 	if(m_ModWeaponActiveId >= 0)
 		return;
 
-	auto FGetBestClient = [&]() -> const CGameClient::CClientData * {
+	auto GetBestClient = [&]() -> const CGameClient::CClientData * {
 		if(Client()->State() != IClient::STATE_ONLINE)
 			return nullptr;
 		if(g_Config.m_ClModWeapon == -1)
@@ -536,7 +536,7 @@ void CMod::OnFire(bool Pressed)
 		return pBestClient;
 	};
 
-	const CGameClient::CClientData *pBestClient = FGetBestClient();
+	const CGameClient::CClientData *pBestClient = GetBestClient();
 	if(!pBestClient)
 		return;
 

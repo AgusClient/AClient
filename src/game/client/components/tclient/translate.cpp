@@ -407,8 +407,8 @@ void CTranslate::Translate(CChat::CLine &Line, bool ShowProgress)
 
 void CTranslate::OnRender()
 {
-	auto Time = time();
-	auto FForEach = [GameClient = GameClient(), Time](CTranslateJob &Job) {
+	const auto Time = time();
+	auto ForEach = [&](CTranslateJob &Job) {
 		if(Job.m_pLine->m_pTranslateResponse != Job.m_pTranslateResponse)
 			return true; // Not the same line anymore
 		auto &Out = *Job.m_pTranslateResponse;
@@ -424,12 +424,12 @@ void CTranslate::OnRender()
 		{
 			char aBuf[1024];
 			str_format(aBuf, sizeof(aBuf), TCLocalize("[%s to %s failed: %s]", "translate"), Job.m_pBackend->Name(), g_Config.m_ClTranslateTarget, Out.m_Text);
-			GameClient->m_Chat.Echo(aBuf);
+			GameClient()->m_Chat.Echo(aBuf);
 			Job.m_pTranslateResponse->m_Text[0] = '\0';
 		}
 		Job.m_pLine->m_Time = Time;
-		GameClient->m_Chat.RebuildChat();
+		GameClient()->m_Chat.RebuildChat();
 		return true;
 	};
-	m_vJobs.erase(std::remove_if(m_vJobs.begin(), m_vJobs.end(), FForEach), m_vJobs.end());
+	m_vJobs.erase(std::remove_if(m_vJobs.begin(), m_vJobs.end(), ForEach), m_vJobs.end());
 }

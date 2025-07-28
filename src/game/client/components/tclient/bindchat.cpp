@@ -384,7 +384,7 @@ void CBindChat::ConfigSaveCallback(IConfigManager *pConfigManager, void *pUserDa
 {
 	CBindChat *pThis = (CBindChat *)pUserData;
 
-	auto FCompare = [&](const CBindChat::CBind &A, const CBindChat::CBind &B) {
+	auto Compare = [&](const CBindChat::CBind &A, const CBindChat::CBind &B) {
 		const int Res = str_utf8_comp_nocase(A.m_aName, B.m_aName);
 		return Res < 0 || (Res == 0 && str_comp(A.m_aName, B.m_aName) < 0);
 	};
@@ -393,12 +393,12 @@ void CBindChat::ConfigSaveCallback(IConfigManager *pConfigManager, void *pUserDa
 	for(const auto &[_, vBindDefaults] : CBindChat::BIND_DEFAULTS)
 		for(const CBindChat::CBindDefault &BindDefault : vBindDefaults)
 			vDefaultBinds.emplace_back(BindDefault.m_Bind);
-	std::sort(vDefaultBinds.begin(), vDefaultBinds.end(), FCompare);
+	std::sort(vDefaultBinds.begin(), vDefaultBinds.end(), Compare);
 
-	std::sort(pThis->m_vBinds.begin(), pThis->m_vBinds.end(), FCompare);
+	std::sort(pThis->m_vBinds.begin(), pThis->m_vBinds.end(), Compare);
 	for(CBind &Bind : pThis->m_vBinds)
 	{
-		const auto It = std::lower_bound(vDefaultBinds.begin(), vDefaultBinds.end(), Bind, FCompare);
+		const auto It = std::lower_bound(vDefaultBinds.begin(), vDefaultBinds.end(), Bind, Compare);
 		if(It != vDefaultBinds.end() && str_utf8_comp_nocase(It->get().m_aName, Bind.m_aName) == 0)
 		{
 			vDefaultBinds.erase(It);

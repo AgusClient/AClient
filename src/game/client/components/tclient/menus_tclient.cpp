@@ -2152,8 +2152,8 @@ void CMenus::RenderSettingsTClientProfiles(CUIRect MainView)
 
 	CUIRect Label, Button;
 
-	auto FRenderProfile = [&](CUIRect Rect, const CProfile &Profile, bool Main) {
-		auto FRenderCross = [&](CUIRect Cross) {
+	auto RenderProfile = [&](CUIRect Rect, const CProfile &Profile, bool Main) {
+		auto RenderCross = [&](CUIRect Cross) {
 			float MaxExtent = std::max(Cross.w, Cross.h);
 			TextRender()->TextColor(ColorRGBA(1.0f, 0.0f, 0.0f));
 			TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
@@ -2167,7 +2167,7 @@ void CMenus::RenderSettingsTClientProfiles(CUIRect MainView)
 			Rect.VSplitLeft(50.0f, &Skin, &Rect);
 			if(!Main && Profile.m_SkinName[0] == '\0')
 			{
-				FRenderCross(Skin);
+				RenderCross(Skin);
 			}
 			else
 			{
@@ -2207,8 +2207,8 @@ void CMenus::RenderSettingsTClientProfiles(CUIRect MainView)
 			}
 			else
 			{
-				FRenderCross(BodyColor);
-				FRenderCross(FeetColor);
+				RenderCross(BodyColor);
+				RenderCross(FeetColor);
 			}
 		}
 		Rect.VSplitLeft(5.0f, nullptr, &Rect);
@@ -2217,7 +2217,7 @@ void CMenus::RenderSettingsTClientProfiles(CUIRect MainView)
 			Rect.VSplitRight(50.0f, &Rect, &Flag);
 			Flag = {Flag.x, Flag.y + (Flag.h - 25.0f) / 2.0f, Flag.w, 25.0f};
 			if(Profile.m_CountryFlag == -2)
-				FRenderCross(Flag);
+				RenderCross(Flag);
 			else
 				GameClient()->m_CountryFlags.Render(Profile.m_CountryFlag, ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f), Flag.x, Flag.y, Flag.w, Flag.h);
 		}
@@ -2258,7 +2258,7 @@ void CMenus::RenderSettingsTClientProfiles(CUIRect MainView)
 			Ui()->DoLabel(&Label, TCLocalize("Your profile"), FontSize, TEXTALIGN_ML);
 			Profiles.HSplitTop(MarginSmall, nullptr, &Profiles);
 			Profiles.HSplitTop(50.0f, &Skin, &Profiles);
-			FRenderProfile(Skin, CurrentProfile, true);
+			RenderProfile(Skin, CurrentProfile, true);
 
 			// After load
 			if(s_SelectedProfile != -1 && s_SelectedProfile < (int)GameClient()->m_SkinProfiles.m_Profiles.size())
@@ -2287,7 +2287,7 @@ void CMenus::RenderSettingsTClientProfiles(CUIRect MainView)
 				if(g_Config.m_ClProfileFlag && Profile.m_CountryFlag != -2)
 					LoadProfile.m_CountryFlag = Profile.m_CountryFlag;
 
-				FRenderProfile(Skin, LoadProfile, true);
+				RenderProfile(Skin, LoadProfile, true);
 			}
 		}
 		Top.VSplitLeft(20.0f, nullptr, &Top);
@@ -2409,7 +2409,7 @@ void CMenus::RenderSettingsTClientProfiles(CUIRect MainView)
 		if(!Item.m_Visible)
 			continue;
 
-		FRenderProfile(Item.m_Rect, ProfileList[i], false);
+		RenderProfile(Item.m_Rect, ProfileList[i], false);
 	}
 
 	s_SelectedProfile = s_ListBox.DoEnd();
