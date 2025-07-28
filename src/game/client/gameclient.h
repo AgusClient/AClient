@@ -195,6 +195,8 @@ public:
 
 	CTooltips m_Tooltips;
 
+	CLocalServer m_LocalServer;
+
 	// TClient Components
 	CSkinProfiles m_SkinProfiles;
 	CStatusBar m_StatusBar;
@@ -211,7 +213,6 @@ public:
 	CWarList m_WarList;
 	CConditional m_Conditional;
 	CMod m_Mod;
-	CLocalServer m_LocalServer;
 
 private:
 	std::vector<class CComponent *> m_vpAll;
