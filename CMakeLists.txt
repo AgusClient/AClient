@@ -2530,8 +2530,6 @@ if(CLIENT)
     components/tclient/trails.h
     components/tclient/translate.cpp
     components/tclient/translate.h
-    components/tclient/verify.cpp
-    components/tclient/verify.h
     components/tclient/warlist.cpp
     components/tclient/warlist.h
     components/tooltips.cpp
