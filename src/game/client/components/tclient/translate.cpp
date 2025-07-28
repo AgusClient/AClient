@@ -372,7 +372,7 @@ void CTranslate::Translate(const char *pName, bool ShowProgress)
 
 void CTranslate::Translate(CChat::CLine &Line, bool ShowProgress)
 {
-	if(m_vJobs.size() > 10)
+	if(m_vJobs.size() > 15)
 	{
 		GameClient()->m_Chat.Echo("Too many ongoing translations!");
 		return;
