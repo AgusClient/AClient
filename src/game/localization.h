@@ -3,8 +3,6 @@
 #ifndef GAME_LOCALIZATION_H
 #define GAME_LOCALIZATION_H
 
-#include <base/system.h> // GNUC_ATTRIBUTE
-
 #include <engine/shared/memheap.h>
 
 #include <string>
@@ -62,10 +60,8 @@ public:
 
 extern CLocalizationDatabase g_Localization;
 
-extern const char *Localize(const char *pStr, const char *pContext = "")
-	GNUC_ATTRIBUTE((format_arg(1)));
+[[gnu::format_arg(1)]] extern const char *Localize(const char *pStr, const char *pContext = "");
 
-// TClient
-extern const char *TCLocalize(const char *pStr, const char *pContext = "")
-	GNUC_ATTRIBUTE((format_arg(1)));
+[[gnu::format_arg(1)]] extern const char *TCLocalize(const char *pStr, const char *pContext = "");
+
 #endif

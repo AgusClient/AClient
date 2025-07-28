@@ -4508,10 +4508,7 @@ bool CEditor::ReplaceImage(const char *pFileName, int StorageType, bool CheckDup
 	pImg->m_External = IsVanillaImage(pImg->m_aName);
 
 	ConvertToRgba(*pImg);
-	if(g_Config.m_ClEditorDilate == 1)
-	{
-		DilateImage(*pImg);
-	}
+	DilateImage(*pImg);
 
 	pImg->m_AutoMapper.Load(pImg->m_aName);
 	int TextureLoadFlag = Graphics()->Uses2DTextureArrays() ? IGraphics::TEXLOAD_TO_2D_ARRAY_TEXTURE : IGraphics::TEXLOAD_TO_3D_TEXTURE;
@@ -4572,10 +4569,7 @@ bool CEditor::AddImage(const char *pFileName, int StorageType, void *pUser)
 	pImg->m_External = IsVanillaImage(aBuf);
 
 	ConvertToRgba(*pImg);
-	if(g_Config.m_ClEditorDilate == 1)
-	{
-		DilateImage(*pImg);
-	}
+	DilateImage(*pImg);
 
 	int TextureLoadFlag = pEditor->Graphics()->Uses2DTextureArrays() ? IGraphics::TEXLOAD_TO_2D_ARRAY_TEXTURE : IGraphics::TEXLOAD_TO_3D_TEXTURE;
 	if(pImg->m_Width % 16 != 0 || pImg->m_Height % 16 != 0)
@@ -6270,7 +6264,7 @@ void CEditor::SetHotEnvelopePoint(const CUIRect &View, const std::shared_ptr<CEn
 				UpdateMinimum(px, py, &pEnvelope->m_vPoints[i].m_Bezier.m_aInTangentDeltaX[c]);
 			}
 
-			if(pEnvelope->m_vPoints[i].m_Curvetype == CURVETYPE_BEZIER)
+			if(i < pEnvelope->m_vPoints.size() - 1 && pEnvelope->m_vPoints[i].m_Curvetype == CURVETYPE_BEZIER)
 			{
 				float px = EnvelopeToScreenX(View, fxt2f(pEnvelope->m_vPoints[i].m_Time + pEnvelope->m_vPoints[i].m_Bezier.m_aOutTangentDeltaX[c]));
 				float py = EnvelopeToScreenY(View, fx2f(pEnvelope->m_vPoints[i].m_aValues[c] + pEnvelope->m_vPoints[i].m_Bezier.m_aOutTangentDeltaY[c]));
@@ -6653,8 +6647,7 @@ void CEditor::RenderEnvelopeEditor(CUIRect View)
 					// add point
 					float Time = ScreenToEnvelopeX(View, Ui()->MouseX());
 					ColorRGBA Channels = ColorRGBA(0.0f, 0.0f, 0.0f, 0.0f);
-					if(in_range(Time, 0.0f, pEnvelope->EndTime()))
-						pEnvelope->Eval(Time, Channels, 4);
+					pEnvelope->Eval(std::clamp(Time, 0.0f, pEnvelope->EndTime()), Channels, 4);
 
 					int FixedTime = std::round(Time * 1000.0f);
 					bool TimeFound = false;
@@ -6783,7 +6776,7 @@ void CEditor::RenderEnvelopeEditor(CUIRect View)
 					float PosY = EnvelopeToScreenY(View, fx2f(pEnvelope->m_vPoints[i].m_aValues[c]));
 
 					// Out-Tangent
-					if(pEnvelope->m_vPoints[i].m_Curvetype == CURVETYPE_BEZIER)
+					if(i < (int)pEnvelope->m_vPoints.size() - 1 && pEnvelope->m_vPoints[i].m_Curvetype == CURVETYPE_BEZIER)
 					{
 						float TangentX = EnvelopeToScreenX(View, fxt2f(pEnvelope->m_vPoints[i].m_Time + pEnvelope->m_vPoints[i].m_Bezier.m_aOutTangentDeltaX[c]));
 						float TangentY = EnvelopeToScreenY(View, fx2f(pEnvelope->m_vPoints[i].m_aValues[c] + pEnvelope->m_vPoints[i].m_Bezier.m_aOutTangentDeltaY[c]));
@@ -7195,7 +7188,7 @@ void CEditor::RenderEnvelopeEditor(CUIRect View)
 					if(i >= 0 && i < (int)pEnvelope->m_vPoints.size())
 					{
 						// Out-Tangent handle
-						if(pEnvelope->m_vPoints[i].m_Curvetype == CURVETYPE_BEZIER)
+						if(i < (int)pEnvelope->m_vPoints.size() - 1 && pEnvelope->m_vPoints[i].m_Curvetype == CURVETYPE_BEZIER)
 						{
 							CUIRect Final;
 							Final.x = EnvelopeToScreenX(View, fxt2f(pEnvelope->m_vPoints[i].m_Time + pEnvelope->m_vPoints[i].m_Bezier.m_aOutTangentDeltaX[c]));
@@ -7990,9 +7983,9 @@ void CEditor::Render()
 	{
 		// handle undo/redo hotkeys
 		if(Input()->KeyPress(KEY_Z) && Input()->ModifierIsPressed() && !Input()->ShiftIsPressed())
-			UndoLastAction();
+			ActiveHistory().Undo();
 		if((Input()->KeyPress(KEY_Y) && Input()->ModifierIsPressed()) || (Input()->KeyPress(KEY_Z) && Input()->ModifierIsPressed() && Input()->ShiftIsPressed()))
-			RedoLastAction();
+			ActiveHistory().Redo();
 
 		// handle brush save/load hotkeys
 		for(int i = KEY_1; i <= KEY_0; i++)
@@ -9386,24 +9379,20 @@ bool CEditor::Append(const char *pFileName, int StorageType, bool IgnoreHistory)
 	return true;
 }
 
-void CEditor::UndoLastAction()
+CEditorHistory &CEditor::ActiveHistory()
 {
 	if(m_ActiveExtraEditor == EXTRAEDITOR_SERVER_SETTINGS)
-		m_ServerSettingsHistory.Undo();
+	{
+		return m_ServerSettingsHistory;
+	}
 	else if(m_ActiveExtraEditor == EXTRAEDITOR_ENVELOPES)
-		m_EnvelopeEditorHistory.Undo();
+	{
+		return m_EnvelopeEditorHistory;
+	}
 	else
-		m_EditorHistory.Undo();
-}
-
-void CEditor::RedoLastAction()
-{
-	if(m_ActiveExtraEditor == EXTRAEDITOR_SERVER_SETTINGS)
-		m_ServerSettingsHistory.Redo();
-	else if(m_ActiveExtraEditor == EXTRAEDITOR_ENVELOPES)
-		m_EnvelopeEditorHistory.Redo();
-	else
-		m_EditorHistory.Redo();
+	{
+		return m_EditorHistory;
+	}
 }
 
 void CEditor::AdjustBrushSpecialTiles(bool UseNextFree, int Adjust)
