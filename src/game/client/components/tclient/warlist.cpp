@@ -167,8 +167,6 @@ void CWarList::AddWarEntryInGame(int WarType, const char *pName, const char *pRe
 		RemoveWarEntryDuplicates(Entry.m_aName, Entry.m_aClan);
 
 	AddWarEntry(Entry.m_aName, Entry.m_aClan, Entry.m_aReason, Entry.m_pWarType->m_aWarName);
-	// if(str_comp(Entry.m_aClan, "") != 0 || str_comp(Entry.m_aName, "") != 0)
-	//	m_WarEntries.push_back(Entry);
 }
 
 void CWarList::RemoveWarEntryInGame(int WarType, const char *pName, bool IsClan)
@@ -247,7 +245,7 @@ void CWarList::AddWarEntry(const char *pName, const char *pClan, const char *pRe
 	CWarType *WarType = FindWarType(pType);
 	if(WarType == m_pWarTypeNone)
 	{
-		AddWarType(pType, ColorRGBA(0, 0, 0, 1));
+		AddWarType(pType, ColorRGBA(0.0f, 0.0f, 0.0f, 1.0f));
 		WarType = FindWarType(pType);
 	}
 
@@ -429,8 +427,8 @@ void CWarList::UpdateWarPlayers()
 		m_WarPlayers[i].m_WarName = false;
 		m_WarPlayers[i].m_WarClan = false;
 		memset(m_WarPlayers[i].m_aReason, 0, sizeof(m_WarPlayers[i].m_aReason));
-		m_WarPlayers[i].m_NameColor = ColorRGBA(1, 1, 1, 1);
-		m_WarPlayers[i].m_ClanColor = ColorRGBA(1, 1, 1, 1);
+		m_WarPlayers[i].m_NameColor = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
+		m_WarPlayers[i].m_ClanColor = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
 		m_WarPlayers[i].m_WarGroupMatches.clear();
 		m_WarPlayers[i].m_WarGroupMatches.resize((int)m_WarTypes.size(), false);
 
@@ -467,7 +465,7 @@ CWarList::~CWarList()
 CWarList::CWarList()
 {
 	str_copy(m_WarTypes[0]->m_aWarName, "none");
-	m_WarTypes[0]->m_Color = ColorRGBA(1, 1, 1, 1);
+	m_WarTypes[0]->m_Color = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
 }
 
 static inline void EscapeParam(char *pDst, const char *pSrc, int Size)
