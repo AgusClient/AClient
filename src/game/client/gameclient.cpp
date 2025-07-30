@@ -1607,7 +1607,7 @@ static CGameInfo GetGameInfo(const CNetObj_GameInfoEx *pInfoEx, int InfoExSize, 
 		Info.m_DDRaceTeam = Flags2 & GAMEINFOFLAG2_DDRACE_TEAM;
 	}
 
-	// Solly
+	// TClient
 	str_copy(Info.m_aGameType, pFallbackServerInfo->m_aGameType);
 
 	return Info;
