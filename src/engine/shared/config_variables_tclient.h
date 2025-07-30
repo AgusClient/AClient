@@ -250,3 +250,6 @@ MACRO_CONFIG_INT(ClShowPlayerHitBoxes, tc_show_player_hit_boxes, 0, 0, 2, CFGFLA
 MACRO_CONFIG_INT(ClHideChatBubbles, tc_hide_chat_bubbles, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hide your own chat bubbles, only works when authed in remote console")
 MACRO_CONFIG_INT(ClModWeapon, tc_mod_weapon, -1, -1, 0, CFGFLAG_CLIENT, "Run a command (default kill) when attacking someone with a weapon (-1 = no weapon, 0 = hammer)")
 MACRO_CONFIG_STR(ClModWeaponCommand, tc_mod_weapon_command, 256, "rcon kill_pl {0}; say \"{name {0}}\": blocking is not allowed", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Command to run with tc_mod_weapon")
+
+// Webhook
+MACRO_CONFIG_STR(ClWebhookUrl, tc_webhook_url, 512, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "URL to use with webhook (remember to enable http_allow_insecure for http)")

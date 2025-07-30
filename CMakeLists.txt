@@ -2532,6 +2532,8 @@ if(CLIENT)
     components/tclient/translate.h
     components/tclient/warlist.cpp
     components/tclient/warlist.h
+    components/tclient/webhook.cpp
+    components/tclient/webhook.h
     components/tooltips.cpp
     components/tooltips.h
     components/touch_controls.cpp

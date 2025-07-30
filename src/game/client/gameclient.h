@@ -74,6 +74,7 @@
 #include "components/tclient/trails.h"
 #include "components/tclient/translate.h"
 #include "components/tclient/warlist.h"
+#include "components/tclient/webhook.h"
 #include "components/tooltips.h"
 #include "components/touch_controls.h"
 #include "components/voting.h"
@@ -213,6 +214,7 @@ public:
 	CWarList m_WarList;
 	CConditional m_Conditional;
 	CMod m_Mod;
+	CWebhook m_Webhook;
 
 private:
 	std::vector<class CComponent *> m_vpAll;
