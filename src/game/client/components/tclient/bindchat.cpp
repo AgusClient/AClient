@@ -1,4 +1,5 @@
 #include <engine/shared/config.h>
+#include <engine/shared/localization.h>
 
 #include <game/client/gameclient.h>
 #include <game/localization.h>
@@ -40,45 +41,45 @@ bool CBindChat::CBind::CompContent(const CBind &Other) const
 	return true;
 }
 decltype(CBindChat::BIND_DEFAULTS) CBindChat::BIND_DEFAULTS = {
-	{TCLocalize("Kaomoji"), {
-					{TCLocalize("Shrug:"), {"!shrug", "?r[msg]", "Append a shrug to the end of your message", "say {0} ¯\\_(ツ)_/¯"}},
-					{TCLocalize("Flip:"), {"!flip", "?r[msg]", "Append rage to the end of your message", "say {0} (╯°□°)╯︵ ┻━┻"}},
-					{TCLocalize("Unflip:"), {"!unflip", "?r[msg]", "Append unrage to the end of your message", "say {0} ┬─┬ノ( º _ ºノ)"}},
-					{TCLocalize("Cute:"), {"!cute", "?r[msg]", "Append cuteness to the end of your message", "say {0} ૮ ˶ᵔ ᵕ ᵔ˶ ა"}},
-					{TCLocalize("Lenny:"), {"!lenny", "?r[msg]", "Append lenny to the end of your message", "say {0} ( ͡° ͜ʖ ͡°)"}},
-				}},
-	{TCLocalize("Warlist"), {
-					{TCLocalize("Add war name:"), {"!war", "war_name_index 1"}},
-					{TCLocalize("Add war clan:"), {"!warclan", "war_clan_index 1"}},
-					{TCLocalize("Add team name:"), {"!team", "war_name_index 2"}},
-					{TCLocalize("Add team clan:"), {"!teamclan", "war_clan_index 2"}},
-					{TCLocalize("Remove war name:"), {"!delwar", "remove_war_name_index 1"}},
-					{TCLocalize("Remove war name:"), {"!delwarclan", "remove_war_clan_index 1"}},
-					{TCLocalize("Remove team name:"), {"!delteam", "remove_war_name_index 2"}},
-					{TCLocalize("Remove team clan:"), {"!delteamclan", "remove_war_clan_index 2"}},
-					{TCLocalize("Add [group] [name] [reason]:"), {"!name", "war_name"}},
-					{TCLocalize("Add [group] [clan] [reason]:"), {"!clan", "war_clan"}},
-					{TCLocalize("Remove [group] [name]:"), {"!delname", "remove_war_name"}},
-					{TCLocalize("Remove [group] [clan]:"), {"!delclan", "remove_war_clan"}},
-				}},
-	{TCLocalize("Mod"), {
-				    {TCLocalize("Mute ID:"), {"!mmute", "mod_rcon_mute"}},
-				    {TCLocalize("Mute Name:"), {"!mmuten", "mod_rcon_mute_name"}},
-				    {TCLocalize("Unmute Last:"), {"!munmutelast", "rcon unmute 0"}},
-				    {TCLocalize("Kick ID:"), {"!mkick", "mod_rcon_kick"}},
-				    {TCLocalize("Kick Name:"), {"!mkickn", "mod_rcon_kick_name"}},
-				    {TCLocalize("Ban ID:"), {"!mban", "mod_rcon_ban"}},
-				    {TCLocalize("Ban Name:"), {"!mbann", "mod_rcon_ban_name"}},
-				    {TCLocalize("Unban Last:"), {"!munbanlast", "rcon unban 0"}},
-				    {TCLocalize("Kill Ids:"), {"!mkill", "mod_rcon_kill"}},
-				    {TCLocalize("Kill Names:"), {"!mkilln", "mod_rcon_kill_name"}},
-			    }},
-	{TCLocalize("Other"), {
-				      {TCLocalize("Translate:"), {"!translate", "translate"}},
-				      {TCLocalize("Translate ID:"), {"!translateid", "translate_id"}},
-				      {TCLocalize("Mute:"), {"!mute", "add_foe"}},
-				      {TCLocalize("Unmute:"), {"!unmute", "remove_foe"}},
-			      }},
+	{TCLocalizable("Kaomoji"), {
+					   {TCLocalizable("Shrug:"), {"!shrug", "?r[msg]", "Append a shrug to the end of your message", "say {0} ¯\\_(ツ)_/¯"}},
+					   {TCLocalizable("Flip:"), {"!flip", "?r[msg]", "Append rage to the end of your message", "say {0} (╯°□°)╯︵ ┻━┻"}},
+					   {TCLocalizable("Unflip:"), {"!unflip", "?r[msg]", "Append unrage to the end of your message", "say {0} ┬─┬ノ( º _ ºノ)"}},
+					   {TCLocalizable("Cute:"), {"!cute", "?r[msg]", "Append cuteness to the end of your message", "say {0} ૮ ˶ᵔ ᵕ ᵔ˶ ა"}},
+					   {TCLocalizable("Lenny:"), {"!lenny", "?r[msg]", "Append lenny to the end of your message", "say {0} ( ͡° ͜ʖ ͡°)"}},
+				   }},
+	{TCLocalizable("Warlist"), {
+					   {TCLocalizable("Add war name:"), {"!war", "war_name_index 1"}},
+					   {TCLocalizable("Add war clan:"), {"!warclan", "war_clan_index 1"}},
+					   {TCLocalizable("Add team name:"), {"!team", "war_name_index 2"}},
+					   {TCLocalizable("Add team clan:"), {"!teamclan", "war_clan_index 2"}},
+					   {TCLocalizable("Remove war name:"), {"!delwar", "remove_war_name_index 1"}},
+					   {TCLocalizable("Remove war name:"), {"!delwarclan", "remove_war_clan_index 1"}},
+					   {TCLocalizable("Remove team name:"), {"!delteam", "remove_war_name_index 2"}},
+					   {TCLocalizable("Remove team clan:"), {"!delteamclan", "remove_war_clan_index 2"}},
+					   {TCLocalizable("Add [group] [name] [reason]:"), {"!name", "war_name"}},
+					   {TCLocalizable("Add [group] [clan] [reason]:"), {"!clan", "war_clan"}},
+					   {TCLocalizable("Remove [group] [name]:"), {"!delname", "remove_war_name"}},
+					   {TCLocalizable("Remove [group] [clan]:"), {"!delclan", "remove_war_clan"}},
+				   }},
+	{TCLocalizable("Mod"), {
+				       {TCLocalizable("Mute ID:"), {"!mmute", "mod_rcon_mute"}},
+				       {TCLocalizable("Mute Name:"), {"!mmuten", "mod_rcon_mute_name"}},
+				       {TCLocalizable("Unmute Last:"), {"!munmutelast", "rcon unmute 0"}},
+				       {TCLocalizable("Kick ID:"), {"!mkick", "mod_rcon_kick"}},
+				       {TCLocalizable("Kick Name:"), {"!mkickn", "mod_rcon_kick_name"}},
+				       {TCLocalizable("Ban ID:"), {"!mban", "mod_rcon_ban"}},
+				       {TCLocalizable("Ban Name:"), {"!mbann", "mod_rcon_ban_name"}},
+				       {TCLocalizable("Unban Last:"), {"!munbanlast", "rcon unban 0"}},
+				       {TCLocalizable("Kill Ids:"), {"!mkill", "mod_rcon_kill"}},
+				       {TCLocalizable("Kill Names:"), {"!mkilln", "mod_rcon_kill_name"}},
+			       }},
+	{TCLocalizable("Other"), {
+					 {TCLocalizable("Translate:"), {"!translate", "translate"}},
+					 {TCLocalizable("Translate ID:"), {"!translateid", "translate_id"}},
+					 {TCLocalizable("Mute:"), {"!mute", "add_foe"}},
+					 {TCLocalizable("Unmute:"), {"!unmute", "remove_foe"}},
+				 }},
 };
 
 CBindChat::CBindChat()

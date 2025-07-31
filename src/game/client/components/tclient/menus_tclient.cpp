@@ -1255,7 +1255,7 @@ void CMenus::RenderSettingsTClientChatBinds(CUIRect MainView)
 			pName = s_aTempName;
 		else
 			pName = pOldBind->m_aName;
-		if(DoEditBoxWithLabel(&BindDefault.m_LineInput, &Button, BindDefault.m_pTitle, BindDefault.m_Bind.m_aName, pName, BINDCHAT_MAX_NAME) && BindDefault.m_LineInput.IsActive())
+		if(DoEditBoxWithLabel(&BindDefault.m_LineInput, &Button, TCLocalize(BindDefault.m_pTitle), BindDefault.m_Bind.m_aName, pName, BINDCHAT_MAX_NAME) && BindDefault.m_LineInput.IsActive())
 		{
 			if(!pOldBind && pName[0] != '\0')
 			{
@@ -1288,7 +1288,7 @@ void CMenus::RenderSettingsTClientChatBinds(CUIRect MainView)
 	{
 		float &Size = SizeL > SizeR ? SizeR : SizeL;
 		CUIRect &Column = SizeL > SizeR ? RightView : LeftView;
-		DoBindchatDefaults(Column, pTitle, vBindDefaults);
+		DoBindchatDefaults(Column, TCLocalize(pTitle), vBindDefaults);
 		Size += vBindDefaults.size() * (MarginSmall + LineSize) + HeadlineHeight + HeadlineFontSize + MarginSmall * 2.0f;
 	}
 
@@ -1685,7 +1685,6 @@ void CMenus::RenderSettingsTClientWarList(CUIRect MainView)
 	Column4.HSplitBottom(0.0f, &PlayerList, &Column4);
 	static CListBox s_PlayerListBox;
 	s_PlayerListBox.DoStart(30.0f, MAX_CLIENTS, 1, 2, -1, &PlayerList, true, IGraphics::CORNER_ALL, true);
-
 
 	static std::vector<unsigned char> s_vPlayerItemIds;
 	static std::vector<CButtonContainer> s_vNameButtons;
