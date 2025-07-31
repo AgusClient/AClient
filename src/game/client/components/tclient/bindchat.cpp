@@ -401,9 +401,15 @@ void CBindChat::ConfigSaveCallback(IConfigManager *pConfigManager, void *pUserDa
 		const auto It = std::lower_bound(vDefaultBinds.begin(), vDefaultBinds.end(), Bind, Compare);
 		if(It != vDefaultBinds.end() && str_utf8_comp_nocase(It->get().m_aName, Bind.m_aName) == 0)
 		{
-			vDefaultBinds.erase(It);
-			if(Bind.CompContent(Bind)) // Don't write default binds
+			if(Bind.CompContent(*It)) // Don't write default binds
+			{
+				vDefaultBinds.erase(It);
 				continue;
+			}
+			else
+			{
+				vDefaultBinds.erase(It);
+			}
 		}
 
 		char aBuf[BINDCHAT_MAX_CMD * 2] = "";
