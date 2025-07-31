@@ -513,7 +513,7 @@ void CMod::OnFire(bool Pressed)
 		const vec2 Pos = GameClient()->m_Camera.m_Center;
 		for(const CGameClient::CClientData &Other : GameClient()->m_aClients)
 		{
-			if(!Other.m_Active || !GameClient()->m_Snap.m_aCharacters[Other.ClientId()].m_Active || Player.ClientId() == Other.ClientId())
+			if(!Other.m_Active || !GameClient()->m_Snap.m_aCharacters[Other.ClientId()].m_Active)
 				continue;
 			const float PosDelta = distance(Other.m_RenderPos, Pos);
 			const float MaxRange = 100.0f;
