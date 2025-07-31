@@ -358,7 +358,7 @@ void CMod::OnRender()
 					const auto BoundingBox = TextRender()->GetBoundingBoxTextContainer(TextContainer);
 					TextRender()->RenderTextContainer(TextContainer,
 						Color, TextRender()->DefaultTextOutlineColor(),
-						Player.m_RenderPos.x - BoundingBox.m_W / 2.0f,  Y);
+						Player.m_RenderPos.x - BoundingBox.m_W / 2.0f, Y);
 					Y += BoundingBox.m_H + 15.0f;
 				}
 				TextRender()->DeleteTextContainer(TextContainer);
@@ -376,7 +376,7 @@ void CMod::OnRender()
 					const auto BoundingBox = TextRender()->GetBoundingBoxTextContainer(TextContainer);
 					TextRender()->RenderTextContainer(TextContainer,
 						ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f), TextRender()->DefaultTextOutlineColor(),
-						Player.m_RenderPos.x - BoundingBox.m_W / 2.0f,  Y);
+						Player.m_RenderPos.x - BoundingBox.m_W / 2.0f, Y);
 					Y += BoundingBox.m_H + 15.0f;
 				}
 				TextRender()->DeleteTextContainer(TextContainer);
