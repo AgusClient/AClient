@@ -341,24 +341,46 @@ void CMod::OnRender()
 					m_ModWeaponActiveId = -1;
 				}
 			}
-			char aBuf[32];
-			str_format(aBuf, sizeof(aBuf), "%.2f", m_ModWeaponActiveTimeLeft);
-			STextContainerIndex TextContainer;
-			TextContainer.Reset();
-			CTextCursor Cursor;
-			TextRender()->SetCursor(&Cursor, 0.0f, 0.0f, 25.0f, TEXTFLAG_RENDER);
-			TextRender()->SetRenderFlags(TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT | TEXT_RENDER_FLAG_ONE_TIME_USE);
-			TextRender()->CreateTextContainer(TextContainer, &Cursor, aBuf);
-			TextRender()->SetRenderFlags(0);
-			if(TextContainer.Valid())
+			float Y = Player.m_RenderPos.y + 20.0f;
 			{
-				const auto Color = color_cast<ColorRGBA>(ColorHSLA(m_ModWeaponActiveTimeLeft / MOD_WEAPON_TIME, 0.5f, 0.5f, 1.0f));
-				const auto BoundingBox = TextRender()->GetBoundingBoxTextContainer(TextContainer);
-				TextRender()->RenderTextContainer(TextContainer,
-					Color, TextRender()->DefaultTextOutlineColor(),
-					Player.m_RenderPos.x - BoundingBox.m_W / 2.0f, Player.m_RenderPos.y + 30.0f + BoundingBox.m_H);
+				char aBuf[32];
+				str_format(aBuf, sizeof(aBuf), "%.2f", m_ModWeaponActiveTimeLeft);
+				STextContainerIndex TextContainer;
+				TextContainer.Reset();
+				CTextCursor Cursor;
+				TextRender()->SetCursor(&Cursor, 0.0f, 0.0f, 25.0f, TEXTFLAG_RENDER);
+				TextRender()->SetRenderFlags(TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT | TEXT_RENDER_FLAG_ONE_TIME_USE);
+				TextRender()->CreateTextContainer(TextContainer, &Cursor, aBuf);
+				TextRender()->SetRenderFlags(0);
+				if(TextContainer.Valid())
+				{
+					const auto Color = color_cast<ColorRGBA>(ColorHSLA(m_ModWeaponActiveTimeLeft / MOD_WEAPON_TIME, 0.5f, 0.5f, 1.0f));
+					const auto BoundingBox = TextRender()->GetBoundingBoxTextContainer(TextContainer);
+					TextRender()->RenderTextContainer(TextContainer,
+						Color, TextRender()->DefaultTextOutlineColor(),
+						Player.m_RenderPos.x - BoundingBox.m_W / 2.0f,  Y);
+					Y += BoundingBox.m_H + 15.0f;
+				}
+				TextRender()->DeleteTextContainer(TextContainer);
 			}
-			TextRender()->DeleteTextContainer(TextContainer);
+			{
+				STextContainerIndex TextContainer;
+				TextContainer.Reset();
+				CTextCursor Cursor;
+				TextRender()->SetCursor(&Cursor, 0.0f, 0.0f, 15.0f, TEXTFLAG_RENDER);
+				TextRender()->SetRenderFlags(TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT | TEXT_RENDER_FLAG_ONE_TIME_USE);
+				TextRender()->CreateTextContainer(TextContainer, &Cursor, g_Config.m_ClModWeaponCommand);
+				TextRender()->SetRenderFlags(0);
+				if(TextContainer.Valid())
+				{
+					const auto BoundingBox = TextRender()->GetBoundingBoxTextContainer(TextContainer);
+					TextRender()->RenderTextContainer(TextContainer,
+						ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f), TextRender()->DefaultTextOutlineColor(),
+						Player.m_RenderPos.x - BoundingBox.m_W / 2.0f,  Y);
+					Y += BoundingBox.m_H + 15.0f;
+				}
+				TextRender()->DeleteTextContainer(TextContainer);
+			}
 		}
 	}
 
@@ -474,70 +496,60 @@ void CMod::OnFire(bool Pressed)
 	}
 	if(m_ModWeaponActiveId >= 0)
 		return;
-
-	auto GetBestClient = [&]() -> const CGameClient::CClientData * {
-		if(Client()->State() != IClient::STATE_ONLINE)
-			return nullptr;
-		if(g_Config.m_ClModWeapon == -1)
-			return nullptr;
-		if(!Client()->RconAuthed())
-			return nullptr;
-		if(GameClient()->m_aLocalIds[g_Config.m_ClDummy] < 0)
-			return nullptr;
-		const auto &Player = GameClient()->m_aClients[GameClient()->m_Snap.m_LocalClientId];
-		if(Player.m_RenderPrev.m_Weapon != g_Config.m_ClModWeapon)
-			return nullptr;
-		if(!Player.m_Active)
-			return nullptr;
-		// Find person who we have shot
-		const CGameClient::CClientData *pBestClient = nullptr;
-		float BestClientScore = -INFINITY;
-		if(GameClient()->m_Snap.m_SpecInfo.m_Active || Player.m_Team == TEAM_SPECTATORS)
+	if(g_Config.m_ClModWeapon == -1)
+		return;
+	if(!Client()->RconAuthed())
+		return;
+	const auto &Player = GameClient()->m_aClients[GameClient()->m_Snap.m_LocalClientId];
+	if(Player.m_RenderPrev.m_Weapon != g_Config.m_ClModWeapon)
+		return;
+	if(!Player.m_Active)
+		return;
+	// Find person who we have shot
+	const CGameClient::CClientData *pBestClient = nullptr;
+	float BestClientScore = -INFINITY;
+	if(GameClient()->m_Snap.m_SpecInfo.m_Active || Player.m_Team == TEAM_SPECTATORS)
+	{
+		const vec2 Pos = GameClient()->m_Camera.m_Center;
+		for(const CGameClient::CClientData &Other : GameClient()->m_aClients)
 		{
-			const vec2 Pos = GameClient()->m_Camera.m_Center;
-			for(const CGameClient::CClientData &Other : GameClient()->m_aClients)
+			if(!Other.m_Active || !GameClient()->m_Snap.m_aCharacters[Other.ClientId()].m_Active || Player.ClientId() == Other.ClientId())
+				continue;
+			const float PosDelta = distance(Other.m_RenderPos, Pos);
+			const float MaxRange = 100.0f;
+			if(PosDelta > MaxRange)
+				continue;
+			const float Score = MaxRange - PosDelta;
+			if(Score > BestClientScore)
 			{
-				if(!Other.m_Active || !GameClient()->m_Snap.m_aCharacters[Other.ClientId()].m_Active || Player.ClientId() == Other.ClientId())
-					continue;
-				const float PosDelta = distance(Other.m_RenderPos, Pos);
-				const float MaxRange = 100.0f;
-				if(PosDelta > MaxRange)
-					continue;
-				const float Score = MaxRange - PosDelta;
-				if(Score > BestClientScore)
-				{
-					BestClientScore = Score;
-					pBestClient = &Other;
-				}
+				BestClientScore = Score;
+				pBestClient = &Other;
 			}
 		}
-		else
+	}
+	else
+	{
+		const vec2 Pos = Player.m_RenderPos;
+		const vec2 Angle = normalize(GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy]);
+		for(const CGameClient::CClientData &Other : GameClient()->m_aClients)
 		{
-			const vec2 Pos = Player.m_RenderPos;
-			const vec2 Angle = normalize(GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy]);
-			for(const CGameClient::CClientData &Other : GameClient()->m_aClients)
+			if(!Other.m_Active || !GameClient()->m_Snap.m_aCharacters[Other.ClientId()].m_Active || Player.ClientId() == Other.ClientId() || GameClient()->IsOtherTeam(Other.ClientId()))
+				continue;
+			const float PosDelta = distance(Other.m_RenderPos, Pos);
+			const float MaxRange = (g_Config.m_ClModWeapon == 0 ? 100.0f : 750.0f);
+			if(PosDelta > MaxRange)
+				continue;
+			const float AngleDelta = dot(normalize(Other.m_RenderPos - Pos), Angle);
+			if(AngleDelta < 0.9f)
+				continue;
+			const float Score = (AngleDelta - 1.0f) * 10.0f * MaxRange + (MaxRange - PosDelta);
+			if(Score > BestClientScore)
 			{
-				if(!Other.m_Active || !GameClient()->m_Snap.m_aCharacters[Other.ClientId()].m_Active || Player.ClientId() == Other.ClientId() || GameClient()->IsOtherTeam(Other.ClientId()))
-					continue;
-				const float PosDelta = distance(Other.m_RenderPos, Pos);
-				const float MaxRange = (g_Config.m_ClModWeapon == 0 ? 100.0f : 750.0f);
-				if(PosDelta > MaxRange)
-					continue;
-				const float AngleDelta = dot(normalize(Other.m_RenderPos - Pos), Angle);
-				if(AngleDelta < 0.9f)
-					continue;
-				const float Score = (AngleDelta - 1.0f) * 10.0f * MaxRange + (MaxRange - PosDelta);
-				if(Score > BestClientScore)
-				{
-					BestClientScore = Score;
-					pBestClient = &Other;
-				}
+				BestClientScore = Score;
+				pBestClient = &Other;
 			}
 		}
-		return pBestClient;
-	};
-
-	const CGameClient::CClientData *pBestClient = GetBestClient();
+	}
 	if(!pBestClient)
 		return;
 
