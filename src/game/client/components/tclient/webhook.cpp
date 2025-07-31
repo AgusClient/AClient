@@ -11,7 +11,8 @@
 #include <optional>
 
 constexpr const float BUFFER_MAX_TIME = 5.0f; // seconds
-constexpr const float BUFFER_MIN_TIME = 1.0f; // seconds
+constexpr const float BUFFER_MIN_TIME = 0.25f; // seconds
+constexpr const float BUFFER_MIN_TIME_AUTHED = 0.1f; // seconds
 
 CWebhook::CWebhook()
 {
@@ -109,7 +110,7 @@ void CWebhook::OnRender()
 		return;
 	m_TimeSinceLastRequest += Client()->RenderFrameTime();
 	m_TimeSinceBufferStart += Client()->RenderFrameTime();
-	if(m_TimeSinceLastRequest >= BUFFER_MIN_TIME)
+	if(m_TimeSinceLastRequest >= Client()->RconAuthed() ? BUFFER_MIN_TIME_AUTHED : BUFFER_MIN_TIME)
 		FlushBuffer();
 	if(m_TimeSinceBufferStart >= BUFFER_MAX_TIME)
 		FlushBuffer();
