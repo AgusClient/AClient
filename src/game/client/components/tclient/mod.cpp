@@ -336,6 +336,7 @@ void CMod::OnRender()
 				m_ModWeaponActiveTimeLeft -= Delta;
 				if(m_ModWeaponActiveTimeLeft <= 0.0f)
 				{
+					m_ModWeaponActiveTimeLeft = 0.0f;
 					ModWeapon(m_ModWeaponActiveId);
 					m_ModWeaponActiveId = -1;
 				}
