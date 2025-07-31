@@ -429,7 +429,7 @@ void CMod::ModWeapon(int Id)
 	if(!Player.m_Active)
 		return;
 
-	str_format(aBuf, sizeof(aBuf), TCLocalize("Activating mod weapon on %d: %s\n"), Player.ClientId(), Player.m_aClan);
+	str_format(aBuf, sizeof(aBuf), TCLocalize("Activating mod weapon on %d: %s\n"), Player.ClientId(), Player.m_aName);
 	GameClient()->Echo(aBuf);
 
 	class CResultModFire : public CConsole::IResult
