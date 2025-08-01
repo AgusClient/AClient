@@ -181,11 +181,7 @@ void CBindWheel::OnRender()
 	if(AnimationTime != 0.0f)
 	{
 		for(float &Time : m_aAnimationTimeItems)
-		{
-			Time -= Client()->RenderFrameTime();
-			if(Time <= 0.0f)
-				Time = 0.0f;
-		}
+			Time = std::max(0.0f, Time - Client()->RenderFrameTime());
 	}
 
 	if(!m_Active)

@@ -12,7 +12,8 @@
 class CEmoticon : public CComponent
 {
 	float m_AnimationTime = 0.0f;
-	float m_aAnimationTimeItems[NUM_EMOTICONS + NUM_EMOTES] = {0}; // Outer then inner
+	float m_aAnimationTimeEmotes[NUM_EMOTICONS] = {0};
+	float m_aAnimationTimeEyeEmotes[NUM_EMOTES] = {0};
 
 	bool m_WasActive;
 	bool m_Active;
