@@ -1023,12 +1023,12 @@ void CMenus::RenderSettingsTClientBindWheel(CUIRect MainView)
 	MainView.VSplitLeft(MainView.w / 2.1f, &LeftView, &RightView);
 
 	const float Radius = minimum(RightView.w, RightView.h) / 2.0f;
-	vec2 Pos{RightView.x + RightView.w / 2.0f, RightView.y + RightView.h / 2.0f};
+	vec2 Center{RightView.x + RightView.w / 2.0f, RightView.y + RightView.h / 2.0f};
 	// Draw Circle
 	Graphics()->TextureClear();
 	Graphics()->QuadsBegin();
 	Graphics()->SetColor(0.0f, 0.0f, 0.0f, 0.3f);
-	Graphics()->DrawCircle(Pos.x, Pos.y, Radius, 64);
+	Graphics()->DrawCircle(Center.x, Center.y, Radius, 64);
 	Graphics()->QuadsEnd();
 
 	static char s_aBindName[BINDWHEEL_MAX_NAME];
@@ -1037,13 +1037,13 @@ void CMenus::RenderSettingsTClientBindWheel(CUIRect MainView)
 	static int s_SelectedBindIndex = -1;
 	int HoveringIndex = -1;
 
-	float MouseDist = distance(Pos, Ui()->MousePos());
+	float MouseDist = distance(Center, Ui()->MousePos());
 	if(MouseDist < Radius && MouseDist > Radius * 0.25f)
 	{
 		int SegmentCount = GameClient()->m_BindWheel.m_vBinds.size();
 		float SegmentAngle = 2.0f * pi / SegmentCount;
 
-		float HoveringAngle = angle(Ui()->MousePos() - Pos) + SegmentAngle / 2.0f;
+		float HoveringAngle = angle(Ui()->MousePos() - Center) + SegmentAngle / 2.0f;
 		if(HoveringAngle < 0.0f)
 			HoveringAngle += 2.0f * pi;
 
@@ -1091,14 +1091,10 @@ void CMenus::RenderSettingsTClientBindWheel(CUIRect MainView)
 
 		const CBindWheel::CBind Bind = GameClient()->m_BindWheel.m_vBinds[i];
 		const float Angle = Theta * i;
-		vec2 TextPos = direction(Angle);
-		TextPos *= Radius * 0.75f;
 
-		float Width = TextRender()->TextWidth(SegmentFontSize, Bind.m_aName);
-		TextPos += Pos;
-		TextPos.x -= Width / 2.0f;
-		TextRender()->Text(TextPos.x, TextPos.y, SegmentFontSize, Bind.m_aName);
-		TextRender()->TextColor(TextRender()->DefaultTextColor());
+		const vec2 Pos = direction(Angle) * (Radius * 0.75f);
+		const CUIRect Rect = CUIRect{Pos.x - 50.0f, Pos.y - 50.0f, 100.0f, 100.0f};
+		Ui()->DoLabel(&Rect, Bind.m_aName, SegmentFontSize, TEXTALIGN_MC);
 	}
 
 	LeftView.HSplitTop(LineSize, &Button, &LeftView);

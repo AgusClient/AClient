@@ -288,7 +288,6 @@ void CBindWheel::OnRender()
 	{
 		const CBind &Bind = m_vBinds[i];
 		const float Angle = Theta * i;
-		const vec2 Pos = direction(Angle) * s_OuterItemRadius * aAnimationPhase[1];
 		const float Phase = ItemAnimationTime == 0.0f ? (i == m_SelectedBind ? 1.0f : 0.0f) : QuadEaseInOut(m_aAnimationTimeItems[i] / ItemAnimationTime);
 		const float FontSize = (s_FontSize + Phase * (s_FontSizeSelected - s_FontSize)) * aAnimationPhase[1];
 		const char *pName = Bind.m_aName;
@@ -301,8 +300,9 @@ void CBindWheel::OnRender()
 		{
 			TextRender()->TextColor(1.0f, 1.0f, 1.0f, aAnimationPhase[1]);
 		}
-		float Width = TextRender()->TextWidth(FontSize, pName);
-		TextRender()->Text(Screen.w / 2.0f + Pos.x - Width / 2.0f, Screen.h / 2.0f + Pos.y - FontSize / 2.0f, FontSize, pName);
+		const vec2 Pos = vec2(Screen.x, Screen.y) + vec2(Screen.w, Screen.h) / 2.0f + direction(Angle) * s_OuterItemRadius * aAnimationPhase[1];
+		const CUIRect Rect = CUIRect{Pos.x - 50.0f, Pos.y - 50.0f, 100.0f, 100.0f};
+		Ui()->DoLabel(&Rect, pName, FontSize, TEXTALIGN_MC);
 	}
 	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 	Graphics()->WrapNormal();
