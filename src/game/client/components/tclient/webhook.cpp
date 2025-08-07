@@ -66,38 +66,34 @@ void CWebhook::OnRender()
 				return false;
 			if(Request->State() == EHttpState::DONE && Request->StatusCode() == 200)
 			{
-				std::optional<int> Type;
-				const char *pLine;
-				auto DoLine = [&]() {
-					if(Type.has_value())
-					{
-						if(!pLine)
-							log_error("webhook", "Got empty line");
-						else if(Type == 0)
-							Console()->ExecuteLine(pLine);
-						else if(Type == 1)
-							Client()->Rcon(pLine);
-						else
-							log_error("webhook", "Got invalid type");
-						Type = std::nullopt;
-					}
-					else
-					{
-						Type = str_toint(pLine); // On fail returns 0
-					}
-				};
 				char *pResult;
 				size_t Size;
 				Request->Result((unsigned char **)&pResult, &Size);
 				if(pResult && Size > 0)
 				{
-					pLine = pResult;
+					std::optional<int> Type;
+					const char *pLine = pResult;
 					for(size_t i = 0; i < Size && pResult[i] != '\0'; ++i)
 					{
 						if(pResult[i] == '\n')
 						{
 							pResult[i] = '\0';
-							DoLine();
+							if(Type.has_value())
+							{
+								if(!pLine)
+									log_error("webhook", "Got empty line");
+								else if(Type == 0)
+									Console()->ExecuteLine(pLine);
+								else if(Type == 1)
+									Client()->Rcon(pLine);
+								else
+									log_error("webhook", "Got invalid type: %d", *Type);
+								Type = std::nullopt;
+							}
+							else
+							{
+								Type = str_toint(pLine); // On fail returns 0
+							}
 							pLine = &pResult[i + 1];
 						}
 					}
