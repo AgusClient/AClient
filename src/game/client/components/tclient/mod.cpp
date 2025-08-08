@@ -496,13 +496,11 @@ void CMod::OnFire(bool Pressed)
 	}
 	if(m_ModWeaponActiveId >= 0)
 		return;
-	if(g_Config.m_ClModWeapon == -1)
+	if(g_Config.m_ClModWeapon == 0)
 		return;
 	if(!Client()->RconAuthed())
 		return;
 	const auto &Player = GameClient()->m_aClients[GameClient()->m_Snap.m_LocalClientId];
-	if(Player.m_RenderPrev.m_Weapon != g_Config.m_ClModWeapon)
-		return;
 	if(!Player.m_Active)
 		return;
 	// Find person who we have shot
@@ -516,7 +514,7 @@ void CMod::OnFire(bool Pressed)
 			if(!Other.m_Active || !GameClient()->m_Snap.m_aCharacters[Other.ClientId()].m_Active)
 				continue;
 			const float PosDelta = distance(Other.m_RenderPos, Pos);
-			const float MaxRange = 100.0f;
+			const float MaxRange = 250.0f;
 			if(PosDelta > MaxRange)
 				continue;
 			const float Score = MaxRange - PosDelta;
@@ -536,7 +534,7 @@ void CMod::OnFire(bool Pressed)
 			if(!Other.m_Active || !GameClient()->m_Snap.m_aCharacters[Other.ClientId()].m_Active || Player.ClientId() == Other.ClientId() || GameClient()->IsOtherTeam(Other.ClientId()))
 				continue;
 			const float PosDelta = distance(Other.m_RenderPos, Pos);
-			const float MaxRange = (g_Config.m_ClModWeapon == 0 ? 100.0f : 750.0f);
+			const float MaxRange = 750.0f;
 			if(PosDelta > MaxRange)
 				continue;
 			const float AngleDelta = dot(normalize(Other.m_RenderPos - Pos), Angle);
