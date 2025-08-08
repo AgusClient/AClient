@@ -529,19 +529,19 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 	Ui()->DoScrollbarOption(&g_Config.m_ClAntiPingUncertaintyScale, &g_Config.m_ClAntiPingUncertaintyScale, &Button, TCLocalize("Uncertainty duration"), 50, 400, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "%");
 	s_SectionBoxes.back().h = Column.y - s_SectionBoxes.back().y;
 
-	// ***** Other ***** //
+	// ***** Execute on join ***** //
 	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 	s_SectionBoxes.push_back(Column);
 	Column.HSplitTop(HeadlineHeight, &Label, &Column);
-	Ui()->DoLabel(&Label, TCLocalize("Other"), HeadlineFontSize, TEXTALIGN_ML);
+	Ui()->DoLabel(&Label, TCLocalize("Execute on join"), HeadlineFontSize, TEXTALIGN_ML);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClRunOnJoinConsole, TCLocalize("Run cl_run_on_join as console command"), &g_Config.m_ClRunOnJoinConsole, &Column, LineSize);
+	Column.HSplitTop(LineSize + MarginExtraSmall, &Button, &Column);
+	static CLineInput s_ExecuteOnJoin(g_Config.m_ClAutoReplyMutedMessage, sizeof(g_Config.m_ClAutoReplyMutedMessage));
+	Ui()->DoEditBox(&s_ExecuteOnJoin, &Button, EditBoxFontSize);
+
 	Column.HSplitTop(LineSize, &Button, &Column);
-	if(g_Config.m_ClRunOnJoinConsole)
-	{
-		DoSliderWithScaledValue(&g_Config.m_ClRunOnJoinDelay, &g_Config.m_ClRunOnJoinDelay, &Button, TCLocalize("Delay"), 140, 2000, 20, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "ms");
-	}
+	DoSliderWithScaledValue(&g_Config.m_ClExecuteOnJoinDelay, &g_Config.m_ClExecuteOnJoinDelay, &Button, TCLocalize("Delay"), 140, 2000, 20, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "ticks");
 	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
 	s_SectionBoxes.back().h = Column.y - s_SectionBoxes.back().y;
 

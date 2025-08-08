@@ -501,6 +501,9 @@ void CClient::EnterGame(int Conn)
 
 	m_aCodeRunAfterJoin[Conn] = false;
 
+	// TClient
+	m_aExecuteOnJoinDone[Conn] = false;
+
 	// now we will wait for two snapshots
 	// to finish the connection
 	SendEnterGame(Conn);
@@ -2149,6 +2152,14 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket, int Conn, bool Dummy)
 
 					// apply snapshot, cycle pointers
 					m_aReceivedSnapshots[Conn]++;
+
+					// TClient
+					if(!m_aExecuteOnJoinDone[Conn] && m_aReceivedSnapshots[Conn] > g_Config.m_ClExecuteOnJoinDelay)
+					{
+						m_aExecuteOnJoinDone[Conn] = true;
+						if(g_Config.m_ClExecuteOnJoin[0] != '\0')
+							m_pConsole->ExecuteLine(g_Config.m_ClExecuteOnJoin);
+					}
 
 					// we got two snapshots until we see us self as connected
 					if(m_aReceivedSnapshots[Conn] == 2)
