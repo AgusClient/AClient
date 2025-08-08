@@ -283,7 +283,7 @@ void CBindWheel::OnRender()
 	Graphics()->QuadsEnd();
 
 	Graphics()->WrapClamp();
-	const float Theta = pi * 2.0f / std::min<int>(1, m_vBinds.size()); // Min to prevent divide by 0
+	const float Theta = pi * 2.0f / std::max<float>(1.0f, m_vBinds.size()); // Prevent divide by 0
 	for(int i = 0; i < static_cast<int>(m_vBinds.size()); i++)
 	{
 		const CBind &Bind = m_vBinds[i];

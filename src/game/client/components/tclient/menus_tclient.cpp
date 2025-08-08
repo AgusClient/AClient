@@ -1023,7 +1023,7 @@ void CMenus::RenderSettingsTClientBindWheel(CUIRect MainView)
 	MainView.VSplitLeft(MainView.w / 2.1f, &LeftView, &RightView);
 
 	const float Radius = minimum(RightView.w, RightView.h) / 2.0f;
-	vec2 Center{RightView.x + RightView.w / 2.0f, RightView.y + RightView.h / 2.0f};
+	vec2 Center = RightView.Center();
 	// Draw Circle
 	Graphics()->TextureClear();
 	Graphics()->QuadsBegin();
@@ -1075,7 +1075,7 @@ void CMenus::RenderSettingsTClientBindWheel(CUIRect MainView)
 		str_copy(s_aBindCommand, "");
 	}
 
-	const float Theta = pi * 2.0f / GameClient()->m_BindWheel.m_vBinds.size();
+	const float Theta = pi * 2.0f / std::max<float>(1.0f, GameClient()->m_BindWheel.m_vBinds.size()); // Prevent divide by 0
 	for(int i = 0; i < static_cast<int>(GameClient()->m_BindWheel.m_vBinds.size()); i++)
 	{
 		float SegmentFontSize = FontSize * 1.1f;
@@ -1092,7 +1092,7 @@ void CMenus::RenderSettingsTClientBindWheel(CUIRect MainView)
 		const CBindWheel::CBind Bind = GameClient()->m_BindWheel.m_vBinds[i];
 		const float Angle = Theta * i;
 
-		const vec2 Pos = direction(Angle) * (Radius * 0.75f);
+		const vec2 Pos = direction(Angle) * (Radius * 0.75f) + Center;
 		const CUIRect Rect = CUIRect{Pos.x - 50.0f, Pos.y - 50.0f, 100.0f, 100.0f};
 		Ui()->DoLabel(&Rect, Bind.m_aName, SegmentFontSize, TEXTALIGN_MC);
 	}
