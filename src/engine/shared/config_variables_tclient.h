@@ -255,5 +255,6 @@ MACRO_CONFIG_STR(ClModWeaponCommand, tc_mod_weapon_command, 256, "rcon kill_pl {
 MACRO_CONFIG_STR(ClWebhookUrl, tc_webhook_url, 512, "", CFGFLAG_CLIENT, "URL to use with webhook (remember to enable http_allow_insecure for http)")
 
 // Run on join
+MACRO_CONFIG_STR(ClExecuteOnConnect, tc_execute_on_connect, 100, "Run a console command before connect", CFGFLAG_CLIENT | CFGFLAG_SAVE, "")
 MACRO_CONFIG_STR(ClExecuteOnJoin, tc_execute_on_join, 100, "Run a console command on join", CFGFLAG_CLIENT | CFGFLAG_SAVE, "")
 MACRO_CONFIG_INT(ClExecuteOnJoinDelay, tc_execute_on_join_delay, 2, 7, 50000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Tick delay before executing tc_execute_on_join")

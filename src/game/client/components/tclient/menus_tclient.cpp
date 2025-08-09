@@ -541,6 +541,15 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 		CUIRect Box;
 		Column.HSplitTop(LineSize + MarginExtraSmall, &Box, &Column);
 		Box.VSplitMid(&Label, &Button);
+		Ui()->DoLabel(&Label, Localize("Execute before connect"), FontSize, TEXTALIGN_ML);
+		static CLineInput s_LineInput(g_Config.m_ClExecuteOnConnect, sizeof(g_Config.m_ClExecuteOnConnect));
+		Ui()->DoEditBox(&s_LineInput, &Button, EditBoxFontSize);
+	}
+	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+	{
+		CUIRect Box;
+		Column.HSplitTop(LineSize + MarginExtraSmall, &Box, &Column);
+		Box.VSplitMid(&Label, &Button);
 		Ui()->DoLabel(&Label, Localize("Execute on join"), FontSize, TEXTALIGN_ML);
 		static CLineInput s_LineInput(g_Config.m_ClExecuteOnJoin, sizeof(g_Config.m_ClExecuteOnJoin));
 		Ui()->DoEditBox(&s_LineInput, &Button, EditBoxFontSize);

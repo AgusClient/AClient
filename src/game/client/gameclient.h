@@ -978,6 +978,8 @@ public:
 	int m_SmoothTick[2] = {};
 	float m_SmoothIntraTick[2] = {};
 	bool CheckNewInput() override;
+	std::optional<CServerInfo> m_ConnectServerInfo = std::nullopt;
+	void SetConnectInfo(const NETADDR *pAddress) override;
 };
 
 ColorRGBA CalculateNameColor(ColorHSLA TextColorHSL);

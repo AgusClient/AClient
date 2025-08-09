@@ -270,6 +270,20 @@ static int TimeFromStr(const char *pStr, char OutUnit)
 
 void CConditional::OnConsoleInit()
 {
+	// Static to prevent use after return
+	static const auto GetServerInfo = [](CConditional *pThis) -> const CServerInfo * {
+		if(pThis->Client()->State() == IClient::STATE_ONLINE || pThis->Client()->State() == IClient::STATE_DEMOPLAYBACK)
+		{
+			static CServerInfo s_ServerInfo;
+			pThis->Client()->GetServerInfo(&s_ServerInfo);
+			return &s_ServerInfo;
+		}
+		else if(pThis->GameClient()->m_ConnectServerInfo)
+		{
+			return &*pThis->GameClient()->m_ConnectServerInfo;
+		}
+		return nullptr;
+	};
 	m_vVariables.emplace_back("game_mode", [&](char *pOut, int Length) {
 		return str_copy(pOut, GameClient()->m_GameInfo.m_aGameType, Length);
 	});
@@ -301,33 +315,46 @@ void CConditional::OnConsoleInit()
 		return str_format(pOut, Length, "%d", GameClient()->m_Teams.Team(GameClient()->m_aLocalIds[g_Config.m_ClDummy]));
 	});
 	m_vVariables.emplace_back("map", [&](char *pOut, int Length) {
-		return str_copy(pOut, Client()->GetCurrentMap(), Length);
+		if(Client()->State() == IClient::STATE_ONLINE || Client()->State() == IClient::STATE_DEMOPLAYBACK)
+			return str_copy(pOut, Client()->GetCurrentMap(), Length);
+		else if(GameClient()->m_ConnectServerInfo)
+			return str_copy(pOut, GameClient()->m_ConnectServerInfo->m_aMap, Length);
+		else
+			return str_copy(pOut, "offline", Length);
 	});
 	m_vVariables.emplace_back("server_ip", [&](char *pOut, int Length) {
-		net_addr_str(&Client()->ServerAddress(), pOut, Length, true);
-		return str_length(pOut);
+		const NETADDR *pAddress = nullptr;
+		if(Client()->State() == IClient::STATE_ONLINE)
+			pAddress = &Client()->ServerAddress();
+		else if(GameClient()->m_ConnectServerInfo)
+			pAddress = &GameClient()->m_ConnectServerInfo->m_aAddresses[0];
+		else
+			return str_copy(pOut, "offline", Length);
+		const auto SizeBefore = str_length(pOut);
+		net_addr_str(pAddress, pOut, Length, true);
+		return str_length(pOut) - SizeBefore;
 	});
 	m_vVariables.emplace_back("players_connected", [&](char *pOut, int Length) {
 		return str_format(pOut, Length, "%d", GameClient()->m_Snap.m_NumPlayers);
 	});
 	m_vVariables.emplace_back("players_cap", [&](char *pOut, int Length) {
-		CServerInfo CurrentServerInfo;
-		Client()->GetServerInfo(&CurrentServerInfo);
-		return str_format(pOut, Length, "%d", CurrentServerInfo.m_MaxClients);
+		const CServerInfo *pCurrentServerInfo = GetServerInfo(this);
+		if(pCurrentServerInfo)
+			return str_format(pOut, Length, "%d", pCurrentServerInfo->m_MaxClients);
+		else
+			return str_copy(pOut, "offline", Length);
 	});
 	m_vVariables.emplace_back("server_name", [&](char *pOut, int Length) {
-		CServerInfo CurrentServerInfo;
-		Client()->GetServerInfo(&CurrentServerInfo);
-		return str_copy(pOut, CurrentServerInfo.m_aName, Length);
+		const CServerInfo *pCurrentServerInfo = GetServerInfo(this);
+		return str_copy(pOut, pCurrentServerInfo ? pCurrentServerInfo->m_aName : "offline", Length);
 	});
 	m_vVariables.emplace_back("community", [&](char *pOut, int Length) {
-		CServerInfo CurrentServerInfo;
-		Client()->GetServerInfo(&CurrentServerInfo);
-		return str_copy(pOut, CurrentServerInfo.m_aCommunityId, Length);
+		const CServerInfo *pCurrentServerInfo = GetServerInfo(this);
+		return str_copy(pOut, pCurrentServerInfo ? pCurrentServerInfo->m_aCommunityId : "offline", Length);
 	});
 	m_vVariables.emplace_back("location", [&](char *pOut, int Length) {
 		if(GameClient()->m_GameInfo.m_Race)
-			return str_copy(pOut, "Forbidden", Length);
+			return str_copy(pOut, "forbidden", Length);
 		float w = 100.0f, h = 100.0f;
 		float x = 50.0f, y = 50.0f;
 		{

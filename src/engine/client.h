@@ -406,6 +406,7 @@ public:
 
 	// TClient
 	virtual bool CheckNewInput() = 0;
+	virtual void SetConnectInfo(const NETADDR *pAddress) = 0;
 };
 
 extern IGameClient *CreateGameClient();
