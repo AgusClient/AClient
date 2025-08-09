@@ -532,16 +532,22 @@ void CMenus::RenderSettingsTClientSettngs(CUIRect MainView)
 	// ***** Execute on join ***** //
 	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 	s_SectionBoxes.push_back(Column);
+
 	Column.HSplitTop(HeadlineHeight, &Label, &Column);
-	Ui()->DoLabel(&Label, TCLocalize("Execute on join"), HeadlineFontSize, TEXTALIGN_ML);
+	Ui()->DoLabel(&Label, TCLocalize("Auto execute"), HeadlineFontSize, TEXTALIGN_ML);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
-	Column.HSplitTop(LineSize + MarginExtraSmall, &Button, &Column);
-	static CLineInput s_ExecuteOnJoin(g_Config.m_ClAutoReplyMutedMessage, sizeof(g_Config.m_ClAutoReplyMutedMessage));
-	Ui()->DoEditBox(&s_ExecuteOnJoin, &Button, EditBoxFontSize);
+	{
+		CUIRect Box;
+		Column.HSplitTop(LineSize + MarginExtraSmall, &Box, &Column);
+		Box.VSplitMid(&Label, &Button);
+		Ui()->DoLabel(&Label, Localize("Execute on join"), FontSize, TEXTALIGN_ML);
+		static CLineInput s_LineInput(g_Config.m_ClExecuteOnJoin, sizeof(g_Config.m_ClExecuteOnJoin));
+		Ui()->DoEditBox(&s_LineInput, &Button, EditBoxFontSize);
+	}
 
 	Column.HSplitTop(LineSize, &Button, &Column);
-	DoSliderWithScaledValue(&g_Config.m_ClExecuteOnJoinDelay, &g_Config.m_ClExecuteOnJoinDelay, &Button, TCLocalize("Delay"), 140, 2000, 20, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "ticks");
+	DoSliderWithScaledValue(&g_Config.m_ClExecuteOnJoinDelay, &g_Config.m_ClExecuteOnJoinDelay, &Button, TCLocalize("Delay"), 140, 2000, 20, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "ms");
 	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
 	s_SectionBoxes.back().h = Column.y - s_SectionBoxes.back().y;
 
