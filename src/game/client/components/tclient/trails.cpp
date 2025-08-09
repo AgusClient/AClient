@@ -45,7 +45,6 @@ void CTrails::OnRender()
 		return;
 
 	Graphics()->TextureClear();
-	GameClient()->RenderTools()->MapScreenToGroup(GameClient()->m_Camera.m_Center.x, GameClient()->m_Camera.m_Center.y, GameClient()->Layers()->GameGroup(), GameClient()->m_Camera.m_Zoom);
 
 	for(int ClientId = 0; ClientId < MAX_CLIENTS; ClientId++)
 	{
