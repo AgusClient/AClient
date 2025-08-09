@@ -568,10 +568,6 @@ public:
 
 	CClientData m_aClients[MAX_CLIENTS];
 
-	// TClient
-	int m_SmoothTick[2] = {};
-	float m_SmoothIntraTick[2] = {};
-
 	class CClientStats
 	{
 		int m_IngameTicks;
@@ -733,8 +729,6 @@ public:
 	bool CanDisplayWarning() const override;
 	CNetObjHandler *GetNetObjHandler() override;
 	protocol7::CNetObjHandler *GetNetObjHandler7() override;
-
-	bool CheckNewInput() override;
 
 	void LoadGameSkin(const char *pPath, bool AsDir = false);
 	void LoadEmoticonsSkin(const char *pPath, bool AsDir = false);
@@ -978,6 +972,12 @@ private:
 	};
 
 	SMultiView m_MultiView;
+
+public:
+	// TClient
+	int m_SmoothTick[2] = {};
+	float m_SmoothIntraTick[2] = {};
+	bool CheckNewInput() override;
 };
 
 ColorRGBA CalculateNameColor(ColorHSLA TextColorHSL);
