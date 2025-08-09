@@ -166,6 +166,9 @@ void CBindWheel::OnRender()
 			return 1.0f;
 		return (t < 0.5f) ? (2.0f * t * t) : (1.0f - std::pow(-2.0f * t + 2.0f, 2) / 2.0f);
 	};
+	static const auto PositiveMod = [](float x, float y) -> float {
+		return std::fmod(x + y, y);
+	};
 
 	static const float s_InnerOuterMouseBoundaryRadius = 110.0f;
 	static const float s_OuterMouseLimitRadius = 170.0f;
@@ -256,12 +259,9 @@ void CBindWheel::OnRender()
 	}
 	else
 	{
-		float SegmentAngle = 2.0f * pi / SegmentCount;
-		float SelectedAngle = angle(GameClient()->m_Emoticon.m_SelectorMouse) + SegmentAngle / 2.0f;
-		if(SelectedAngle < 0.0f)
-			SelectedAngle += 2.0f * pi;
+		const float SelectedAngle = angle(GameClient()->m_Emoticon.m_SelectorMouse);
 		if(length(GameClient()->m_Emoticon.m_SelectorMouse) > s_InnerOuterMouseBoundaryRadius)
-			m_SelectedBind = (int)(SelectedAngle / (2.0f * pi) * SegmentCount);
+			m_SelectedBind = PositiveMod(std::round(SelectedAngle / (2.0f * pi) * SegmentCount), SegmentCount);
 		else
 			m_SelectedBind = -1;
 	}

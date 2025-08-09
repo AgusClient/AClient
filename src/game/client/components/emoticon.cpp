@@ -86,6 +86,9 @@ void CEmoticon::OnRender()
 			return 1.0f;
 		return (t < 0.5f) ? (2.0f * t * t) : (1.0f - std::pow(-2.0f * t + 2.0f, 2) / 2.0f);
 	};
+	static const auto PositiveMod = [](float x, float y) -> float {
+		return std::fmod(x + y, y);
+	};
 
 	static const float s_InnerMouseLimitRadius = 40.0f;
 	static const float s_InnerOuterMouseBoundaryRadius = 110.0f;
@@ -187,16 +190,14 @@ void CEmoticon::OnRender()
 	if(length(m_SelectorMouse) > s_OuterMouseLimitRadius)
 		m_SelectorMouse = normalize(m_SelectorMouse) * s_OuterMouseLimitRadius;
 
-	float SelectorAngle = angle(m_SelectorMouse);
-	if(SelectorAngle < 0.0f)
-		SelectorAngle += 2.0f * pi;
+	const float SelectorAngle = angle(m_SelectorMouse);
 
 	m_SelectedEmote = -1;
 	m_SelectedEyeEmote = -1;
 	if(length(m_SelectorMouse) > s_InnerOuterMouseBoundaryRadius)
-		m_SelectedEmote = std::round(SelectorAngle / (2.0f * pi) * NUM_EMOTICONS);
+		m_SelectedEmote = PositiveMod(std::round(SelectorAngle / (2.0f * pi) * NUM_EMOTICONS), NUM_EMOTICONS);
 	else if(length(m_SelectorMouse) > s_InnerMouseLimitRadius)
-		m_SelectedEyeEmote = std::round(SelectorAngle / (2.0f * pi) * NUM_EMOTES);
+		m_SelectedEyeEmote = PositiveMod(std::round(SelectorAngle / (2.0f * pi) * NUM_EMOTES), NUM_EMOTES);
 
 	if(m_SelectedEmote != -1)
 	{
