@@ -198,7 +198,7 @@ int CControls::SnapInput(int *pData)
 		m_aInputData[g_Config.m_ClDummy].m_PlayerFlags |= PLAYERFLAG_SPEC_CAM;
 
 	// TClient
-	if(g_Config.m_ClHideChatBubbles && Client()->RconAuthed())
+	if(g_Config.m_TcHideChatBubbles && Client()->RconAuthed())
 		for(auto &InputData : m_aInputData)
 			InputData.m_PlayerFlags &= ~PLAYERFLAG_CHATTING;
 
@@ -217,7 +217,7 @@ int CControls::SnapInput(int *pData)
 		// set the target anyway though so that we can keep seeing our surroundings,
 		// even if chat or menu are activated
 		vec2 Pos = GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy];
-		if(g_Config.m_ClScaleMouseDistance && !GameClient()->m_Snap.m_SpecInfo.m_Active)
+		if(g_Config.m_TcScaleMouseDistance && !GameClient()->m_Snap.m_SpecInfo.m_Active)
 		{
 			const int MaxDistance = g_Config.m_ClDyncam ? g_Config.m_ClDyncamMaxDistance : g_Config.m_ClMouseMaxDistance;
 			if(MaxDistance > 5 && MaxDistance < 1000) // Don't scale if angle bind or reduces precision
@@ -243,7 +243,7 @@ int CControls::SnapInput(int *pData)
 		else
 			Pos = GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy];
 
-		if(g_Config.m_ClScaleMouseDistance && !GameClient()->m_Snap.m_SpecInfo.m_Active)
+		if(g_Config.m_TcScaleMouseDistance && !GameClient()->m_Snap.m_SpecInfo.m_Active)
 		{
 			const int MaxDistance = g_Config.m_ClDyncam ? g_Config.m_ClDyncamMaxDistance : g_Config.m_ClMouseMaxDistance;
 			if(MaxDistance > 5 && MaxDistance < 1000) // Don't scale if angle bind or reduces precision
@@ -449,13 +449,13 @@ void CControls::ClampMousePos()
 		if(MouseDistance > MouseMax)
 			m_aMousePos[g_Config.m_ClDummy] = normalize_pre_length(m_aMousePos[g_Config.m_ClDummy], MouseDistance) * MouseMax;
 
-		if(g_Config.m_ClLimitMouseToScreen)
+		if(g_Config.m_TcLimitMouseToScreen)
 		{
 			float Width, Height;
 			RenderTools()->CalcScreenParams(Graphics()->ScreenAspect(), 1.0f, &Width, &Height);
 			Height /= 2.0f;
 			Width /= 2.0f;
-			if(g_Config.m_ClLimitMouseToScreen == 2)
+			if(g_Config.m_TcLimitMouseToScreen == 2)
 				Width = Height;
 			m_aMousePos[g_Config.m_ClDummy].y = std::clamp(m_aMousePos[g_Config.m_ClDummy].y, -Height, Height);
 			m_aMousePos[g_Config.m_ClDummy].x = std::clamp(m_aMousePos[g_Config.m_ClDummy].x, -Width, Width);

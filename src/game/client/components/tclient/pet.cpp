@@ -11,7 +11,7 @@ void CPet::OnRender()
 {
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
-	if(g_Config.m_ClPetShow <= 0)
+	if(g_Config.m_TcPetShow <= 0)
 		return;
 
 	const int PlayerId = GameClient()->m_aLocalIds[g_Config.m_ClDummy];
@@ -21,7 +21,7 @@ void CPet::OnRender()
 
 	const float Delta = Client()->RenderFrameTime();
 
-	const float Scale = (float)g_Config.m_ClPetSize / 100.0f;
+	const float Scale = (float)g_Config.m_TcPetSize / 100.0f;
 
 	if(Player.m_Active && Player.m_Team != TEAM_SPECTATORS)
 	{
@@ -91,11 +91,11 @@ void CPet::OnRender()
 	m_Dir = (DirTarget + m_Dir) / 2.0f; // TODO: stop being lazy
 
 	CTeeRenderInfo TeeRenderInfo;
-	TeeRenderInfo.Apply(GameClient()->m_Skins.Find(g_Config.m_ClPetSkin));
+	TeeRenderInfo.Apply(GameClient()->m_Skins.Find(g_Config.m_TcPetSkin));
 	// TeeRenderInfo.ApplyColors(g_Config.m_ClPlayerUseCustomColor, g_Config.m_ClPlayerColorBody, g_Config.m_ClPlayerColorFeet);
 	TeeRenderInfo.m_Size = 64.0f * Scale;
 	TeeRenderInfo.m_GotAirJump = m_Velocity.y > -10.0f;
-	RenderTools()->RenderTee(CAnimState::GetIdle(), &TeeRenderInfo, Emote, m_Dir, m_Position, m_Alpha * (float)g_Config.m_ClPetAlpha / 100.0f);
+	RenderTools()->RenderTee(CAnimState::GetIdle(), &TeeRenderInfo, Emote, m_Dir, m_Position, m_Alpha * (float)g_Config.m_TcPetAlpha / 100.0f);
 }
 
 void CPet::OnMapLoad()

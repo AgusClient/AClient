@@ -555,11 +555,11 @@ void CChat::OnMessage(int MsgType, void *pRawMsg)
 	{
 		CNetMsg_Sv_Chat *pMsg = (CNetMsg_Sv_Chat *)pRawMsg;
 
-		if(g_Config.m_ClRegexChatIgnore[0])
+		if(g_Config.m_TcRegexChatIgnore[0])
 		{
 			RegexToken aTokens[512];
 			int16_t TokenCount = 512;
-			if(regex_parse(g_Config.m_ClRegexChatIgnore, aTokens, &TokenCount, 0))
+			if(regex_parse(g_Config.m_TcRegexChatIgnore, aTokens, &TokenCount, 0))
 				GameClient()->Echo("Regex error");
 			else if(regex_match(aTokens, pMsg->m_pMessage, 0, 0, 0, 0) != -1)
 				return;
@@ -1211,7 +1211,7 @@ void CChat::OnPrepareLines(float y)
 			NameColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClMessageSystemColor));
 		else if(Line.m_ClientId == CLIENT_MSG)
 			NameColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClMessageClientColor));
-		else if(Line.m_ClientId >= 0 && g_Config.m_ClWarList && g_Config.m_ClWarListChat && GameClient()->m_WarList.GetAnyWar(Line.m_ClientId)) // TClient
+		else if(Line.m_ClientId >= 0 && g_Config.m_TcWarList && g_Config.m_TcWarListChat && GameClient()->m_WarList.GetAnyWar(Line.m_ClientId)) // TClient
 			NameColor = GameClient()->m_WarList.GetPriorityColor(Line.m_ClientId);
 		else if(Line.m_Team)
 			NameColor = CalculateNameColor(ColorHSLA(g_Config.m_ClMessageTeamColor));
@@ -1352,7 +1352,7 @@ void CChat::OnRender()
 	float x = 5.0f;
 
 	// TClient
-	float y = 300.0f - (20.0f * FontSize() / 6.0f + (g_Config.m_ClStatusBar ? g_Config.m_ClStatusBarHeight : 0.0f));
+	float y = 300.0f - (20.0f * FontSize() / 6.0f + (g_Config.m_TcStatusBar ? g_Config.m_TcStatusBarHeight : 0.0f));
 	// float y = 300.0f - 20.0f * FontSize() / 6.0f;
 
 	float ScaledFontSize = FontSize() * (8.0f / 6.0f);

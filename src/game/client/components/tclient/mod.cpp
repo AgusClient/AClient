@@ -322,7 +322,7 @@ void CMod::OnRender()
 	if(Client()->State() == IClient::STATE_ONLINE && m_ModWeaponActiveId >= 0 && m_ModWeaponActiveTimeLeft > 0.0f)
 	{
 		const auto &Player = GameClient()->m_aClients[m_ModWeaponActiveId];
-		if(!Player.m_Active || g_Config.m_ClModWeaponCommand[0] == '\0') // Cancel if not active or empty command
+		if(!Player.m_Active || g_Config.m_TcModWeaponCommand[0] == '\0') // Cancel if not active or empty command
 		{
 			m_ModWeaponActiveId = -1;
 		}
@@ -367,7 +367,7 @@ void CMod::OnRender()
 				CTextCursor Cursor;
 				TextRender()->SetCursor(&Cursor, 0.0f, 0.0f, 15.0f, TEXTFLAG_RENDER);
 				TextRender()->SetRenderFlags(TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT | TEXT_RENDER_FLAG_ONE_TIME_USE);
-				TextRender()->CreateTextContainer(TextContainer, &Cursor, g_Config.m_ClModWeaponCommand);
+				TextRender()->CreateTextContainer(TextContainer, &Cursor, g_Config.m_TcModWeaponCommand);
 				TextRender()->SetRenderFlags(0);
 				if(TextContainer.Valid())
 				{
@@ -383,7 +383,7 @@ void CMod::OnRender()
 	}
 
 	// Hitboxes
-	if(g_Config.m_ClShowPlayerHitBoxes > 0)
+	if(g_Config.m_TcShowPlayerHitBoxes > 0)
 	{
 		auto RenderHitbox = [&](vec2 Position, float Alpha) {
 			if(Alpha <= 0.0f)
@@ -423,7 +423,7 @@ void CMod::OnRender()
 
 			RenderHitbox(Player.m_RenderPos, Alpha);
 
-			if(g_Config.m_ClShowPlayerHitBoxes > 1)
+			if(g_Config.m_TcShowPlayerHitBoxes > 1)
 			{
 				// From CPlayers::RenderPlayer
 				vec2 ShadowPosition = mix(
@@ -479,7 +479,7 @@ void CMod::ModWeapon(int Id)
 	str_format(aBuf, sizeof(aBuf), "%d", Id);
 	CResultModFire ResultModFire(aBuf);
 	GameClient()->m_Conditional.m_pResult = &ResultModFire;
-	Console()->ExecuteLine(g_Config.m_ClModWeaponCommand);
+	Console()->ExecuteLine(g_Config.m_TcModWeaponCommand);
 	GameClient()->m_Conditional.m_pResult = nullptr;
 }
 
@@ -494,7 +494,7 @@ void CMod::OnFire(bool Pressed)
 	}
 	if(m_ModWeaponActiveId >= 0)
 		return;
-	if(g_Config.m_ClModWeapon == 0)
+	if(g_Config.m_TcModWeapon == 0)
 		return;
 	if(!Client()->RconAuthed())
 		return;

@@ -21,17 +21,17 @@ static T color_lerp(T a, T b, float c)
 
 void CRainbow::OnRender()
 {
-	if(!g_Config.m_ClRainbowTees && !g_Config.m_ClRainbowWeapon && !g_Config.m_ClRainbowHook)
+	if(!g_Config.m_TcRainbowTees && !g_Config.m_TcRainbowWeapon && !g_Config.m_TcRainbowHook)
 		return;
 
-	if(g_Config.m_ClRainbowMode == 0)
+	if(g_Config.m_TcRainbowMode == 0)
 		return;
 
-	m_Time += Client()->RenderFrameTime() * ((float)g_Config.m_ClRainbowSpeed / 100.0f);
+	m_Time += Client()->RenderFrameTime() * ((float)g_Config.m_TcRainbowSpeed / 100.0f);
 	float DefTick = std::fmod(m_Time, 1.0f);
 	ColorRGBA Col;
 
-	switch(g_Config.m_ClRainbowMode)
+	switch(g_Config.m_TcRainbowMode)
 	{
 	case COLORMODE_RAINBOW:
 		Col = color_cast<ColorRGBA>(ColorHSLA(DefTick, 1.0f, 0.5f));
@@ -68,7 +68,7 @@ void CRainbow::OnRender()
 		CTeeRenderInfo *RenderInfo = &GameClient()->m_aClients[i].m_RenderInfo;
 
 		// check if rainbow is enabled
-		if(Local ? g_Config.m_ClRainbowTees : (g_Config.m_ClRainbowTees && g_Config.m_ClRainbowOthers))
+		if(Local ? g_Config.m_TcRainbowTees : (g_Config.m_TcRainbowTees && g_Config.m_TcRainbowOthers))
 		{
 			RenderInfo->m_BloodColor = Col;
 			RenderInfo->m_ColorBody = Col;

@@ -96,7 +96,7 @@ void CTClient::ConchainRandomColor(IConsole::IResult *pResult, void *pUserData, 
 
 void CTClient::OnInit()
 {
-	TextRender()->SetCustomFace(g_Config.m_ClCustomFont);
+	TextRender()->SetCustomFace(g_Config.m_TcCustomFont);
 	m_pGraphics = Kernel()->RequestInterface<IEngineGraphics>();
 	FetchTClientInfo();
 }
@@ -160,25 +160,25 @@ void CTClient::OnMessage(int MsgType, void *pRawMsg)
 		str_copy(aPlayerName, GameClient()->m_aClients[ClientId].m_aName, sizeof(aPlayerName));
 
 		bool PlayerMuted = GameClient()->m_aClients[ClientId].m_Foe || GameClient()->m_aClients[ClientId].m_ChatIgnore;
-		if(g_Config.m_ClAutoReplyMuted && PlayerMuted)
+		if(g_Config.m_TcAutoReplyMuted && PlayerMuted)
 		{
 			char aBuf[256];
 			if(pMsg->m_Team == TEAM_WHISPER_RECV || ServerCommandExists("w"))
-				str_format(aBuf, sizeof(aBuf), "/w %s %s", aPlayerName, g_Config.m_ClAutoReplyMutedMessage);
+				str_format(aBuf, sizeof(aBuf), "/w %s %s", aPlayerName, g_Config.m_TcAutoReplyMutedMessage);
 			else
-				str_format(aBuf, sizeof(aBuf), "%s: %s", aPlayerName, g_Config.m_ClAutoReplyMutedMessage);
+				str_format(aBuf, sizeof(aBuf), "%s: %s", aPlayerName, g_Config.m_TcAutoReplyMutedMessage);
 			SendNonDuplicateMessage(0, aBuf);
 			return;
 		}
 
 		bool WindowActive = m_pGraphics && m_pGraphics->WindowActive();
-		if(g_Config.m_ClAutoReplyMinimized && !WindowActive && m_pGraphics)
+		if(g_Config.m_TcAutoReplyMinimized && !WindowActive && m_pGraphics)
 		{
 			char aBuf[256];
 			if(pMsg->m_Team == TEAM_WHISPER_RECV || ServerCommandExists("w"))
-				str_format(aBuf, sizeof(aBuf), "/w %s %s", aPlayerName, g_Config.m_ClAutoReplyMinimizedMessage);
+				str_format(aBuf, sizeof(aBuf), "/w %s %s", aPlayerName, g_Config.m_TcAutoReplyMinimizedMessage);
 			else
-				str_format(aBuf, sizeof(aBuf), "%s: %s", aPlayerName, g_Config.m_ClAutoReplyMinimizedMessage);
+				str_format(aBuf, sizeof(aBuf), "%s: %s", aPlayerName, g_Config.m_TcAutoReplyMinimizedMessage);
 			SendNonDuplicateMessage(0, aBuf);
 			return;
 		}
@@ -202,13 +202,13 @@ void CTClient::OnMessage(int MsgType, void *pRawMsg)
 			bool FunVote = SettingVote && str_find_nocase(aDescription, "funvote");
 			bool MapVote = SettingVote && !RandomMapVote && !MapCoolDown && !CategoryVote && !FunVote && (str_find_nocase(aDescription, "Map:") || str_find_nocase(aDescription, "★") || str_find_nocase(aDescription, "✰"));
 
-			if(g_Config.m_ClAutoVoteWhenFar && (MapVote || RandomMapVote))
+			if(g_Config.m_TcAutoVoteWhenFar && (MapVote || RandomMapVote))
 			{
 				int RaceTime = 0;
 				if(GameClient()->m_Snap.m_pGameInfoObj->m_GameStateFlags & GAMESTATEFLAG_RACETIME)
 					RaceTime = (Client()->GameTick(g_Config.m_ClDummy) + GameClient()->m_Snap.m_pGameInfoObj->m_WarmupTimer) / Client()->GameTickSpeed();
 
-				if(RaceTime / 60 >= g_Config.m_ClAutoVoteWhenFarTime)
+				if(RaceTime / 60 >= g_Config.m_TcAutoVoteWhenFarTime)
 				{
 					CGameClient::CClientData *pVoteCaller = nullptr;
 					int CallerId = -1;
@@ -234,8 +234,8 @@ void CTClient::OnMessage(int MsgType, void *pRawMsg)
 						if(!Friend && !SameTeam && !MySelf)
 						{
 							GameClient()->m_Voting.Vote(-1);
-							if(str_comp(g_Config.m_ClAutoVoteWhenFarMessage, "") != 0)
-								SendNonDuplicateMessage(0, g_Config.m_ClAutoVoteWhenFarMessage);
+							if(str_comp(g_Config.m_TcAutoVoteWhenFarMessage, "") != 0)
+								SendNonDuplicateMessage(0, g_Config.m_TcAutoVoteWhenFarMessage);
 						}
 					}
 				}
@@ -394,7 +394,7 @@ void CTClient::DoFinishCheck()
 {
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
-	if(g_Config.m_ClChangeNameNearFinish <= 0)
+	if(g_Config.m_TcChangeNameNearFinish <= 0)
 		return;
 	m_FinishTextTimeout -= Client()->RenderFrameTime();
 	if(m_FinishTextTimeout > 0.0f)
@@ -439,7 +439,7 @@ void CTClient::DoFinishCheck()
 	const auto &Player = GameClient()->m_aClients[GameClient()->m_aLocalIds[Dummy]];
 	if(!Player.m_Active)
 		return;
-	const char *NewName = g_Config.m_ClFinishName;
+	const char *NewName = g_Config.m_TcFinishName;
 	if(str_comp(Player.m_aName, NewName) == 0)
 		return;
 	if(!NearTile(Player.m_RenderPos, 10, TILE_FINISH))
@@ -555,7 +555,7 @@ void CTClient::SetForcedAspect()
 	// TODO: Fix flashing on windows
 	int State = Client()->State();
 	bool Force = true;
-	if(g_Config.m_ClAllowAnyRes == 0)
+	if(g_Config.m_TcAllowAnyRes == 0)
 		;
 	else if(State == CClient::EClientState::STATE_DEMOPLAYBACK)
 		Force = false;
@@ -678,7 +678,7 @@ void CTClient::RenderMiniVoteHud()
 
 void CTClient::RenderCenterLines()
 {
-	if(g_Config.m_ClShowCenter <= 0)
+	if(g_Config.m_TcShowCenter <= 0)
 		return;
 
 	if(GameClient()->m_Scoreboard.IsActive())
@@ -691,25 +691,25 @@ void CTClient::RenderCenterLines()
 	const float XMid = (X0 + X1) / 2.0f;
 	const float YMid = (Y0 + Y1) / 2.0f;
 
-	if(g_Config.m_ClShowCenterWidth == 0)
+	if(g_Config.m_TcShowCenterWidth == 0)
 	{
 		Graphics()->LinesBegin();
 		IGraphics::CLineItem aLines[2] = {
 			{XMid, Y0, XMid, Y1},
 			{X0, YMid, X1, YMid}};
-		Graphics()->SetColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClShowCenterColor, true)));
+		Graphics()->SetColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcShowCenterColor, true)));
 		Graphics()->LinesDraw(aLines, std::size(aLines));
 		Graphics()->LinesEnd();
 	}
 	else
 	{
-		const float W = g_Config.m_ClShowCenterWidth;
+		const float W = g_Config.m_TcShowCenterWidth;
 		Graphics()->QuadsBegin();
 		IGraphics::CQuadItem aQuads[3] = {
 			{XMid, mix(Y0, Y1, 0.25f) - W / 4.0f, W, (Y1 - Y0 - W) / 2.0f},
 			{XMid, mix(Y0, Y1, 0.75f) + W / 4.0f, W, (Y1 - Y0 - W) / 2.0f},
 			{XMid, YMid, X1 - X0, W}};
-		Graphics()->SetColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClShowCenterColor, true)));
+		Graphics()->SetColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcShowCenterColor, true)));
 		Graphics()->QuadsDraw(aQuads, std::size(aQuads));
 		Graphics()->QuadsEnd();
 	}

@@ -715,13 +715,13 @@ void CRenderTools::RenderGameTileOutlines(CTile *pTiles, int w, int h, float Sca
 	Graphics()->QuadsBegin();
 	ColorRGBA Col = ColorRGBA(0.0f, 0.0f, 0.0f, 1.0f);
 	if(TileType == TILE_FREEZE)
-		Col = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClOutlineColorFreeze));
+		Col = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcOutlineColorFreeze));
 	else if(TileType == TILE_SOLID)
-		Col = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClOutlineColorSolid));
+		Col = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcOutlineColorSolid));
 	else if(TileType == TILE_UNFREEZE)
-		Col = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClOutlineColorUnfreeze));
+		Col = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcOutlineColorUnfreeze));
 	else if(TileType == TILE_DEATH)
-		Col = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClOutlineColorKill));
+		Col = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcOutlineColorKill));
 
 	Graphics()->SetColor(Col.r, Col.g, Col.b, Alpha);
 
@@ -835,11 +835,11 @@ void CRenderTools::RenderGameTileOutlines(CTile *pTiles, int w, int h, float Sca
 				Neighbors[7] = IndexN != TILE_UNFREEZE && IndexN != TILE_DUNFREEZE;
 			}
 
-			float Size = (float)g_Config.m_ClOutlineWidth;
+			float Size = (float)g_Config.m_TcOutlineWidth;
 			if(TileType == TILE_FREEZE)
-				Size = (float)g_Config.m_ClOutlineWidthFreeze;
+				Size = (float)g_Config.m_TcOutlineWidthFreeze;
 			else if(TileType == TILE_NOHOOK || TileType == TILE_SOLID)
-				Size = (float)g_Config.m_ClOutlineWidthSolid;
+				Size = (float)g_Config.m_TcOutlineWidthSolid;
 			int NumQuads = 0;
 
 			// Do lonely corners first
@@ -932,7 +932,7 @@ void CRenderTools::RenderTeleOutlines(CTile *pTiles, CTeleTile *pTele, int w, in
 
 	Graphics()->TextureClear();
 	Graphics()->QuadsBegin();
-	ColorRGBA Col = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClOutlineColorTele));
+	ColorRGBA Col = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcOutlineColorTele));
 	Graphics()->SetColor(Col.r, Col.g, Col.b, Alpha);
 
 	for(int y = StartY; y < EndY; y++)
@@ -969,7 +969,7 @@ void CRenderTools::RenderTeleOutlines(CTile *pTiles, CTeleTile *pTele, int w, in
 			Neighbors[6] = pTiles[(mx + 0) + (my + 1) * w].m_Index == 0 && !pTele[(mx + 0) + (my + 1) * w].m_Number;
 			Neighbors[7] = pTiles[(mx + 1) + (my + 1) * w].m_Index == 0 && !pTele[(mx + 1) + (my + 1) * w].m_Number;
 
-			float Size = (float)g_Config.m_ClOutlineWidthTele;
+			float Size = (float)g_Config.m_TcOutlineWidthTele;
 			int NumQuads = 0;
 
 			// Do lonely corners first

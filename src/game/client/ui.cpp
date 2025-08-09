@@ -1892,7 +1892,7 @@ CUi::EPopupMenuFunctionResult CUi::PopupSelection(void *pContext, CUIRect View, 
 	}
 	// TClient
 	if(pSelectionPopup->m_SpecialFontRenderMode)
-		pUI->TextRender()->SetCustomFace(g_Config.m_ClCustomFont);
+		pUI->TextRender()->SetCustomFace(g_Config.m_TcCustomFont);
 
 	pScrollRegion->End();
 

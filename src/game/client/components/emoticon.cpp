@@ -98,7 +98,7 @@ void CEmoticon::OnRender()
 	static const float s_InnerCircleRadius = 100.0f;
 	static const float s_OuterCircleRadius = 190.0f;
 
-	const float AnimationTime = (float)g_Config.m_ClAnimateWheelTime / 1000.0f;
+	const float AnimationTime = (float)g_Config.m_TcAnimateWheelTime / 1000.0f;
 	const float ItemAnimationTime = AnimationTime / 2.0f;
 
 	if(AnimationTime != 0.0f)

@@ -64,20 +64,20 @@ void CSkinProfiles::ApplyProfile(int Dummy, const CProfile &Profile)
 		str_format(aCommand + Length, sizeof(aCommand) - Length, "%d", Value);
 		str_append(aCommand, ";");
 	};
-	if(g_Config.m_ClProfileSkin && strlen(Profile.m_SkinName) != 0)
+	if(g_Config.m_TcProfileSkin && strlen(Profile.m_SkinName) != 0)
 		AddPart("skin", Profile.m_SkinName);
-	if(g_Config.m_ClProfileColors && Profile.m_BodyColor != -1 && Profile.m_FeetColor != -1)
+	if(g_Config.m_TcProfileColors && Profile.m_BodyColor != -1 && Profile.m_FeetColor != -1)
 	{
 		AddPartNumber("color_body", Profile.m_BodyColor);
 		AddPartNumber("color_feet", Profile.m_FeetColor);
 	}
-	if(g_Config.m_ClProfileEmote && Profile.m_Emote != -1)
+	if(g_Config.m_TcProfileEmote && Profile.m_Emote != -1)
 		AddPartNumber("default_eyes", Profile.m_Emote);
-	if(g_Config.m_ClProfileName && strlen(Profile.m_Name) != 0)
+	if(g_Config.m_TcProfileName && strlen(Profile.m_Name) != 0)
 		AddPart("name", Profile.m_Name);
-	if(g_Config.m_ClProfileClan && (strlen(Profile.m_Clan) != 0 || g_Config.m_ClProfileOverwriteClanWithEmpty))
+	if(g_Config.m_TcProfileClan && (strlen(Profile.m_Clan) != 0 || g_Config.m_TcProfileOverwriteClanWithEmpty))
 		AddPart("clan", Profile.m_Clan);
-	if(g_Config.m_ClProfileFlag && Profile.m_CountryFlag != -2)
+	if(g_Config.m_TcProfileFlag && Profile.m_CountryFlag != -2)
 		AddPartNumber("country", Profile.m_CountryFlag);
 	Console()->ExecuteLine(aCommand);
 }

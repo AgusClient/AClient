@@ -109,12 +109,12 @@ void CStatusBar::PredictionRender()
 float CStatusBar::LocalTimeWidth()
 {
 	return TextRender()->TextWidth(m_FontSize,
-		g_Config.m_ClStatusBar12HourClock ? (g_Config.m_ClStatusBarLocalTimeSeocnds ? "00:00:00 XX" : "00:00 XX") : (g_Config.m_ClStatusBarLocalTimeSeocnds ? "00:00:00" : "00:00"));
+		g_Config.m_TcStatusBar12HourClock ? (g_Config.m_TcStatusBarLocalTimeSeocnds ? "00:00:00 XX" : "00:00 XX") : (g_Config.m_TcStatusBarLocalTimeSeocnds ? "00:00:00" : "00:00"));
 }
 void CStatusBar::LocalTimeRender()
 {
 	static char s_aTimeBuf[12];
-	str_timestamp_format(s_aTimeBuf, sizeof(s_aTimeBuf), g_Config.m_ClStatusBar12HourClock ? (g_Config.m_ClStatusBarLocalTimeSeocnds ? "%I:%M:%S %p" : "%I:%M %p") : (g_Config.m_ClStatusBarLocalTimeSeocnds ? "%H:%M:%S" : "%H:%M"));
+	str_timestamp_format(s_aTimeBuf, sizeof(s_aTimeBuf), g_Config.m_TcStatusBar12HourClock ? (g_Config.m_TcStatusBarLocalTimeSeocnds ? "%I:%M:%S %p" : "%I:%M %p") : (g_Config.m_TcStatusBarLocalTimeSeocnds ? "%H:%M:%S" : "%H:%M"));
 	if(s_aTimeBuf[0] == '0')
 		str_copy(s_aTimeBuf, &s_aTimeBuf[1], sizeof(s_aTimeBuf) - 1);
 	TextRender()->Text(m_CursorX, m_CursorY, m_FontSize, s_aTimeBuf);
@@ -148,7 +148,7 @@ void CStatusBar::RaceTimeRender()
 		TextRender()->TextColor(1.0f, 0.25f, 0.25f, Alpha);
 	}
 	TextRender()->Text(m_CursorX, m_CursorY, m_FontSize, aTimeBuf);
-	TextRender()->TextColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClStatusBarTextColor)));
+	TextRender()->TextColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcStatusBarTextColor)));
 }
 
 float CStatusBar::FPSWidth()
@@ -233,7 +233,7 @@ void CStatusBar::UpdateStatusBarSize()
 {
 	m_Width = 300.0f * Graphics()->ScreenAspect();
 	m_Height = 300.0f;
-	m_BarHeight = g_Config.m_ClStatusBarHeight;
+	m_BarHeight = g_Config.m_TcStatusBarHeight;
 	m_Margin = m_BarHeight * 0.2f;
 	m_BarY = m_Height - m_BarHeight;
 	m_FontSize = m_BarHeight - (m_Margin * 2);
@@ -242,7 +242,7 @@ void CStatusBar::UpdateStatusBarSize()
 void CStatusBar::OnInit()
 {
 	UpdateStatusBarSize();
-	ApplyStatusBarScheme(g_Config.m_ClStatusBarScheme);
+	ApplyStatusBarScheme(g_Config.m_TcStatusBarScheme);
 }
 
 void CStatusBar::LabelRender(const char *pLabel)
@@ -297,7 +297,7 @@ void CStatusBar::OnRender()
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
 
-	if(!g_Config.m_ClStatusBar || !GameClient()->m_Snap.m_pGameInfoObj)
+	if(!g_Config.m_TcStatusBar || !GameClient()->m_Snap.m_pGameInfoObj)
 		return;
 
 	m_PlayerId = GameClient()->m_Snap.m_LocalClientId;
@@ -307,8 +307,8 @@ void CStatusBar::OnRender()
 	UpdateStatusBarSize();
 
 	Graphics()->MapScreen(0.0f, 0.0f, m_Width, m_Height);
-	Graphics()->DrawRect(m_BarX, m_BarY, m_Width, m_BarHeight, color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClStatusBarColor)).WithAlpha(g_Config.m_ClStatusBarAlpha / 100.0f), 0, 0);
-	TextRender()->TextColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClStatusBarTextColor)).WithAlpha(g_Config.m_ClStatusBarTextAlpha / 100.0f));
+	Graphics()->DrawRect(m_BarX, m_BarY, m_Width, m_BarHeight, color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcStatusBarColor)).WithAlpha(g_Config.m_TcStatusBarAlpha / 100.0f), 0, 0);
+	TextRender()->TextColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcStatusBarTextColor)).WithAlpha(g_Config.m_TcStatusBarTextAlpha / 100.0f));
 
 	// std::vector<CStatusItem *> m_StatusBarItems = {&m_LocalTime, &m_LocalTime, &m_Space, &m_LocalTime};
 	int SpaceCount = 0;
@@ -323,7 +323,7 @@ void CStatusBar::OnRender()
 		else
 		{
 			float ItemWidth = Item->m_GetWidth();
-			if(g_Config.m_ClStatusBarLabels && Item->m_ShowLabel && ItemWidth > 0.0f)
+			if(g_Config.m_TcStatusBarLabels && Item->m_ShowLabel && ItemWidth > 0.0f)
 				ItemWidth += LabelWidth(Item->m_aDisplayName);
 			UsedWidth += ItemWidth;
 		}
@@ -348,7 +348,7 @@ void CStatusBar::OnRender()
 
 		if(ItemWidth > 0.0f)
 		{
-			if(g_Config.m_ClStatusBarLabels && Item->m_ShowLabel)
+			if(g_Config.m_TcStatusBarLabels && Item->m_ShowLabel)
 			{
 				LabelRender(Item->m_aDisplayName);
 				m_CursorX += LabelWidth(Item->m_aDisplayName);

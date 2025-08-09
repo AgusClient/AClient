@@ -318,7 +318,7 @@ protected:
 			return false;
 		m_Color = Data.m_Color;
 		// TClient
-		if(g_Config.m_ClWarList)
+		if(g_Config.m_TcWarList)
 		{
 			if(This.m_WarList.GetWarData(Data.m_ClientId).m_WarName)
 				m_Color = This.m_WarList.GetNameplateColor(Data.m_ClientId).WithAlpha(Data.m_Color.a);
@@ -476,10 +476,10 @@ public:
 		m_Radius = Data.m_FontSize / 2.5f;
 		m_Size = vec2(m_Radius, m_Radius) * 2.0f;
 		m_Visible = Data.m_InGame ? (
-						    This.Client()->State() != IClient::STATE_DEMOPLAYBACK && ((Data.m_ShowName && g_Config.m_ClPingNameCircle > 0) ||
+						    This.Client()->State() != IClient::STATE_DEMOPLAYBACK && ((Data.m_ShowName && g_Config.m_TcPingNameCircle > 0) ||
 														     (This.m_Scoreboard.IsActive() && !This.m_Snap.m_apPlayerInfos[Data.m_ClientId]->m_Local))) :
 					    (
-						    (Data.m_ShowName && g_Config.m_ClPingNameCircle > 0));
+						    (Data.m_ShowName && g_Config.m_TcPingNameCircle > 0));
 		if(!m_Visible)
 			return;
 		int ping = Data.m_InGame ? This.m_Snap.m_apPlayerInfos[Data.m_ClientId]->m_Latency : (1 + Data.m_ClientId) * 25;
@@ -506,7 +506,7 @@ private:
 protected:
 	bool UpdateNeeded(CGameClient &This, const CNamePlateData &Data) override
 	{
-		m_Visible = Data.m_InGame ? g_Config.m_ClShowSkinName > (This.m_Snap.m_apPlayerInfos[Data.m_ClientId]->m_Local ? 1 : 0) : g_Config.m_ClShowSkinName > 0;
+		m_Visible = Data.m_InGame ? g_Config.m_TcShowSkinName > (This.m_Snap.m_apPlayerInfos[Data.m_ClientId]->m_Local ? 1 : 0) : g_Config.m_TcShowSkinName > 0;
 		if(!m_Visible)
 			return false;
 		m_Color = Data.m_Color;
@@ -885,7 +885,7 @@ void CNamePlates::RenderNamePlateGame(vec2 Position, const CNetObj_PlayerInfo *p
 	}
 
 	// TClient
-	if(g_Config.m_ClWarList && g_Config.m_ClWarListShowClan && GameClient()->m_WarList.GetWarData(pPlayerInfo->m_ClientId).m_WarClan)
+	if(g_Config.m_TcWarList && g_Config.m_TcWarListShowClan && GameClient()->m_WarList.GetWarData(pPlayerInfo->m_ClientId).m_WarClan)
 		Data.m_ShowClan = true;
 
 	// Check if the nameplate is actually on screen
@@ -1005,9 +1005,9 @@ void CNamePlates::OnRender()
 		if(GameClient()->m_Snap.m_aCharacters[i].m_Active)
 		{
 			// TClient
-			if(GameClient()->m_aClients[i].m_DeepFrozen && (g_Config.m_ClVolleyBallBetterBall == 2 || (g_Config.m_ClVolleyBallBetterBall == 1 && str_startswith_nocase(Client()->GetCurrentMap(), "volleyball"))))
+			if(GameClient()->m_aClients[i].m_DeepFrozen && (g_Config.m_TcVolleyBallBetterBall == 2 || (g_Config.m_TcVolleyBallBetterBall == 1 && str_startswith_nocase(Client()->GetCurrentMap(), "volleyball"))))
 				continue;
-			//if(g_Config.m_ClRenderNameplateSpec > 0)
+			//if(g_Config.m_TcRenderNameplateSpec > 0)
 			//	continue;
 			const vec2 RenderPos = GameClient()->m_aClients[i].m_RenderPos;
 			RenderNamePlateGame(RenderPos, pInfo, 1.0f);

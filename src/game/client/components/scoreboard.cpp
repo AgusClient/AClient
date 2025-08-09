@@ -554,7 +554,7 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 				}
 
 				// TClient
-				if(pInfo->m_ClientId >= 0 && g_Config.m_ClWarList && g_Config.m_ClWarListScoreboard && GameClient()->m_WarList.GetAnyWar(pInfo->m_ClientId))
+				if(pInfo->m_ClientId >= 0 && g_Config.m_TcWarList && g_Config.m_TcWarListScoreboard && GameClient()->m_WarList.GetAnyWar(pInfo->m_ClientId))
 					TextRender()->TextColor(GameClient()->m_WarList.GetNameplateColor(pInfo->m_ClientId));
 
 				TextRender()->TextEx(&Cursor, ClientData.m_aName);
@@ -579,7 +579,7 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 				}
 
 				// TClient
-				if(pInfo->m_ClientId >= 0 && g_Config.m_ClWarList && g_Config.m_ClWarListScoreboard && GameClient()->m_WarList.GetAnyWar(pInfo->m_ClientId))
+				if(pInfo->m_ClientId >= 0 && g_Config.m_TcWarList && g_Config.m_TcWarListScoreboard && GameClient()->m_WarList.GetAnyWar(pInfo->m_ClientId))
 					TextRender()->TextColor(GameClient()->m_WarList.GetClanColor(pInfo->m_ClientId));
 
 				CTextCursor Cursor;

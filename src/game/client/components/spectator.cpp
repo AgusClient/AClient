@@ -519,7 +519,7 @@ void CSpectator::OnRender()
 		CTextCursor NameCursor;
 		TextRender()->SetCursor(&NameCursor, Width / 2.0f + x + 50.0f, Height / 2.0f + y + BoxMove + (LineHeight - FontSize) / 2.f, FontSize, TEXTFLAG_RENDER | TEXTFLAG_ELLIPSIS_AT_END);
 		NameCursor.m_LineWidth = 180.0f;
-		if(g_Config.m_ClShowIds || g_Config.m_ClSpecmenuID)
+		if(g_Config.m_ClShowIds || g_Config.m_TcSpecmenuID)
 		{
 			char aClientId[16];
 			GameClient()->FormatClientId(GameClient()->m_Snap.m_apInfoByDDTeamName[i]->m_ClientId, aClientId, EClientIdFormat::INDENT_AUTO);
@@ -527,7 +527,7 @@ void CSpectator::OnRender()
 		}
 
 		// TClient
-		if(pInfo && pInfo->m_ClientId > 0 && g_Config.m_ClWarList && g_Config.m_ClWarListSpectate && GameClient()->m_WarList.GetAnyWar(pInfo->m_ClientId))
+		if(pInfo && pInfo->m_ClientId > 0 && g_Config.m_TcWarList && g_Config.m_TcWarListSpectate && GameClient()->m_WarList.GetAnyWar(pInfo->m_ClientId))
 		{
 			TextRender()->TextColor(GameClient()->m_WarList.GetPriorityColor(pInfo->m_ClientId));
 		}

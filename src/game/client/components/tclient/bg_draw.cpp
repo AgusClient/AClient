@@ -98,11 +98,11 @@ private:
 
 	float CurrentWidth() const
 	{
-		return (float)g_Config.m_ClBgDrawWidth * m_This.m_Camera.m_Zoom;
+		return (float)g_Config.m_TcBgDrawWidth * m_This.m_Camera.m_Zoom;
 	}
 	ColorRGBA CurrentColor() const
 	{
-		return color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClBgDrawColor));
+		return color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcBgDrawColor));
 	}
 
 public:
@@ -382,7 +382,7 @@ bool CBgDraw::Load(const char *pFilename)
 		CBgDrawItemData Data;
 		while(BgDrawFile::Read(Handle, Data) && (ItemsLoaded++) < MAX_ITEMS_TO_LOAD)
 		{
-			if(Queue.size() > (size_t)g_Config.m_ClBgDrawMaxItems)
+			if(Queue.size() > (size_t)g_Config.m_TcBgDrawMaxItems)
 			{
 				ItemsDiscarded += 1;
 				Queue.pop_front();
@@ -408,7 +408,7 @@ template<typename... Args>
 CBgDrawItem *CBgDraw::AddItem(Args &&... args)
 {
 	MakeSpaceFor(1);
-	if(g_Config.m_ClBgDrawMaxItems == 0)
+	if(g_Config.m_TcBgDrawMaxItems == 0)
 		return nullptr;
 	m_pvItems->emplace_back(std::forward<Args>(args)...);
 	return &m_pvItems->back();
@@ -416,12 +416,12 @@ CBgDrawItem *CBgDraw::AddItem(Args &&... args)
 
 void CBgDraw::MakeSpaceFor(size_t Count)
 {
-	if(g_Config.m_ClBgDrawMaxItems == 0 || Count >= (size_t)g_Config.m_ClBgDrawMaxItems)
+	if(g_Config.m_TcBgDrawMaxItems == 0 || Count >= (size_t)g_Config.m_TcBgDrawMaxItems)
 	{
 		m_pvItems->clear();
 		return;
 	}
-	while(m_pvItems->size() + Count > (size_t)g_Config.m_ClBgDrawMaxItems)
+	while(m_pvItems->size() + Count > (size_t)g_Config.m_TcBgDrawMaxItems)
 	{
 		// Prevent floating pointer
 		for(std::optional<CBgDrawItem *> &ActiveItem : m_apActiveItems)
@@ -514,7 +514,7 @@ void CBgDraw::OnRender()
 		else
 		{
 			Item.m_SecondsAge += Delta;
-			if(g_Config.m_ClBgDrawFadeTime > 0 && Item.m_SecondsAge > (float)g_Config.m_ClBgDrawFadeTime)
+			if(g_Config.m_TcBgDrawFadeTime > 0 && Item.m_SecondsAge > (float)g_Config.m_TcBgDrawFadeTime)
 				Item.m_Killed = true;
 		}
 		const bool InRangeX = Item.BoundingBoxMin().x < ScreenX1 || Item.BoundingBoxMax().x > ScreenX0;

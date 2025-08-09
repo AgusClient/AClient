@@ -354,7 +354,7 @@ void CClient::SendInput()
 			m_aInputs[i][m_aCurrentInput[i]].m_Tick = m_aPredTick[g_Config.m_ClDummy];
 			m_aInputs[i][m_aCurrentInput[i]].m_PredictedTime = m_PredictedTime.Get(Now);
 			m_aInputs[i][m_aCurrentInput[i]].m_PredictionMargin = PredictionMargin() * time_freq() / 1000;
-			if(g_Config.m_ClSmoothPredictionMargin)
+			if(g_Config.m_TcSmoothPredictionMargin)
 				m_aInputs[i][m_aCurrentInput[i]].m_PredictionMargin = m_PredictedTime.GetMargin(Now);
 			m_aInputs[i][m_aCurrentInput[i]].m_Time = Now;
 
@@ -639,7 +639,7 @@ void CClient::Connect(const char *pAddress, const char *pPassword)
 	if(!m_SendPassword)
 	{
 		m_pGameClient->SetConnectInfo(&aConnectAddrs[0]);
-		m_pConsole->ExecuteLine(g_Config.m_ClExecuteOnConnect);
+		m_pConsole->ExecuteLine(g_Config.m_TcExecuteOnConnect);
 	}
 	m_pGameClient->SetConnectInfo(nullptr);
 
@@ -1952,7 +1952,7 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket, int Conn, bool Dummy)
 				if(m_aInputs[Conn][k].m_Tick == InputPredTick)
 				{
 					Target = m_aInputs[Conn][k].m_PredictedTime + (Now - m_aInputs[Conn][k].m_Time);
-					if(g_Config.m_ClSmoothPredictionMargin)
+					if(g_Config.m_TcSmoothPredictionMargin)
 						Target = Target - (int64_t)((TimeLeft / 1000.0f) * time_freq()) + m_aInputs[Conn][k].m_PredictionMargin;
 					else
 						Target = Target - (int64_t)((TimeLeft / 1000.0f) * time_freq());
@@ -2163,11 +2163,11 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket, int Conn, bool Dummy)
 					m_aReceivedSnapshots[Conn]++;
 
 					// TClient
-					if(!m_aExecuteOnJoinDone[Conn] && m_aReceivedSnapshots[Conn] > g_Config.m_ClExecuteOnJoinDelay)
+					if(!m_aExecuteOnJoinDone[Conn] && m_aReceivedSnapshots[Conn] > g_Config.m_TcExecuteOnJoinDelay)
 					{
 						m_aExecuteOnJoinDone[Conn] = true;
-						if(g_Config.m_ClExecuteOnJoin[0] != '\0')
-							m_pConsole->ExecuteLine(g_Config.m_ClExecuteOnJoin);
+						if(g_Config.m_TcExecuteOnJoin[0] != '\0')
+							m_pConsole->ExecuteLine(g_Config.m_TcExecuteOnJoin);
 					}
 
 					// we got two snapshots until we see us self as connected
@@ -2859,7 +2859,7 @@ void CClient::Update()
 					SendInput();
 				}
 
-				if(g_Config.m_ClFastInput && GameClient()->CheckNewInput())
+				if(g_Config.m_TcFastInput && GameClient()->CheckNewInput())
 				{
 					Repredict = true;
 				}
@@ -4896,7 +4896,7 @@ int main(int argc, const char **argv)
 	pKernel->RegisterInterface(pEngineMap); // IEngineMap
 	pKernel->RegisterInterface(static_cast<IMap *>(pEngineMap), false);
 
-	IDiscord *pDiscord = CreateDiscord(!g_Config.m_ClDiscordRPC);
+	IDiscord *pDiscord = CreateDiscord(!g_Config.m_TcDiscordRPC);
 	pKernel->RegisterInterface(pDiscord);
 
 	ISteam *pSteam = CreateSteam();
@@ -5203,7 +5203,7 @@ void CClient::GetSmoothFreezeTick(int *pSmoothTick, float *pSmoothIntraTick, flo
 	int64_t PredTime = m_PredictedTime.Get(time_get());
 	GameTime = std::min(GameTime, PredTime);
 
-	int64_t UpperPredTime = std::clamp(PredTime - (time_freq() / 50) * g_Config.m_ClUnfreezeLagTicks, GameTime, PredTime);
+	int64_t UpperPredTime = std::clamp(PredTime - (time_freq() / 50) * g_Config.m_TcUnfreezeLagTicks, GameTime, PredTime);
 	int64_t LowestPredTime = std::clamp(PredTime, GameTime, UpperPredTime);
 	int64_t SmoothTime = std::clamp(LowestPredTime + (int64_t)(MixAmount * (PredTime - LowestPredTime)), LowestPredTime, PredTime);
 

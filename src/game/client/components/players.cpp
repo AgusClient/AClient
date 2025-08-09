@@ -90,7 +90,7 @@ void CPlayers::RenderHand6(const CTeeRenderInfo *pInfo, vec2 HandPos, float Hand
 {
 	const CSkin::CSkinTextures *pSkinTextures = pInfo->m_CustomColoredSkin ? &pInfo->m_ColorableRenderSkin : &pInfo->m_OriginalRenderSkin;
 
-	if(!g_Config.m_ClRainbowTees) // TClient
+	if(!g_Config.m_TcRainbowTees) // TClient
 		Graphics()->SetColor(pInfo->m_ColorBody.WithAlpha(Alpha));
 	Graphics()->QuadsSetRotation(HandAngle);
 	Graphics()->TextureSet(pSkinTextures->m_HandsOutline);
@@ -110,7 +110,7 @@ float CPlayers::GetPlayerTargetAngle(
 		// just use the direct input if it's the local player we are rendering
 		// TClient
 		vec2 Pos = GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy];
-		if(g_Config.m_ClScaleMouseDistance)
+		if(g_Config.m_TcScaleMouseDistance)
 		{
 			const int MaxDistance = g_Config.m_ClDyncam ? g_Config.m_ClDyncamMaxDistance : g_Config.m_ClMouseMaxDistance;
 			if(MaxDistance > 5 && MaxDistance < 1000) // Don't scale if angle bind or reduces precision
@@ -168,7 +168,7 @@ void CPlayers::RenderHookCollLine(
 	int ClientId,
 	float Intra)
 {
-	if(GameClient()->m_aClients[ClientId].m_DeepFrozen && (g_Config.m_ClVolleyBallBetterBall == 2 || (g_Config.m_ClVolleyBallBetterBall == 1 && str_startswith_nocase(Client()->GetCurrentMap(), "volleyball"))))
+	if(GameClient()->m_aClients[ClientId].m_DeepFrozen && (g_Config.m_TcVolleyBallBetterBall == 2 || (g_Config.m_TcVolleyBallBetterBall == 1 && str_startswith_nocase(Client()->GetCurrentMap(), "volleyball"))))
 		return;
 
 	CNetObj_Character Prev;
@@ -395,7 +395,7 @@ void CPlayers::RenderHook(
 		if(in_range(pPlayerChar->m_HookedPlayer, MAX_CLIENTS - 1))
 		{
 			HookPos = GameClient()->m_aClients[pPlayerChar->m_HookedPlayer].m_RenderPos;
-			if(g_Config.m_ClSwapGhosts && Client()->State() != IClient::STATE_DEMOPLAYBACK && GameClient()->m_Snap.m_LocalClientId == ClientId)
+			if(g_Config.m_TcSwapGhosts && Client()->State() != IClient::STATE_DEMOPLAYBACK && GameClient()->m_Snap.m_LocalClientId == ClientId)
 			{
 				HookPos = GameClient()->GetSmoothPos(pPlayerChar->m_HookedPlayer);
 			}
@@ -413,8 +413,8 @@ void CPlayers::RenderHook(
 		Graphics()->SetColor(1.0f, 1.0f, 1.0f, Alpha);
 
 		bool Local = GameClient()->m_Snap.m_LocalClientId == ClientId;
-		bool DontOthers = !g_Config.m_ClRainbowOthers && !Local;
-		if(g_Config.m_ClRainbowHook && !DontOthers)
+		bool DontOthers = !g_Config.m_TcRainbowOthers && !Local;
+		if(g_Config.m_TcRainbowHook && !DontOthers)
 			Graphics()->SetColor(GameClient()->m_Rainbow.m_RainbowColor.WithAlpha(Alpha));
 
 		Graphics()->RenderQuadContainerAsSprite(m_WeaponEmoteQuadContainerIndex, QuadOffset, HookPos.x, HookPos.y);
@@ -437,7 +437,7 @@ void CPlayers::RenderHook(
 		Graphics()->QuadsSetRotation(0);
 		Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
 
-		if(g_Config.m_ClRainbowHook && !DontOthers)
+		if(g_Config.m_TcRainbowHook && !DontOthers)
 			Graphics()->SetColor(GameClient()->m_Rainbow.m_RainbowColor.WithAlpha(Alpha));
 
 		RenderHand(&RenderInfo, Position, normalize(HookPos - Pos), -pi / 2, vec2(20, 0), Alpha);
@@ -468,10 +468,10 @@ void CPlayers::RenderPlayer(
 	float Alpha = 1.0f;
 	if(OtherTeam || ClientId < 0)
 		Alpha = g_Config.m_ClShowOthersAlpha / 100.0f;
-	else if(g_Config.m_ClShowOthersGhosts && !Local && !Spec)
-		Alpha = g_Config.m_ClPredGhostsAlpha / 100.0f;
+	else if(g_Config.m_TcShowOthersGhosts && !Local && !Spec)
+		Alpha = g_Config.m_TcPredGhostsAlpha / 100.0f;
 
-	if(!OtherTeam && g_Config.m_ClShowOthersGhosts && !Local && g_Config.m_ClUnpredOthersInFreeze && Client()->m_IsLocalFrozen && !Spec)
+	if(!OtherTeam && g_Config.m_TcShowOthersGhosts && !Local && g_Config.m_TcUnpredOthersInFreeze && Client()->m_IsLocalFrozen && !Spec)
 		Alpha = 1.0f;
 
 	if(ClientId == -2) // ghost
@@ -512,7 +512,7 @@ void CPlayers::RenderPlayer(
 	else
 		Position = mix(vec2(Prev.m_X, Prev.m_Y), vec2(Player.m_X, Player.m_Y), IntraTick);
 
-	if(g_Config.m_ClSwapGhosts && g_Config.m_ClShowOthersGhosts && !Local && Client()->State() != IClient::STATE_DEMOPLAYBACK)
+	if(g_Config.m_TcSwapGhosts && g_Config.m_TcShowOthersGhosts && !Local && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		if(ClientId >= 0)
 			Position = mix(
 				vec2(GameClient()->m_Snap.m_aCharacters[ClientId].m_Prev.m_X, GameClient()->m_Snap.m_aCharacters[ClientId].m_Prev.m_Y),
@@ -524,7 +524,7 @@ void CPlayers::RenderPlayer(
 	GameClient()->m_Flow.Add(Position, Vel * 100.0f, 10.0f);
 
 	// TClient
-	if(GameClient()->m_aClients[ClientId].m_DeepFrozen && (g_Config.m_ClVolleyBallBetterBall == 2 || (g_Config.m_ClVolleyBallBetterBall == 1 && str_startswith_nocase(Client()->GetCurrentMap(), "volleyball"))))
+	if(GameClient()->m_aClients[ClientId].m_DeepFrozen && (g_Config.m_TcVolleyBallBetterBall == 2 || (g_Config.m_TcVolleyBallBetterBall == 1 && str_startswith_nocase(Client()->GetCurrentMap(), "volleyball"))))
 	{
 		// Update
 		const float Delta = Client()->IntraGameTickSincePrev(g_Config.m_ClDummy);
@@ -535,7 +535,7 @@ void CPlayers::RenderPlayer(
 		else if(ClientData.m_VolleyBallAngle > 2.0f * pi)
 			ClientData.m_VolleyBallAngle -= 2.0f * pi;
 		// Render
-		const CSkin *pSkin = GameClient()->m_Skins.Find(g_Config.m_ClVolleyBallBetterBallSkin);
+		const CSkin *pSkin = GameClient()->m_Skins.Find(g_Config.m_TcVolleyBallBetterBallSkin);
 		if(!pSkin)
 			pSkin = GameClient()->m_Skins.Find("x_ninja");
 		if(!pSkin)
@@ -566,7 +566,7 @@ void CPlayers::RenderPlayer(
 
 	bool Stationary = Player.m_VelX <= 1 && Player.m_VelX >= -1;
 	bool InAir = !Collision()->CheckPoint(Player.m_X, Player.m_Y + 16);
-	if(g_Config.m_ClAntiPingImproved && !Local)
+	if(g_Config.m_TcAntiPingImproved && !Local)
 		InAir = !Collision()->CheckPoint(Position.x, Position.y + 16);
 	bool Running = Player.m_VelX >= 5000 || Player.m_VelX <= -5000;
 	bool WantOtherDir = (Player.m_Direction == -1 && Vel.x > 0) || (Player.m_Direction == 1 && Vel.x < 0);
@@ -633,8 +633,8 @@ void CPlayers::RenderPlayer(
 
 			Graphics()->SetColor(1.0f, 1.0f, 1.0f, Alpha);
 
-			bool DontOthers = !g_Config.m_ClRainbowOthers && !Local;
-			if(g_Config.m_ClRainbowWeapon && !DontOthers)
+			bool DontOthers = !g_Config.m_TcRainbowOthers && !Local;
+			if(g_Config.m_TcRainbowWeapon && !DontOthers)
 				Graphics()->SetColor(GameClient()->m_Rainbow.m_RainbowColor.WithAlpha(Alpha));
 
 			vec2 Dir = Direction;
@@ -644,7 +644,7 @@ void CPlayers::RenderPlayer(
 
 			if(Player.m_Weapon == WEAPON_HAMMER)
 			{
-				switch(g_Config.m_ClHammerRotatesWithCursor)
+				switch(g_Config.m_TcHammerRotatesWithCursor)
 				{
 				case 0:
 				{
@@ -840,7 +840,7 @@ void CPlayers::RenderPlayer(
 			Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
 			Graphics()->QuadsSetRotation(0);
 
-			if(g_Config.m_ClRainbowTees && !DontOthers)
+			if(g_Config.m_TcRainbowTees && !DontOthers)
 				Graphics()->SetColor(GameClient()->m_Rainbow.m_RainbowColor.WithAlpha(Alpha));
 
 			switch(Player.m_Weapon)
@@ -962,12 +962,12 @@ void CPlayers::RenderPlayerGhost(
 
 	RenderTools()->m_LocalTeeRender = Local; // TClient
 
-	bool FrozenSwappingHide = (GameClient()->m_aClients[ClientId].m_FreezeEnd > 0) && g_Config.m_ClHideFrozenGhosts && g_Config.m_ClSwapGhosts;
+	bool FrozenSwappingHide = (GameClient()->m_aClients[ClientId].m_FreezeEnd > 0) && g_Config.m_TcHideFrozenGhosts && g_Config.m_TcSwapGhosts;
 
 	if(OtherTeam || ClientId < 0)
 		Alpha = g_Config.m_ClShowOthersAlpha / 100.0f;
 	else
-		Alpha = g_Config.m_ClUnpredGhostsAlpha / 100.0f;
+		Alpha = g_Config.m_TcUnpredGhostsAlpha / 100.0f;
 
 	if(!OtherTeam && FrozenSwappingHide)
 		Alpha = 1.0f;
@@ -1003,7 +1003,7 @@ void CPlayers::RenderPlayerGhost(
 	{
 		// just use the direct input if it's the local player we are rendering
 		vec2 Pos = GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy];
-		if(g_Config.m_ClScaleMouseDistance)
+		if(g_Config.m_TcScaleMouseDistance)
 		{
 			const int MaxDistance = g_Config.m_ClDyncam ? g_Config.m_ClDyncamMaxDistance : g_Config.m_ClMouseMaxDistance;
 			if(MaxDistance > 5 && MaxDistance < 1000) // Don't scale if angle bind or reduces precision
@@ -1025,7 +1025,7 @@ void CPlayers::RenderPlayerGhost(
 	else
 		Position = mix(vec2(Prev.m_X, Prev.m_Y), vec2(Player.m_X, Player.m_Y), IntraTick);
 
-	if(g_Config.m_ClSwapGhosts)
+	if(g_Config.m_TcSwapGhosts)
 	{
 		Position = GameClient()->GetSmoothPos(ClientId);
 	}
@@ -1038,7 +1038,7 @@ void CPlayers::RenderPlayerGhost(
 				Client()->IntraGameTick(g_Config.m_ClDummy));
 	}
 
-	if(g_Config.m_ClRenderGhostAsCircle && !FrozenSwappingHide)
+	if(g_Config.m_TcRenderGhostAsCircle && !FrozenSwappingHide)
 	{
 		Graphics()->TextureClear();
 		Graphics()->QuadsBegin();
@@ -1408,7 +1408,7 @@ void CPlayers::OnRender()
 		}
 
 		// TClient
-		if(g_Config.m_ClFreezeKatana > 0 && GameClient()->m_aClients[i].m_Predicted.m_FreezeEnd != 0)
+		if(g_Config.m_TcFreezeKatana > 0 && GameClient()->m_aClients[i].m_Predicted.m_FreezeEnd != 0)
 		{
 			GameClient()->m_aClients[i].m_RenderCur.m_Weapon = WEAPON_NINJA;
 			aRenderInfo[i].m_TeeRenderFlags &= ~TEE_NO_WEAPON;
@@ -1425,11 +1425,11 @@ void CPlayers::OnRender()
 				aRenderInfo[i].m_ColorBody = ColorRGBA(1, 1, 1);
 				aRenderInfo[i].m_ColorFeet = ColorRGBA(1, 1, 1);
 
-				if(g_Config.m_ClColorFreeze)
+				if(g_Config.m_TcColorFreeze)
 				{
 					aRenderInfo[i].m_CustomColoredSkin = GameClient()->m_aClients[i].m_RenderInfo.m_CustomColoredSkin;
-					aRenderInfo[i].m_ColorFeet = g_Config.m_ClColorFreezeFeet ? GameClient()->m_aClients[i].m_RenderInfo.m_ColorFeet : ColorRGBA(1, 1, 1);
-					float Darken = (g_Config.m_ClColorFreezeDarken / 100.0f) * 0.5f + 0.5f;
+					aRenderInfo[i].m_ColorFeet = g_Config.m_TcColorFreezeFeet ? GameClient()->m_aClients[i].m_RenderInfo.m_ColorFeet : ColorRGBA(1, 1, 1);
+					float Darken = (g_Config.m_TcColorFreezeDarken / 100.0f) * 0.5f + 0.5f;
 					aRenderInfo[i].m_ColorBody = GameClient()->m_aClients[i].m_RenderInfo.m_ColorBody;
 					aRenderInfo[i].m_ColorBody = ColorRGBA(aRenderInfo[i].m_ColorBody.r * Darken, aRenderInfo[i].m_ColorBody.g * Darken, aRenderInfo[i].m_ColorBody.b * Darken, 1.0);
 				}
@@ -1497,18 +1497,18 @@ void CPlayers::OnRender()
 
 		if(!in_range(GameClient()->m_aClients[ClientId].m_RenderPos.x, ScreenX0, ScreenX1) || !in_range(GameClient()->m_aClients[ClientId].m_RenderPos.y, ScreenY0, ScreenY1))
 		{
-			if(!(g_Config.m_ClShowOthersGhosts && g_Config.m_ClSwapGhosts))
+			if(!(g_Config.m_TcShowOthersGhosts && g_Config.m_TcSwapGhosts))
 				continue;
 		}
 
-		bool Frozen = (GameClient()->m_aClients[ClientId].m_FreezeEnd > 0) && g_Config.m_ClHideFrozenGhosts;
+		bool Frozen = (GameClient()->m_aClients[ClientId].m_FreezeEnd > 0) && g_Config.m_TcHideFrozenGhosts;
 		bool RenderGhost = true;
-		if(g_Config.m_ClHideFrozenGhosts && Frozen && g_Config.m_ClShowOthersGhosts)
+		if(g_Config.m_TcHideFrozenGhosts && Frozen && g_Config.m_TcShowOthersGhosts)
 		{
-			if(!g_Config.m_ClSwapGhosts)
+			if(!g_Config.m_TcSwapGhosts)
 				RenderGhost = false;
 		}
-		if(g_Config.m_ClUnpredOthersInFreeze && Client()->m_IsLocalFrozen && g_Config.m_ClShowOthersGhosts)
+		if(g_Config.m_TcUnpredOthersInFreeze && Client()->m_IsLocalFrozen && g_Config.m_TcShowOthersGhosts)
 		{
 			RenderGhost = false;
 		}
@@ -1516,7 +1516,7 @@ void CPlayers::OnRender()
 		bool Spec = GameClient()->m_Snap.m_SpecInfo.m_Active;
 
 		// If we are frozen and hiding frozen ghosts and not swapping render only the regular player
-		if(RenderGhost && g_Config.m_ClShowOthersGhosts && !Spec && Client()->State() != IClient::STATE_DEMOPLAYBACK)
+		if(RenderGhost && g_Config.m_TcShowOthersGhosts && !Spec && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 			RenderPlayerGhost(&GameClient()->m_aClients[ClientId].m_RenderPrev, &GameClient()->m_aClients[ClientId].m_RenderCur, &aRenderInfo[ClientId], ClientId);
 
 		RenderPlayer(&GameClient()->m_aClients[ClientId].m_RenderPrev, &GameClient()->m_aClients[ClientId].m_RenderCur, &aRenderInfo[ClientId], ClientId);

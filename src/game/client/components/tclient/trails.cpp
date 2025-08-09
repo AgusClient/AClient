@@ -35,7 +35,7 @@ void CTrails::OnReset()
 
 void CTrails::OnRender()
 {
-	if(!g_Config.m_ClTeeTrail)
+	if(!g_Config.m_TcTeeTrail)
 		return;
 
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
@@ -51,7 +51,7 @@ void CTrails::OnRender()
 		const bool Local = GameClient()->m_Snap.m_LocalClientId == ClientId;
 
 		const bool ZoomAllowed = GameClient()->m_Camera.ZoomAllowed();
-		if(!g_Config.m_ClTeeTrailOthers && !Local)
+		if(!g_Config.m_TcTeeTrailOthers && !Local)
 			continue;
 
 		if(!Local && !ZoomAllowed)
@@ -77,12 +77,12 @@ void CTrails::OnRender()
 		{
 			StartTick = PredTick;
 			IntraTick = Client()->PredIntraGameTick(g_Config.m_ClDummy);
-			if(g_Config.m_ClRemoveAnti)
+			if(g_Config.m_TcRemoveAnti)
 			{
 				StartTick = GameClient()->m_SmoothTick[g_Config.m_ClDummy];
 				IntraTick = GameClient()->m_SmoothIntraTick[g_Config.m_ClDummy];
 			}
-			if(g_Config.m_ClUnpredOthersInFreeze && !Local && Client()->m_IsLocalFrozen)
+			if(g_Config.m_TcUnpredOthersInFreeze && !Local && Client()->m_IsLocalFrozen)
 			{
 				StartTick = GameTick;
 			}
@@ -105,17 +105,17 @@ void CTrails::OnRender()
 		// m_History[ClientId][(GameTick + 2) % 200] = m_History[ClientId][GameTick % 200];
 
 		IGraphics::CLineItem LineItem;
-		bool LineMode = g_Config.m_ClTeeTrailWidth == 0;
+		bool LineMode = g_Config.m_TcTeeTrailWidth == 0;
 
-		float Alpha = g_Config.m_ClTeeTrailAlpha / 100.0f;
+		float Alpha = g_Config.m_TcTeeTrailAlpha / 100.0f;
 		// Taken from players.cpp
 		if(ClientId == -2)
 			Alpha *= g_Config.m_ClRaceGhostAlpha / 100.0f;
 		else if(ClientId < 0 || GameClient()->IsOtherTeam(ClientId))
 			Alpha *= g_Config.m_ClShowOthersAlpha / 100.0f;
 
-		int TrailLength = g_Config.m_ClTeeTrailLength;
-		float Width = g_Config.m_ClTeeTrailWidth;
+		int TrailLength = g_Config.m_TcTeeTrailLength;
+		float Width = g_Config.m_TcTeeTrailWidth;
 
 		static std::vector<CTrailPart> s_Trail;
 		s_Trail.clear();
@@ -182,10 +182,10 @@ void CTrails::OnRender()
 			else
 				Part.m_Progress = ((float)i + IntraTick - 1.0f) / (Size - 1.0f);
 
-			switch(g_Config.m_ClTeeTrailColorMode)
+			switch(g_Config.m_TcTeeTrailColorMode)
 			{
 			case COLORMODE_SOLID:
-				Part.m_Col = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClTeeTrailColor));
+				Part.m_Col = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcTeeTrailColor));
 				break;
 			case COLORMODE_TEE:
 				if(TeeInfo.m_CustomColoredSkin)
@@ -214,16 +214,16 @@ void CTrails::OnRender()
 				break;
 			}
 			default:
-				dbg_assert(false, "Invalid value for g_Config.m_ClTeeTrailColorMode");
+				dbg_assert(false, "Invalid value for g_Config.m_TcTeeTrailColorMode");
 				dbg_break();
 			}
 
 			Part.m_Col.a = Alpha;
-			if(g_Config.m_ClTeeTrailFade)
+			if(g_Config.m_TcTeeTrailFade)
 				Part.m_Col.a *= 1.0 - Part.m_Progress;
 
 			Part.m_Width = Width;
-			if(g_Config.m_ClTeeTrailTaper)
+			if(g_Config.m_TcTeeTrailTaper)
 				Part.m_Width = Width * (1.0 - Part.m_Progress);
 		}
 

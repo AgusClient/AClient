@@ -178,7 +178,7 @@ void CBindWheel::OnRender()
 	static const float s_FontSize = 12.0f;
 	static const float s_FontSizeSelected = 18.0f;
 
-	const float AnimationTime = (float)g_Config.m_ClAnimateWheelTime / 1000.0f;
+	const float AnimationTime = (float)g_Config.m_TcAnimateWheelTime / 1000.0f;
 	const float ItemAnimationTime = AnimationTime / 2.0f;
 
 	if(AnimationTime != 0.0f)
@@ -191,7 +191,7 @@ void CBindWheel::OnRender()
 	{
 		if(m_WasActive)
 		{
-			if(g_Config.m_ClResetBindWheelMouse)
+			if(g_Config.m_TcResetBindWheelMouse)
 				GameClient()->m_Emoticon.m_SelectorMouse = vec2(0.0f, 0.0f);
 			if(m_SelectedBind != -1)
 				ExecuteBind(m_SelectedBind);

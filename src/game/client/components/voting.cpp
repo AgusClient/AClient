@@ -348,7 +348,7 @@ void CVoting::Render()
 	}
 
 	// TClient
-	if(g_Config.m_ClMiniVoteHud > 0)
+	if(g_Config.m_TcMiniVoteHud > 0)
 	{
 		GameClient()->m_TClient.RenderMiniVoteHud();
 		return;

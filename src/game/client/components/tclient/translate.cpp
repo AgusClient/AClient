@@ -39,7 +39,7 @@ static void UrlEncode(const char *pText, char *pOut, size_t Length)
 const char *ITranslateBackend::EncodeTarget(const char *pTarget) const
 {
 	if(!pTarget || pTarget[0] == '\0')
-		return CConfig::ms_pClTranslateTarget;
+		return CConfig::ms_pTcTranslateTarget;
 	return pTarget;
 }
 
@@ -196,16 +196,16 @@ public:
 		Json.WriteAttribute("source");
 		Json.WriteStrValue("auto");
 		Json.WriteAttribute("target");
-		Json.WriteStrValue(EncodeTarget(g_Config.m_ClTranslateTarget));
+		Json.WriteStrValue(EncodeTarget(g_Config.m_TcTranslateTarget));
 		Json.WriteAttribute("format");
 		Json.WriteStrValue("text");
-		if(g_Config.m_ClTranslateKey[0] != '\0')
+		if(g_Config.m_TcTranslateKey[0] != '\0')
 		{
 			Json.WriteAttribute("api_key");
-			Json.WriteStrValue(g_Config.m_ClTranslateKey);
+			Json.WriteStrValue(g_Config.m_TcTranslateKey);
 		}
 		Json.EndObject();
-		CreateHttpRequest(Http, g_Config.m_ClTranslateEndpoint[0] == '\0' ? "localhost:5000/translate" : g_Config.m_ClTranslateEndpoint);
+		CreateHttpRequest(Http, g_Config.m_TcTranslateEndpoint[0] == '\0' ? "localhost:5000/translate" : g_Config.m_TcTranslateEndpoint);
 		m_pHttpRequest->PostJson(Json.GetOutputString().c_str());
 	}
 };
@@ -264,7 +264,7 @@ public:
 	const char *EncodeTarget(const char *pTarget) const override
 	{
 		if(!pTarget || pTarget[0] == '\0')
-			return CConfig::ms_pClTranslateTarget;
+			return CConfig::ms_pTcTranslateTarget;
 		if(str_comp_nocase(pTarget, "zh") == 0)
 			return "zh-cn";
 		return pTarget;
@@ -277,8 +277,8 @@ public:
 	{
 		char aBuf[4096];
 		str_format(aBuf, sizeof(aBuf), "%s/translate?dl=%s&text=",
-			g_Config.m_ClTranslateEndpoint[0] != '\0' ? g_Config.m_ClTranslateEndpoint : "https://ftapi.pythonanywhere.com",
-			EncodeTarget(g_Config.m_ClTranslateTarget));
+			g_Config.m_TcTranslateEndpoint[0] != '\0' ? g_Config.m_TcTranslateEndpoint : "https://ftapi.pythonanywhere.com",
+			EncodeTarget(g_Config.m_TcTranslateTarget));
 
 		UrlEncode(pText, aBuf + strlen(aBuf), sizeof(aBuf) - strlen(aBuf));
 
@@ -383,9 +383,9 @@ void CTranslate::Translate(CChat::CLine &Line, bool ShowProgress)
 	Job.m_pTranslateResponse = std::make_shared<CTranslateResponse>();
 	Job.m_pLine->m_pTranslateResponse = Job.m_pTranslateResponse;
 
-	if(str_comp_nocase(g_Config.m_ClTranslateBackend, "libretranslate") == 0)
+	if(str_comp_nocase(g_Config.m_TcTranslateBackend, "libretranslate") == 0)
 		Job.m_pBackend = std::make_unique<CTranslateBackendLibretranslate>(*Http(), Job.m_pLine->m_aText);
-	else if(str_comp_nocase(g_Config.m_ClTranslateBackend, "ftapi") == 0)
+	else if(str_comp_nocase(g_Config.m_TcTranslateBackend, "ftapi") == 0)
 		Job.m_pBackend = std::make_unique<CTranslateBackendFtapi>(*Http(), Job.m_pLine->m_aText);
 	else
 	{
@@ -395,7 +395,7 @@ void CTranslate::Translate(CChat::CLine &Line, bool ShowProgress)
 
 	if(ShowProgress)
 	{
-		str_format(Job.m_pTranslateResponse->m_Text, sizeof(Job.m_pTranslateResponse->m_Text), TCLocalize("[%s translating to %s]", "translate"), Job.m_pBackend->Name(), g_Config.m_ClTranslateTarget);
+		str_format(Job.m_pTranslateResponse->m_Text, sizeof(Job.m_pTranslateResponse->m_Text), TCLocalize("[%s translating to %s]", "translate"), Job.m_pBackend->Name(), g_Config.m_TcTranslateTarget);
 		Job.m_pLine->m_Time = time();
 		GameClient()->m_Chat.RebuildChat();
 	}
@@ -423,7 +423,7 @@ void CTranslate::OnRender()
 		else
 		{
 			char aBuf[1024];
-			str_format(aBuf, sizeof(aBuf), TCLocalize("[%s to %s failed: %s]", "translate"), Job.m_pBackend->Name(), g_Config.m_ClTranslateTarget, Out.m_Text);
+			str_format(aBuf, sizeof(aBuf), TCLocalize("[%s to %s failed: %s]", "translate"), Job.m_pBackend->Name(), g_Config.m_TcTranslateTarget, Out.m_Text);
 			GameClient()->m_Chat.Echo(aBuf);
 			Job.m_pTranslateResponse->m_Text[0] = '\0';
 		}

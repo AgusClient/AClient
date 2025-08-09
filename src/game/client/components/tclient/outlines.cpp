@@ -14,11 +14,11 @@ void COutlines::OnRender()
 {
 	if(GameClient()->m_MapLayersBackground.m_OnlineOnly && Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
-	if(!g_Config.m_ClOverlayEntities && g_Config.m_ClOutlineEntities)
+	if(!g_Config.m_ClOverlayEntities && g_Config.m_TcOutlineEntities)
 		return;
-	if(!g_Config.m_ClOutline)
+	if(!g_Config.m_TcOutline)
 		return;
-	if(g_Config.m_ClOutlineFreeze || g_Config.m_ClOutlineSolid || g_Config.m_ClOutlineUnFreeze || g_Config.m_ClOutlineKill)
+	if(g_Config.m_TcOutlineFreeze || g_Config.m_TcOutlineSolid || g_Config.m_TcOutlineUnFreeze || g_Config.m_TcOutlineKill)
 	{
 		CMapItemLayerTilemap *pTMap = GameClient()->Layers()->GameLayer();
 		if(pTMap)
@@ -29,19 +29,19 @@ void COutlines::OnRender()
 				unsigned int Size = GameClient()->Layers()->Map()->GetDataSize(pTMap->m_Data);
 				if(Size >= (size_t)pTMap->m_Width * pTMap->m_Height * sizeof(CTile))
 				{
-					if(g_Config.m_ClOutlineUnFreeze)
-						RenderTools()->RenderGameTileOutlines(pTiles, pTMap->m_Width, pTMap->m_Height, 32.0f, TILE_UNFREEZE, (float)g_Config.m_ClOutlineAlpha / 100.0f);
-					if(g_Config.m_ClOutlineFreeze)
-						RenderTools()->RenderGameTileOutlines(pTiles, pTMap->m_Width, pTMap->m_Height, 32.0f, TILE_FREEZE, (float)g_Config.m_ClOutlineAlpha / 100.0f);
-					if(g_Config.m_ClOutlineSolid)
-						RenderTools()->RenderGameTileOutlines(pTiles, pTMap->m_Width, pTMap->m_Height, 32.0f, TILE_SOLID, (float)g_Config.m_ClOutlineAlphaSolid / 100.0f);
-					if(g_Config.m_ClOutlineKill)
-						RenderTools()->RenderGameTileOutlines(pTiles, pTMap->m_Width, pTMap->m_Height, 32.0f, TILE_DEATH, (float)g_Config.m_ClOutlineAlpha / 100.0f);
+					if(g_Config.m_TcOutlineUnFreeze)
+						RenderTools()->RenderGameTileOutlines(pTiles, pTMap->m_Width, pTMap->m_Height, 32.0f, TILE_UNFREEZE, (float)g_Config.m_TcOutlineAlpha / 100.0f);
+					if(g_Config.m_TcOutlineFreeze)
+						RenderTools()->RenderGameTileOutlines(pTiles, pTMap->m_Width, pTMap->m_Height, 32.0f, TILE_FREEZE, (float)g_Config.m_TcOutlineAlpha / 100.0f);
+					if(g_Config.m_TcOutlineSolid)
+						RenderTools()->RenderGameTileOutlines(pTiles, pTMap->m_Width, pTMap->m_Height, 32.0f, TILE_SOLID, (float)g_Config.m_TcOutlineAlphaSolid / 100.0f);
+					if(g_Config.m_TcOutlineKill)
+						RenderTools()->RenderGameTileOutlines(pTiles, pTMap->m_Width, pTMap->m_Height, 32.0f, TILE_DEATH, (float)g_Config.m_TcOutlineAlpha / 100.0f);
 				}
 			}
 		}
 	}
-	if(g_Config.m_ClOutlineTele)
+	if(g_Config.m_TcOutlineTele)
 	{
 		CMapItemLayerTilemap *pTMap = GameClient()->Layers()->TeleLayer();
 		if(pTMap)
@@ -54,7 +54,7 @@ void COutlines::OnRender()
 				{
 					CTeleTile *pTeleTiles = (CTeleTile *)GameClient()->Layers()->Map()->GetData(pTMap->m_Tele);
 					CTile *pGameTiles = pTiles;
-					RenderTools()->RenderTeleOutlines(pGameTiles, pTeleTiles, pTMap->m_Width, pTMap->m_Height, 32.0f, (float)g_Config.m_ClOutlineAlpha / 100.0f);
+					RenderTools()->RenderTeleOutlines(pGameTiles, pTeleTiles, pTMap->m_Width, pTMap->m_Height, 32.0f, (float)g_Config.m_TcOutlineAlpha / 100.0f);
 				}
 			}
 		}

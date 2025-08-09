@@ -584,9 +584,9 @@ void CRenderTools::RenderTee6(const CAnimState *pAnim, const CTeeRenderInfo *pIn
 
 	const float TinyBodyScale = 0.7f;
 	const float TinyFeetScale = 0.85f;
-	float SizeMultiplier = (g_Config.m_ClTinyTeeSize / 100.0f);
-	bool TinyTee = g_Config.m_ClTinyTees;
-	if(!m_LocalTeeRender && !g_Config.m_ClTinyTeesOthers)
+	float SizeMultiplier = (g_Config.m_TcTinyTeeSize / 100.0f);
+	bool TinyTee = g_Config.m_TcTinyTees;
+	if(!m_LocalTeeRender && !g_Config.m_TcTinyTeesOthers)
 		TinyTee = false;
 
 	const CSkin::CSkinTextures *pSkinTextures = pInfo->m_CustomColoredSkin ? &pInfo->m_ColorableRenderSkin : &pInfo->m_OriginalRenderSkin;
@@ -699,10 +699,10 @@ void CRenderTools::RenderTee6(const CAnimState *pAnim, const CTeeRenderInfo *pIn
 
 			Graphics()->SetColor(pInfo->m_ColorFeet.r * ColorScale, pInfo->m_ColorFeet.g * ColorScale, pInfo->m_ColorFeet.b * ColorScale, Alpha);
 
-			if(g_Config.m_ClWhiteFeet && pInfo->m_CustomColoredSkin)
+			if(g_Config.m_TcWhiteFeet && pInfo->m_CustomColoredSkin)
 			{
 				CTeeRenderInfo WhiteFeetInfo;
-				const CSkin *pSkin = GameClient()->m_Skins.Find(g_Config.m_ClWhiteFeetSkin);
+				const CSkin *pSkin = GameClient()->m_Skins.Find(g_Config.m_TcWhiteFeetSkin);
 				WhiteFeetInfo.m_OriginalRenderSkin = pSkin->m_OriginalSkin;
 				WhiteFeetInfo.m_ColorFeet = ColorRGBA(1, 1, 1);
 				const CSkin::CSkinTextures *pWhiteFeetTextures = &WhiteFeetInfo.m_OriginalRenderSkin;
