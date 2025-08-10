@@ -168,7 +168,7 @@ void CPlayers::RenderHookCollLine(
 	int ClientId,
 	float Intra)
 {
-	if(GameClient()->m_aClients[ClientId].m_DeepFrozen && (g_Config.m_TcVolleyBallBetterBall == 2 || (g_Config.m_TcVolleyBallBetterBall == 1 && str_startswith_nocase(Client()->GetCurrentMap(), "volleyball"))))
+	if(GameClient()->m_aClients[ClientId].m_IsVolleyBall)
 		return;
 
 	CNetObj_Character Prev;
@@ -524,7 +524,7 @@ void CPlayers::RenderPlayer(
 	GameClient()->m_Flow.Add(Position, Vel * 100.0f, 10.0f);
 
 	// TClient
-	if(GameClient()->m_aClients[ClientId].m_DeepFrozen && (g_Config.m_TcVolleyBallBetterBall == 2 || (g_Config.m_TcVolleyBallBetterBall == 1 && str_startswith_nocase(Client()->GetCurrentMap(), "volleyball"))))
+	if(GameClient()->m_aClients[ClientId].m_IsVolleyBall)
 	{
 		// Update
 		const float Delta = Client()->IntraGameTickSincePrev(g_Config.m_ClDummy);
@@ -536,10 +536,6 @@ void CPlayers::RenderPlayer(
 			ClientData.m_VolleyBallAngle -= 2.0f * pi;
 		// Render
 		const CSkin *pSkin = GameClient()->m_Skins.Find(g_Config.m_TcVolleyBallBetterBallSkin);
-		if(!pSkin)
-			pSkin = GameClient()->m_Skins.Find("x_ninja");
-		if(!pSkin)
-			pSkin = GameClient()->m_Skins.Find("default");
 		if(!pSkin)
 			return;
 		const float Size = pRenderInfo->m_Size * 1.2f;

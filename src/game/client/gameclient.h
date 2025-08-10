@@ -506,6 +506,7 @@ public:
 		//vec2 m_DebugVector3 = vec2(0, 0);
 		float m_Uncertainty = 0.0f;
 		float m_VolleyBallAngle = 0.0f;
+		bool m_IsVolleyBall = false;
 
 		std::shared_ptr<CManagedTeeRenderInfo> m_pSkinInfo = nullptr; // this is what the server reports
 		CTeeRenderInfo m_RenderInfo; // this is what we use

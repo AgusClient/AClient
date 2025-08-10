@@ -1005,7 +1005,7 @@ void CNamePlates::OnRender()
 		if(GameClient()->m_Snap.m_aCharacters[i].m_Active)
 		{
 			// TClient
-			if(GameClient()->m_aClients[i].m_DeepFrozen && (g_Config.m_TcVolleyBallBetterBall == 2 || (g_Config.m_TcVolleyBallBetterBall == 1 && str_startswith_nocase(Client()->GetCurrentMap(), "volleyball"))))
+			if(GameClient()->m_aClients[i].m_IsVolleyBall)
 				continue;
 			//if(g_Config.m_TcRenderNameplateSpec > 0)
 			//	continue;

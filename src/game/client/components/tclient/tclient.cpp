@@ -572,6 +572,19 @@ void CTClient::OnStateChange(int OldState, int NewState)
 void CTClient::OnNewSnapshot()
 {
 	SetForcedAspect();
+	// Update volleyball
+	bool IsVolleyBall = false;
+	if(g_Config.m_TcVolleyBallBetterBall > 0 && g_Config.m_TcVolleyBallBetterBallSkin[0] != '\0')
+	{
+		if(g_Config.m_TcVolleyBallBetterBall > 1)
+			IsVolleyBall = true;
+		else
+			IsVolleyBall = str_startswith_nocase(Client()->GetCurrentMap(), "volleyball");
+	};
+	for(auto &Client : GameClient()->m_aClients)
+	{
+		Client.m_IsVolleyBall = IsVolleyBall && Client.m_DeepFrozen;
+	}
 }
 
 constexpr const char STRIP_CHARS[] = {'-', '=', '+', '_', ' '};

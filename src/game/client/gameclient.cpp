@@ -139,6 +139,7 @@ void CGameClient::OnConsoleInit()
 					      &m_Trails,
 					      &m_Translate,
 					      &m_Ghost,
+					      &m_TClient, // Must be before chat and players
 					      &m_Players,
 					      &m_MapLayersForeground,
 					      &m_Outlines,
@@ -150,7 +151,6 @@ void CGameClient::OnConsoleInit()
 					      &m_FreezeBars,
 					      &m_DamageInd,
 					      &m_PlayerIndicator,
-					      &m_TClient, // Must be before chat
 					      &m_Mod,
 					      &m_Hud,
 					      &m_Spectator,
