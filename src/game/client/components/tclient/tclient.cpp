@@ -328,6 +328,62 @@ void CTClient::ConEmoteCycle(IConsole::IResult *pResult, void *pUserData)
 	This.GameClient()->m_Emoticon.Emote(This.m_EmoteCycle);
 }
 
+void CTClient::AirRescue()
+{
+	if(Client()->State() != IClient::STATE_ONLINE)
+		return;
+	const int ClientId = GameClient()->m_Snap.m_LocalClientId;
+	if(ClientId < 0 || !GameClient()->m_Snap.m_aCharacters[ClientId].m_Active)
+		return;
+	if(GameClient()->m_Snap.m_aCharacters[ClientId].m_HasExtendedDisplayInfo && (GameClient()->m_Snap.m_aCharacters[ClientId].m_ExtendedData.m_Flags & CHARACTERFLAG_PRACTICE_MODE) == 0)
+	{
+		GameClient()->Echo("You are not in practice");
+		return;
+	}
+
+	auto IsIndexAirLike = [&](int Index)
+	{
+		const auto Tile = Collision()->GetTileIndex(Index);
+		return Tile == TILE_AIR || Tile == TILE_UNFREEZE || Tile == TILE_DUNFREEZE;
+	};
+	auto IsPosAirLike = [&](vec2 Pos)
+	{
+		const int Index = Collision()->GetPureMapIndex(Pos);
+		return IsIndexAirLike(Index);
+	};
+	auto IsRadiusAirLike = [&](vec2 Pos, int Radius)
+	{
+		for(int y = -Radius; y <= Radius; ++y)
+			for(int x = -Radius; x <= Radius; ++x)
+				if(!IsPosAirLike(Pos + vec2(x, y) * 32.0f))
+					return false;
+		return true;
+	};
+
+	auto &AirRescuePositions = m_aAirRescuePositions[g_Config.m_ClDummy];
+	while(!AirRescuePositions.empty())
+	{
+		// Get latest pos from positions
+		const vec2 NewPos = AirRescuePositions.front();
+		AirRescuePositions.pop_front();
+		// Check for safety
+		if (!IsRadiusAirLike(NewPos, 2))
+			continue;
+		// Do it
+		char aBuf[256];
+		str_format(aBuf, sizeof(aBuf), "/tpxy %f %f", NewPos.x / 32.0f, NewPos.y / 32.0f);
+		GameClient()->m_Chat.SendChat(0, aBuf);
+		return;
+	}
+
+	GameClient()->Echo("No safe position found");
+}
+
+void CTClient::ConAirRescue(IConsole::IResult *pResult, void *pUserData)
+{
+	((CTClient *)pUserData)->AirRescue();
+}
+
 void CTClient::ConCalc(IConsole::IResult *pResult, void *pUserData)
 {
 	int Error = 0;
@@ -341,6 +397,7 @@ void CTClient::ConCalc(IConsole::IResult *pResult, void *pUserData)
 void CTClient::OnConsoleInit()
 {
 	Console()->Register("calc", "r[expression]", CFGFLAG_CLIENT, ConCalc, this, "Evaluate an expression");
+	Console()->Register("airrescue", "", CFGFLAG_CLIENT, ConAirRescue, this, "Rescue to a nearby air tile");
 
 	Console()->Register("tc_random_player", "s[type]", CFGFLAG_CLIENT, ConRandomTee, this, "Randomize player color (0 = all, 1 = body, 2 = feet, 3 = skin, 4 = flag) example: 0011 = randomize skin and flag [number is position]");
 	Console()->Chain("tc_random_player", ConchainRandomColor, this);
@@ -567,6 +624,8 @@ void CTClient::SetForcedAspect()
 void CTClient::OnStateChange(int OldState, int NewState)
 {
 	SetForcedAspect();
+	for(auto &AirRescuePositions : m_aAirRescuePositions)
+		AirRescuePositions = {};
 }
 
 void CTClient::OnNewSnapshot()
@@ -584,6 +643,35 @@ void CTClient::OnNewSnapshot()
 	for(auto &Client : GameClient()->m_aClients)
 	{
 		Client.m_IsVolleyBall = IsVolleyBall && Client.m_DeepFrozen;
+	}
+	// Update air rescue
+	if(Client()->State() != IClient::STATE_DEMOPLAYBACK)
+	{
+		for(int Dummy = 0; Dummy < NUM_DUMMIES; ++Dummy)
+		{
+			const int ClientId = GameClient()->m_aLocalIds[Dummy];
+			if(ClientId == -1)
+				continue;
+			const auto &Char = GameClient()->m_Snap.m_aCharacters[ClientId];
+			if(!Char.m_Active)
+				continue;
+			if(Client()->GameTick(Dummy) % 10 != 0) // Works for both 25tps and 50tps
+				continue;
+			const auto &Client = GameClient()->m_aClients[ClientId];
+			if(Client.m_FreezeEnd == -1) // You aren't safe when frozen
+				continue;
+			const vec2 NewPos = vec2(Char.m_Cur.m_X, Char.m_Cur.m_Y);
+			// If new pos is under 2 tiles from old pos, don't record a new position
+			if(!m_aAirRescuePositions[Dummy].empty())
+			{
+				const vec2 OldPos = m_aAirRescuePositions[Dummy].front();
+				if(distance(NewPos, OldPos) < 64.0f)
+					continue;
+			}
+			if(m_aAirRescuePositions[Dummy].size() >= 256)
+				m_aAirRescuePositions[Dummy].pop_back();
+			m_aAirRescuePositions[Dummy].push_front(NewPos);
+		}
 	}
 }
 
