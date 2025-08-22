@@ -35,7 +35,12 @@ void CMod::OnRender()
 	if(Client()->State() == IClient::STATE_ONLINE && m_ModWeaponActiveId >= 0 && m_ModWeaponActiveTimeLeft > 0.0f)
 	{
 		const auto &Player = GameClient()->m_aClients[m_ModWeaponActiveId];
-		if(!Player.m_Active || g_Config.m_TcModWeaponCommand[0] == '\0') // Cancel if not active or empty command
+		if(
+			GameClient()->m_Menus.IsActive() || // In escape
+			GameClient()->m_Chat.IsActive() || // In chat
+			GameClient()->m_GameConsole.IsActive() || // In console
+			!Player.m_Active || // In spectator
+			g_Config.m_TcModWeaponCommand[0] == '\0') // Not active or empty command
 		{
 			m_ModWeaponActiveId = -1;
 		}
