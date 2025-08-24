@@ -64,7 +64,7 @@ void CMod::OnRender()
 				STextContainerIndex TextContainer;
 				TextContainer.Reset();
 				CTextCursor Cursor;
-				TextRender()->SetCursor(&Cursor, 0.0f, 0.0f, 25.0f, TEXTFLAG_RENDER);
+				Cursor.m_FontSize = 25.0f;
 				TextRender()->SetRenderFlags(TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT | TEXT_RENDER_FLAG_ONE_TIME_USE);
 				TextRender()->CreateTextContainer(TextContainer, &Cursor, aBuf);
 				TextRender()->SetRenderFlags(0);
@@ -83,7 +83,7 @@ void CMod::OnRender()
 				STextContainerIndex TextContainer;
 				TextContainer.Reset();
 				CTextCursor Cursor;
-				TextRender()->SetCursor(&Cursor, 0.0f, 0.0f, 15.0f, TEXTFLAG_RENDER);
+				Cursor.m_FontSize = 15.0f;
 				TextRender()->SetRenderFlags(TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT | TEXT_RENDER_FLAG_ONE_TIME_USE);
 				TextRender()->CreateTextContainer(TextContainer, &Cursor, g_Config.m_TcModWeaponCommand);
 				TextRender()->SetRenderFlags(0);
