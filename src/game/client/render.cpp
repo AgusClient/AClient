@@ -628,7 +628,6 @@ void CRenderTools::RenderTee6(const CAnimState *pAnim, const CTeeRenderInfo *pIn
 
 // TClient
 
-
 static int ClampedIndex(int x, int y, int w, int h)
 {
 	x = std::clamp(x, 0, w - 1);
