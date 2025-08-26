@@ -661,6 +661,12 @@ void CConsole::ExecuteLineStroked(int Stroke, const char *pStr, int ClientId, bo
 int CConsole::PossibleCommands(const char *pStr, int FlagMask, bool Temp, FPossibleCallback pfnCallback, void *pUser)
 {
 	int Index = 0;
+	// TClient
+	if(Temp)
+	{
+		pfnCallback(Index, "clear", pUser);
+		Index++;
+	}
 	for(CCommand *pCommand = m_pFirstCommand; pCommand; pCommand = pCommand->m_pNext)
 	{
 		if(pCommand->m_Flags & FlagMask && pCommand->m_Temp == Temp)

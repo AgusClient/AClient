@@ -295,6 +295,12 @@ void CClient::RconAuth(const char *pName, const char *pPassword, bool Dummy)
 
 void CClient::Rcon(const char *pCmd)
 {
+	// TClient
+	if(str_comp_nocase(pCmd, "clear") == 0)
+	{
+		m_pConsole->ExecuteLine("clear_remote_console");
+		return;
+	}
 	CMsgPacker Msg(NETMSG_RCON_CMD, true);
 	Msg.AddString(pCmd);
 	SendMsgActive(&Msg, MSGFLAG_VITAL);
