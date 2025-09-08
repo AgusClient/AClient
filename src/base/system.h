@@ -2665,7 +2665,7 @@ std::wstring windows_args_to_wide(const char **arguments, const size_t num_argum
  *
  * @return Handle of the new process, or @link INVALID_PROCESS @endlink on error.
  */
-PROCESS shell_execute(const char *file, EShellExecuteWindowState window_state, const char **arguments = nullptr, const size_t num_arguments = 0);
+PROCESS shell_execute(const char *file, EShellExecuteWindowState window_state, const char **arguments = nullptr, size_t num_arguments = 0);
 
 /**
  * Sends kill signal to a process.
@@ -2736,25 +2736,6 @@ int open_file(const char *path);
  * @param random_length Length of the short array.
  */
 void generate_password(char *buffer, unsigned length, const unsigned short *random, unsigned random_length);
-
-/**
- * Initializes the secure random module.
- * You *MUST* check the return value of this function.
- *
- * @ingroup Secure-Random
- *
- * @return `0` on success.
- */
-[[nodiscard]] int secure_random_init();
-
-/**
- * Uninitializes the secure random module.
- *
- * @ingroup Secure-Random
- *
- * @return `0` on success.
- */
-int secure_random_uninit();
 
 /**
  * Fills the buffer with the specified amount of random password characters.

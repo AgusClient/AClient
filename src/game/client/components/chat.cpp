@@ -9,8 +9,8 @@
 #include <engine/shared/csv.h>
 #include <engine/textrender.h>
 
-#include <game/generated/protocol.h>
-#include <game/generated/protocol7.h>
+#include <generated/protocol.h>
+#include <generated/protocol7.h>
 
 #include <game/client/animstate.h>
 #include <game/client/components/scoreboard.h>
@@ -141,7 +141,7 @@ void CChat::Reset()
 	m_EditingNewLine = true;
 	m_ServerSupportsCommandInfo = false;
 	m_ServerCommandsNeedSorting = false;
-	mem_zero(m_aCurrentInputText, sizeof(m_aCurrentInputText));
+	m_aCurrentInputText[0] = '\0';
 	DisableMode();
 	m_vServerCommands.clear();
 

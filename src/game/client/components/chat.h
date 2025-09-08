@@ -12,7 +12,7 @@
 #include <game/client/component.h>
 #include <game/client/lineinput.h>
 #include <game/client/render.h>
-#include <game/generated/protocol7.h>
+#include <generated/protocol7.h>
 
 class CTranslateResponse
 {
