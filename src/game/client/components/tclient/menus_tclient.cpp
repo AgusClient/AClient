@@ -11,7 +11,6 @@
 #include <engine/textrender.h>
 #include <engine/updater.h>
 
-#include <game/generated/protocol.h>
 #include <game/localization.h>
 
 #include <game/client/animstate.h>

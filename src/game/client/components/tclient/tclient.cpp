@@ -6,7 +6,6 @@
 #include <game/client/render.h>
 #include <game/client/ui.h>
 
-#include <game/generated/protocol.h>
 #include <game/localization.h>
 #include <game/version.h>
 
