@@ -17,6 +17,8 @@
 
 #include <generated/client_data.h>
 
+#include "data_version.h"
+
 #include "tclient.h"
 
 static constexpr const char *TCLIENT_INFO_URL = "https://update.tclient.app/info.json";
@@ -101,9 +103,14 @@ void CTClient::OnInit()
 	m_pGraphics = Kernel()->RequestInterface<IEngineGraphics>();
 	FetchTClientInfo();
 
+	char aError[512] = "";
 	if(!g_pData->m_aImages[IMAGE_BANNER].m_Id.IsValid())
+		str_format(aError, sizeof(aError), TCLocalize("%s not found", DATA_VERSION_PATH), "data/tclient/gui_logo.png");
+	if (aError[0] == '\0')
+		CheckDataVersion(aError, sizeof(aError), Storage()->OpenFile("data/" DATA_VERSION_PATH, IStorage::TYPE_SAVE, IOFLAG_READ));
+	if (aError[0] != '\0')
 	{
-		SWarning Warning(TCLocalize("TClient"), TCLocalize("data/tclient/gui_logo.png not detected. You have probably only installed the TClient DDNet.exe which is not supported, please use the entire TClient folder"));
+		SWarning Warning(aError, TCLocalize("You have probably only installed the TClient DDNet.exe which is not supported, please use the entire TClient folder", "data_version.h"));
 		Client()->AddWarning(Warning);
 	}
 }

@@ -2540,6 +2540,7 @@ if(CLIENT)
     components/tclient/bindwheel.h
     components/tclient/conditional.cpp
     components/tclient/conditional.h
+    components/tclient/data_version.h
     components/tclient/menus_tclient.cpp
     components/tclient/mod.cpp
     components/tclient/mod.h
