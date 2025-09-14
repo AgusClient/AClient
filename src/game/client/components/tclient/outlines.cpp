@@ -9,13 +9,6 @@
 
 #include "outlines.h"
 
-static int ClampedIndex(int x, int y, int w, int h)
-{
-	x = std::clamp(x, 0, w - 1);
-	y = std::clamp(y, 0, h - 1);
-	return x + y * w;
-}
-
 void COutlines::OnConsoleInit()
 {
 	auto FixColorAlpha = [&](const char *pName, unsigned int &ColorInt) {
@@ -48,37 +41,31 @@ void COutlines::OnRender()
 	if(!g_Config.m_TcOutline)
 		return;
 
-	auto RenderGameTileOutlines = [&](CTile *pTiles, int w, int h, float Scale, int TileType) {
-		// Config
-		float Width;
-		ColorRGBA Color;
-		if(TileType == TILE_SOLID)
-		{
-			Width = g_Config.m_TcOutlineWidthSolid;
-			Color = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcOutlineColorSolid));
-		}
-		else if(TileType == TILE_FREEZE)
-		{
-			Width = g_Config.m_TcOutlineWidthFreeze;
-			Color = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcOutlineColorFreeze));
-		}
-		else if(TileType == TILE_UNFREEZE)
-		{
-			Width = g_Config.m_TcOutlineWidthUnfreeze;
-			Color = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcOutlineColorUnfreeze));
-		}
-		else if(TileType == TILE_DEATH)
-		{
-			Width = g_Config.m_TcOutlineWidthKill;
-			Color = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcOutlineColorKill));
-		}
-		else
-		{
-			dbg_assert(false, "Invalid value for TileType");
-		}
+	float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
+	Graphics()->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
+	const float Scale = 32.0f;
 
-		float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
-		Graphics()->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
+	Graphics()->TextureClear();
+	Graphics()->QuadsBegin();
+
+	auto DoLayer = [&](CMapItemLayerTilemap *pTMap, int CMapItemLayerTilemap::* pTMapData) {
+		if(!pTMap)
+			return;
+		CTile *pTiles = (CTile *)GameClient()->Layers()->Map()->GetData(pTMap->*pTMapData);
+		if (!pTiles)
+			return;
+		const unsigned Size = GameClient()->Layers()->Map()->GetDataSize(pTMap->*pTMapData);
+		if (Size < (size_t)pTMap->m_Width * pTMap->m_Height * sizeof(CTile))
+			return;
+
+		const int w = pTMap->m_Width;
+		const int h = pTMap->m_Height;
+		auto ClampedIndex = [&](int x, int y)
+		{
+			x = std::clamp(x, 0, w - 1);
+			y = std::clamp(y, 0, h - 1);
+			return x + y * w;
+		};
 
 		int StartY = (int)(ScreenY0 / Scale) - 1;
 		int StartX = (int)(ScreenX0 / Scale) - 1;
@@ -94,193 +81,94 @@ void COutlines::OnRender()
 			StartY += EdgeY / 2;
 			EndY -= EdgeY / 2;
 		}
-		Graphics()->TextureClear();
-		Graphics()->QuadsBegin();
-		Graphics()->SetColor(Color);
 
 		for(int y = StartY; y < EndY; y++)
 		{
 			for(int x = StartX; x < EndX; x++)
 			{
-				int mx = x;
-				int my = y;
-
-				int c = ClampedIndex(mx, my, w, h);
-
-				const unsigned char Index = pTiles[c].m_Index;
-				const bool IsSolid = Index == TILE_SOLID || Index == TILE_NOHOOK;
-				const bool IsFreeze = Index == TILE_FREEZE || Index == TILE_DFREEZE;
-				const bool IsUnfreeze = Index == TILE_UNFREEZE || Index == TILE_DUNFREEZE;
-				const bool IsKill = Index == TILE_DEATH;
-				const bool Render = (TileType == TILE_SOLID && IsSolid) ||
-							(TileType == TILE_FREEZE && IsFreeze) ||
-							(TileType == TILE_UNFREEZE && IsUnfreeze) ||
-							(TileType == TILE_DEATH && IsKill);
-				if(!Render)
-					continue;
-
-				IGraphics::CQuadItem Array[8];
-				bool Neighbors[8];
-				int Tile;
-				if(IsFreeze && TileType == TILE_FREEZE)
-				{
-					Tile = pTiles[ClampedIndex(mx - 1, my - 1, w, h)].m_Index;
-					Neighbors[0] = Tile == TILE_AIR || Tile == TILE_UNFREEZE || Tile == TILE_DUNFREEZE;
-					Tile = pTiles[ClampedIndex(mx - 0, my - 1, w, h)].m_Index;
-					Neighbors[1] = Tile == TILE_AIR || Tile == TILE_UNFREEZE || Tile == TILE_DUNFREEZE;
-					Tile = pTiles[ClampedIndex(mx + 1, my - 1, w, h)].m_Index;
-					Neighbors[2] = Tile == TILE_AIR || Tile == TILE_UNFREEZE || Tile == TILE_DUNFREEZE;
-					Tile = pTiles[ClampedIndex(mx - 1, my + 0, w, h)].m_Index;
-					Neighbors[3] = Tile == TILE_AIR || Tile == TILE_UNFREEZE || Tile == TILE_DUNFREEZE;
-					Tile = pTiles[ClampedIndex(mx + 1, my + 0, w, h)].m_Index;
-					Neighbors[4] = Tile == TILE_AIR || Tile == TILE_UNFREEZE || Tile == TILE_DUNFREEZE;
-					Tile = pTiles[ClampedIndex(mx - 1, my + 1, w, h)].m_Index;
-					Neighbors[5] = Tile == TILE_AIR || Tile == TILE_UNFREEZE || Tile == TILE_DUNFREEZE;
-					Tile = pTiles[ClampedIndex(mx + 0, my + 1, w, h)].m_Index;
-					Neighbors[6] = Tile == TILE_AIR || Tile == TILE_UNFREEZE || Tile == TILE_DUNFREEZE;
-					Tile = pTiles[ClampedIndex(mx + 1, my + 1, w, h)].m_Index;
-					Neighbors[7] = Tile == TILE_AIR || Tile == TILE_UNFREEZE || Tile == TILE_DUNFREEZE;
-				}
-				else if(IsSolid && TileType == TILE_SOLID)
-				{
-					Tile = pTiles[ClampedIndex(mx - 1, my - 1, w, h)].m_Index;
-					Neighbors[0] = Tile != TILE_NOHOOK && Tile != Index;
-					Tile = pTiles[ClampedIndex(mx - 0, my - 1, w, h)].m_Index;
-					Neighbors[1] = Tile != TILE_NOHOOK && Tile != Index;
-					Tile = pTiles[ClampedIndex(mx + 1, my - 1, w, h)].m_Index;
-					Neighbors[2] = Tile != TILE_NOHOOK && Tile != Index;
-					Tile = pTiles[ClampedIndex(mx - 1, my + 0, w, h)].m_Index;
-					Neighbors[3] = Tile != TILE_NOHOOK && Tile != Index;
-					Tile = pTiles[ClampedIndex(mx + 1, my + 0, w, h)].m_Index;
-					Neighbors[4] = Tile != TILE_NOHOOK && Tile != Index;
-					Tile = pTiles[ClampedIndex(mx - 1, my + 1, w, h)].m_Index;
-					Neighbors[5] = Tile != TILE_NOHOOK && Tile != Index;
-					Tile = pTiles[ClampedIndex(mx + 0, my + 1, w, h)].m_Index;
-					Neighbors[6] = Tile != TILE_NOHOOK && Tile != Index;
-					Tile = pTiles[ClampedIndex(mx + 1, my + 1, w, h)].m_Index;
-					Neighbors[7] = Tile != TILE_NOHOOK && Tile != Index;
-				}
-				else if(IsKill && TileType == TILE_DEATH)
-				{
-					Tile = pTiles[ClampedIndex(mx - 1, my - 1, w, h)].m_Index;
-					Neighbors[0] = Tile != TILE_DEATH && Tile != Index;
-					Tile = pTiles[ClampedIndex(mx - 0, my - 1, w, h)].m_Index;
-					Neighbors[1] = Tile != TILE_DEATH && Tile != Index;
-					Tile = pTiles[ClampedIndex(mx + 1, my - 1, w, h)].m_Index;
-					Neighbors[2] = Tile != TILE_DEATH && Tile != Index;
-					Tile = pTiles[ClampedIndex(mx - 1, my + 0, w, h)].m_Index;
-					Neighbors[3] = Tile != TILE_DEATH && Tile != Index;
-					Tile = pTiles[ClampedIndex(mx + 1, my + 0, w, h)].m_Index;
-					Neighbors[4] = Tile != TILE_DEATH && Tile != Index;
-					Tile = pTiles[ClampedIndex(mx - 1, my + 1, w, h)].m_Index;
-					Neighbors[5] = Tile != TILE_DEATH && Tile != Index;
-					Tile = pTiles[ClampedIndex(mx + 0, my + 1, w, h)].m_Index;
-					Neighbors[6] = Tile != TILE_DEATH && Tile != Index;
-					Tile = pTiles[ClampedIndex(mx + 1, my + 1, w, h)].m_Index;
-					Neighbors[7] = Tile != TILE_DEATH && Tile != Index;
-				}
-				else
-				{
-					Tile = pTiles[ClampedIndex(mx - 1, my - 1, w, h)].m_Index;
-					Neighbors[0] = Tile != TILE_UNFREEZE && Tile != TILE_DUNFREEZE;
-					Tile = pTiles[ClampedIndex(mx - 0, my - 1, w, h)].m_Index;
-					Neighbors[1] = Tile != TILE_UNFREEZE && Tile != TILE_DUNFREEZE;
-					Tile = pTiles[ClampedIndex(mx + 1, my - 1, w, h)].m_Index;
-					Neighbors[2] = Tile != TILE_UNFREEZE && Tile != TILE_DUNFREEZE;
-					Tile = pTiles[ClampedIndex(mx - 1, my + 0, w, h)].m_Index;
-					Neighbors[3] = Tile != TILE_UNFREEZE && Tile != TILE_DUNFREEZE;
-					Tile = pTiles[ClampedIndex(mx + 1, my + 0, w, h)].m_Index;
-					Neighbors[4] = Tile != TILE_UNFREEZE && Tile != TILE_DUNFREEZE;
-					Tile = pTiles[ClampedIndex(mx - 1, my + 1, w, h)].m_Index;
-					Neighbors[5] = Tile != TILE_UNFREEZE && Tile != TILE_DUNFREEZE;
-					Tile = pTiles[ClampedIndex(mx + 0, my + 1, w, h)].m_Index;
-					Neighbors[6] = Tile != TILE_UNFREEZE && Tile != TILE_DUNFREEZE;
-					Tile = pTiles[ClampedIndex(mx + 1, my + 1, w, h)].m_Index;
-					Neighbors[7] = Tile != TILE_UNFREEZE && Tile != TILE_DUNFREEZE;
-				}
-
-				int NumQuads = 0;
-
-				// Do lonely corners first
-				if(Neighbors[0] && !Neighbors[1] && !Neighbors[3])
-				{
-					Array[NumQuads] = IGraphics::CQuadItem(mx * Scale, my * Scale, Width, Width);
-					NumQuads++;
-				}
-				if(Neighbors[2] && !Neighbors[1] && !Neighbors[4])
-				{
-					Array[NumQuads] = IGraphics::CQuadItem(mx * Scale + Scale - Width, my * Scale, Width, Width);
-					NumQuads++;
-				}
-				if(Neighbors[5] && !Neighbors[3] && !Neighbors[6])
-				{
-					Array[NumQuads] = IGraphics::CQuadItem(mx * Scale, my * Scale + Scale - Width, Width, Width);
-					NumQuads++;
-				}
-				if(Neighbors[7] && !Neighbors[6] && !Neighbors[4])
-				{
-					Array[NumQuads] = IGraphics::CQuadItem(mx * Scale + Scale - Width, my * Scale + Scale - Width, Width, Width);
-					NumQuads++;
-				}
-				// Top
-				if(Neighbors[1])
-				{
-					Array[NumQuads] = IGraphics::CQuadItem(mx * Scale, my * Scale, Scale, Width);
-					NumQuads++;
-				}
-				// Bottom
-				if(Neighbors[6])
-				{
-					Array[NumQuads] = IGraphics::CQuadItem(mx * Scale, my * Scale + Scale - Width, Scale, Width);
-					NumQuads++;
-				}
-				// Left
-				if(Neighbors[3])
-				{
-					if(!Neighbors[1] && !Neighbors[6])
-						Array[NumQuads] = IGraphics::CQuadItem(mx * Scale, my * Scale, Width, Scale);
-					else if(!Neighbors[6])
-						Array[NumQuads] = IGraphics::CQuadItem(mx * Scale, my * Scale + Width, Width, Scale - Width);
-					else if(!Neighbors[1])
-						Array[NumQuads] = IGraphics::CQuadItem(mx * Scale, my * Scale, Width, Scale - Width);
-					else
-						Array[NumQuads] = IGraphics::CQuadItem(mx * Scale, my * Scale + Width, Width, Scale - Width * 2.0f);
-					NumQuads++;
-				}
-				// Right
-				if(Neighbors[4])
-				{
-					if(!Neighbors[1] && !Neighbors[6])
-						Array[NumQuads] = IGraphics::CQuadItem(mx * Scale + Scale - Width, my * Scale, Width, Scale);
-					else if(!Neighbors[6])
-						Array[NumQuads] = IGraphics::CQuadItem(mx * Scale + Scale - Width, my * Scale + Width, Width, Scale - Width);
-					else if(!Neighbors[1])
-						Array[NumQuads] = IGraphics::CQuadItem(mx * Scale + Scale - Width, my * Scale, Width, Scale - Width);
-					else
-						Array[NumQuads] = IGraphics::CQuadItem(mx * Scale + Scale - Width, my * Scale + Width, Width, Scale - Width * 2.0f);
-					NumQuads++;
-				}
-
-				Graphics()->QuadsDrawTL(Array, NumQuads);
+				const unsigned char Index = pTiles[ClampedIndex(x, y)].m_Index;
+				auto DoType = [&](const bool &Enable, bool (*IsMatchingType)(unsigned char), const int &Width, const unsigned int &Color) {
+					if(!Enable)
+						return;
+					if(!IsMatchingType(Index))
+						return;
+					// Find neighbours
+					const bool aNeighbors[8] = {
+						IsMatchingType(pTiles[ClampedIndex(x - 1, y - 1)].m_Index),
+						IsMatchingType(pTiles[ClampedIndex(x - 0, y - 1)].m_Index),
+						IsMatchingType(pTiles[ClampedIndex(x + 1, y - 1)].m_Index),
+						IsMatchingType(pTiles[ClampedIndex(x - 1, y + 0)].m_Index),
+						IsMatchingType(pTiles[ClampedIndex(x + 1, y + 0)].m_Index),
+						IsMatchingType(pTiles[ClampedIndex(x - 1, y + 1)].m_Index),
+						IsMatchingType(pTiles[ClampedIndex(x + 0, y + 1)].m_Index),
+						IsMatchingType(pTiles[ClampedIndex(x + 1, y + 1)].m_Index),
+					};
+					// Figure out edges
+					IGraphics::CQuadItem aQuads[8];
+					int NumQuads = 0;
+					// Lone corners first
+					if(!aNeighbors[0] && aNeighbors[1] && aNeighbors[3])
+						aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale, y * Scale, Width, Width);
+					if(!aNeighbors[2] && aNeighbors[1] && aNeighbors[4])
+						aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale + Scale - Width, y * Scale, Width, Width);
+					if(!aNeighbors[5] && aNeighbors[3] && aNeighbors[6])
+						aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale, y * Scale + Scale - Width, Width, Width);
+					if(!aNeighbors[7] && aNeighbors[6] && aNeighbors[4])
+						aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale + Scale - Width, y * Scale + Scale - Width, Width, Width);
+					// Top
+					if(!aNeighbors[1])
+						aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale, y * Scale, Scale, Width);
+					// Bottom
+					if(!aNeighbors[6])
+						aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale, y * Scale + Scale - Width, Scale, Width);
+					// Left
+					if(!aNeighbors[3])
+					{
+						if(aNeighbors[1] && aNeighbors[6])
+							aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale, y * Scale, Width, Scale);
+						else if(aNeighbors[6])
+							aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale, y * Scale + Width, Width, Scale - Width);
+						else if(aNeighbors[1])
+							aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale, y * Scale, Width, Scale - Width);
+						else
+							aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale, y * Scale + Width, Width, Scale - Width * 2.0f);
+					}
+					// Right
+					if(!aNeighbors[4])
+					{
+						if(aNeighbors[1] && aNeighbors[6])
+							aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale + Scale - Width, y * Scale, Width, Scale);
+						else if(aNeighbors[6])
+							aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale + Scale - Width, y * Scale + Width, Width, Scale - Width);
+						else if(aNeighbors[1])
+							aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale + Scale - Width, y * Scale, Width, Scale - Width);
+						else
+							aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale + Scale - Width, y * Scale + Width, Width, Scale - Width * 2.0f);
+					}
+					if(NumQuads <= 0)
+						return;
+					Graphics()->SetColor(color_cast<ColorRGBA>(ColorHSLA(Color)));
+					Graphics()->QuadsDrawTL(aQuads, NumQuads);
+				};
+				DoType(g_Config.m_TcOutlineSolid, [](unsigned char Tile){ return Tile == TILE_SOLID || Tile == TILE_NOHOOK; }, g_Config.m_TcOutlineWidthSolid, g_Config.m_TcOutlineColorSolid);
+				DoType(g_Config.m_TcOutlineFreeze, [](unsigned char Tile){ return Tile == TILE_FREEZE || Tile == TILE_DFREEZE || Tile == TILE_LFREEZE; }, g_Config.m_TcOutlineWidthFreeze, g_Config.m_TcOutlineColorFreeze);
+				DoType(g_Config.m_TcOutlineUnfreeze, [](unsigned char Tile){ return Tile == TILE_UNFREEZE || Tile == TILE_DUNFREEZE || Tile == TILE_LUNFREEZE; }, g_Config.m_TcOutlineWidthUnfreeze, g_Config.m_TcOutlineColorUnfreeze);
+				DoType(g_Config.m_TcOutlineKill, [](unsigned char Tile){ return Tile == TILE_DEATH; }, g_Config.m_TcOutlineWidthKill, g_Config.m_TcOutlineColorKill);
+				DoType(g_Config.m_TcOutlineKill, [](unsigned char Tile){ return Tile == TILE_DEATH; }, g_Config.m_TcOutlineWidthKill, g_Config.m_TcOutlineColorKill);
+				DoType(g_Config.m_TcOutlineTele, [](unsigned char Tile){ return Tile == TILE_TELEOUT || Tile == TILE_TELEIN || Tile == TILE_TELEINEVIL || Tile == TILE_TELECHECKIN || Tile == TILE_TELECHECKINEVIL || Tile == TILE_TELEINHOOK || Tile == TILE_TELEINWEAPON; }, g_Config.m_TcOutlineWidthTele, g_Config.m_TcOutlineColorTele);
 			}
 		}
-		Graphics()->QuadsEnd();
-		Graphics()->MapScreen(ScreenX0, ScreenY0, ScreenX1, ScreenY1);
 	};
 
-	auto DoLayer = [&](CMapItemLayerTilemap *pTMap) {
-		if(!pTMap)
-			return;
-		CTile *pTiles = (CTile *)GameClient()->Layers()->Map()->GetData(pTMap->m_Data);
-		if (!pTiles)
-			return;
-		const unsigned Size = GameClient()->Layers()->Map()->GetDataSize(pTMap->m_Data);
-		if (Size < (size_t)pTMap->m_Width * pTMap->m_Height * sizeof(CTile))
-			return;
-		RenderGameTileOutlines(pTiles, pTMap->m_Width, pTMap->m_Height, 32.0f, TILE_SOLID);
-	};
 	if(g_Config.m_TcOutlineSolid || g_Config.m_TcOutlineFreeze || g_Config.m_TcOutlineUnfreeze || g_Config.m_TcOutlineKill)
-		DoLayer(GameClient()->Layers()->GameLayer());
+	{
+		DoLayer(GameClient()->Layers()->GameLayer(), &CMapItemLayerTilemap::m_Data);
+		DoLayer(GameClient()->Layers()->FrontLayer(), &CMapItemLayerTilemap::m_Front);
+	}
 	if(g_Config.m_TcOutlineTele)
-		DoLayer(GameClient()->Layers()->TeleLayer());
+	{
+		DoLayer(GameClient()->Layers()->TeleLayer(), &CMapItemLayerTilemap::m_Tele);
+	}
+
+	Graphics()->QuadsEnd();
 }
