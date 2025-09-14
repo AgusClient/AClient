@@ -121,86 +121,82 @@ void COutlines::OnRender()
 
 				IGraphics::CQuadItem Array[8];
 				bool Neighbors[8];
+				int Tile;
 				if(IsFreeze && TileType == TILE_FREEZE)
 				{
-					int IndexN;
-
-					IndexN = pTiles[ClampedIndex(mx - 1, my - 1, w, h)].m_Index;
-					Neighbors[0] = IndexN == TILE_AIR || IndexN == TILE_UNFREEZE || IndexN == TILE_DUNFREEZE;
-					IndexN = pTiles[ClampedIndex(mx - 0, my - 1, w, h)].m_Index;
-					Neighbors[1] = IndexN == TILE_AIR || IndexN == TILE_UNFREEZE || IndexN == TILE_DUNFREEZE;
-					IndexN = pTiles[ClampedIndex(mx + 1, my - 1, w, h)].m_Index;
-					Neighbors[2] = IndexN == TILE_AIR || IndexN == TILE_UNFREEZE || IndexN == TILE_DUNFREEZE;
-					IndexN = pTiles[ClampedIndex(mx - 1, my + 0, w, h)].m_Index;
-					Neighbors[3] = IndexN == TILE_AIR || IndexN == TILE_UNFREEZE || IndexN == TILE_DUNFREEZE;
-					IndexN = pTiles[ClampedIndex(mx + 1, my + 0, w, h)].m_Index;
-					Neighbors[4] = IndexN == TILE_AIR || IndexN == TILE_UNFREEZE || IndexN == TILE_DUNFREEZE;
-					IndexN = pTiles[ClampedIndex(mx - 1, my + 1, w, h)].m_Index;
-					Neighbors[5] = IndexN == TILE_AIR || IndexN == TILE_UNFREEZE || IndexN == TILE_DUNFREEZE;
-					IndexN = pTiles[ClampedIndex(mx + 0, my + 1, w, h)].m_Index;
-					Neighbors[6] = IndexN == TILE_AIR || IndexN == TILE_UNFREEZE || IndexN == TILE_DUNFREEZE;
-					IndexN = pTiles[ClampedIndex(mx + 1, my + 1, w, h)].m_Index;
-					Neighbors[7] = IndexN == TILE_AIR || IndexN == TILE_UNFREEZE || IndexN == TILE_DUNFREEZE;
+					Tile = pTiles[ClampedIndex(mx - 1, my - 1, w, h)].m_Index;
+					Neighbors[0] = Tile == TILE_AIR || Tile == TILE_UNFREEZE || Tile == TILE_DUNFREEZE;
+					Tile = pTiles[ClampedIndex(mx - 0, my - 1, w, h)].m_Index;
+					Neighbors[1] = Tile == TILE_AIR || Tile == TILE_UNFREEZE || Tile == TILE_DUNFREEZE;
+					Tile = pTiles[ClampedIndex(mx + 1, my - 1, w, h)].m_Index;
+					Neighbors[2] = Tile == TILE_AIR || Tile == TILE_UNFREEZE || Tile == TILE_DUNFREEZE;
+					Tile = pTiles[ClampedIndex(mx - 1, my + 0, w, h)].m_Index;
+					Neighbors[3] = Tile == TILE_AIR || Tile == TILE_UNFREEZE || Tile == TILE_DUNFREEZE;
+					Tile = pTiles[ClampedIndex(mx + 1, my + 0, w, h)].m_Index;
+					Neighbors[4] = Tile == TILE_AIR || Tile == TILE_UNFREEZE || Tile == TILE_DUNFREEZE;
+					Tile = pTiles[ClampedIndex(mx - 1, my + 1, w, h)].m_Index;
+					Neighbors[5] = Tile == TILE_AIR || Tile == TILE_UNFREEZE || Tile == TILE_DUNFREEZE;
+					Tile = pTiles[ClampedIndex(mx + 0, my + 1, w, h)].m_Index;
+					Neighbors[6] = Tile == TILE_AIR || Tile == TILE_UNFREEZE || Tile == TILE_DUNFREEZE;
+					Tile = pTiles[ClampedIndex(mx + 1, my + 1, w, h)].m_Index;
+					Neighbors[7] = Tile == TILE_AIR || Tile == TILE_UNFREEZE || Tile == TILE_DUNFREEZE;
 				}
 				else if(IsSolid && TileType == TILE_SOLID)
 				{
-					int IndexN;
-					IndexN = pTiles[ClampedIndex(mx - 1, my - 1, w, h)].m_Index;
-					Neighbors[0] = IndexN != TILE_NOHOOK && IndexN != Index;
-					IndexN = pTiles[ClampedIndex(mx - 0, my - 1, w, h)].m_Index;
-					Neighbors[1] = IndexN != TILE_NOHOOK && IndexN != Index;
-					IndexN = pTiles[ClampedIndex(mx + 1, my - 1, w, h)].m_Index;
-					Neighbors[2] = IndexN != TILE_NOHOOK && IndexN != Index;
-					IndexN = pTiles[ClampedIndex(mx - 1, my + 0, w, h)].m_Index;
-					Neighbors[3] = IndexN != TILE_NOHOOK && IndexN != Index;
-					IndexN = pTiles[ClampedIndex(mx + 1, my + 0, w, h)].m_Index;
-					Neighbors[4] = IndexN != TILE_NOHOOK && IndexN != Index;
-					IndexN = pTiles[ClampedIndex(mx - 1, my + 1, w, h)].m_Index;
-					Neighbors[5] = IndexN != TILE_NOHOOK && IndexN != Index;
-					IndexN = pTiles[ClampedIndex(mx + 0, my + 1, w, h)].m_Index;
-					Neighbors[6] = IndexN != TILE_NOHOOK && IndexN != Index;
-					IndexN = pTiles[ClampedIndex(mx + 1, my + 1, w, h)].m_Index;
-					Neighbors[7] = IndexN != TILE_NOHOOK && IndexN != Index;
+					Tile = pTiles[ClampedIndex(mx - 1, my - 1, w, h)].m_Index;
+					Neighbors[0] = Tile != TILE_NOHOOK && Tile != Index;
+					Tile = pTiles[ClampedIndex(mx - 0, my - 1, w, h)].m_Index;
+					Neighbors[1] = Tile != TILE_NOHOOK && Tile != Index;
+					Tile = pTiles[ClampedIndex(mx + 1, my - 1, w, h)].m_Index;
+					Neighbors[2] = Tile != TILE_NOHOOK && Tile != Index;
+					Tile = pTiles[ClampedIndex(mx - 1, my + 0, w, h)].m_Index;
+					Neighbors[3] = Tile != TILE_NOHOOK && Tile != Index;
+					Tile = pTiles[ClampedIndex(mx + 1, my + 0, w, h)].m_Index;
+					Neighbors[4] = Tile != TILE_NOHOOK && Tile != Index;
+					Tile = pTiles[ClampedIndex(mx - 1, my + 1, w, h)].m_Index;
+					Neighbors[5] = Tile != TILE_NOHOOK && Tile != Index;
+					Tile = pTiles[ClampedIndex(mx + 0, my + 1, w, h)].m_Index;
+					Neighbors[6] = Tile != TILE_NOHOOK && Tile != Index;
+					Tile = pTiles[ClampedIndex(mx + 1, my + 1, w, h)].m_Index;
+					Neighbors[7] = Tile != TILE_NOHOOK && Tile != Index;
 				}
 				else if(IsKill && TileType == TILE_DEATH)
 				{
-					int IndexN;
-					IndexN = pTiles[ClampedIndex(mx - 1, my - 1, w, h)].m_Index;
-					Neighbors[0] = IndexN != TILE_DEATH && IndexN != Index;
-					IndexN = pTiles[ClampedIndex(mx - 0, my - 1, w, h)].m_Index;
-					Neighbors[1] = IndexN != TILE_DEATH && IndexN != Index;
-					IndexN = pTiles[ClampedIndex(mx + 1, my - 1, w, h)].m_Index;
-					Neighbors[2] = IndexN != TILE_DEATH && IndexN != Index;
-					IndexN = pTiles[ClampedIndex(mx - 1, my + 0, w, h)].m_Index;
-					Neighbors[3] = IndexN != TILE_DEATH && IndexN != Index;
-					IndexN = pTiles[ClampedIndex(mx + 1, my + 0, w, h)].m_Index;
-					Neighbors[4] = IndexN != TILE_DEATH && IndexN != Index;
-					IndexN = pTiles[ClampedIndex(mx - 1, my + 1, w, h)].m_Index;
-					Neighbors[5] = IndexN != TILE_DEATH && IndexN != Index;
-					IndexN = pTiles[ClampedIndex(mx + 0, my + 1, w, h)].m_Index;
-					Neighbors[6] = IndexN != TILE_DEATH && IndexN != Index;
-					IndexN = pTiles[ClampedIndex(mx + 1, my + 1, w, h)].m_Index;
-					Neighbors[7] = IndexN != TILE_DEATH && IndexN != Index;
+					Tile = pTiles[ClampedIndex(mx - 1, my - 1, w, h)].m_Index;
+					Neighbors[0] = Tile != TILE_DEATH && Tile != Index;
+					Tile = pTiles[ClampedIndex(mx - 0, my - 1, w, h)].m_Index;
+					Neighbors[1] = Tile != TILE_DEATH && Tile != Index;
+					Tile = pTiles[ClampedIndex(mx + 1, my - 1, w, h)].m_Index;
+					Neighbors[2] = Tile != TILE_DEATH && Tile != Index;
+					Tile = pTiles[ClampedIndex(mx - 1, my + 0, w, h)].m_Index;
+					Neighbors[3] = Tile != TILE_DEATH && Tile != Index;
+					Tile = pTiles[ClampedIndex(mx + 1, my + 0, w, h)].m_Index;
+					Neighbors[4] = Tile != TILE_DEATH && Tile != Index;
+					Tile = pTiles[ClampedIndex(mx - 1, my + 1, w, h)].m_Index;
+					Neighbors[5] = Tile != TILE_DEATH && Tile != Index;
+					Tile = pTiles[ClampedIndex(mx + 0, my + 1, w, h)].m_Index;
+					Neighbors[6] = Tile != TILE_DEATH && Tile != Index;
+					Tile = pTiles[ClampedIndex(mx + 1, my + 1, w, h)].m_Index;
+					Neighbors[7] = Tile != TILE_DEATH && Tile != Index;
 				}
 				else
 				{
-					int IndexN;
-					IndexN = pTiles[ClampedIndex(mx - 1, my - 1, w, h)].m_Index;
-					Neighbors[0] = IndexN != TILE_UNFREEZE && IndexN != TILE_DUNFREEZE;
-					IndexN = pTiles[ClampedIndex(mx - 0, my - 1, w, h)].m_Index;
-					Neighbors[1] = IndexN != TILE_UNFREEZE && IndexN != TILE_DUNFREEZE;
-					IndexN = pTiles[ClampedIndex(mx + 1, my - 1, w, h)].m_Index;
-					Neighbors[2] = IndexN != TILE_UNFREEZE && IndexN != TILE_DUNFREEZE;
-					IndexN = pTiles[ClampedIndex(mx - 1, my + 0, w, h)].m_Index;
-					Neighbors[3] = IndexN != TILE_UNFREEZE && IndexN != TILE_DUNFREEZE;
-					IndexN = pTiles[ClampedIndex(mx + 1, my + 0, w, h)].m_Index;
-					Neighbors[4] = IndexN != TILE_UNFREEZE && IndexN != TILE_DUNFREEZE;
-					IndexN = pTiles[ClampedIndex(mx - 1, my + 1, w, h)].m_Index;
-					Neighbors[5] = IndexN != TILE_UNFREEZE && IndexN != TILE_DUNFREEZE;
-					IndexN = pTiles[ClampedIndex(mx + 0, my + 1, w, h)].m_Index;
-					Neighbors[6] = IndexN != TILE_UNFREEZE && IndexN != TILE_DUNFREEZE;
-					IndexN = pTiles[ClampedIndex(mx + 1, my + 1, w, h)].m_Index;
-					Neighbors[7] = IndexN != TILE_UNFREEZE && IndexN != TILE_DUNFREEZE;
+					Tile = pTiles[ClampedIndex(mx - 1, my - 1, w, h)].m_Index;
+					Neighbors[0] = Tile != TILE_UNFREEZE && Tile != TILE_DUNFREEZE;
+					Tile = pTiles[ClampedIndex(mx - 0, my - 1, w, h)].m_Index;
+					Neighbors[1] = Tile != TILE_UNFREEZE && Tile != TILE_DUNFREEZE;
+					Tile = pTiles[ClampedIndex(mx + 1, my - 1, w, h)].m_Index;
+					Neighbors[2] = Tile != TILE_UNFREEZE && Tile != TILE_DUNFREEZE;
+					Tile = pTiles[ClampedIndex(mx - 1, my + 0, w, h)].m_Index;
+					Neighbors[3] = Tile != TILE_UNFREEZE && Tile != TILE_DUNFREEZE;
+					Tile = pTiles[ClampedIndex(mx + 1, my + 0, w, h)].m_Index;
+					Neighbors[4] = Tile != TILE_UNFREEZE && Tile != TILE_DUNFREEZE;
+					Tile = pTiles[ClampedIndex(mx - 1, my + 1, w, h)].m_Index;
+					Neighbors[5] = Tile != TILE_UNFREEZE && Tile != TILE_DUNFREEZE;
+					Tile = pTiles[ClampedIndex(mx + 0, my + 1, w, h)].m_Index;
+					Neighbors[6] = Tile != TILE_UNFREEZE && Tile != TILE_DUNFREEZE;
+					Tile = pTiles[ClampedIndex(mx + 1, my + 1, w, h)].m_Index;
+					Neighbors[7] = Tile != TILE_UNFREEZE && Tile != TILE_DUNFREEZE;
 				}
 
 				int NumQuads = 0;
