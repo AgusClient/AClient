@@ -195,7 +195,7 @@ void COutlines::OnRender()
 				dbg_assert(false, "Invalid value for Type at %d, %d/%d, %d", x, y, m_MapDataSize.x, m_MapDataSize.y);
 			}();
 			if(!Config.m_Enable || Config.m_Width <= 0)
-				return;
+				continue;
 			// Find neighbours
 			const bool aNeighbors[8] = {
 				GetTile(x - 1, y - 1) >= Type,
