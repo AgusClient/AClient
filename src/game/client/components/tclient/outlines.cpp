@@ -192,7 +192,7 @@ void COutlines::OnRender()
 					return {g_Config.m_TcOutlineKill, g_Config.m_TcOutlineWidthKill, g_Config.m_TcOutlineColorKill};
 				if (Type == OUTLINE_TELE)
 					return {g_Config.m_TcOutlineTele, g_Config.m_TcOutlineWidthTele, g_Config.m_TcOutlineColorTele};
-				dbg_assert(false, "Invalid value for Type");
+				dbg_assert(false, "Invalid value for Type at %d, %d/%d, %d", x, y, m_MapDataSize.x, m_MapDataSize.y);
 			}();
 			// Find neighbours
 			const bool aNeighbors[8] = {
