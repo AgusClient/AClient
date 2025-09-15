@@ -35,7 +35,6 @@ void COutlines::OnConsoleInit()
 // The order of this is the order of priority for outlines
 enum {
 	OUTLINE_NONE = 0,
-	OUTLINE_AIR,
 	OUTLINE_UNFREEZE,
 	OUTLINE_FREEZE,
 	OUTLINE_TELE,
@@ -111,8 +110,6 @@ public:
 						pData[IndexOut] = OUTLINE_UNFREEZE;
 					else if(Tile == TILE_DEATH)
 						pData[IndexOut] = OUTLINE_KILL;
-					else if(Tile == TILE_AIR && pData[IndexOut] == OUTLINE_NONE && m_Type == OutlineLayer::GAME)
-						pData[IndexOut] = OUTLINE_AIR;
 				}
 			}
 		}
@@ -198,7 +195,7 @@ void COutlines::OnRender()
 		for(int x = StartX; x < EndX; x++)
 		{
 			const int Type = GetTile(x, y);
-			if (Type == OUTLINE_NONE || Type == OUTLINE_AIR)
+			if (Type == OUTLINE_NONE)
 				continue;
 			class COutlineConfig
 			{
