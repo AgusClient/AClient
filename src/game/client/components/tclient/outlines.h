@@ -14,7 +14,6 @@ private:
 
 public:
 	int Sizeof() const override { return sizeof(*this); }
-	void OnConsoleInit() override;
 	void OnMapLoad() override;
 	void OnRender() override;
 	~COutlines() override { delete[] m_pMapData; };

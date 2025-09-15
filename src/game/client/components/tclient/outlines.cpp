@@ -9,29 +9,6 @@
 
 #include "outlines.h"
 
-void COutlines::OnConsoleInit()
-{
-	auto FixColorAlpha = [&](const char *pName, unsigned int &ColorInt) {
-		Console()->Chain(
-			pName, [](IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData) {
-				pfnCallback(pResult, pCallbackUserData);
-				unsigned int *pColorInt = decltype(pColorInt)(pUserData);
-				ColorHSLA Color(*pColorInt);
-				if(Color.a <= 0.0f)
-				{
-					Color.a = 1.0f;
-					*pColorInt = Color.Pack(true);
-				}
-			},
-			&ColorInt);
-	};
-	FixColorAlpha("tc_outline_color_solid", g_Config.m_TcOutlineColorSolid);
-	FixColorAlpha("tc_outline_color_freeze", g_Config.m_TcOutlineColorFreeze);
-	FixColorAlpha("tc_outline_color_unfreeze", g_Config.m_TcOutlineColorUnfreeze);
-	FixColorAlpha("tc_outline_color_kill", g_Config.m_TcOutlineColorKill);
-	FixColorAlpha("tc_outline_color_tele", g_Config.m_TcOutlineColorTele);
-}
-
 // The order of this is the order of priority for outlines
 enum {
 	OUTLINE_NONE = 0,
