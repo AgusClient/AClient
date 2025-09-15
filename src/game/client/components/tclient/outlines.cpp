@@ -194,6 +194,8 @@ void COutlines::OnRender()
 					return {g_Config.m_TcOutlineTele, g_Config.m_TcOutlineWidthTele, g_Config.m_TcOutlineColorTele};
 				dbg_assert(false, "Invalid value for Type at %d, %d/%d, %d", x, y, m_MapDataSize.x, m_MapDataSize.y);
 			}();
+			if(!Config.m_Enable || Config.m_Width <= 0)
+				return;
 			// Find neighbours
 			const bool aNeighbors[8] = {
 				GetTile(x - 1, y - 1) >= Type,
@@ -249,7 +251,7 @@ void COutlines::OnRender()
 			}
 			if(NumQuads <= 0)
 				continue;
-			Graphics()->SetColor(color_cast<ColorRGBA>(ColorHSLA(Config.m_Color)));
+			Graphics()->SetColor(color_cast<ColorRGBA>(ColorHSLA(Config.m_Color, true)));
 			Graphics()->QuadsDrawTL(aQuads, NumQuads);
 		}
 	}
