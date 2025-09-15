@@ -159,8 +159,8 @@ void COutlines::OnRender()
 	}
 
 	auto GetTile = [&](int x, int y) {
-		x = std::clamp(x, 0, m_MapDataSize.x);
-		y = std::clamp(y, 0, m_MapDataSize.y);
+		x = std::clamp(x, 0, m_MapDataSize.x - 1);
+		y = std::clamp(y, 0, m_MapDataSize.y - 1);
 		return m_pMapData[y * m_MapDataSize.x + x];
 	};
 
