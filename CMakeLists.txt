@@ -2106,6 +2106,8 @@ set_src(BASE GLOB_RECURSE src/base
   crashdump.cpp
   detect.h
   dynamic.h
+  fs.cpp
+  fs.h
   hash.cpp
   hash.h
   hash_bundled.cpp
