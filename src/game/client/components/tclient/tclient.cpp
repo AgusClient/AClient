@@ -200,8 +200,10 @@ void CTClient::OnMessage(int MsgType, void *pRawMsg)
 
 	if(MsgType == NETMSGTYPE_SV_VOTESET)
 	{
+		const int LocalId = GameClient()->m_aLocalIds[g_Config.m_ClDummy]; // Do not care about spec behaviour
+		const bool Afk = LocalId >= 0 && GameClient()->m_aClients[LocalId].m_Afk; // TODO Depends on server afk time
 		CNetMsg_Sv_VoteSet *pMsg = (CNetMsg_Sv_VoteSet *)pRawMsg;
-		if(pMsg->m_Timeout)
+		if(pMsg->m_Timeout && !Afk)
 		{
 			char aDescription[VOTE_DESC_LENGTH];
 			char aReason[VOTE_REASON_LENGTH];
