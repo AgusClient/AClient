@@ -87,7 +87,6 @@ void CCustomCommunities::OnRender()
 
 CCustomCommunities::~CCustomCommunities()
 {
-	m_pCustomCommunitiesDDNetInfoTask->Abort();
 	m_pCustomCommunitiesDDNetInfoTask = nullptr;
 	if(m_pCustomCommunitiesDDNetInfo)
 		json_value_free(m_pCustomCommunitiesDDNetInfo);
