@@ -152,6 +152,7 @@ void CGameClient::OnConsoleInit()
 					      &m_DamageInd,
 					      &m_PlayerIndicator,
 					      &m_Mod,
+					      &m_CustomCommunities,
 					      &m_Hud,
 					      &m_Spectator,
 					      &m_Emoticon,

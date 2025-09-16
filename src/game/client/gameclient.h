@@ -77,6 +77,7 @@
 #include "components/tclient/trails.h"
 #include "components/tclient/translate.h"
 #include "components/tclient/warlist.h"
+#include "components/tclient/custom_communities.h"
 #include "components/tooltips.h"
 #include "components/touch_controls.h"
 #include "components/voting.h"
@@ -217,6 +218,7 @@ public:
 	CWarList m_WarList;
 	CConditional m_Conditional;
 	CMod m_Mod;
+	CCustomCommunities m_CustomCommunities;
 
 private:
 	std::vector<class CComponent *> m_vpAll;
