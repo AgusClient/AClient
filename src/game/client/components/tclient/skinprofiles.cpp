@@ -55,7 +55,7 @@ void CSkinProfiles::ApplyProfile(int Dummy, const CProfile &Profile)
 	if(g_Config.m_TcProfileEmote && Profile.m_Emote != -1)
 		(Dummy ? g_Config.m_ClDummyDefaultEyes : g_Config.m_ClPlayerDefaultEyes) = Profile.m_Emote;
 	if(g_Config.m_TcProfileName && strlen(Profile.m_Name) != 0)
-		str_copy(Dummy ? g_Config.m_ClDummyName : g_Config.m_PlayerName, Profile.m_SkinName); // TODO m_ClPlayerName
+		str_copy(Dummy ? g_Config.m_ClDummyName : g_Config.m_PlayerName, Profile.m_Name); // TODO m_ClPlayerName
 	if(g_Config.m_TcProfileClan && (strlen(Profile.m_Clan) != 0 || g_Config.m_TcProfileOverwriteClanWithEmpty))
 		str_copy(Dummy ? g_Config.m_ClDummyClan : g_Config.m_PlayerClan, Profile.m_Clan); // TODO m_ClPlayerClan
 	if(g_Config.m_TcProfileFlag && Profile.m_CountryFlag != -2)
