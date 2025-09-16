@@ -219,7 +219,7 @@ void CTClient::OnMessage(int MsgType, void *pRawMsg)
 			if(g_Config.m_TcAutoVoteWhenFar && (MapVote || RandomMapVote))
 			{
 				int RaceTime = 0;
-				if(GameClient()->m_Snap.m_pGameInfoObj->m_GameStateFlags & GAMESTATEFLAG_RACETIME)
+				if(GameClient()->m_Snap.m_pGameInfoObj && GameClient()->m_Snap.m_pGameInfoObj->m_GameStateFlags & GAMESTATEFLAG_RACETIME)
 					RaceTime = (Client()->GameTick(g_Config.m_ClDummy) + GameClient()->m_Snap.m_pGameInfoObj->m_WarmupTimer) / Client()->GameTickSpeed();
 
 				if(RaceTime / 60 >= g_Config.m_TcAutoVoteWhenFarTime)
