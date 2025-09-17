@@ -514,7 +514,6 @@ void CPlayers::RenderPlayer(
 			vec2(GameClient()->m_Snap.m_aCharacters[ClientId].m_Cur.m_X, GameClient()->m_Snap.m_aCharacters[ClientId].m_Cur.m_Y),
 			Client()->IntraGameTick(g_Config.m_ClDummy));
 
-
 	GameClient()->m_Flow.Add(Position, Vel * 100.0f, 10.0f);
 
 	// TClient
