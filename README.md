@@ -78,7 +78,7 @@ def myfunc(a, b, c) { // yeah it uses def for function definition idk
 	c // last statement returns like in rust
 }
 print(myfunc(1, 2, 3)) // prints "early"
-for (var i = 0; i < 10; i++) { // for loops (c style)
+for (var i = 0; i < 10; i += 1) { // for loops (c style)
 	print(i) // auto converts to string, will throw if it cant
 }
 return "top level return"
