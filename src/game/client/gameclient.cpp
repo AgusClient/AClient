@@ -2857,7 +2857,10 @@ void CGameClient::OnPredict()
 		for(int i = 0; i < MAX_CLIENTS; i++)
 		{
 			if(!m_Snap.m_aCharacters[i].m_Active || !m_aLastActive[i])
+			{
+				m_aClients[i].m_ValidAntipingSmooth = false;
 				continue;
+			}
 
 			if(i == m_aLocalIds[!g_Config.m_ClDummy] || i == m_Snap.m_LocalClientId)
 			{
@@ -2891,16 +2894,18 @@ void CGameClient::OnPredict()
 
 			vec2 MaxPos = vec2(0, 0);
 			vec2 MinPos = vec2(0, 0);
+			bool FoundBoundingBox = false;
 			// Get a bounding box for our final prediction position to minimize going through walls
 			for(int Tick = GameTick - 1; Tick <= FinalTickOthers; Tick++)
 			{
-				if(m_aClients[i].m_aPredTick[Tick % 200] == 0)
+				if(m_aClients[i].m_aPredTick[Tick % 200] != Tick)
 					continue;
 				vec2 Pos = m_aClients[i].m_aPredPos[Tick % 200];
-				if(Tick == GameTick - 1)
+				if(!FoundBoundingBox)
 				{
 					MaxPos = Pos;
 					MinPos = Pos;
+					FoundBoundingBox = true;
 				}
 				else
 				{
@@ -2912,20 +2917,30 @@ void CGameClient::OnPredict()
 			}
 			int PredStartTick = GameTick;
 			int HistoryStartTick = PredStartTick - (FinalTickOthers - PredStartTick);
-			HistoryStartTick = std::max(0, HistoryStartTick);
+			HistoryStartTick = std::max(1, HistoryStartTick);
 			vec2 HistoryVector = vec2(0, 0);
 			float HistoryDistance = 0.0f;
+			int HistoryCount = 0;
 			// Find the average history vector
 			for(int Tick = HistoryStartTick; Tick <= PredStartTick; Tick++)
 			{
-				if(m_aClients[i].m_aPredTick[Tick % 200] == 0 || m_aClients[i].m_aPredTick[(Tick - 1) % 200] == 0)
+				if(m_aClients[i].m_aPredTick[Tick % 200] != Tick || m_aClients[i].m_aPredTick[(Tick - 1) % 200] != Tick - 1)
 					continue;
 				vec2 DirVector = m_aClients[i].m_aPredPos[Tick % 200] - m_aClients[i].m_aPredPos[(Tick - 1) % 200];
 				HistoryVector += DirVector;
 				HistoryDistance += length(DirVector);
+				HistoryCount++;
 			}
 
-			int HistoryCount = (PredStartTick - HistoryStartTick + 1);
+			bool ValidRecentPositions = m_aClients[i].m_aPredTick[GameTick % 200] == GameTick && m_aClients[i].m_aPredTick[(GameTick - 1) % 200] == GameTick - 1;
+			// Not enough history data
+			if(!ValidRecentPositions || !FoundBoundingBox || HistoryCount == 0 || HistoryDistance <= 0.0f || GameTick <= 0)
+			{
+				m_aClients[i].m_PrevImprovedPredPos = PrevPredPos;
+				m_aClients[i].m_ImprovedPredPos = PredPos;
+				continue;
+			}
+
 			HistoryVector = HistoryVector / HistoryCount;
 			HistoryVector = normalize(HistoryVector);
 			float Variance = 0.0f;
@@ -2934,7 +2949,7 @@ void CGameClient::OnPredict()
 			{
 				for(int Tick = HistoryStartTick; Tick <= PredStartTick; Tick++)
 				{
-					if(m_aClients[i].m_aPredTick[Tick % 200] == 0 || m_aClients[i].m_aPredTick[(Tick - 1) % 200] == 0)
+					if(m_aClients[i].m_aPredTick[Tick % 200] != Tick || m_aClients[i].m_aPredTick[(Tick - 1) % 200] != Tick - 1)
 						continue;
 					vec2 DirVector = m_aClients[i].m_aPredPos[Tick % 200] - m_aClients[i].m_aPredPos[(Tick - 1) % 200];
 					vec2 Diff = normalize(DirVector) - HistoryVector;
@@ -3005,6 +3020,7 @@ void CGameClient::OnPredict()
 			{
 				m_aClients[i].m_PrevImprovedPredPos = m_aClients[i].m_ImprovedPredPos;
 			}
+			m_aClients[i].m_ValidAntipingSmooth = true;
 		}
 	}
 	// Copy the current pred world so on the next tick we have the "previous" pred world to advance and test against
@@ -4012,7 +4028,7 @@ void CGameClient::UpdateRenderedCharacters()
 				if(g_Config.m_ClAntiPingSmooth)
 					Pos = GetSmoothPos(i);
 
-				if(g_Config.m_TcAntiPingImproved)
+				if(g_Config.m_TcAntiPingImproved && m_aClients[i].m_ValidAntipingSmooth)
 					Pos = mix(m_aClients[i].m_PrevImprovedPredPos, m_aClients[i].m_ImprovedPredPos, Client()->PredIntraGameTick(g_Config.m_ClDummy));
 
 				if(g_Config.m_TcRemoveAnti && m_pClient->m_IsLocalFrozen)
