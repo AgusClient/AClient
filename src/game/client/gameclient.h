@@ -91,6 +91,8 @@
 class CGameInfo
 {
 public:
+	char m_aGameType[16]; // TClient
+
 	bool m_FlagStartsRace;
 	bool m_TimeScore;
 	bool m_UnlimitedAmmo;
@@ -135,7 +137,7 @@ public:
 
 	bool m_DDRaceTeam;
 
-	char m_aGameType[16];
+	bool m_PredictEvents;
 };
 
 class CSnapEntities
@@ -957,6 +959,7 @@ private:
 	void UpdatePrediction();
 	void UpdateSpectatorCursor();
 	void UpdateRenderedCharacters();
+	void HandlePredictedEvents(int Tick);
 
 	int m_aLastUpdateTick[MAX_CLIENTS] = {0};
 	void DetectStrongHook();
