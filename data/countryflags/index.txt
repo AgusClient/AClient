@@ -51,6 +51,9 @@ X-TOTAR
 X-TROLL
 == -302
 
+X-ENTITY
+== -302
+
 ##### skins #####
 
 X-BLUEKITTY
