@@ -553,7 +553,10 @@ void CMenus::RenderSettingsTClientSettings(CUIRect MainView)
 	Ui()->DoLabel(&Label, TCLocalize("Input"), HeadlineFontSize, TEXTALIGN_ML);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcFastInput, TCLocalize("Fast Inputs (-20ms visual delay)"), &g_Config.m_TcFastInput, &Column, LineSize);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcFastInput, TCLocalize("Fast Input (reduced visual delay)"), &g_Config.m_TcFastInput, &Column, LineSize);
+
+	Column.HSplitTop(LineSize, &Button, &Column);
+	DoSliderWithScaledValue(&g_Config.m_TcFastInputAmount, &g_Config.m_TcFastInputAmount, &Button, TCLocalize("Amount"), 1, 40, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "ms");
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	if(g_Config.m_TcFastInput)
