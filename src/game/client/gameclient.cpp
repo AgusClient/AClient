@@ -4270,7 +4270,7 @@ vec2 CGameClient::GetFastInputPos(int ClientId)
 	float CombinedIntra = PredIntraTick + FastInputIntra;
 
 	float IntraRemainder = 0.0f;
-	float FinalIntra = std::modff(CombinedIntra, &IntraRemainder);
+	float FinalIntra = std::modf(CombinedIntra, &IntraRemainder);
 	int CarryOverTicks = static_cast<int>(IntraRemainder);
 
 	FastInputTicks += CarryOverTicks;
@@ -4331,7 +4331,7 @@ vec2 CGameClient::GetFreezePos(int ClientId)
 	float CombinedIntra = SmoothIntra + FastInputIntra;
 
 	float IntraRemainder = 0.0f;
-	float FinalIntra = std::modff(CombinedIntra, &IntraRemainder);
+	float FinalIntra = std::modf(CombinedIntra, &IntraRemainder);
 	int CarryOverTicks = static_cast<int>(IntraRemainder);
 
 	FastInputTicks += CarryOverTicks;
