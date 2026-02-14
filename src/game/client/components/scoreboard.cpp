@@ -754,7 +754,7 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 				if(pInfo->m_ClientId >= 0 && (GameClient()->m_aClients[pInfo->m_ClientId].m_Foe || GameClient()->m_aClients[pInfo->m_ClientId].m_ChatIgnore))
 				{
 					TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
-					TextRender()->TextEx(&Cursor, FontIcons::FONT_ICON_COMMENT_SLASH);
+					TextRender()->TextEx(&Cursor, FontIcon::COMMENT_SLASH);
 					TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
 				}
 
