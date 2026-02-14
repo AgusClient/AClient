@@ -2662,7 +2662,7 @@ void CGameClient::OnPredict()
 		if(g_Config.m_TcFastInput && Tick > FinalTickRegular)
 		{
 			pInputData = &m_Controls.m_FastInput;
-			if(g_Config.m_ClDummyCopyMoves)
+			if(g_Config.m_ClDummyCopyMoves && PredictDummy())
 				pDummyInputData = &m_Controls.m_FastInput;
 		}
 
@@ -4056,7 +4056,7 @@ void CGameClient::UpdateRenderedCharacters()
 
 			if(g_Config.m_TcRemoveAnti)
 				Pos = GetFreezePos(i);
-			else if (g_Config.m_TcFastInput && i == m_Snap.m_LocalClientId)
+			else if(g_Config.m_TcFastInput && (i == m_Snap.m_LocalClientId || (PredictDummy() && i == m_aLocalIds[!g_Config.m_ClDummy])))
 				Pos = GetFastInputPos(i);
 
 			if(i == m_Snap.m_LocalClientId || (PredictDummy() && i == m_aLocalIds[!g_Config.m_ClDummy]))
@@ -4336,12 +4336,13 @@ vec2 CGameClient::GetFreezePos(int ClientId)
 
 	FastInputTicks += CarryOverTicks;
 		 
-	if (ClientId != m_Snap.m_LocalClientId && g_Config.m_TcFastInputOthers && g_Config.m_TcFastInput) 
+	const bool IsLocal = ClientId == m_Snap.m_LocalClientId || (PredictDummy() && ClientId == m_aLocalIds[!g_Config.m_ClDummy]);
+	if(IsLocal && g_Config.m_TcFastInput)
 	{
 		SmoothTick += FastInputTicks;
 		SmoothIntra = FinalIntra;
 	}
-	else if (ClientId == m_Snap.m_LocalClientId && g_Config.m_TcFastInput) 
+	else if(!IsLocal && g_Config.m_TcFastInputOthers && g_Config.m_TcFastInput)
 	{
 		SmoothTick += FastInputTicks;
 		SmoothIntra = FinalIntra;
