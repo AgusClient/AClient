@@ -4241,10 +4241,6 @@ vec2 CGameClient::GetSmoothPos(int ClientId)
 			int SmoothTick;
 			float SmoothIntra;
 			Client()->GetSmoothTick(&SmoothTick, &SmoothIntra, MixAmount);
-			char aBuf[64];
-
-			str_format(aBuf, sizeof(aBuf), "%.2f", SmoothIntra);
-			Echo(aBuf);
 
 			if(ClientId != m_Snap.m_LocalClientId && g_Config.m_TcFastInputOthers && g_Config.m_TcFastInput)
 				SmoothTick += g_Config.m_TcFastInput;
