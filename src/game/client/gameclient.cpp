@@ -79,6 +79,7 @@
 
 #include <chrono>
 #include <limits>
+#include <cmath>
 
 using namespace std::chrono_literals;
 
