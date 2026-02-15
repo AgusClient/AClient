@@ -2625,6 +2625,9 @@ void CGameClient::OnPredict()
 	if(g_Config.m_TcFastInput && !g_Config.m_TcFastInputOthers)
 		FinalTickOthers = FinalTickSelf - FastInputTicks;
 
+	int LocalTee = g_Config.m_ClDummy ^ m_IsDummySwapping;
+	int DummyTee = LocalTee ^ 1;
+
 	for(int Tick = Client()->GameTick(g_Config.m_ClDummy) + 1; Tick <= FinalTickSelf; Tick++)
 	{
 		// fetch the previous characters
@@ -2661,9 +2664,9 @@ void CGameClient::OnPredict()
 
 		if(g_Config.m_TcFastInput && Tick > FinalTickRegular)
 		{
-			pInputData = &m_Controls.m_FastInput;
+			pInputData = &m_Controls.m_aFastInput[LocalTee];
 			if(g_Config.m_ClDummyCopyMoves && PredictDummy() && pDummyChar)
-				pDummyInputData = &m_Controls.m_FastInput;
+				pDummyInputData = &m_Controls.m_aFastInput[DummyTee];
 		}
 
 		if(DummyFirst)
