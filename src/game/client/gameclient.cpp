@@ -2662,7 +2662,7 @@ void CGameClient::OnPredict()
 		if(g_Config.m_TcFastInput && Tick > FinalTickRegular)
 		{
 			pInputData = &m_Controls.m_FastInput;
-			if(g_Config.m_ClDummyCopyMoves && PredictDummy())
+			if(g_Config.m_ClDummyCopyMoves && PredictDummy() && pDummyChar)
 				pDummyInputData = &m_Controls.m_FastInput;
 		}
 
