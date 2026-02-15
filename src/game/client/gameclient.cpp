@@ -2667,11 +2667,19 @@ void CGameClient::OnPredict()
 			pInputData = &m_Controls.m_aFastInput[LocalTee];
 			if(g_Config.m_ClDummyCopyMoves && PredictDummy() && pDummyChar)
 			{
-				CNetObj_PlayerInput DummyFastInput = m_Controls.m_aFastInput[LocalTee];
-				DummyFastInput.m_Fire = m_Controls.m_aFastInput[DummyTee].m_Fire;
-				DummyFastInput.m_WantedWeapon = m_Controls.m_aFastInput[DummyTee].m_WantedWeapon;
-				DummyFastInput.m_NextWeapon = m_Controls.m_aFastInput[DummyTee].m_NextWeapon;
-				DummyFastInput.m_PrevWeapon = m_Controls.m_aFastInput[DummyTee].m_PrevWeapon;
+				CNetObj_PlayerInput DummyFastInput;
+				if(g_Config.m_ClDummyHammer)
+				{
+					DummyFastInput = m_HammerInput;
+				}
+				else
+				{
+					DummyFastInput = m_Controls.m_aFastInput[LocalTee];
+					DummyFastInput.m_Fire = m_Controls.m_aFastInput[DummyTee].m_Fire;
+					DummyFastInput.m_WantedWeapon = m_Controls.m_aFastInput[DummyTee].m_WantedWeapon;
+					DummyFastInput.m_NextWeapon = m_Controls.m_aFastInput[DummyTee].m_NextWeapon;
+					DummyFastInput.m_PrevWeapon = m_Controls.m_aFastInput[DummyTee].m_PrevWeapon;
+				}
 				pDummyInputData = &DummyFastInput;
 			}
 		}
