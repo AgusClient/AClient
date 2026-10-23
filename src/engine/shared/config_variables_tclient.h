@@ -294,5 +294,5 @@ MACRO_CONFIG_INT(TcStatboardResetOnTeamKill, tc_statboard_reset_on_team_kill, 1,
 MACRO_CONFIG_INT(TcMiniStatboardMaxPlayers, tc_mini_statboard_max_players, 5, 1, 16, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Max visible players in statboard")
 MACRO_CONFIG_INT(TcMiniStatboardScale, tc_mini_statboard_scale, 70, 20, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mini statboard scale percent")
 MACRO_CONFIG_INT(TcMiniStatboardOpacity, tc_mini_statboard_opacity, 60, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mini statboard background opacity")
-MACRO_CONFIG_INT(TcMiniStatboardX, tc_mini_statboard_x, 495, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mini statboard HUD X position")
-MACRO_CONFIG_INT(TcMiniStatboardY, tc_mini_statboard_y, 150, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mini statboard HUD Y position")
+MACRO_CONFIG_INT(TcMiniStatboardX, tc_mini_statboard_x, 95, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mini statboard HUD X position percent")
+MACRO_CONFIG_INT(TcMiniStatboardY, tc_mini_statboard_y, 50, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mini statboard HUD Y position percent")

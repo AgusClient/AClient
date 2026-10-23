@@ -852,13 +852,19 @@ void CMenus::RenderSettingsTClientSettings(CUIRect MainView)
 		g_Config.m_TcMiniStatboardColumns ^= 16;
 
 	Column.HSplitTop(LineSize, &Button, &Column);
+	Ui()->DoScrollbarOption(&g_Config.m_TcMiniStatboardX, &g_Config.m_TcMiniStatboardX, &Button, TCLocalize("Horizontal Position (X)"), 0, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
+
+	Column.HSplitTop(LineSize, &Button, &Column);
+	Ui()->DoScrollbarOption(&g_Config.m_TcMiniStatboardY, &g_Config.m_TcMiniStatboardY, &Button, TCLocalize("Vertical Position (Y)"), 0, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
+
+	Column.HSplitTop(LineSize, &Button, &Column);
+	Ui()->DoScrollbarOption(&g_Config.m_TcMiniStatboardScale, &g_Config.m_TcMiniStatboardScale, &Button, TCLocalize("HUD Scale (Size / Z)"), 30, 200, &CUi::ms_LinearScrollbarScale, 0, "%");
+
+	Column.HSplitTop(LineSize, &Button, &Column);
+	Ui()->DoScrollbarOption(&g_Config.m_TcMiniStatboardOpacity, &g_Config.m_TcMiniStatboardOpacity, &Button, TCLocalize("Background Opacity"), 0, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
+
+	Column.HSplitTop(LineSize, &Button, &Column);
 	Ui()->DoScrollbarOption(&g_Config.m_TcMiniStatboardMaxPlayers, &g_Config.m_TcMiniStatboardMaxPlayers, &Button, TCLocalize("Max visible players"), 1, 16);
-
-	Column.HSplitTop(LineSize, &Button, &Column);
-	Ui()->DoScrollbarOption(&g_Config.m_TcMiniStatboardScale, &g_Config.m_TcMiniStatboardScale, &Button, TCLocalize("HUD Scale (%)"), 30, 150);
-
-	Column.HSplitTop(LineSize, &Button, &Column);
-	Ui()->DoScrollbarOption(&g_Config.m_TcMiniStatboardOpacity, &g_Config.m_TcMiniStatboardOpacity, &Button, TCLocalize("Background Opacity (%)"), 0, 100);
 
 	s_SectionBoxes.back().h = Column.y - s_SectionBoxes.back().y;
 
