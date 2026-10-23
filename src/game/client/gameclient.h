@@ -77,6 +77,7 @@
 #include "components/tclient/pet.h"
 #include "components/tclient/player_indicator.h"
 #include "components/tclient/rainbow.h"
+#include "components/tclient/race_stats.h"
 #include "components/tclient/scripting.h"
 #include "components/tclient/skinprofiles.h"
 #include "components/tclient/statusbar.h"
@@ -226,6 +227,7 @@ public:
 	// TClient Components
 	CSkinProfiles m_SkinProfiles;
 	CStatusBar m_StatusBar;
+	CRaceStats m_RaceStats;
 	CBindChat m_BindChat;
 	CBindWheel m_BindWheel;
 	CBgDraw m_BgDraw;
