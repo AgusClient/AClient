@@ -221,7 +221,7 @@ void CRaceStats::RenderMiniStatboard()
 		return;
 
 	int TotalTeamPlayers = (int)vPlayers.size();
-	int MaxPlayers = std::max(1, (int)g_Config.m_TcMiniStatboardMaxPlayers);
+	int MaxPlayers = std::clamp((int)g_Config.m_TcMiniStatboardMaxPlayers, 0, (int)MAX_CLIENTS);
 	int DisplayCount = std::min(TotalTeamPlayers, MaxPlayers);
 	bool HasMore = TotalTeamPlayers > DisplayCount;
 

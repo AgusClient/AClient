@@ -864,7 +864,7 @@ void CMenus::RenderSettingsTClientSettings(CUIRect MainView)
 	Ui()->DoScrollbarOption(&g_Config.m_TcMiniStatboardOpacity, &g_Config.m_TcMiniStatboardOpacity, &Button, TCLocalize("Background Opacity"), 0, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
 
 	Column.HSplitTop(LineSize, &Button, &Column);
-	Ui()->DoScrollbarOption(&g_Config.m_TcMiniStatboardMaxPlayers, &g_Config.m_TcMiniStatboardMaxPlayers, &Button, TCLocalize("Max visible players"), 1, 16);
+	Ui()->DoScrollbarOption(&g_Config.m_TcMiniStatboardMaxPlayers, &g_Config.m_TcMiniStatboardMaxPlayers, &Button, TCLocalize("Max visible players"), 0, MAX_CLIENTS);
 
 	s_SectionBoxes.back().h = Column.y - s_SectionBoxes.back().y;
 
