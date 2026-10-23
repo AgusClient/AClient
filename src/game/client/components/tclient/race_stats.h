@@ -48,6 +48,13 @@ public:
 				return (float)m_Saves;
 			return (float)m_Saves / (float)m_Freezes;
 		}
+
+		int GetEfficiencyPercent() const
+		{
+			if(m_Freezes == 0)
+				return m_Saves > 0 ? 100 : 0;
+			return (int)std::round(((float)m_Saves / (float)m_Freezes) * 100.0f);
+		}
 	};
 
 	CPlayerStats m_aPlayerStats[MAX_CLIENTS];
