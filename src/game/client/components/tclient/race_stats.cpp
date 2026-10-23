@@ -1,4 +1,5 @@
 #include "race_stats.h"
+#include "race_stats_icons.h"
 
 #include <engine/graphics.h>
 #include <engine/textrender.h>
@@ -17,12 +18,22 @@ static const float HAMMER_MAX_DIST = 64.0f;
 void CRaceStats::OnInit()
 {
 	m_Active = false;
-	m_aTextures[ICON_USER]   = Graphics()->LoadTexture("NovaClient/racestats/user.png", IStorage::TYPE_ALL);
-	m_aTextures[ICON_FREEZE] = Graphics()->LoadTexture("NovaClient/racestats/freeze.png", IStorage::TYPE_ALL);
-	m_aTextures[ICON_SAVE]   = Graphics()->LoadTexture("NovaClient/racestats/save.png", IStorage::TYPE_ALL);
-	m_aTextures[ICON_LAST]   = Graphics()->LoadTexture("NovaClient/racestats/last.png", IStorage::TYPE_ALL);
-	m_aTextures[ICON_EFF]    = Graphics()->LoadTexture("NovaClient/racestats/eff.png", IStorage::TYPE_ALL);
-	m_aTextures[ICON_SKULL]  = Graphics()->LoadTexture("NovaClient/racestats/skull.png", IStorage::TYPE_ALL);
+
+	auto LoadEmbeddedIcon = [&](const uint8_t *pData, size_t Size, const char *pName) -> IGraphics::CTextureHandle {
+		CImageInfo Img;
+		if(Graphics()->LoadPng(Img, pData, Size, pName))
+		{
+			return Graphics()->LoadTextureRawMove(Img, 0, pName);
+		}
+		return IGraphics::CTextureHandle();
+	};
+
+	m_aTextures[ICON_USER]   = LoadEmbeddedIcon(gs_aRaceStatIcon_USER, sizeof(gs_aRaceStatIcon_USER), "racestat_user");
+	m_aTextures[ICON_FREEZE] = LoadEmbeddedIcon(gs_aRaceStatIcon_FREEZE, sizeof(gs_aRaceStatIcon_FREEZE), "racestat_freeze");
+	m_aTextures[ICON_SAVE]   = LoadEmbeddedIcon(gs_aRaceStatIcon_SAVE, sizeof(gs_aRaceStatIcon_SAVE), "racestat_save");
+	m_aTextures[ICON_LAST]   = LoadEmbeddedIcon(gs_aRaceStatIcon_LAST, sizeof(gs_aRaceStatIcon_LAST), "racestat_last");
+	m_aTextures[ICON_EFF]    = LoadEmbeddedIcon(gs_aRaceStatIcon_EFF, sizeof(gs_aRaceStatIcon_EFF), "racestat_eff");
+	m_aTextures[ICON_SKULL]  = LoadEmbeddedIcon(gs_aRaceStatIcon_SKULL, sizeof(gs_aRaceStatIcon_SKULL), "racestat_skull");
 }
 
 void CRaceStats::ConKeyCompactStatboard(IConsole::IResult *pResult, void *pUserData)
