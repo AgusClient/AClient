@@ -860,6 +860,8 @@ void CMenus::RenderSettingsTClientSettings(CUIRect MainView)
 	Column.HSplitTop(LineSize, &Button, &Column);
 	Ui()->DoScrollbarOption(&g_Config.m_TcMiniStatboardOpacity, &g_Config.m_TcMiniStatboardOpacity, &Button, TCLocalize("Background Opacity (%)"), 0, 100);
 
+	s_SectionBoxes.back().h = Column.y - s_SectionBoxes.back().y;
+
 	// ***** HUD ***** //
 	Column.HSplitTop(Margin, nullptr, &Column);
 	s_SectionBoxes.push_back(Column);
