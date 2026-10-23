@@ -193,17 +193,7 @@ void CRaceStats::RenderMiniStatboard()
 	float IconSize = 7.0f * Scale;
 	float RowHeight = 9.5f * Scale;
 	float ColWidthStat = 14.0f * Scale;
-	float ColWidthName = 40.0f * Scale;
 	float Padding = 3.5f * Scale;
-
-	bool ShowFreeze = (g_Config.m_TcMiniStatboardColumns & 1) != 0;
-	bool ShowSave   = (g_Config.m_TcMiniStatboardColumns & 2) != 0;
-	bool ShowLast   = (g_Config.m_TcMiniStatboardColumns & 4) != 0;
-	bool ShowEff    = (g_Config.m_TcMiniStatboardColumns & 8) != 0;
-	bool ShowDeath  = (g_Config.m_TcMiniStatboardColumns & 16) != 0;
-
-	int NumStatCols = (ShowFreeze ? 1 : 0) + (ShowSave ? 1 : 0) + (ShowLast ? 1 : 0) + (ShowEff ? 1 : 0) + (ShowDeath ? 1 : 0);
-	float TotalWidth = ColWidthName + (float)NumStatCols * ColWidthStat + Padding * 2.0f;
 
 	int LocalClientId = GameClient()->m_Snap.m_LocalClientId;
 	int LocalTeam = GameClient()->m_Teams.Team(LocalClientId);
@@ -234,6 +224,27 @@ void CRaceStats::RenderMiniStatboard()
 	int MaxPlayers = std::max(1, (int)g_Config.m_TcMiniStatboardMaxPlayers);
 	int DisplayCount = std::min(TotalTeamPlayers, MaxPlayers);
 	bool HasMore = TotalTeamPlayers > DisplayCount;
+
+	float TeeSize = FontSize * 1.35f;
+	float MaxFoundNameW = 40.0f * Scale;
+	for(int idx = 0; idx < DisplayCount; idx++)
+	{
+		int CID = vPlayers[idx].m_ClientId;
+		float NameW = TextRender()->TextWidth(FontSize, GameClient()->m_aClients[CID].m_aName, -1, -1.0f);
+		if(NameW > MaxFoundNameW)
+			MaxFoundNameW = NameW;
+	}
+	MaxFoundNameW = std::clamp(MaxFoundNameW, 40.0f * Scale, 90.0f * Scale);
+	float ColWidthName = MaxFoundNameW + TeeSize + 4.0f * Scale;
+
+	bool ShowFreeze = (g_Config.m_TcMiniStatboardColumns & 1) != 0;
+	bool ShowSave   = (g_Config.m_TcMiniStatboardColumns & 2) != 0;
+	bool ShowLast   = (g_Config.m_TcMiniStatboardColumns & 4) != 0;
+	bool ShowEff    = (g_Config.m_TcMiniStatboardColumns & 8) != 0;
+	bool ShowDeath  = (g_Config.m_TcMiniStatboardColumns & 16) != 0;
+
+	int NumStatCols = (ShowFreeze ? 1 : 0) + (ShowSave ? 1 : 0) + (ShowLast ? 1 : 0) + (ShowEff ? 1 : 0) + (ShowDeath ? 1 : 0);
+	float TotalWidth = ColWidthName + (float)NumStatCols * ColWidthStat + Padding * 2.0f;
 
 	float HeaderHeight = RowHeight + 1.0f * Scale;
 	float RowsHeight = (float)DisplayCount * RowHeight;
@@ -340,13 +351,19 @@ void CRaceStats::RenderMiniStatboard()
 		float NameX = CurrX + TeeInfo.m_Size + 2.0f * Scale;
 		float MaxNameW = ColWidthName - TeeInfo.m_Size - 3.0f * Scale;
 
-		// Nombre de Jugador
+		// Nombre de Jugador en 1 sola línea (nunca salta de línea)
 		if(IsMe)
 			TextRender()->TextColor(1.0f, 0.9f, 0.3f, 1.0f);
 		else
 			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 0.95f);
 
-		TextRender()->Text(NameX, TextY, FontSize, GameClient()->m_aClients[CID].m_aName, MaxNameW);
+		CTextCursor Cursor;
+		Cursor.m_FontSize = FontSize;
+		Cursor.m_X = NameX;
+		Cursor.m_Y = TextY;
+		Cursor.m_LineWidth = MaxNameW;
+		Cursor.m_Flags = TEXTFLAG_RENDER | TEXTFLAG_STOP_AT_END | TEXTFLAG_ELLIPSIS_AT_END | TEXTFLAG_DISALLOW_NEWLINE;
+		TextRender()->TextEx(&Cursor, GameClient()->m_aClients[CID].m_aName);
 		CurrX += ColWidthName;
 
 		// Números bajo cada columna
@@ -376,7 +393,7 @@ void CRaceStats::RenderMiniStatboard()
 		}
 		if(ShowEff)
 		{
-			str_format(aBuf, sizeof(aBuf), "%.1f", m_aPlayerStats[CID].GetEfficiency());
+			str_format(aBuf, sizeof(aBuf), "%d", m_aPlayerStats[CID].GetEfficiencyPercent());
 			DrawStatNum(aBuf, ColorRGBA(0.95f, 0.65f, 1.0f, 0.95f));
 		}
 		if(ShowDeath)
