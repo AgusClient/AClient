@@ -251,19 +251,28 @@ void CRaceStats::RenderMiniStatboard()
 	float MoreHeight = HasMore ? (RowHeight * 0.85f) : 0.0f;
 	float TotalHeight = HeaderHeight + RowsHeight + MoreHeight + Padding * 2.0f;
 
-	// Coordenadas proporcionales (NovaClient default X=495 Y=150)
-	float BaseX = (float)g_Config.m_TcMiniStatboardX;
-	float BaseY = (float)g_Config.m_TcMiniStatboardY;
+	// Posicionamiento porcentual X e Y (0% = izquierda/arriba, 100% = derecha/abajo)
+	float PosXPercent = 0.95f;
+	float PosYPercent = 0.50f;
 
-	// Si las coordenadas guardadas se exceden del aspect ratio actual, auto-ajustar a la pantalla
-	if(BaseX + TotalWidth > Width)
-		BaseX = Width - TotalWidth - 4.0f;
-	if(BaseX < 2.0f)
-		BaseX = 2.0f;
-	if(BaseY + TotalHeight > Height)
-		BaseY = Height - TotalHeight - 4.0f;
-	if(BaseY < 2.0f)
-		BaseY = 2.0f;
+	if(g_Config.m_TcMiniStatboardX <= 100)
+		PosXPercent = (float)g_Config.m_TcMiniStatboardX / 100.0f;
+	else
+		PosXPercent = (float)g_Config.m_TcMiniStatboardX / Width;
+
+	if(g_Config.m_TcMiniStatboardY <= 100)
+		PosYPercent = (float)g_Config.m_TcMiniStatboardY / 100.0f;
+	else
+		PosYPercent = (float)g_Config.m_TcMiniStatboardY / Height;
+
+	PosXPercent = std::clamp(PosXPercent, 0.0f, 1.0f);
+	PosYPercent = std::clamp(PosYPercent, 0.0f, 1.0f);
+
+	float BaseX = (Width - TotalWidth) * PosXPercent;
+	float BaseY = (Height - TotalHeight) * PosYPercent;
+
+	BaseX = std::clamp(BaseX, 2.0f, Width - TotalWidth - 2.0f);
+	BaseY = std::clamp(BaseY, 2.0f, Height - TotalHeight - 2.0f);
 
 	// Fondo redondeado elegante con opacidad configurable
 	float Alpha = (float)g_Config.m_TcMiniStatboardOpacity / 100.0f;
