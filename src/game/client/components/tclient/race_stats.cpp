@@ -226,7 +226,7 @@ void CRaceStats::RenderMiniStatboard()
 	bool HasMore = TotalTeamPlayers > DisplayCount;
 
 	float TeeSize = FontSize * 1.35f;
-	float MaxFoundNameW = 40.0f * Scale;
+	float MaxFoundNameW = 25.0f * Scale;
 	for(int idx = 0; idx < DisplayCount; idx++)
 	{
 		int CID = vPlayers[idx].m_ClientId;
@@ -234,8 +234,7 @@ void CRaceStats::RenderMiniStatboard()
 		if(NameW > MaxFoundNameW)
 			MaxFoundNameW = NameW;
 	}
-	MaxFoundNameW = std::clamp(MaxFoundNameW, 40.0f * Scale, 90.0f * Scale);
-	float ColWidthName = MaxFoundNameW + TeeSize + 4.0f * Scale;
+	float ColWidthName = MaxFoundNameW + TeeSize + 8.0f * Scale;
 
 	bool ShowFreeze = (g_Config.m_TcMiniStatboardColumns & 1) != 0;
 	bool ShowSave   = (g_Config.m_TcMiniStatboardColumns & 2) != 0;
@@ -358,21 +357,14 @@ void CRaceStats::RenderMiniStatboard()
 		RenderTools()->RenderTee(CAnimState::GetIdle(), &TeeInfo, EMOTE_NORMAL, vec2(1.0f, 0.0f), TeePos);
 
 		float NameX = CurrX + TeeInfo.m_Size + 2.0f * Scale;
-		float MaxNameW = ColWidthName - TeeInfo.m_Size - 3.0f * Scale;
 
-		// Nombre de Jugador en 1 sola línea (nunca salta de línea)
+		// Nombre de Jugador completo en 1 sola línea (sin cortar y sin saltar de línea)
 		if(IsMe)
 			TextRender()->TextColor(1.0f, 0.9f, 0.3f, 1.0f);
 		else
 			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 0.95f);
 
-		CTextCursor Cursor;
-		Cursor.m_FontSize = FontSize;
-		Cursor.m_X = NameX;
-		Cursor.m_Y = TextY;
-		Cursor.m_LineWidth = MaxNameW;
-		Cursor.m_Flags = TEXTFLAG_RENDER | TEXTFLAG_STOP_AT_END | TEXTFLAG_ELLIPSIS_AT_END | TEXTFLAG_DISALLOW_NEWLINE;
-		TextRender()->TextEx(&Cursor, GameClient()->m_aClients[CID].m_aName);
+		TextRender()->Text(NameX, TextY, FontSize, GameClient()->m_aClients[CID].m_aName, -1.0f);
 		CurrX += ColWidthName;
 
 		// Números bajo cada columna
