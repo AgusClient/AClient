@@ -285,3 +285,14 @@ MACRO_CONFIG_INT(TcUiCompactList, tc_ui_compact_list, 0, 0, 1, CFGFLAG_CLIENT | 
 MACRO_CONFIG_INT(TcShowhudDummyPosition, tc_showhud_dummy_position, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show ingame HUD (Dummy Position)")
 MACRO_CONFIG_INT(TcShowhudDummySpeed, tc_showhud_dummy_speed, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show ingame HUD (Dummy Speed)")
 MACRO_CONFIG_INT(TcShowhudDummyAngle, tc_showhud_dummy_angle, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show ingame HUD (Dummy Aim Angle)")
+
+
+// RaceStats & Death Counter
+MACRO_CONFIG_INT(TcMiniStatboard, tc_mini_statboard, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show compact team stats in HUD")
+MACRO_CONFIG_INT(TcMiniStatboardColumns, tc_mini_statboard_columns, 31, 0, 31, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Visible columns bitmask: 1=Freezes, 2=Saves, 4=Lasts, 8=Eff, 16=Deaths")
+MACRO_CONFIG_INT(TcStatboardResetOnTeamKill, tc_statboard_reset_on_team_kill, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Reset live stats when team is wiped")
+MACRO_CONFIG_INT(TcMiniStatboardMaxPlayers, tc_mini_statboard_max_players, 5, 1, 16, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Max visible players in statboard")
+MACRO_CONFIG_INT(TcMiniStatboardScale, tc_mini_statboard_scale, 70, 20, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mini statboard scale percent")
+MACRO_CONFIG_INT(TcMiniStatboardOpacity, tc_mini_statboard_opacity, 80, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mini statboard background opacity")
+MACRO_CONFIG_INT(TcMiniStatboardX, tc_mini_statboard_x, 10, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mini statboard HUD X position")
+MACRO_CONFIG_INT(TcMiniStatboardY, tc_mini_statboard_y, 60, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mini statboard HUD Y position")

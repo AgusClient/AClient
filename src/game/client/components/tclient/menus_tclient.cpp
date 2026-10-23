@@ -816,6 +816,50 @@ void CMenus::RenderSettingsTClientSettings(CUIRect MainView)
 	LeftView = Column;
 	Column = RightView;
 
+	// ***** Race Stats & Death Counter ***** //
+	Column.HSplitTop(Margin, nullptr, &Column);
+	s_SectionBoxes.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("Race Stats & Death Counter"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcMiniStatboard, TCLocalize("Enable Mini Statboard HUD"), &g_Config.m_TcMiniStatboard, &Column, LineSize);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcStatboardResetOnTeamKill, TCLocalize("Reset stats when team is wiped"), &g_Config.m_TcStatboardResetOnTeamKill, &Column, LineSize);
+
+	static int s_ColFreezes = (g_Config.m_TcMiniStatboardColumns & 1) ? 1 : 0;
+	s_ColFreezes = (g_Config.m_TcMiniStatboardColumns & 1) ? 1 : 0;
+	if(DoButton_CheckBoxAutoVMarginAndSet(&s_ColFreezes, TCLocalize("Column: Freezes"), &s_ColFreezes, &Column, LineSize))
+		g_Config.m_TcMiniStatboardColumns ^= 1;
+
+	static int s_ColSaves = (g_Config.m_TcMiniStatboardColumns & 2) ? 1 : 0;
+	s_ColSaves = (g_Config.m_TcMiniStatboardColumns & 2) ? 1 : 0;
+	if(DoButton_CheckBoxAutoVMarginAndSet(&s_ColSaves, TCLocalize("Column: Saves (Hammer unfreeze)"), &s_ColSaves, &Column, LineSize))
+		g_Config.m_TcMiniStatboardColumns ^= 2;
+
+	static int s_ColLasts = (g_Config.m_TcMiniStatboardColumns & 4) ? 1 : 0;
+	s_ColLasts = (g_Config.m_TcMiniStatboardColumns & 4) ? 1 : 0;
+	if(DoButton_CheckBoxAutoVMarginAndSet(&s_ColLasts, TCLocalize("Column: Lasts (Sole survivor)"), &s_ColLasts, &Column, LineSize))
+		g_Config.m_TcMiniStatboardColumns ^= 4;
+
+	static int s_ColEff = (g_Config.m_TcMiniStatboardColumns & 8) ? 1 : 0;
+	s_ColEff = (g_Config.m_TcMiniStatboardColumns & 8) ? 1 : 0;
+	if(DoButton_CheckBoxAutoVMarginAndSet(&s_ColEff, TCLocalize("Column: Efficiency ratio"), &s_ColEff, &Column, LineSize))
+		g_Config.m_TcMiniStatboardColumns ^= 8;
+
+	static int s_ColDeaths = (g_Config.m_TcMiniStatboardColumns & 16) ? 1 : 0;
+	s_ColDeaths = (g_Config.m_TcMiniStatboardColumns & 16) ? 1 : 0;
+	if(DoButton_CheckBoxAutoVMarginAndSet(&s_ColDeaths, TCLocalize("Column: Deaths counter"), &s_ColDeaths, &Column, LineSize))
+		g_Config.m_TcMiniStatboardColumns ^= 16;
+
+	Column.HSplitTop(LineSize, &Button, &Column);
+	Ui()->DoScrollbarOption(&g_Config.m_TcMiniStatboardMaxPlayers, &g_Config.m_TcMiniStatboardMaxPlayers, &Button, TCLocalize("Max visible players"), 1, 16);
+
+	Column.HSplitTop(LineSize, &Button, &Column);
+	Ui()->DoScrollbarOption(&g_Config.m_TcMiniStatboardScale, &g_Config.m_TcMiniStatboardScale, &Button, TCLocalize("HUD Scale (%)"), 30, 150);
+
+	Column.HSplitTop(LineSize, &Button, &Column);
+	Ui()->DoScrollbarOption(&g_Config.m_TcMiniStatboardOpacity, &g_Config.m_TcMiniStatboardOpacity, &Button, TCLocalize("Background Opacity (%)"), 0, 100);
+
 	// ***** HUD ***** //
 	Column.HSplitTop(Margin, nullptr, &Column);
 	s_SectionBoxes.push_back(Column);
