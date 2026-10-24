@@ -2897,6 +2897,9 @@ if(CLIENT)
     components/tclient/rainbow.h
     components/tclient/race_stats.cpp
     components/tclient/race_stats.h
+    components/tclient/race_stats_icons.h
+    components/tclient/fast_practice.cpp
+    components/tclient/fast_practice.h
     components/tclient/scripting.cpp
     components/tclient/scripting.h
     components/tclient/scripting/impl.cpp

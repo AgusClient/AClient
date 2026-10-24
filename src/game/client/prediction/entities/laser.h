@@ -19,6 +19,7 @@ public:
 	const vec2 &GetFrom() const { return m_From; }
 	const int &GetOwner() const { return m_Owner; }
 	const int &GetEvalTick() const { return m_EvalTick; }
+	void ShiftEvalTick(int TickDelta) { m_EvalTick += TickDelta; }
 	CLaser(CGameWorld *pGameWorld, int Id, const CLaserData *pLaser);
 	bool Match(CLaser *pLaser);
 	CLaserData GetData() const;

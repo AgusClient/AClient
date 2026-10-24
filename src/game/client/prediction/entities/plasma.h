@@ -26,6 +26,7 @@ public:
 	void Read(const CLaserData *pData);
 
 	void Reset();
+	void ShiftEvalTick(int TickDelta) { m_EvalTick += TickDelta; }
 	void Tick() override;
 };
 

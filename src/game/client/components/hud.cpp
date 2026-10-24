@@ -1282,7 +1282,7 @@ void CHud::RenderPlayerState(const int ClientId)
 		Graphics()->RenderQuadContainerAsSprite(m_HudQuadContainerIndex, m_LockModeOffset, x, y);
 		x += 12;
 	}
-	if(GameClient()->m_Snap.m_aCharacters[ClientId].m_HasExtendedDisplayInfo && GameClient()->m_Snap.m_aCharacters[ClientId].m_ExtendedData.m_Flags & CHARACTERFLAG_PRACTICE_MODE)
+	if((GameClient()->m_Snap.m_aCharacters[ClientId].m_HasExtendedDisplayInfo && GameClient()->m_Snap.m_aCharacters[ClientId].m_ExtendedData.m_Flags & CHARACTERFLAG_PRACTICE_MODE) || GameClient()->m_FastPractice.IsPracticeParticipant(ClientId))
 	{
 		Graphics()->TextureSet(GameClient()->m_HudSkin.m_SpriteHudPracticeMode);
 		Graphics()->RenderQuadContainerAsSprite(m_HudQuadContainerIndex, m_PracticeModeOffset, x, y);
@@ -2015,6 +2015,13 @@ void CHud::OnRender()
 			RenderSpectatorCount();
 			RenderMovementInformation();
 			RenderDDRaceEffects();
+			if(GameClient()->m_FastPractice.Enabled())
+			{
+				const char *pTitle = "practice mode";
+				const char *pHint = "(you can use practice commands /tc /invincible)";
+				TextRender()->Text(m_Width / 2.0f - TextRender()->TextWidth(6.5f, pTitle) / 2.0f, 3.0f, 6.5f, pTitle, -1.0f);
+				TextRender()->Text(m_Width / 2.0f - TextRender()->TextWidth(4.5f, pHint) / 2.0f, 11.0f, 4.5f, pHint, -1.0f);
+			}
 		}
 		else if(GameClient()->m_Snap.m_SpecInfo.m_Active)
 		{

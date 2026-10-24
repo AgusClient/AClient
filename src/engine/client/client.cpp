@@ -396,17 +396,20 @@ void CClient::SendInput()
 			m_aInputs[i][m_aCurrentInput[i]].m_Time = Now;
 
 			// pack it
+			int aSendData[MAX_INPUT_SIZE];
+			mem_copy(aSendData, m_aInputs[i][m_aCurrentInput[i]].m_aData, Size);
+			GameClient()->PrepareInputForSend(aSendData, Size, Dummy != 0);
 			for(int k = 0; k < Size / 4; k++)
 			{
 				static const int FlagsOffset = offsetof(CNetObj_PlayerInput, m_PlayerFlags) / sizeof(int);
 				if(k == FlagsOffset && IsSixup())
 				{
-					int PlayerFlags = m_aInputs[i][m_aCurrentInput[i]].m_aData[k];
+					int PlayerFlags = aSendData[k];
 					Msg.AddInt(PlayerFlags_SixToSeven(PlayerFlags));
 				}
 				else
 				{
-					Msg.AddInt(m_aInputs[i][m_aCurrentInput[i]].m_aData[k]);
+					Msg.AddInt(aSendData[k]);
 				}
 			}
 
