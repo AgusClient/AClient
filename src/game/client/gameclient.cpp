@@ -172,6 +172,7 @@ void CGameClient::OnConsoleInit()
 					      &m_WarList, // TClient
 					      &m_StatusBar, // TClient
 					      &m_RaceStats, // TClient
+					      &m_FastPractice, // TClient
 					      &m_InfoMessages,
 					      &m_Chat,
 					      &m_Broadcast,
@@ -616,6 +617,7 @@ void CGameClient::OnConnected()
 	m_GameWorld.m_Core.InitSwitchers(m_Collision.m_HighestSwitchNumber);
 	m_GameWorld.m_PredictedEvents.clear();
 	m_RaceHelper.Init(this);
+	m_FastPractice.InvalidateBufferedInputState();
 
 	// render loading before going through all components
 	m_Menus.RenderLoading(pConnectCaption, pLoadMapContent, 0);
@@ -756,6 +758,11 @@ void CGameClient::OnReset()
 
 	Collision()->Unload();
 	Layers()->Unload();
+}
+
+void CGameClient::PrepareInputForSend(int *pData, int Size, bool Dummy)
+{
+	m_FastPractice.PrepareInputForSend(pData, Size, Dummy);
 }
 
 void CGameClient::UpdatePositions()
@@ -1000,28 +1007,28 @@ float CGameClient::GetAnimationPlaybackSpeed() const
 
 int CGameClient::AntiPingPlayers() const
 {
-	if(g_Config.m_ClAntiPing &&
-		g_Config.m_ClAntiPingPlayers &&
+	if((g_Config.m_ClAntiPing || m_FastPractice.ForcePredictPlayers()) &&
+		(g_Config.m_ClAntiPingPlayers || m_FastPractice.ForcePredictPlayers()) &&
 		!m_Snap.m_SpecInfo.m_Active &&
 		Client()->State() != IClient::STATE_DEMOPLAYBACK)
 	{
-		return g_Config.m_ClAntiPingPlayers;
+		return (g_Config.m_ClAntiPing && g_Config.m_ClAntiPingPlayers) ? g_Config.m_ClAntiPingPlayers : 1;
 	}
 	return 0;
 }
 
 bool CGameClient::AntiPingGrenade() const
 {
-	return g_Config.m_ClAntiPing &&
-	       g_Config.m_ClAntiPingGrenade &&
+	return (g_Config.m_ClAntiPing || m_FastPractice.Enabled()) &&
+	       (g_Config.m_ClAntiPingGrenade || m_FastPractice.ForcePredictGrenade()) &&
 	       !m_Snap.m_SpecInfo.m_Active &&
 	       Client()->State() != IClient::STATE_DEMOPLAYBACK;
 }
 
 bool CGameClient::AntiPingWeapons() const
 {
-	return g_Config.m_ClAntiPing &&
-	       g_Config.m_ClAntiPingWeapons &&
+	return (g_Config.m_ClAntiPing || m_FastPractice.Enabled()) &&
+	       (g_Config.m_ClAntiPingWeapons || m_FastPractice.ForcePredictWeapons()) &&
 	       !m_Snap.m_SpecInfo.m_Active &&
 	       Client()->State() != IClient::STATE_DEMOPLAYBACK;
 }
@@ -1030,12 +1037,12 @@ bool CGameClient::AntiPingGunfire() const
 {
 	return AntiPingGrenade() &&
 	       AntiPingWeapons() &&
-	       g_Config.m_ClAntiPingGunfire;
+	       (g_Config.m_ClAntiPingGunfire || m_FastPractice.ForcePredictGunfire());
 }
 
 bool CGameClient::Predict() const
 {
-	return g_Config.m_ClPredict &&
+	return (g_Config.m_ClPredict || m_FastPractice.Enabled()) &&
 	       !IsWorldPaused() &&
 	       Client()->State() != IClient::STATE_DEMOPLAYBACK &&
 	       !m_Snap.m_SpecInfo.m_Active &&
@@ -1044,7 +1051,7 @@ bool CGameClient::Predict() const
 
 bool CGameClient::PredictDummy() const
 {
-	return g_Config.m_ClPredictDummy &&
+	return (g_Config.m_ClPredictDummy || m_FastPractice.Enabled()) &&
 	       Client()->DummyConnected() &&
 	       m_Snap.m_LocalClientId >= 0 &&
 	       m_aLocalIds[!g_Config.m_ClDummy] >= 0 &&
@@ -2730,6 +2737,8 @@ void CGameClient::OnPredict()
 		return;
 	}
 
+	if(m_FastPractice.Enabled() && m_FastPractice.OverridePredict())
+		return;
 	vec2 aBeforeRender[MAX_CLIENTS];
 	for(int i = 0; i < MAX_CLIENTS; i++)
 		aBeforeRender[i] = GetSmoothPos(i);
@@ -2775,18 +2784,24 @@ void CGameClient::OnPredict()
 
 	int FinalTickSelf = FinalTickRegular + FastInputTicks; // the final tick for just our local tee
 	int FinalTickOthers = FinalTickSelf; // the final tick for all other tees
-	if(g_Config.m_TcFastInput && !g_Config.m_TcFastInputOthers)
+	int FastInputTicksOthers = (g_Config.m_TcFastInput && g_Config.m_TcFastInputOthers) ? (g_Config.m_TcFastInputOthersAmount + 19) / 20 : 0;
+	FinalTickOthers = FinalTickRegular + FastInputTicksOthers;
+	int FinalTickMax = std::max(FinalTickSelf, FinalTickOthers);
+	FastInputTicks = std::max(FastInputTicks, FastInputTicksOthers);
+	if(false && g_Config.m_TcFastInput && !g_Config.m_TcFastInputOthers)
 		FinalTickOthers = FinalTickSelf - FastInputTicks;
 
 	int LocalTee = g_Config.m_ClDummy ^ m_IsDummySwapping;
 	int DummyTee = LocalTee ^ 1;
 
-	for(int Tick = Client()->GameTick(g_Config.m_ClDummy) + 1; Tick <= FinalTickSelf; Tick++)
+	for(int Tick = Client()->GameTick(g_Config.m_ClDummy) + 1; Tick <= FinalTickMax; Tick++)
 	{
 		// fetch the previous characters
 		if(Tick == FinalTickSelf)
 		{
 			m_PrevPredictedWorld.CopyWorld(&m_PredictedWorld);
+			if(pDummyChar)
+				m_aClients[m_aLocalIds[!g_Config.m_ClDummy]].m_PrevPredicted = pDummyChar->GetCore();
 			m_PredictedPrevChar = pLocalChar->GetCore();
 			m_aClients[m_Snap.m_LocalClientId].m_PrevPredicted = pLocalChar->GetCore();
 		}
@@ -2794,7 +2809,8 @@ void CGameClient::OnPredict()
 		{
 			for(int i = 0; i < MAX_CLIENTS; i++)
 				if(CCharacter *pChar = m_PredictedWorld.GetCharacterById(i))
-					m_aClients[i].m_PrevPredicted = pChar->GetCore();
+					if(i != m_Snap.m_LocalClientId && (!pDummyChar || i != pDummyChar->GetCid()))
+						m_aClients[i].m_PrevPredicted = pChar->GetCore();
 		}
 
 		if(Tick == Client()->PredGameTick(g_Config.m_ClDummy))
@@ -2856,6 +2872,8 @@ void CGameClient::OnPredict()
 		m_PredictedWorld.m_WorldConfig.m_PredictEvents = TempPredEventState;
 
 		// fetch the current characters
+		if(Tick == FinalTickSelf && pDummyChar)
+			m_aClients[m_aLocalIds[!g_Config.m_ClDummy]].m_Predicted = pDummyChar->GetCore();
 		if(Tick == FinalTickSelf)
 		{
 			m_PredictedChar = pLocalChar->GetCore();
@@ -2865,7 +2883,8 @@ void CGameClient::OnPredict()
 		{
 			for(int i = 0; i < MAX_CLIENTS; i++)
 				if(CCharacter *pChar = m_PredictedWorld.GetCharacterById(i))
-					m_aClients[i].m_Predicted = pChar->GetCore();
+					if(i != m_Snap.m_LocalClientId && (!pDummyChar || i != pDummyChar->GetCid()))
+						m_aClients[i].m_Predicted = pChar->GetCore();
 		}
 		if(Tick == FinalTickRegular)
 		{
@@ -3563,8 +3582,10 @@ void CGameClient::CClientData::CSixup::Reset()
 	}
 }
 
-void CGameClient::SendSwitchTeam(int Team) const
+void CGameClient::SendSwitchTeam(int Team)
 {
+	if(Team == TEAM_SPECTATORS)
+		m_FastPractice.PrepareForSpectating();
 	CNetMsg_Cl_SetTeam Msg;
 	Msg.m_Team = Team;
 	Client()->SendPackMsgActive(&Msg, MSGFLAG_VITAL);
@@ -3729,8 +3750,10 @@ void CGameClient::SendDummyInfo(bool Start)
 	}
 }
 
-void CGameClient::SendKill() const
+void CGameClient::SendKill()
 {
+	if(m_FastPractice.ConsumeKillCommand())
+		return;
 	CNetMsg_Cl_Kill Msg;
 	Client()->SendPackMsgActive(&Msg, MSGFLAG_VITAL);
 
@@ -4239,7 +4262,8 @@ void CGameClient::UpdateRenderedCharacters()
 
 		const bool IsDummy = PredictDummy() && i == m_aLocalIds[!g_Config.m_ClDummy];
 		bool AntiPingPlayer = AntiPingPlayers() == 1 || (AntiPingPlayers() >= 2 && (IsDummy || (pChar && pChar->IsInterfering())));
-		if(Predict() && (i == m_Snap.m_LocalClientId || (AntiPingPlayer && !IsOtherTeam(i))) && pChar)
+		const bool IsPracticeParticipant = m_FastPractice.Enabled() && m_FastPractice.IsPracticeParticipant(i);
+		if(Predict() && (i == m_Snap.m_LocalClientId || IsPracticeParticipant || (AntiPingPlayer && !IsOtherTeam(i))) && pChar)
 		{
 			m_aClients[i].m_Predicted.Write(&m_aClients[i].m_RenderCur);
 			m_aClients[i].m_PrevPredicted.Write(&m_aClients[i].m_RenderPrev);
@@ -4253,10 +4277,10 @@ void CGameClient::UpdateRenderedCharacters()
 
 			if(g_Config.m_TcRemoveAnti)
 				Pos = GetFreezePos(i);
-			else if(g_Config.m_TcFastInput && (i == m_Snap.m_LocalClientId || IsDummy))
+			else if(g_Config.m_TcFastInput && (i == m_Snap.m_LocalClientId || IsDummy || IsPracticeParticipant))
 				Pos = GetFastInputPos(i);
 
-			if(i == m_Snap.m_LocalClientId || IsDummy)
+			if(i == m_Snap.m_LocalClientId || IsDummy || IsPracticeParticipant)
 			{
 				m_aClients[i].m_IsPredictedLocal = true;
 				if(AntiPingGunfire() && ((pChar->m_NinjaJetpack && pChar->m_FreezeTime == 0) || m_Snap.m_aCharacters[i].m_Cur.m_Weapon != WEAPON_NINJA || m_Snap.m_aCharacters[i].m_Cur.m_Weapon == m_aClients[i].m_Predicted.m_ActiveWeapon))
@@ -4430,7 +4454,7 @@ void CGameClient::DetectStrongHook()
 
 vec2 CGameClient::GetSmoothPos(int ClientId)
 {
-	const int FastInputTicks = g_Config.m_TcFastInput ? (g_Config.m_TcFastInputAmount + 19) / 20 : 0;
+	const int FastInputTicks = g_Config.m_TcFastInput ? ((ClientId == m_Snap.m_LocalClientId ? g_Config.m_TcFastInputAmount : g_Config.m_TcFastInputOthersAmount) + 19) / 20 : 0;
 	vec2 Pos = mix(m_aClients[ClientId].m_PrevPredicted.m_Pos, m_aClients[ClientId].m_Predicted.m_Pos, Client()->PredIntraGameTick(g_Config.m_ClDummy));
 	int64_t Now = time_get();
 	for(int i = 0; i < 2; i++)
@@ -4462,8 +4486,10 @@ vec2 CGameClient::GetFastInputPos(int ClientId)
 
 	vec2 Pos = mix(m_aClients[ClientId].m_PrevPredicted.m_Pos, m_aClients[ClientId].m_Predicted.m_Pos, PredIntraTick);
 
-	float FastInputIntra = (g_Config.m_TcFastInputAmount % 20) / 20.0f;
-	int FastInputTicks = g_Config.m_TcFastInputAmount / 20;
+	const bool IsLocalForFastInput = ClientId == m_Snap.m_LocalClientId || (PredictDummy() && ClientId == m_aLocalIds[!g_Config.m_ClDummy]) || (m_FastPractice.Enabled() && m_FastPractice.IsPracticeParticipant(ClientId));
+	const int FastInputAmountMs = IsLocalForFastInput ? g_Config.m_TcFastInputAmount : g_Config.m_TcFastInputOthersAmount;
+	float FastInputIntra = (FastInputAmountMs % 20) / 20.0f;
+	int FastInputTicks = FastInputAmountMs / 20;
 
 	float CombinedIntra = PredIntraTick + FastInputIntra;
 
@@ -4523,8 +4549,10 @@ vec2 CGameClient::GetFreezePos(int ClientId)
 	m_SmoothTick = SmoothTick;
 	m_SmoothIntraTick = SmoothIntra;
 
-	float FastInputIntra = (g_Config.m_TcFastInputAmount % 20) / 20.0f;
-	int FastInputTicks = g_Config.m_TcFastInputAmount / 20;
+	const bool IsLocalForFastInput = ClientId == m_Snap.m_LocalClientId || (PredictDummy() && ClientId == m_aLocalIds[!g_Config.m_ClDummy]) || (m_FastPractice.Enabled() && m_FastPractice.IsPracticeParticipant(ClientId));
+	const int FastInputAmountMs = IsLocalForFastInput ? g_Config.m_TcFastInputAmount : g_Config.m_TcFastInputOthersAmount;
+	float FastInputIntra = (FastInputAmountMs % 20) / 20.0f;
+	int FastInputTicks = FastInputAmountMs / 20;
 
 	float CombinedIntra = SmoothIntra + FastInputIntra;
 

@@ -563,7 +563,12 @@ void CMenus::RenderSettingsTClientSettings(CUIRect MainView)
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	if(g_Config.m_TcFastInput)
+	{
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcFastInputOthers, TCLocalize("Fast Input others"), &g_Config.m_TcFastInputOthers, &Column, LineSize);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		if(g_Config.m_TcFastInputOthers)
+			DoSliderWithScaledValue(&g_Config.m_TcFastInputOthersAmount, &g_Config.m_TcFastInputOthersAmount, &Button, TCLocalize("Others Amount"), 1, 40, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "ms");
+	}
 	else
 		Column.HSplitTop(LineSize, nullptr, &Column);
 
@@ -825,7 +830,7 @@ void CMenus::RenderSettingsTClientSettings(CUIRect MainView)
 	Column.HSplitTop(Margin, nullptr, &Column);
 	s_SectionBoxes.push_back(Column);
 	Column.HSplitTop(HeadlineHeight, &Label, &Column);
-	Ui()->DoLabel(&Label, TCLocalize("Race Stats"), HeadlineFontSize, TEXTALIGN_ML);
+	Ui()->DoLabel(&Label, TCLocalize("Clientx30"), HeadlineFontSize, TEXTALIGN_ML);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcMiniStatboard, TCLocalize("Enable Mini Statboard HUD"), &g_Config.m_TcMiniStatboard, &Column, LineSize);
@@ -833,7 +838,14 @@ void CMenus::RenderSettingsTClientSettings(CUIRect MainView)
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcStatboardAutoSave, TCLocalize("Auto-save stats before reset (/kill or /team)"), &g_Config.m_TcStatboardAutoSave, &Column, LineSize);
 
 	static CButtonContainer s_ReaderButtonSaveStats, s_ClearButtonSaveStats;
-	DoLine_KeyReader(Column, s_ReaderButtonSaveStats, s_ClearButtonSaveStats, TCLocalize("Save stats key"), "tc_save_racestats");
+	static CButtonContainer s_ReaderButtonToggleStats, s_ClearButtonToggleStats;
+	DoLine_KeyReader(Column, s_ReaderButtonToggleStats, s_ClearButtonToggleStats, TCLocalize("Toggle stats overlay key"), "toggle tc_mini_statboard 0 1");
+	static CButtonContainer s_ReaderButtonSaveStats2, s_ClearButtonSaveStats2;
+	(void)s_ReaderButtonSaveStats;
+	(void)s_ClearButtonSaveStats;
+	DoLine_KeyReader(Column, s_ReaderButtonSaveStats2, s_ClearButtonSaveStats2, TCLocalize("Save stats key"), "tc_save_racestats");
+	static CButtonContainer s_ReaderButtonFastPractice, s_ClearButtonFastPractice;
+	DoLine_KeyReader(Column, s_ReaderButtonFastPractice, s_ClearButtonFastPractice, TCLocalize("Fast Practice key (Ghost mode)"), "fast_practice_toggle");
 
 	static int s_ColFreezes = (g_Config.m_TcMiniStatboardColumns & 1) ? 1 : 0;
 	s_ColFreezes = (g_Config.m_TcMiniStatboardColumns & 1) ? 1 : 0;

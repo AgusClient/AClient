@@ -143,6 +143,17 @@ public:
 	// antiping
 	void AntiPingInterference(int ClientId, bool DisallowReset = false, bool HasToBeUnfrozen = false);
 	bool IsInterfering() const { return m_Interfering; }
+	void ShiftTickBase(int TickDelta)
+	{
+		if(m_AttackTick > 0)
+			m_AttackTick += TickDelta;
+		if(m_LastWeaponSwitchTick > 0)
+			m_LastWeaponSwitchTick += TickDelta;
+		if(m_LastTuneZoneTick > 0)
+			m_LastTuneZoneTick += TickDelta;
+		if(m_Core.m_Ninja.m_ActivationTick > 0)
+			m_Core.m_Ninja.m_ActivationTick += TickDelta;
+	}
 
 private:
 	// weapon info
