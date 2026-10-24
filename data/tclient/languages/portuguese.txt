@@ -1037,3 +1037,9 @@ friend(s)
 
 player(s)
 == jogador(es)
+
+Keep stats on death (do not reset on /kill)
+== Manter estatísticas ao morrer (não reiniciar no /kill)
+
+Column: Deaths
+== Coluna: Mortes

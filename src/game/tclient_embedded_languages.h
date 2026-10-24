@@ -57,6 +57,8 @@ static const SEmbeddedTranslationEntry s_aEmbeddedTranslations[] = {
 	{"player(s)", "jugador(es)", "игроков", "jogador(es)", "玩家", "joueur(s)"},
 	{"Fast Practice active! Ghost mode ON (/tp, /tc, /unsolo). Type /practice or use Settings to return.", "¡Fast Practice activo! Modo Fantasma ON (/tp, /tc, /unsolo). Escribe /practice o usa Ajustes para volver.", "Быстрая тренировка активна! Режим призрака ВКЛ (/tp, /tc, /unsolo). Напишите /practice для возврата.", "Fast Practice ativo! Modo Fantasma ON (/tp, /tc, /unsolo). Digite /practice para retornar.", "快速练习已激活！幽灵模式开启 (/tp, /tc, /unsolo)。输入 /practice 或在设置中返回比赛。", "Fast Practice activé ! Mode Fantôme ON (/tp, /tc, /unsolo). Tapez /practice pour revenir."},
 	{"Fast Practice disabled. Run state restored!", "¡Fast Practice desactivado! Estado de la run restaurado.", "Быстрая тренировка отключена. Состояние забега восстановлено!", "Fast Practice desativado! Estado da run restaurado.", "快速练习已关闭，比赛状态已恢复！", "Fast Practice désactivé. État de la run restauré !"},
+	{"Keep stats on death (do not reset on /kill)", "Conservar estadísticas al morir (no reiniciar al matarse)", "Сохранять статистику при смерти (не сбрасывать при /kill)", "Manter estatísticas ao morrer (não reiniciar no /kill)", "死亡时保留统计数据 (自杀 /kill 时不重置)", "Conserver les statistiques à la mort (ne pas réinitialiser au /kill)"},
+	{"Column: Deaths", "Columna: Muertes", "Колонка: Смерти", "Coluna: Mortes", "显示列: 死亡次数", "Colonne : Morts"},
 };
 
 static const char *TCLocalizeEmbedded(const char *pStr, const char *pLangFile)

@@ -2848,3 +2848,9 @@ friend(s)
 
 player(s)
 == 玩家
+
+Keep stats on death (do not reset on /kill)
+== 死亡时保留统计数据 (自杀 /kill 时不重置)
+
+Column: Deaths
+== 显示列: 死亡次数

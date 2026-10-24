@@ -836,6 +836,7 @@ void CMenus::RenderSettingsTClientSettings(CUIRect MainView)
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcMiniStatboard, TCLocalize("Enable Mini Statboard HUD"), &g_Config.m_TcMiniStatboard, &Column, LineSize);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcStatboardKeepOnDeath, TCLocalize("Keep stats on death (do not reset on /kill)"), &g_Config.m_TcStatboardKeepOnDeath, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcStatboardResetOnTeamKill, TCLocalize("Reset stats on /kill or /team change"), &g_Config.m_TcStatboardResetOnTeamKill, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcStatboardAutoSave, TCLocalize("Auto-save stats before reset (/kill or /team)"), &g_Config.m_TcStatboardAutoSave, &Column, LineSize);
 
@@ -868,6 +869,11 @@ void CMenus::RenderSettingsTClientSettings(CUIRect MainView)
 	s_ColEff = (g_Config.m_TcMiniStatboardColumns & 8) ? 1 : 0;
 	if(DoButton_CheckBoxAutoVMarginAndSet(&s_ColEff, TCLocalize("Column: Efficiency ratio"), &s_ColEff, &Column, LineSize))
 		g_Config.m_TcMiniStatboardColumns ^= 8;
+
+	static int s_ColDeathsCx30 = 0;
+	s_ColDeathsCx30 = (g_Config.m_TcMiniStatboardColumns & 16) ? 1 : 0;
+	if(DoButton_CheckBoxAutoVMarginAndSet(&s_ColDeathsCx30, TCLocalize("Column: Deaths"), &s_ColDeathsCx30, &Column, LineSize))
+		g_Config.m_TcMiniStatboardColumns ^= 16;
 
 	Column.HSplitTop(LineSize, &Button, &Column);
 	Ui()->DoScrollbarOption(&g_Config.m_TcMiniStatboardX, &g_Config.m_TcMiniStatboardX, &Button, TCLocalize("Horizontal Position (X)"), 0, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
@@ -3325,8 +3331,8 @@ void CMenus::RenderSettingsTClientRaceStats(CUIRect MainView)
 	CUIRect TableHeader;
 	const float RowH = 26.0f;
 	const float IconSz = 16.0f;
-	const float ColStatW = 54.0f;
-	const float ColNameW = std::max(120.0f, RightView.w - (ColStatW * 4.0f) - 16.0f);
+	const float ColStatW = 44.0f;
+	const float ColNameW = std::max(100.0f, RightView.w - (ColStatW * 5.0f) - 16.0f);
 
 	RightView.HSplitTop(RowH + 4.0f, &TableHeader, &RightView);
 	TableHeader.Draw(ColorRGBA(0.14f, 0.15f, 0.22f, 0.75f), IGraphics::CORNER_T, 6.0f);
@@ -3358,6 +3364,9 @@ void CMenus::RenderSettingsTClientRaceStats(CUIRect MainView)
 	HeadX += ColStatW;
 
 	DrawTexIcon(RaceStats.m_aTextures[CRaceStats::ICON_EFF], HeadX + (ColStatW - IconSz) * 0.5f, HeadY, IconSz, ColorRGBA(0.9f, 0.5f, 1.0f, 1.0f));
+	HeadX += ColStatW;
+
+	DrawTexIcon(RaceStats.m_aTextures[CRaceStats::ICON_SKULL], HeadX + (ColStatW - IconSz) * 0.5f, HeadY, IconSz, ColorRGBA(0.95f, 0.35f, 0.35f, 1.0f));
 
 	static CScrollRegion s_PlayersScroll;
 	CScrollRegionParams PlScrollParams;
@@ -3411,6 +3420,7 @@ void CMenus::RenderSettingsTClientRaceStats(CUIRect MainView)
 		DrawSavedStat(Pl.m_Saves, ColorRGBA(0.45f, 1.0f, 0.55f, 0.95f));
 		DrawSavedStat(Pl.m_Lasts, ColorRGBA(1.0f, 0.85f, 0.4f, 0.95f));
 		DrawSavedStat(Pl.m_EfficiencyPercent, ColorRGBA(0.95f, 0.65f, 1.0f, 0.95f));
+		DrawSavedStat(Pl.m_Deaths, ColorRGBA(1.0f, 0.45f, 0.45f, 0.95f));
 	}
 
 	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -3543,6 +3553,7 @@ void CMenus::RenderSettingsClientx30Settings(CUIRect MainView)
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcMiniStatboard, TCLocalize("Enable Mini Statboard HUD"), &g_Config.m_TcMiniStatboard, &Column, LineSize);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcStatboardKeepOnDeath, TCLocalize("Keep stats on death (do not reset on /kill)"), &g_Config.m_TcStatboardKeepOnDeath, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcStatboardResetOnTeamKill, TCLocalize("Reset stats on /kill or /team change"), &g_Config.m_TcStatboardResetOnTeamKill, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcStatboardAutoSave, TCLocalize("Auto-save stats before reset (/kill or /team)"), &g_Config.m_TcStatboardAutoSave, &Column, LineSize);
 
@@ -3570,6 +3581,11 @@ void CMenus::RenderSettingsClientx30Settings(CUIRect MainView)
 	s_ColEffCx30 = (g_Config.m_TcMiniStatboardColumns & 8) ? 1 : 0;
 	if(DoButton_CheckBoxAutoVMarginAndSet(&s_ColEffCx30, TCLocalize("Column: Efficiency ratio"), &s_ColEffCx30, &Column, LineSize))
 		g_Config.m_TcMiniStatboardColumns ^= 8;
+
+	static int s_ColDeathsCx30 = 0;
+	s_ColDeathsCx30 = (g_Config.m_TcMiniStatboardColumns & 16) ? 1 : 0;
+	if(DoButton_CheckBoxAutoVMarginAndSet(&s_ColDeathsCx30, TCLocalize("Column: Deaths"), &s_ColDeathsCx30, &Column, LineSize))
+		g_Config.m_TcMiniStatboardColumns ^= 16;
 
 	Column.HSplitTop(LineSize, &Button, &Column);
 	Ui()->DoScrollbarOption(&g_Config.m_TcMiniStatboardX, &g_Config.m_TcMiniStatboardX, &Button, TCLocalize("Horizontal Position (X)"), 0, 100, &CUi::ms_LinearScrollbarScale, 0, "%");

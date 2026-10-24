@@ -290,7 +290,8 @@ MACRO_CONFIG_INT(TcShowhudDummyAngle, tc_showhud_dummy_angle, 0, 0, 1, CFGFLAG_C
 
 // RaceStats
 MACRO_CONFIG_INT(TcMiniStatboard, tc_mini_statboard, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show compact team stats in HUD")
-MACRO_CONFIG_INT(TcMiniStatboardColumns, tc_mini_statboard_columns, 15, 0, 15, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Visible columns bitmask: 1=Freezes, 2=Saves, 4=Lasts, 8=Eff")
+MACRO_CONFIG_INT(TcMiniStatboardColumns, tc_mini_statboard_columns, 15, 0, 31, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Visible columns bitmask: 1=Freezes, 2=Saves, 4=Lasts, 8=Eff, 16=Deaths")
+MACRO_CONFIG_INT(TcStatboardKeepOnDeath, tc_statboard_keep_on_death, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Keep overlay stats on /kill (do not reset on death)")
 MACRO_CONFIG_INT(TcStatboardResetOnTeamKill, tc_statboard_reset_on_team_kill, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Reset live stats on /kill or team change")
 MACRO_CONFIG_INT(TcStatboardAutoSave, tc_statboard_auto_save, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Auto-save race stats to history before resetting on /kill or /team")
 MACRO_CONFIG_INT(TcMiniStatboardMaxPlayers, tc_mini_statboard_max_players, 5, 0, 64, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Max visible players in statboard")

@@ -2848,3 +2848,9 @@ friend(s)
 
 player(s)
 == игроков
+
+Keep stats on death (do not reset on /kill)
+== Сохранять статистику при смерти (не сбрасывать при /kill)
+
+Column: Deaths
+== Колонка: Смерти
