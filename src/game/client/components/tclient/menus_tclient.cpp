@@ -3801,16 +3801,18 @@ void CMenus::RenderSettingsClientx30Settings(CUIRect MainView)
 	Ui()->DoLabel(&Label, TCLocalize("Chat & Client Messages (Echo)"), HeadlineFontSize, TEXTALIGN_ML);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
-	if(DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcShowChatClient, TCLocalize("Show client messages in chat (Echo / Local notices)"), &g_Config.m_TcShowChatClient, &Column, LineSize))
+	if(DoCheckboxWithHelp(&g_Config.m_TcShowChatClient, TCLocalize("Show client messages in chat (Echo / Local notices)"), TCLocalize("Controls whether local echo messages (like [Clientx30], command feedback and notices) appear in the chat."), &g_Config.m_TcShowChatClient, &Column, LineSize))
 	{
 		g_Config.m_ClShowChatClient = g_Config.m_TcShowChatClient;
 	}
 
-	Column.HSplitTop(MarginSmall, nullptr, &Column);
-	Column.HSplitTop(16.0f, &Label, &Column);
-	TextRender()->TextColor(0.85f, 0.88f, 0.95f, 0.9f);
-	Ui()->DoLabel(&Label, TCLocalize("Controls whether local echo messages (like [Clientx30], command feedback and notices) appear in the chat."), 11.5f, TEXTALIGN_ML);
-	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+	if(DoCheckboxWithHelp(&g_Config.m_TcSilentTyping, TCLocalize("Silent typing (Hide 3-dots bubble when typing)"), TCLocalize("Prevents the 3-dots bubble (...) from appearing above your Tee when the chat is open."), &g_Config.m_TcSilentTyping, &Column, LineSize))
+	{
+		g_Config.m_ClSilentTyping = g_Config.m_TcSilentTyping;
+		g_Config.m_TcHideChatBubbles = g_Config.m_TcSilentTyping;
+	}
+
+	DoCheckboxWithHelp(&g_Config.m_TcHideOthersChatBubbles, TCLocalize("Hide typing bubbles of other players"), TCLocalize("Hides the 3-dots typing bubble of other players on your screen when they are typing."), &g_Config.m_TcHideOthersChatBubbles, &Column, LineSize);
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	Column.HSplitTop(LineSize + 4.0f, &Button, &Column);

@@ -241,6 +241,18 @@ void CChat::ConchainShowChatClient(IConsole::IResult *pResult, void *pUserData, 
 	}
 }
 
+void CChat::ConchainSilentTyping(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData)
+{
+	pfnCallback(pResult, pCallbackUserData);
+	if(pResult->NumArguments())
+	{
+		int Val = pResult->GetInteger(0);
+		g_Config.m_TcSilentTyping = Val;
+		g_Config.m_ClSilentTyping = Val;
+		g_Config.m_TcHideChatBubbles = Val;
+	}
+}
+
 void CChat::Echo(const char *pString)
 {
 	AddLine(CLIENT_MSG, 0, pString);
@@ -264,6 +276,9 @@ void CChat::OnInit()
 	Console()->Chain("cl_chat_width", ConchainChatWidth, this);
 	Console()->Chain("tc_show_chat_client", ConchainShowChatClient, this);
 	Console()->Chain("cl_show_chat_client", ConchainShowChatClient, this);
+	Console()->Chain("tc_silent_typing", ConchainSilentTyping, this);
+	Console()->Chain("cl_silent_typing", ConchainSilentTyping, this);
+	Console()->Chain("tc_hide_chat_bubbles", ConchainSilentTyping, this);
 }
 
 bool CChat::OnInput(const IInput::CEvent &Event)
