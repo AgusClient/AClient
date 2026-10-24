@@ -41,9 +41,12 @@ void CRaceStats::OnInit()
 	m_aTextures[ICON_USER]   = LoadEmbeddedIcon(gs_aRaceStatIcon_USER, sizeof(gs_aRaceStatIcon_USER), "racestat_user");
 	m_aTextures[ICON_FREEZE] = LoadEmbeddedIcon(gs_aRaceStatIcon_FREEZE, sizeof(gs_aRaceStatIcon_FREEZE), "racestat_freeze");
 	m_aTextures[ICON_SAVE]   = LoadEmbeddedIcon(gs_aRaceStatIcon_SAVE, sizeof(gs_aRaceStatIcon_SAVE), "racestat_save");
-	m_aTextures[ICON_LAST]   = LoadEmbeddedIcon(gs_aRaceStatIcon_LAST, sizeof(gs_aRaceStatIcon_LAST), "racestat_last");
-	m_aTextures[ICON_EFF]    = LoadEmbeddedIcon(gs_aRaceStatIcon_EFF, sizeof(gs_aRaceStatIcon_EFF), "racestat_eff");
 	m_aTextures[ICON_SKULL]  = LoadEmbeddedIcon(gs_aRaceStatIcon_SKULL, sizeof(gs_aRaceStatIcon_SKULL), "racestat_skull");
+	m_aTextures[ICON_EFF]    = LoadEmbeddedIcon(gs_aRaceStatIcon_EFF, sizeof(gs_aRaceStatIcon_EFF), "racestat_eff");
+	m_aTextures[ICON_LAST]   = LoadEmbeddedIcon(gs_aRaceStatIcon_LAST, sizeof(gs_aRaceStatIcon_LAST), "racestat_last");
+	m_aTextures[ICON_NET]    = LoadEmbeddedIcon(gs_aRaceStatIcon_NET, sizeof(gs_aRaceStatIcon_NET), "racestat_net");
+	m_aTextures[ICON_TIME]   = LoadEmbeddedIcon(gs_aRaceStatIcon_TIME, sizeof(gs_aRaceStatIcon_TIME), "racestat_time");
+	m_aTextures[ICON_HOOK]   = LoadEmbeddedIcon(gs_aRaceStatIcon_HOOK, sizeof(gs_aRaceStatIcon_HOOK), "racestat_hook");
 
 	LoadHistoryFromFile();
 }
@@ -169,6 +172,9 @@ bool CRaceStats::SaveCurrentStats(const char *pReason, bool RequireActivity, boo
 		PStat.m_Lasts = m_aPlayerStats[CID].m_Lasts;
 		PStat.m_EfficiencyPercent = m_aPlayerStats[CID].GetEfficiencyPercent();
 		PStat.m_Deaths = m_aPlayerStats[CID].m_Deaths;
+		PStat.m_NetBalance = m_aPlayerStats[CID].GetNetBalance();
+		PStat.m_FrozenSeconds = m_aPlayerStats[CID].GetFrozenSeconds(Client()->GameTickSpeed());
+		PStat.m_HookAccuracyPercent = m_aPlayerStats[CID].GetHookAccuracyPercent();
 		PStat.m_IsLocal = IsLocal;
 		Entry.m_vPlayers.push_back(PStat);
 	};
@@ -247,9 +253,10 @@ void CRaceStats::SaveHistoryToFile()
 
 		for(const auto &Pl : Entry.m_vPlayers)
 		{
-			str_format(aLine, sizeof(aLine), "PLAYER\t%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
+			str_format(aLine, sizeof(aLine), "PLAYER\t%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
 				Pl.m_aName, Pl.m_aSkinName, Pl.m_CustomColors ? 1 : 0, Pl.m_ColorBody, Pl.m_ColorFeet,
-				Pl.m_Freezes, Pl.m_Saves, Pl.m_Lasts, Pl.m_EfficiencyPercent, Pl.m_IsLocal ? 1 : 0, Pl.m_Deaths);
+				Pl.m_Freezes, Pl.m_Saves, Pl.m_Lasts, Pl.m_EfficiencyPercent, Pl.m_IsLocal ? 1 : 0, Pl.m_Deaths,
+				Pl.m_NetBalance, Pl.m_FrozenSeconds, Pl.m_HookAccuracyPercent);
 			io_write(File, aLine, str_length(aLine));
 		}
 
@@ -352,6 +359,18 @@ void CRaceStats::LoadHistoryFromFile()
 				Pl.m_Deaths = str_toint(aBuf);
 			else
 				Pl.m_Deaths = 0;
+			if(NextTabToken(&pCursor, aBuf, sizeof(aBuf)))
+				Pl.m_NetBalance = str_toint(aBuf);
+			else
+				Pl.m_NetBalance = Pl.m_Saves - Pl.m_Freezes;
+			if(NextTabToken(&pCursor, aBuf, sizeof(aBuf)))
+				Pl.m_FrozenSeconds = str_toint(aBuf);
+			else
+				Pl.m_FrozenSeconds = 0;
+			if(NextTabToken(&pCursor, aBuf, sizeof(aBuf)))
+				Pl.m_HookAccuracyPercent = str_toint(aBuf);
+			else
+				Pl.m_HookAccuracyPercent = -1;
 			CurrentEntry.m_vPlayers.push_back(Pl);
 		}
 		else if(str_comp(aTag, "END") == 0 && InEntry)
@@ -479,6 +498,24 @@ void CRaceStats::OnRender()
 			}
 		}
 
+		// Seguimiento de tiempo congelado
+		if(IsFrozen)
+		{
+			m_aPlayerStats[i].m_FrozenTicks++;
+		}
+
+		// Seguimiento de hook accuracy
+		int CurHookState = Char.m_Cur.m_HookState;
+		if(CurHookState == HOOK_FLYING && m_aPlayerStats[i].m_LastHookState != HOOK_FLYING && m_aPlayerStats[i].m_LastHookState != HOOK_GRABBED)
+		{
+			m_aPlayerStats[i].m_HooksThrown++;
+		}
+		if(CurHookState == HOOK_GRABBED && Char.m_Cur.m_HookedPlayer >= 0 && Char.m_Cur.m_HookedPlayer < MAX_CLIENTS && m_aPlayerStats[i].m_LastHookState != HOOK_GRABBED)
+		{
+			m_aPlayerStats[i].m_HooksHit++;
+		}
+		m_aPlayerStats[i].m_LastHookState = CurHookState;
+
 		// Seguimiento de ataque de martillo
 		if(Char.m_Cur.m_Weapon == WEAPON_HAMMER && (Char.m_Cur.m_AttackTick != m_aPlayerStats[i].m_LastAttackTick))
 		{
@@ -535,21 +572,25 @@ void CRaceStats::OnRender()
 		m_aPlayerStats[i].m_WasFrozen = IsFrozen;
 	}
 
-	// Detección de Lasts (único sobreviviente descongelado en un equipo de >= 2 jugadores)
+	// Detección estabilizada de Lasts (requiere al menos 15 ticks continuos como único descongelado)
 	if(TeamActivePlayers >= 2 && TeamUnfrozenPlayers == 1 && LastUnfrozenCID != -1)
 	{
-		if(!m_aPlayerStats[LastUnfrozenCID].m_WasSoleSurvivor)
+		m_aPlayerStats[LastUnfrozenCID].m_SoleSurvivorTicks++;
+		if(m_aPlayerStats[LastUnfrozenCID].m_SoleSurvivorTicks >= 15 && !m_aPlayerStats[LastUnfrozenCID].m_WasSoleSurvivor)
 		{
 			m_aPlayerStats[LastUnfrozenCID].m_Lasts++;
 			m_aPlayerStats[LastUnfrozenCID].m_WasSoleSurvivor = true;
 		}
 	}
-	else if(TeamUnfrozenPlayers != 1)
+	else
 	{
 		for(int i = 0; i < MAX_CLIENTS; i++)
 		{
 			if(GameClient()->m_Teams.Team(i) == CurrentTeam)
+			{
+				m_aPlayerStats[i].m_SoleSurvivorTicks = 0;
 				m_aPlayerStats[i].m_WasSoleSurvivor = false;
+			}
 		}
 	}
 
@@ -557,6 +598,28 @@ void CRaceStats::OnRender()
 	{
 		RenderMiniStatboard();
 	}
+}
+
+static ColorRGBA GetEfficiencyColor(int Percent)
+{
+	if(Percent < 0)
+		return ColorRGBA(0.75f, 0.75f, 0.80f, 0.90f); // Sin datos: gris neutro
+
+	float Norm = std::clamp((float)Percent / 100.0f, 0.0f, 1.0f);
+	float R, G, B = 0.25f;
+	if(Norm < 0.5f)
+	{
+		float t = Norm / 0.5f;
+		R = 1.0f;
+		G = 0.20f + 0.80f * t;
+	}
+	else
+	{
+		float t = (Norm - 0.5f) / 0.5f;
+		R = 1.0f - 0.80f * t;
+		G = 1.0f;
+	}
+	return ColorRGBA(R, G, B, 0.95f);
 }
 
 void CRaceStats::RenderMiniStatboard()
@@ -572,7 +635,6 @@ void CRaceStats::RenderMiniStatboard()
 	float FontSize = 6.2f * Scale;
 	float IconSize = 7.0f * Scale;
 	float RowHeight = 9.5f * Scale;
-	float ColWidthStat = 14.0f * Scale;
 	float Padding = 3.5f * Scale;
 
 	int LocalClientId = GameClient()->m_Snap.m_LocalClientId;
@@ -621,9 +683,29 @@ void CRaceStats::RenderMiniStatboard()
 	bool ShowLast   = (g_Config.m_TcMiniStatboardColumns & 4) != 0;
 	bool ShowEff    = (g_Config.m_TcMiniStatboardColumns & 8) != 0;
 	bool ShowDeath  = (g_Config.m_TcMiniStatboardColumns & 16) != 0;
+	bool ShowNet    = (g_Config.m_TcMiniStatboardColumns & 32) != 0;
+	bool ShowTime   = (g_Config.m_TcMiniStatboardColumns & 64) != 0;
+	bool ShowHook   = (g_Config.m_TcMiniStatboardColumns & 128) != 0;
 
-	int NumStatCols = (ShowFreeze ? 1 : 0) + (ShowSave ? 1 : 0) + (ShowLast ? 1 : 0) + (ShowEff ? 1 : 0) + (ShowDeath ? 1 : 0);
-	float TotalWidth = ColWidthName + (float)NumStatCols * ColWidthStat + Padding * 2.0f;
+	auto GetColWidth = [&](int ColType) -> float {
+		if(ColType == ICON_TIME)
+			return 19.0f * Scale;
+		if(ColType == ICON_EFF)
+			return 16.5f * Scale;
+		return 14.0f * Scale;
+	};
+
+	float StatsWidth = 0.0f;
+	if(ShowFreeze) StatsWidth += GetColWidth(ICON_FREEZE);
+	if(ShowSave)   StatsWidth += GetColWidth(ICON_SAVE);
+	if(ShowDeath)  StatsWidth += GetColWidth(ICON_SKULL);
+	if(ShowEff)    StatsWidth += GetColWidth(ICON_EFF);
+	if(ShowNet)    StatsWidth += GetColWidth(ICON_NET);
+	if(ShowTime)   StatsWidth += GetColWidth(ICON_TIME);
+	if(ShowHook)   StatsWidth += GetColWidth(ICON_HOOK);
+	if(ShowLast)   StatsWidth += GetColWidth(ICON_LAST);
+
+	float TotalWidth = ColWidthName + StatsWidth + Padding * 2.0f;
 
 	float HeaderHeight = RowHeight + 1.0f * Scale;
 	float RowsHeight = (float)DisplayCount * RowHeight;
@@ -682,32 +764,20 @@ void CRaceStats::RenderMiniStatboard()
 	DrawIcon(m_aTextures[ICON_USER], CurrX + 2.0f * Scale, HeaderY, IconSize, ColorRGBA(1.0f, 1.0f, 1.0f, 0.9f));
 	CurrX += ColWidthName;
 
-	if(ShowFreeze)
-	{
-		DrawIcon(m_aTextures[ICON_FREEZE], CurrX + (ColWidthStat - IconSize) / 2.0f, HeaderY, IconSize, ColorRGBA(0.5f, 0.85f, 1.0f, 1.0f));
-		CurrX += ColWidthStat;
-	}
-	if(ShowSave)
-	{
-		DrawIcon(m_aTextures[ICON_SAVE], CurrX + (ColWidthStat - IconSize) / 2.0f, HeaderY, IconSize, ColorRGBA(0.4f, 1.0f, 0.5f, 1.0f));
-		CurrX += ColWidthStat;
-	}
-	if(ShowLast)
-	{
-		DrawIcon(m_aTextures[ICON_LAST], CurrX + (ColWidthStat - IconSize) / 2.0f, HeaderY, IconSize, ColorRGBA(1.0f, 0.75f, 0.3f, 1.0f));
-		CurrX += ColWidthStat;
-	}
-	if(ShowEff)
-	{
-		DrawIcon(m_aTextures[ICON_EFF], CurrX + (ColWidthStat - IconSize) / 2.0f, HeaderY, IconSize, ColorRGBA(0.9f, 0.5f, 1.0f, 1.0f));
-		CurrX += ColWidthStat;
-	}
+	auto DrawHeaderCol = [&](IGraphics::CTextureHandle Tex, int ColType, ColorRGBA col) {
+		float W = GetColWidth(ColType);
+		DrawIcon(Tex, CurrX + (W - IconSize) / 2.0f, HeaderY, IconSize, col);
+		CurrX += W;
+	};
 
-	if(ShowDeath)
-	{
-		DrawIcon(m_aTextures[ICON_SKULL], CurrX + (ColWidthStat - IconSize) / 2.0f, HeaderY, IconSize, ColorRGBA(0.95f, 0.35f, 0.35f, 1.0f));
-		CurrX += ColWidthStat;
-	}
+	if(ShowFreeze) DrawHeaderCol(m_aTextures[ICON_FREEZE], ICON_FREEZE, ColorRGBA(0.5f, 0.85f, 1.0f, 1.0f));
+	if(ShowSave)   DrawHeaderCol(m_aTextures[ICON_SAVE], ICON_SAVE, ColorRGBA(0.4f, 1.0f, 0.5f, 1.0f));
+	if(ShowDeath)  DrawHeaderCol(m_aTextures[ICON_SKULL], ICON_SKULL, ColorRGBA(0.95f, 0.35f, 0.35f, 1.0f));
+	if(ShowEff)    DrawHeaderCol(m_aTextures[ICON_EFF], ICON_EFF, ColorRGBA(0.95f, 0.75f, 0.3f, 1.0f));
+	if(ShowNet)    DrawHeaderCol(m_aTextures[ICON_NET], ICON_NET, ColorRGBA(0.45f, 0.90f, 0.95f, 1.0f));
+	if(ShowTime)   DrawHeaderCol(m_aTextures[ICON_TIME], ICON_TIME, ColorRGBA(0.55f, 0.80f, 1.0f, 1.0f));
+	if(ShowHook)   DrawHeaderCol(m_aTextures[ICON_HOOK], ICON_HOOK, ColorRGBA(1.0f, 0.85f, 0.35f, 1.0f));
+	if(ShowLast)   DrawHeaderCol(m_aTextures[ICON_LAST], ICON_LAST, ColorRGBA(1.0f, 0.75f, 0.3f, 1.0f));
 
 	// Filas de Jugadores
 	float RowY = BaseY + Padding + HeaderHeight;
@@ -748,41 +818,84 @@ void CRaceStats::RenderMiniStatboard()
 		TextRender()->Text(NameX, TextY, FontSize, GameClient()->m_aClients[CID].m_aName, -1.0f);
 		CurrX += ColWidthName;
 
-		// Números bajo cada columna
-		auto DrawStatNum = [&](const char *pText, ColorRGBA col) {
+		// Dibujado de valores de columna
+		auto DrawStatValue = [&](const char *pText, int ColType, ColorRGBA col) {
+			float W = GetColWidth(ColType);
 			float TextW = TextRender()->TextWidth(FontSize, pText, -1, -1.0f);
-			float StatX = CurrX + (ColWidthStat - TextW) / 2.0f;
+			float StatX = CurrX + (W - TextW) / 2.0f;
 			TextRender()->TextColor(col);
 			TextRender()->Text(StatX, TextY, FontSize, pText, -1.0f);
-			CurrX += ColWidthStat;
+			CurrX += W;
 		};
 
 		char aBuf[32];
 		if(ShowFreeze)
 		{
 			str_format(aBuf, sizeof(aBuf), "%d", m_aPlayerStats[CID].m_Freezes);
-			DrawStatNum(aBuf, ColorRGBA(0.7f, 0.9f, 1.0f, 0.95f));
+			DrawStatValue(aBuf, ICON_FREEZE, ColorRGBA(0.7f, 0.9f, 1.0f, 0.95f));
 		}
 		if(ShowSave)
 		{
 			str_format(aBuf, sizeof(aBuf), "%d", m_aPlayerStats[CID].m_Saves);
-			DrawStatNum(aBuf, ColorRGBA(0.45f, 1.0f, 0.55f, 0.95f));
+			DrawStatValue(aBuf, ICON_SAVE, ColorRGBA(0.45f, 1.0f, 0.55f, 0.95f));
+		}
+		if(ShowDeath)
+		{
+			str_format(aBuf, sizeof(aBuf), "%d", m_aPlayerStats[CID].m_Deaths);
+			DrawStatValue(aBuf, ICON_SKULL, ColorRGBA(1.0f, 0.45f, 0.45f, 0.95f));
+		}
+		if(ShowEff)
+		{
+			int EffPct = m_aPlayerStats[CID].GetEfficiencyPercent();
+			if(EffPct < 0)
+				str_copy(aBuf, "-", sizeof(aBuf));
+			else
+				str_format(aBuf, sizeof(aBuf), "%d%%", EffPct);
+			DrawStatValue(aBuf, ICON_EFF, GetEfficiencyColor(EffPct));
+		}
+		if(ShowNet)
+		{
+			int Net = m_aPlayerStats[CID].GetNetBalance();
+			ColorRGBA NetColor;
+			if(Net > 0)
+			{
+				str_format(aBuf, sizeof(aBuf), "+%d", Net);
+				NetColor = ColorRGBA(0.35f, 1.0f, 0.45f, 0.95f);
+			}
+			else if(Net == 0)
+			{
+				str_copy(aBuf, "0", sizeof(aBuf));
+				NetColor = ColorRGBA(0.80f, 0.80f, 0.85f, 0.90f);
+			}
+			else
+			{
+				str_format(aBuf, sizeof(aBuf), "%d", Net);
+				NetColor = ColorRGBA(1.0f, 0.35f, 0.35f, 0.95f);
+			}
+			DrawStatValue(aBuf, ICON_NET, NetColor);
+		}
+		if(ShowTime)
+		{
+			int Sec = m_aPlayerStats[CID].GetFrozenSeconds(Client()->GameTickSpeed());
+			if(Sec < 60)
+				str_format(aBuf, sizeof(aBuf), "%ds", Sec);
+			else
+				str_format(aBuf, sizeof(aBuf), "%dm %02ds", Sec / 60, Sec % 60);
+			DrawStatValue(aBuf, ICON_TIME, ColorRGBA(0.5f, 0.85f, 1.0f, 0.95f));
+		}
+		if(ShowHook)
+		{
+			int HookPct = m_aPlayerStats[CID].GetHookAccuracyPercent();
+			if(HookPct < 0)
+				str_copy(aBuf, "-", sizeof(aBuf));
+			else
+				str_format(aBuf, sizeof(aBuf), "%d%%", HookPct);
+			DrawStatValue(aBuf, ICON_HOOK, ColorRGBA(1.0f, 0.85f, 0.35f, 0.95f));
 		}
 		if(ShowLast)
 		{
 			str_format(aBuf, sizeof(aBuf), "%d", m_aPlayerStats[CID].m_Lasts);
-			DrawStatNum(aBuf, ColorRGBA(1.0f, 0.85f, 0.4f, 0.95f));
-		}
-		if(ShowEff)
-		{
-			str_format(aBuf, sizeof(aBuf), "%d", m_aPlayerStats[CID].GetEfficiencyPercent());
-			DrawStatNum(aBuf, ColorRGBA(0.95f, 0.65f, 1.0f, 0.95f));
-		}
-
-		if(ShowDeath)
-		{
-			str_format(aBuf, sizeof(aBuf), "%d", m_aPlayerStats[CID].m_Deaths);
-			DrawStatNum(aBuf, ColorRGBA(1.0f, 0.45f, 0.45f, 0.95f));
+			DrawStatValue(aBuf, ICON_LAST, ColorRGBA(1.0f, 0.85f, 0.4f, 0.95f));
 		}
 
 		RowY += RowHeight;

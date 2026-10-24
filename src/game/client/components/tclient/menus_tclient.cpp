@@ -1308,15 +1308,13 @@ void CMenus::RenderSettingsTClientSettings(CUIRect MainView)
 		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 	};
 
-	AddNewsLine(TCLocalize("* Race Stats Overlay + Log:"), TCLocalize("Live HUD stats (Freezes, Saves, Lasts, Efficiency) and auto-saved run time."));
-	AddNewsLine(TCLocalize("* Fast Practice (Ghost Mode):"), TCLocalize("Practice any map part with /tp, /tc, /invincible without leaving your real run."));
-	AddNewsLine(TCLocalize("* Background Alerts (Tabbed out):"), TCLocalize("Granular alerts (sound, taskbar flash, desktop notification) on unfreeze or tile change."));
-	AddNewsLine(TCLocalize("* Skin Stealer:"), TCLocalize("Instantly copy skins and colors by aiming with bind, via /stealskin [name] or from Scoreboard (Tab)."));
-	AddNewsLine(TCLocalize("* Independent Fast Input:"), TCLocalize("Set separate visual prediction ms for yourself (Amount) and others (Others Amount)."));
-	AddNewsLine(TCLocalize("* Auto Team Lock (up to 5m):"), TCLocalize("Automatically locks team (/lock 1) after configured delay when joining."));
-	AddNewsLine(TCLocalize("* Bulk Invites:"), TCLocalize("Use /invite all or /invite friends with anti-flood queue and Tab auto-complete."));
-	AddNewsLine(TCLocalize("* Active Vulkan Renderer:"), TCLocalize("Compiled SPIR-V shaders included for smoother frame rates and lower CPU usage."));
-	AddNewsLine(TCLocalize("* Client Echo Control:"), TCLocalize("Enable or silence local client notices ([Clientx30], command confirmations, script echoes)."));
+	AddNewsLine(TCLocalize("* Race Stats HUD & History:"), TCLocalize("Live stats (Freezes, Saves, Deaths, Dynamic % Eff, Net +/-, Frozen time, Hook accuracy) & auto-saved log."));
+	AddNewsLine(TCLocalize("* Background Alerts (Tabbed out):"), TCLocalize("Granular alerts (sound, taskbar flash, desktop banner) on unfreeze or when moved/hooked."));
+	AddNewsLine(TCLocalize("* Skin Stealer:"), TCLocalize("Instantly copy skins and colors by aiming with cursor bind, via Scoreboard (Tab) or /stealskin [name]."));
+	AddNewsLine(TCLocalize("* Fast Practice (Ghost Mode):"), TCLocalize("Practice any map part with /tp, /tc, /invincible, /weapons, /save & /load without losing your real run."));
+	AddNewsLine(TCLocalize("* Client Echo Control:"), TCLocalize("Enable or silence local client notices ([Clientx30], copied skin notices, invites, command echoes)."));
+	AddNewsLine(TCLocalize("* Auto Team Lock (up to 5m):"), TCLocalize("Automatically locks team (/lock 1) after configured delay (up to 5 minutes) when joining."));
+	AddNewsLine(TCLocalize("* Auto-Invite Friends:"), TCLocalize("Invite all online friends to your team with /invite friends, with anti-flood queue and Tab auto-complete."));
 
 	BottomWhatsNew.HSplitTop(MarginExtraSmall, nullptr, &BottomWhatsNew);
 	s_SectionBoxesCx30.back().h = BottomWhatsNew.y - s_SectionBoxesCx30.back().y;
@@ -3486,7 +3484,6 @@ void CMenus::RenderSettingsClientx30Commands(CUIRect MainView)
 	Ui()->DoLabel(&Label, TCLocalize("Team & Invites (Chat)"), HeadlineFontSize, TEXTALIGN_ML);
 	LeftView.HSplitTop(MarginSmall, nullptr, &LeftView);
 
-	DrawCommandCard(LeftView, "/invite all", TCLocalize("Invites all connected players on the server to your team."));
 	DrawCommandCard(LeftView, "/invite friends", TCLocalize("Invites only connected players on your friends list to your team."));
 
 	LeftView.HSplitTop(Margin, nullptr, &LeftView);
@@ -3555,10 +3552,10 @@ void CMenus::RenderSettingsClientx30Settings(CUIRect MainView)
 	Ui()->DoLabel(&Label, TCLocalize("Overlay"), HeadlineFontSize, TEXTALIGN_ML);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcMiniStatboard, TCLocalize("Enable Mini Statboard HUD"), &g_Config.m_TcMiniStatboard, &Column, LineSize);
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcStatboardKeepOnDeath, TCLocalize("Keep stats on death (do not reset on /kill)"), &g_Config.m_TcStatboardKeepOnDeath, &Column, LineSize);
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcStatboardResetOnTeamKill, TCLocalize("Reset stats on /kill or /team change"), &g_Config.m_TcStatboardResetOnTeamKill, &Column, LineSize);
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcStatboardAutoSave, TCLocalize("Auto-save stats before reset (/kill or /team)"), &g_Config.m_TcStatboardAutoSave, &Column, LineSize);
+	DoCheckboxWithHelp(&g_Config.m_TcMiniStatboard, TCLocalize("Enable Mini Statboard HUD"), TCLocalize("Shows the compact live team statistics table on your screen during the game."), &g_Config.m_TcMiniStatboard, &Column, LineSize);
+	DoCheckboxWithHelp(&g_Config.m_TcStatboardKeepOnDeath, TCLocalize("Keep stats on death (do not reset on /kill)"), TCLocalize("Keeps your accumulated statistics intact even if you or a teammate dies or uses /kill."), &g_Config.m_TcStatboardKeepOnDeath, &Column, LineSize);
+	DoCheckboxWithHelp(&g_Config.m_TcStatboardResetOnTeamKill, TCLocalize("Reset stats on /kill or /team change"), TCLocalize("Automatically resets statistics whenever the team dies or you switch rooms (/team)."), &g_Config.m_TcStatboardResetOnTeamKill, &Column, LineSize);
+	DoCheckboxWithHelp(&g_Config.m_TcStatboardAutoSave, TCLocalize("Auto-save stats before reset (/kill or /team)"), TCLocalize("Automatically saves current run stats to RaceStats history file before resetting."), &g_Config.m_TcStatboardAutoSave, &Column, LineSize);
 
 	static CButtonContainer s_ReaderButtonToggleStatsCx30, s_ClearButtonToggleStatsCx30;
 	DoLine_KeyReader(Column, s_ReaderButtonToggleStatsCx30, s_ClearButtonToggleStatsCx30, TCLocalize("Toggle stats overlay key"), "toggle tc_mini_statboard 0 1");
@@ -3567,28 +3564,43 @@ void CMenus::RenderSettingsClientx30Settings(CUIRect MainView)
 
 	static int s_ColFreezesCx30 = 0;
 	s_ColFreezesCx30 = (g_Config.m_TcMiniStatboardColumns & 1) ? 1 : 0;
-	if(DoButton_CheckBoxAutoVMarginAndSet(&s_ColFreezesCx30, TCLocalize("Column: Freezes"), &s_ColFreezesCx30, &Column, LineSize))
+	if(DoCheckboxWithHelp(&s_ColFreezesCx30, TCLocalize("Column: Freezes"), TCLocalize("Shows how many times each player was frozen during the current run."), &s_ColFreezesCx30, &Column, LineSize))
 		g_Config.m_TcMiniStatboardColumns ^= 1;
 
 	static int s_ColSavesCx30 = 0;
 	s_ColSavesCx30 = (g_Config.m_TcMiniStatboardColumns & 2) ? 1 : 0;
-	if(DoButton_CheckBoxAutoVMarginAndSet(&s_ColSavesCx30, TCLocalize("Column: Saves (Hammer unfreeze)"), &s_ColSavesCx30, &Column, LineSize))
+	if(DoCheckboxWithHelp(&s_ColSavesCx30, TCLocalize("Column: Saves (Hammer unfreeze)"), TCLocalize("Shows how many times each player unfroze a teammate using the hammer."), &s_ColSavesCx30, &Column, LineSize))
 		g_Config.m_TcMiniStatboardColumns ^= 2;
-
-	static int s_ColLastsCx30 = 0;
-	s_ColLastsCx30 = (g_Config.m_TcMiniStatboardColumns & 4) ? 1 : 0;
-	if(DoButton_CheckBoxAutoVMarginAndSet(&s_ColLastsCx30, TCLocalize("Column: Lasts (Sole survivor)"), &s_ColLastsCx30, &Column, LineSize))
-		g_Config.m_TcMiniStatboardColumns ^= 4;
-
-	static int s_ColEffCx30 = 0;
-	s_ColEffCx30 = (g_Config.m_TcMiniStatboardColumns & 8) ? 1 : 0;
-	if(DoButton_CheckBoxAutoVMarginAndSet(&s_ColEffCx30, TCLocalize("Column: Efficiency ratio"), &s_ColEffCx30, &Column, LineSize))
-		g_Config.m_TcMiniStatboardColumns ^= 8;
 
 	static int s_ColDeathsCx30 = 0;
 	s_ColDeathsCx30 = (g_Config.m_TcMiniStatboardColumns & 16) ? 1 : 0;
-	if(DoButton_CheckBoxAutoVMarginAndSet(&s_ColDeathsCx30, TCLocalize("Column: Deaths"), &s_ColDeathsCx30, &Column, LineSize))
+	if(DoCheckboxWithHelp(&s_ColDeathsCx30, TCLocalize("Column: Deaths"), TCLocalize("Shows the number of deaths or /kill for each player during the current run."), &s_ColDeathsCx30, &Column, LineSize))
 		g_Config.m_TcMiniStatboardColumns ^= 16;
+
+	static int s_ColEffCx30 = 0;
+	s_ColEffCx30 = (g_Config.m_TcMiniStatboardColumns & 8) ? 1 : 0;
+	if(DoCheckboxWithHelp(&s_ColEffCx30, TCLocalize("Column: Efficiency ratio"), TCLocalize("Save success rate: Saves / (Saves + Freezes) %. Dynamically shifts colors from Red (0%) to Emerald Green (100%)."), &s_ColEffCx30, &Column, LineSize))
+		g_Config.m_TcMiniStatboardColumns ^= 8;
+
+	static int s_ColNetCx30 = 0;
+	s_ColNetCx30 = (g_Config.m_TcMiniStatboardColumns & 32) ? 1 : 0;
+	if(DoCheckboxWithHelp(&s_ColNetCx30, TCLocalize("Column: Net Balance (+/-)"), TCLocalize("Direct difference between Saves and Freezes (Saves - Freezes). Green if positive (+), Gray if zero, Red if negative (-)."), &s_ColNetCx30, &Column, LineSize))
+		g_Config.m_TcMiniStatboardColumns ^= 32;
+
+	static int s_ColTimeCx30 = 0;
+	s_ColTimeCx30 = (g_Config.m_TcMiniStatboardColumns & 64) ? 1 : 0;
+	if(DoCheckboxWithHelp(&s_ColTimeCx30, TCLocalize("Column: Frozen Time"), TCLocalize("Total accumulated time the player spent stuck inside freeze during the run (e.g. 15s or 1m 24s)."), &s_ColTimeCx30, &Column, LineSize))
+		g_Config.m_TcMiniStatboardColumns ^= 64;
+
+	static int s_ColHookCx30 = 0;
+	s_ColHookCx30 = (g_Config.m_TcMiniStatboardColumns & 128) ? 1 : 0;
+	if(DoCheckboxWithHelp(&s_ColHookCx30, TCLocalize("Column: Hook Accuracy"), TCLocalize("Hook hit accuracy: hooks that latched onto a player vs total hooks fired."), &s_ColHookCx30, &Column, LineSize))
+		g_Config.m_TcMiniStatboardColumns ^= 128;
+
+	static int s_ColLastsCx30 = 0;
+	s_ColLastsCx30 = (g_Config.m_TcMiniStatboardColumns & 4) ? 1 : 0;
+	if(DoCheckboxWithHelp(&s_ColLastsCx30, TCLocalize("Column: Lasts (Sole survivor)"), TCLocalize("Times the player was the sole unfrozen survivor alive in the team (requires 15+ ticks stabilization)."), &s_ColLastsCx30, &Column, LineSize))
+		g_Config.m_TcMiniStatboardColumns ^= 4;
 
 	Column.HSplitTop(LineSize, &Button, &Column);
 	Ui()->DoScrollbarOption(&g_Config.m_TcMiniStatboardX, &g_Config.m_TcMiniStatboardX, &Button, TCLocalize("Horizontal Position (X)"), 0, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
@@ -3762,26 +3774,19 @@ void CMenus::RenderSettingsClientx30Settings(CUIRect MainView)
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	Column.HSplitTop(16.0f, &Label, &Column);
 	TextRender()->TextColor(1.0f, 0.88f, 0.35f, 1.0f);
-	Ui()->DoLabel(&Label, TCLocalize("Chat: /invite all  (invites all server players to team)"), 12.0f, TEXTALIGN_ML);
-	Column.HSplitTop(16.0f, &Label, &Column);
 	Ui()->DoLabel(&Label, TCLocalize("Chat: /invite friends  (invites only friends to team)"), 12.0f, TEXTALIGN_ML);
 	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
-	static CButtonContainer s_ReaderInviteAllCx30, s_ClearInviteAllCx30;
-	DoLine_KeyReader(Column, s_ReaderInviteAllCx30, s_ClearInviteAllCx30, TCLocalize("Invite all key (/invite all)"), "say /invite all");
 	static CButtonContainer s_ReaderInviteFriendsCx30, s_ClearInviteFriendsCx30;
 	DoLine_KeyReader(Column, s_ReaderInviteFriendsCx30, s_ClearInviteFriendsCx30, TCLocalize("Invite friends key (/invite friends)"), "say /invite friends");
 
 	if(Client()->State() == IClient::STATE_ONLINE)
 	{
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		CUIRect InviteRow, BtnInvAll, BtnInvFriends;
-		Column.HSplitTop(LineSize + 4.0f, &InviteRow, &Column);
-		InviteRow.VSplitMid(&BtnInvAll, &BtnInvFriends, MarginSmall);
-		static CButtonContainer s_BtnInviteAllNow, s_BtnInviteFriendsNow;
-		if(DoButton_Menu(&s_BtnInviteAllNow, TCLocalize("Invite All (/invite all)"), 0, &BtnInvAll))
-			GameClient()->m_Chat.SendChat(0, "/invite all");
+		CUIRect BtnInvFriends;
+		Column.HSplitTop(LineSize + 4.0f, &BtnInvFriends, &Column);
+		static CButtonContainer s_BtnInviteFriendsNow;
 		if(DoButton_Menu(&s_BtnInviteFriendsNow, TCLocalize("Invite Friends (/invite friends)"), 0, &BtnInvFriends))
 			GameClient()->m_Chat.SendChat(0, "/invite friends");
 	}
@@ -3848,12 +3853,13 @@ void CMenus::RenderSettingsClientx30Settings(CUIRect MainView)
 		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 	};
 
-	AddNewsLine(TCLocalize("* Race Stats Overlay + Log:"), TCLocalize("Live HUD stats (Freezes, Saves, Lasts, Efficiency) and auto-saved run time."));
-	AddNewsLine(TCLocalize("* Fast Practice (Ghost Mode):"), TCLocalize("Practice any map part with /tp, /tc, /invincible without leaving your real run."));
-	AddNewsLine(TCLocalize("* Independent Fast Input:"), TCLocalize("Set separate visual prediction ms for yourself (Amount) and others (Others Amount)."));
-	AddNewsLine(TCLocalize("* Auto Team Lock (up to 5m):"), TCLocalize("Automatically locks team (/lock 1) after configured delay when joining."));
-	AddNewsLine(TCLocalize("* Bulk Invites:"), TCLocalize("Use /invite all or /invite friends with anti-flood queue and Tab auto-complete."));
-	AddNewsLine(TCLocalize("* Active Vulkan Renderer:"), TCLocalize("Compiled SPIR-V shaders included for smoother frame rates and lower CPU usage."));
+	AddNewsLine(TCLocalize("* Race Stats HUD & History:"), TCLocalize("Live stats (Freezes, Saves, Deaths, Dynamic % Eff, Net +/-, Frozen time, Hook accuracy) & auto-saved log."));
+	AddNewsLine(TCLocalize("* Background Alerts (Tabbed out):"), TCLocalize("Granular alerts (sound, taskbar flash, desktop banner) on unfreeze or when moved/hooked."));
+	AddNewsLine(TCLocalize("* Skin Stealer:"), TCLocalize("Instantly copy skins and colors by aiming with cursor bind, via Scoreboard (Tab) or /stealskin [name]."));
+	AddNewsLine(TCLocalize("* Fast Practice (Ghost Mode):"), TCLocalize("Practice any map part with /tp, /tc, /invincible, /weapons, /save & /load without losing your real run."));
+	AddNewsLine(TCLocalize("* Client Echo Control:"), TCLocalize("Enable or silence local client notices ([Clientx30], copied skin notices, invites, command echoes)."));
+	AddNewsLine(TCLocalize("* Auto Team Lock (up to 5m):"), TCLocalize("Automatically locks team (/lock 1) after configured delay (up to 5 minutes) when joining."));
+	AddNewsLine(TCLocalize("* Auto-Invite Friends:"), TCLocalize("Invite all online friends to your team with /invite friends, with anti-flood queue and Tab auto-complete."));
 
 	BottomWhatsNew.HSplitTop(MarginExtraSmall, nullptr, &BottomWhatsNew);
 	s_SectionBoxesCx30.back().h = BottomWhatsNew.y - s_SectionBoxesCx30.back().y;

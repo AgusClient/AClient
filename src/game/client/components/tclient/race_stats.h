@@ -20,9 +20,12 @@ public:
 		ICON_USER = 0,
 		ICON_FREEZE,
 		ICON_SAVE,
-		ICON_LAST,
-		ICON_EFF,
 		ICON_SKULL,
+		ICON_EFF,
+		ICON_LAST,
+		ICON_NET,
+		ICON_TIME,
+		ICON_HOOK,
 		NUM_ICONS
 	};
 
@@ -38,6 +41,13 @@ public:
 		int m_LastFreezeTick;
 		bool m_WasFrozen;
 		bool m_WasSoleSurvivor;
+		int m_SoleSurvivorTicks;
+
+		// Estadísticas avanzadas
+		int m_FrozenTicks;
+		int m_HooksThrown;
+		int m_HooksHit;
+		int m_LastHookState;
 
 		void Reset()
 		{
@@ -51,20 +61,39 @@ public:
 			m_LastFreezeTick = 0;
 			m_WasFrozen = false;
 			m_WasSoleSurvivor = false;
+			m_SoleSurvivorTicks = 0;
+
+			m_FrozenTicks = 0;
+			m_HooksThrown = 0;
+			m_HooksHit = 0;
+			m_LastHookState = -1;
 		}
 
-		float GetEfficiency() const
-		{
-			if(m_Freezes == 0)
-				return (float)m_Saves;
-			return (float)m_Saves / (float)m_Freezes;
-		}
-
+		// Retorna -1 si no hay actividad aún (0 saves y 0 freezes), o un valor entre 0 y 100
 		int GetEfficiencyPercent() const
 		{
-			if(m_Freezes == 0)
-				return m_Saves > 0 ? 100 : 0;
-			int Pct = (int)std::round(((float)m_Saves / (float)m_Freezes) * 100.0f);
+			if(m_Saves == 0 && m_Freezes == 0)
+				return -1;
+			int Total = m_Saves + m_Freezes;
+			int Pct = (int)std::round(((float)m_Saves / (float)Total) * 100.0f);
+			return std::clamp(Pct, 0, 100);
+		}
+
+		int GetNetBalance() const
+		{
+			return m_Saves - m_Freezes;
+		}
+
+		int GetFrozenSeconds(int TickSpeed) const
+		{
+			return std::max(0, m_FrozenTicks / std::max(1, TickSpeed));
+		}
+
+		int GetHookAccuracyPercent() const
+		{
+			if(m_HooksThrown <= 0)
+				return -1;
+			int Pct = (int)std::round(((float)m_HooksHit / (float)m_HooksThrown) * 100.0f);
 			return std::clamp(Pct, 0, 100);
 		}
 	};
@@ -81,6 +110,9 @@ public:
 		int m_Lasts;
 		int m_EfficiencyPercent;
 		int m_Deaths;
+		int m_NetBalance;
+		int m_FrozenSeconds;
+		int m_HookAccuracyPercent;
 		bool m_IsLocal;
 	};
 
