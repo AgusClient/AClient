@@ -22,6 +22,7 @@
 #include <game/client/components/sounds.h>
 #include <game/client/components/tclient/bindchat.h>
 #include <game/client/components/tclient/bindwheel.h>
+#include <game/client/components/tclient/race_stats.h>
 #include <game/client/components/tclient/trails.h>
 #include <game/client/gameclient.h>
 #include <game/client/render.h>
@@ -43,6 +44,7 @@ enum
 	TCLIENT_TAB_WARLIST,
 	TCLIENT_TAB_BINDCHAT,
 	TCLIENT_TAB_STATUSBAR,
+	TCLIENT_TAB_RACESTATS,
 	TCLIENT_TAB_INFO,
 	NUMBER_OF_TCLIENT_TABS
 };
@@ -341,6 +343,7 @@ void CMenus::RenderSettingsTClient(CUIRect MainView)
 		TCLocalize("War List"),
 		TCLocalize("Chat Binds"),
 		TCLocalize("Status Bar"),
+		TCLocalize("Race Stats"),
 		TCLocalize("Info")};
 
 	for(int Tab = 0; Tab < NUMBER_OF_TCLIENT_TABS; ++Tab)
@@ -367,6 +370,8 @@ void CMenus::RenderSettingsTClient(CUIRect MainView)
 		RenderSettingsTClientWarList(MainView);
 	if(s_CurCustomTab == TCLIENT_TAB_STATUSBAR)
 		RenderSettingsTClientStatusBar(MainView);
+	if(s_CurCustomTab == TCLIENT_TAB_RACESTATS)
+		RenderSettingsTClientRaceStats(MainView);
 	if(s_CurCustomTab == TCLIENT_TAB_INFO)
 		RenderSettingsTClientInfo(MainView);
 }
@@ -816,15 +821,19 @@ void CMenus::RenderSettingsTClientSettings(CUIRect MainView)
 	LeftView = Column;
 	Column = RightView;
 
-	// ***** Race Stats & Death Counter ***** //
+	// ***** Race Stats ***** //
 	Column.HSplitTop(Margin, nullptr, &Column);
 	s_SectionBoxes.push_back(Column);
 	Column.HSplitTop(HeadlineHeight, &Label, &Column);
-	Ui()->DoLabel(&Label, TCLocalize("Race Stats & Death Counter"), HeadlineFontSize, TEXTALIGN_ML);
+	Ui()->DoLabel(&Label, TCLocalize("Race Stats"), HeadlineFontSize, TEXTALIGN_ML);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcMiniStatboard, TCLocalize("Enable Mini Statboard HUD"), &g_Config.m_TcMiniStatboard, &Column, LineSize);
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcStatboardResetOnTeamKill, TCLocalize("Reset stats when team is wiped"), &g_Config.m_TcStatboardResetOnTeamKill, &Column, LineSize);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcStatboardResetOnTeamKill, TCLocalize("Reset stats on /kill or /team change"), &g_Config.m_TcStatboardResetOnTeamKill, &Column, LineSize);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcStatboardAutoSave, TCLocalize("Auto-save stats before reset (/kill or /team)"), &g_Config.m_TcStatboardAutoSave, &Column, LineSize);
+
+	static CButtonContainer s_ReaderButtonSaveStats, s_ClearButtonSaveStats;
+	DoLine_KeyReader(Column, s_ReaderButtonSaveStats, s_ClearButtonSaveStats, TCLocalize("Save stats key"), "tc_save_racestats");
 
 	static int s_ColFreezes = (g_Config.m_TcMiniStatboardColumns & 1) ? 1 : 0;
 	s_ColFreezes = (g_Config.m_TcMiniStatboardColumns & 1) ? 1 : 0;
@@ -845,11 +854,6 @@ void CMenus::RenderSettingsTClientSettings(CUIRect MainView)
 	s_ColEff = (g_Config.m_TcMiniStatboardColumns & 8) ? 1 : 0;
 	if(DoButton_CheckBoxAutoVMarginAndSet(&s_ColEff, TCLocalize("Column: Efficiency ratio"), &s_ColEff, &Column, LineSize))
 		g_Config.m_TcMiniStatboardColumns ^= 8;
-
-	static int s_ColDeaths = (g_Config.m_TcMiniStatboardColumns & 16) ? 1 : 0;
-	s_ColDeaths = (g_Config.m_TcMiniStatboardColumns & 16) ? 1 : 0;
-	if(DoButton_CheckBoxAutoVMarginAndSet(&s_ColDeaths, TCLocalize("Column: Deaths counter"), &s_ColDeaths, &Column, LineSize))
-		g_Config.m_TcMiniStatboardColumns ^= 16;
 
 	Column.HSplitTop(LineSize, &Button, &Column);
 	Ui()->DoScrollbarOption(&g_Config.m_TcMiniStatboardX, &g_Config.m_TcMiniStatboardX, &Button, TCLocalize("Horizontal Position (X)"), 0, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
@@ -2338,6 +2342,7 @@ void CMenus::RenderSettingsTClientInfo(CUIRect MainView)
 		TCLocalize("War List"),
 		TCLocalize("Chat Binds"),
 		TCLocalize("Status Bar"),
+		TCLocalize("Race Stats"),
 		TCLocalize("Info")};
 	static int s_aShowTabs[NUMBER_OF_TCLIENT_TABS] = {};
 	for(int i = 0; i < NUMBER_OF_TCLIENT_TABS - 1; ++i)
@@ -3100,4 +3105,252 @@ void CMenus::RenderSettingsTClientConfigs(CUIRect MainView)
 	CUIRect EndPad{Content.x, Content.y, Content.w, 5.0f};
 	s_ScrollRegion.AddRect(EndPad);
 	s_ScrollRegion.End();
+}
+
+
+void CMenus::RenderSettingsTClientRaceStats(CUIRect MainView)
+{
+	CUIRect LeftView, RightView, Button, Label;
+	MainView.HSplitTop(MarginSmall, nullptr, &MainView);
+	MainView.VSplitLeft(MainView.w * 0.44f, &LeftView, &RightView);
+	LeftView.VSplitRight(MarginSmall, &LeftView, nullptr);
+	RightView.VSplitLeft(MarginSmall, nullptr, &RightView);
+
+	auto &RaceStats = GameClient()->m_RaceStats;
+	static int s_SelectedEntry = 0;
+	if(s_SelectedEntry >= (int)RaceStats.m_vSavedEntries.size())
+		s_SelectedEntry = std::max(0, (int)RaceStats.m_vSavedEntries.size() - 1);
+
+	// ===== PANEL IZQUIERDO: CONTROLES E HISTORIAL =====
+	LeftView.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 8.0f);
+	LeftView.Margin(Margin, &LeftView);
+
+	LeftView.HSplitTop(HeadlineHeight, &Label, &LeftView);
+	Ui()->DoLabel(&Label, TCLocalize("Saved Race Stats Log"), HeadlineFontSize, TEXTALIGN_ML);
+	LeftView.HSplitTop(MarginSmall, nullptr, &LeftView);
+
+	static CButtonContainer s_ReaderBtnTabSave, s_ClearBtnTabSave;
+	DoLine_KeyReader(LeftView, s_ReaderBtnTabSave, s_ClearBtnTabSave, TCLocalize("Save stats key"), "tc_save_racestats");
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcStatboardAutoSave, TCLocalize("Auto-save before reset (/kill or /team)"), &g_Config.m_TcStatboardAutoSave, &LeftView, LineSize);
+	LeftView.HSplitTop(MarginSmall, nullptr, &LeftView);
+
+	// Botones de acción: Guardar Actual / Borrar / Limpiar Todo
+	CUIRect BtnRow, BtnSaveNow, BtnDelete, BtnClearAll;
+	LeftView.HSplitTop(LineSize * 1.15f, &BtnRow, &LeftView);
+	BtnRow.VSplitLeft(BtnRow.w * 0.42f, &BtnSaveNow, &BtnRow);
+	BtnRow.VSplitLeft(MarginSmall, nullptr, &BtnRow);
+	BtnRow.VSplitMid(&BtnDelete, &BtnClearAll, MarginSmall);
+
+	static CButtonContainer s_BtnSaveNowId, s_BtnDeleteId, s_BtnClearAllId;
+	if(DoButton_Menu(&s_BtnSaveNowId, TCLocalize("Save Now"), 0, &BtnSaveNow))
+	{
+		if(RaceStats.SaveCurrentStats("Manual", false, true))
+			s_SelectedEntry = 0;
+	}
+	if(DoButton_Menu(&s_BtnDeleteId, TCLocalize("Delete"), 0, &BtnDelete))
+	{
+		if(!RaceStats.m_vSavedEntries.empty())
+		{
+			RaceStats.DeleteSavedEntry(s_SelectedEntry);
+			if(s_SelectedEntry >= (int)RaceStats.m_vSavedEntries.size())
+				s_SelectedEntry = std::max(0, (int)RaceStats.m_vSavedEntries.size() - 1);
+		}
+	}
+	if(DoButton_Menu(&s_BtnClearAllId, TCLocalize("Clear All"), 0, &BtnClearAll))
+	{
+		RaceStats.ClearSavedHistory();
+		s_SelectedEntry = 0;
+	}
+
+	LeftView.HSplitTop(MarginSmall, nullptr, &LeftView);
+
+	// Lista desplazable de partidas guardadas
+	static CScrollRegion s_HistoryScroll;
+	CScrollRegionParams ScrollParams;
+	ScrollParams.m_ScrollUnit = 40.0f;
+	ScrollParams.m_ScrollbarMargin = 3.0f;
+	s_HistoryScroll.Begin(&LeftView, &ScrollParams);
+
+	static std::vector<CButtonContainer> s_vEntryButtons;
+	if(s_vEntryButtons.size() < RaceStats.m_vSavedEntries.size())
+		s_vEntryButtons.resize(RaceStats.m_vSavedEntries.size());
+
+	for(int i = 0; i < (int)RaceStats.m_vSavedEntries.size(); i++)
+	{
+		const auto &Entry = RaceStats.m_vSavedEntries[i];
+		CUIRect ItemRect;
+		LeftView.HSplitTop(38.0f, &ItemRect, &LeftView);
+		LeftView.HSplitTop(4.0f, nullptr, &LeftView);
+
+		if(!s_HistoryScroll.AddRect(ItemRect))
+			continue;
+
+		bool IsSelected = (i == s_SelectedEntry);
+		ColorRGBA ItemBg = IsSelected ? ColorRGBA(0.25f, 0.55f, 0.90f, 0.45f) : ColorRGBA(1.0f, 1.0f, 1.0f, 0.08f);
+		if(DoButtonLineSize_Menu(&s_vEntryButtons[i], "", IsSelected ? 1 : 0, &ItemRect, LineSize, false, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ItemBg))
+		{
+			s_SelectedEntry = i;
+		}
+
+		CUIRect TopLine, BottomLine, MapRect, TimeRect;
+		ItemRect.Margin(4.0f, &ItemRect);
+		ItemRect.HSplitMid(&TopLine, &BottomLine);
+		TopLine.VSplitRight(95.0f, &MapRect, &TimeRect);
+
+		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+		Ui()->DoLabel(&MapRect, Entry.m_aMapName, 12.5f, TEXTALIGN_ML);
+
+		char aRunBuf[48];
+		str_format(aRunBuf, sizeof(aRunBuf), "Run: %s", Entry.m_aRunTime);
+		TextRender()->TextColor(0.4f, 0.95f, 0.55f, 1.0f);
+		Ui()->DoLabel(&TimeRect, aRunBuf, 12.0f, TEXTALIGN_MR);
+
+		char aSubBuf[128];
+		str_format(aSubBuf, sizeof(aSubBuf), "%s  |  Team %d  |  %s (%d)", Entry.m_aTimestamp, Entry.m_Team, Entry.m_aReason, (int)Entry.m_vPlayers.size());
+		TextRender()->TextColor(0.75f, 0.78f, 0.85f, 0.9f);
+		Ui()->DoLabel(&BottomLine, aSubBuf, 10.5f, TEXTALIGN_ML);
+	}
+
+	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+	s_HistoryScroll.End();
+
+	// ===== PANEL DERECHO: VISUALIZADOR DETALLADO =====
+	RightView.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 8.0f);
+	RightView.Margin(Margin, &RightView);
+
+	if(RaceStats.m_vSavedEntries.empty())
+	{
+		CUIRect EmptyMsg;
+		RightView.HSplitTop(120.0f, nullptr, &EmptyMsg);
+		TextRender()->TextColor(0.8f, 0.8f, 0.8f, 0.85f);
+		Ui()->DoLabel(&EmptyMsg, TCLocalize("No saved Race Stats yet.\nStats are saved automatically on /kill or /team change,\nor manually using 'Save Now' or your bound key."), 14.0f, TEXTALIGN_TC);
+		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+		return;
+	}
+
+	const auto &Sel = RaceStats.m_vSavedEntries[s_SelectedEntry];
+
+	// Tarjeta superior de metadatos de la Run
+	CUIRect MetaCard, MetaTop, MetaBottom;
+	RightView.HSplitTop(54.0f, &MetaCard, &RightView);
+	MetaCard.Draw(ColorRGBA(0.10f, 0.12f, 0.18f, 0.65f), IGraphics::CORNER_ALL, 6.0f);
+	MetaCard.Margin(8.0f, &MetaCard);
+	MetaCard.HSplitMid(&MetaTop, &MetaBottom);
+
+	CUIRect MetaMap, MetaRunTime;
+	MetaTop.VSplitRight(160.0f, &MetaMap, &MetaRunTime);
+
+	char aTitleBuf[128];
+	str_format(aTitleBuf, sizeof(aTitleBuf), "Map: %s", Sel.m_aMapName);
+	TextRender()->TextColor(1.0f, 0.9f, 0.35f, 1.0f);
+	Ui()->DoLabel(&MetaMap, aTitleBuf, 15.0f, TEXTALIGN_ML);
+
+	char aRunTimeLabel[64];
+	str_format(aRunTimeLabel, sizeof(aRunTimeLabel), "Tiempo de la Run: %s", Sel.m_aRunTime);
+	TextRender()->TextColor(0.4f, 1.0f, 0.55f, 1.0f);
+	Ui()->DoLabel(&MetaRunTime, aRunTimeLabel, 14.0f, TEXTALIGN_MR);
+
+	char aDetailsBuf[160];
+	str_format(aDetailsBuf, sizeof(aDetailsBuf), "Fecha: %s   |   Team: %d   |   Guardado: %s   |   Jugadores: %d",
+		Sel.m_aTimestamp, Sel.m_Team, Sel.m_aReason, (int)Sel.m_vPlayers.size());
+	TextRender()->TextColor(0.8f, 0.85f, 0.92f, 0.95f);
+	Ui()->DoLabel(&MetaBottom, aDetailsBuf, 11.5f, TEXTALIGN_ML);
+
+	RightView.HSplitTop(Margin, nullptr, &RightView);
+
+	// Tabla estilo Overlay con los iconos embebidos y skins de cada jugador
+	CUIRect TableHeader;
+	const float RowH = 26.0f;
+	const float IconSz = 16.0f;
+	const float ColStatW = 54.0f;
+	const float ColNameW = std::max(120.0f, RightView.w - (ColStatW * 4.0f) - 16.0f);
+
+	RightView.HSplitTop(RowH + 4.0f, &TableHeader, &RightView);
+	TableHeader.Draw(ColorRGBA(0.14f, 0.15f, 0.22f, 0.75f), IGraphics::CORNER_T, 6.0f);
+
+	auto DrawTexIcon = [&](IGraphics::CTextureHandle Tex, float x, float y, float size, ColorRGBA col) {
+		if(!Tex.IsValid())
+			return;
+		Graphics()->TextureSet(Tex);
+		Graphics()->QuadsBegin();
+		Graphics()->SetColor(col);
+		IGraphics::CQuadItem Quad(x, y, size, size);
+		Graphics()->QuadsDrawTL(&Quad, 1);
+		Graphics()->QuadsEnd();
+	};
+
+	float HeadX = TableHeader.x + 8.0f;
+	float HeadY = TableHeader.y + (TableHeader.h - IconSz) * 0.5f;
+
+	DrawTexIcon(RaceStats.m_aTextures[CRaceStats::ICON_USER], HeadX + 4.0f, HeadY, IconSz, ColorRGBA(1.0f, 1.0f, 1.0f, 0.95f));
+	HeadX += ColNameW;
+
+	DrawTexIcon(RaceStats.m_aTextures[CRaceStats::ICON_FREEZE], HeadX + (ColStatW - IconSz) * 0.5f, HeadY, IconSz, ColorRGBA(0.5f, 0.85f, 1.0f, 1.0f));
+	HeadX += ColStatW;
+
+	DrawTexIcon(RaceStats.m_aTextures[CRaceStats::ICON_SAVE], HeadX + (ColStatW - IconSz) * 0.5f, HeadY, IconSz, ColorRGBA(0.4f, 1.0f, 0.5f, 1.0f));
+	HeadX += ColStatW;
+
+	DrawTexIcon(RaceStats.m_aTextures[CRaceStats::ICON_LAST], HeadX + (ColStatW - IconSz) * 0.5f, HeadY, IconSz, ColorRGBA(1.0f, 0.75f, 0.3f, 1.0f));
+	HeadX += ColStatW;
+
+	DrawTexIcon(RaceStats.m_aTextures[CRaceStats::ICON_EFF], HeadX + (ColStatW - IconSz) * 0.5f, HeadY, IconSz, ColorRGBA(0.9f, 0.5f, 1.0f, 1.0f));
+
+	static CScrollRegion s_PlayersScroll;
+	CScrollRegionParams PlScrollParams;
+	PlScrollParams.m_ScrollUnit = 30.0f;
+	PlScrollParams.m_ScrollbarMargin = 2.0f;
+	s_PlayersScroll.Begin(&RightView, &PlScrollParams);
+
+	for(int idx = 0; idx < (int)Sel.m_vPlayers.size(); idx++)
+	{
+		const auto &Pl = Sel.m_vPlayers[idx];
+		CUIRect RowRect;
+		RightView.HSplitTop(RowH, &RowRect, &RightView);
+
+		if(!s_PlayersScroll.AddRect(RowRect))
+			continue;
+
+		if(idx % 2 == 1)
+			RowRect.Draw(ColorRGBA(1.0f, 1.0f, 1.0f, 0.04f), IGraphics::CORNER_NONE, 0.0f);
+		if(Pl.m_IsLocal)
+			RowRect.Draw(ColorRGBA(1.0f, 0.85f, 0.2f, 0.12f), IGraphics::CORNER_ALL, 3.0f);
+
+		float CurrX = RowRect.x + 8.0f;
+		const float RowFontSize = 13.0f;
+		float TextY = RowRect.y + (RowRect.h - RowFontSize) * 0.5f;
+
+		// Renderizar Tee con la skin guardada
+		CTeeRenderInfo TeeInfo;
+		TeeInfo.Apply(GameClient()->m_Skins.Find(Pl.m_aSkinName));
+		TeeInfo.ApplyColors(Pl.m_CustomColors, Pl.m_ColorBody, Pl.m_ColorFeet);
+		TeeInfo.m_Size = 21.0f;
+		RenderTools()->RenderTee(CAnimState::GetIdle(), &TeeInfo, EMOTE_NORMAL, vec2(1.0f, 0.0f), vec2(CurrX + 10.0f, RowRect.y + RowRect.h * 0.5f + 1.5f));
+
+		if(Pl.m_IsLocal)
+			TextRender()->TextColor(1.0f, 0.9f, 0.3f, 1.0f);
+		else
+			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 0.95f);
+
+		TextRender()->Text(CurrX + 24.0f, TextY, RowFontSize, Pl.m_aName, -1.0f);
+		CurrX += ColNameW;
+
+		auto DrawSavedStat = [&](int Value, ColorRGBA col) {
+			char aVal[32];
+			str_format(aVal, sizeof(aVal), "%d", Value);
+			float W = TextRender()->TextWidth(RowFontSize, aVal, -1, -1.0f);
+			TextRender()->TextColor(col);
+			TextRender()->Text(CurrX + (ColStatW - W) * 0.5f, TextY, RowFontSize, aVal, -1.0f);
+			CurrX += ColStatW;
+		};
+
+		DrawSavedStat(Pl.m_Freezes, ColorRGBA(0.7f, 0.9f, 1.0f, 0.95f));
+		DrawSavedStat(Pl.m_Saves, ColorRGBA(0.45f, 1.0f, 0.55f, 0.95f));
+		DrawSavedStat(Pl.m_Lasts, ColorRGBA(1.0f, 0.85f, 0.4f, 0.95f));
+		DrawSavedStat(Pl.m_EfficiencyPercent, ColorRGBA(0.95f, 0.65f, 1.0f, 0.95f));
+	}
+
+	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+	s_PlayersScroll.End();
 }

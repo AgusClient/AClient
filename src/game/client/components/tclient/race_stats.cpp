@@ -1,9 +1,14 @@
 #include "race_stats.h"
 #include "race_stats_icons.h"
 
+#include <base/io.h>
+#include <base/mem.h>
+#include <base/str.h>
+#include <base/time.h>
 #include <engine/graphics.h>
-#include <engine/textrender.h>
+#include <engine/shared/linereader.h>
 #include <engine/storage.h>
+#include <engine/textrender.h>
 #include <game/client/animstate.h>
 #include <game/client/gameclient.h>
 #include <game/client/render.h>
@@ -11,13 +16,18 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
+#include <cstring>
 #include <vector>
 
 static const float HAMMER_MAX_DIST = 64.0f;
+static const char *RACESTATS_HISTORY_FILE = "tclient_racestats_history.txt";
 
 void CRaceStats::OnInit()
 {
 	m_Active = false;
+	m_LastLocalTeam = -1;
+	m_RunStartTick = 0;
 
 	auto LoadEmbeddedIcon = [&](const uint8_t *pData, size_t Size, const char *pName) -> IGraphics::CTextureHandle {
 		CImageInfo Img;
@@ -34,6 +44,8 @@ void CRaceStats::OnInit()
 	m_aTextures[ICON_LAST]   = LoadEmbeddedIcon(gs_aRaceStatIcon_LAST, sizeof(gs_aRaceStatIcon_LAST), "racestat_last");
 	m_aTextures[ICON_EFF]    = LoadEmbeddedIcon(gs_aRaceStatIcon_EFF, sizeof(gs_aRaceStatIcon_EFF), "racestat_eff");
 	m_aTextures[ICON_SKULL]  = LoadEmbeddedIcon(gs_aRaceStatIcon_SKULL, sizeof(gs_aRaceStatIcon_SKULL), "racestat_skull");
+
+	LoadHistoryFromFile();
 }
 
 void CRaceStats::ConKeyCompactStatboard(IConsole::IResult *pResult, void *pUserData)
@@ -42,9 +54,16 @@ void CRaceStats::ConKeyCompactStatboard(IConsole::IResult *pResult, void *pUserD
 	pSelf->m_Active = pResult->GetInteger(0) != 0;
 }
 
+void CRaceStats::ConSaveRaceStats(IConsole::IResult *pResult, void *pUserData)
+{
+	CRaceStats *pSelf = (CRaceStats *)pUserData;
+	pSelf->SaveCurrentStats("Manual / Bind", false, true);
+}
+
 void CRaceStats::OnConsoleInit()
 {
 	Console()->Register("+compact_statboard", "", CFGFLAG_CLIENT, ConKeyCompactStatboard, this, "Toggle or hold compact statboard");
+	Console()->Register("tc_save_racestats", "", CFGFLAG_CLIENT, ConSaveRaceStats, this, "Save current RaceStats overlay statistics to history");
 }
 
 void CRaceStats::OnReset()
@@ -54,56 +73,316 @@ void CRaceStats::OnReset()
 		m_aPlayerStats[i].Reset();
 	}
 	m_RoundDeaths = 0;
+	m_LastLocalTeam = -1;
+	m_RunStartTick = 0;
 	m_Active = false;
+}
+
+bool CRaceStats::HasCurrentTeamActivity() const
+{
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		if(m_aPlayerStats[i].m_Freezes > 0 || m_aPlayerStats[i].m_Saves > 0 || m_aPlayerStats[i].m_Lasts > 0)
+			return true;
+	}
+	return false;
+}
+
+void CRaceStats::FormatCurrentRunTime(char *pBuf, int BufSize) const
+{
+	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
+	{
+		str_copy(pBuf, "00:00", BufSize);
+		return;
+	}
+
+	int CurTick = Client()->GameTick(g_Config.m_ClDummy);
+	int TickSpeed = std::max(1, Client()->GameTickSpeed());
+	int StartTick = m_RunStartTick > 0 ? m_RunStartTick : CurTick;
+	int ElapsedSec = std::max(0, (CurTick - StartTick) / TickSpeed);
+
+	int Hours = ElapsedSec / 3600;
+	int Minutes = (ElapsedSec % 3600) / 60;
+	int Seconds = ElapsedSec % 60;
+
+	if(Hours > 0)
+		str_format(pBuf, BufSize, "%02d:%02d:%02d", Hours, Minutes, Seconds);
+	else
+		str_format(pBuf, BufSize, "%02d:%02d", Minutes, Seconds);
+}
+
+void CRaceStats::ResetTeamStats()
+{
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		m_aPlayerStats[i].Reset();
+	}
+	m_RoundDeaths = 0;
+	if(Client()->State() == IClient::STATE_ONLINE || Client()->State() == IClient::STATE_DEMOPLAYBACK)
+		m_RunStartTick = Client()->GameTick(g_Config.m_ClDummy);
+	else
+		m_RunStartTick = 0;
+}
+
+bool CRaceStats::SaveCurrentStats(const char *pReason, bool RequireActivity, bool NotifyChat)
+{
+	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
+	{
+		if(NotifyChat)
+			GameClient()->m_Chat.Echo("RaceStats: Debes estar en una partida para guardar estadisticas.");
+		return false;
+	}
+
+	if(RequireActivity && !HasCurrentTeamActivity())
+		return false;
+
+	int LocalClientId = GameClient()->m_Snap.m_LocalClientId;
+	if(LocalClientId < 0 || LocalClientId >= MAX_CLIENTS)
+		return false;
+
+	int RecordTeam = m_LastLocalTeam >= 0 ? m_LastLocalTeam : GameClient()->m_Teams.Team(LocalClientId);
+
+	CSavedRaceStatsEntry Entry;
+	str_timestamp_format(Entry.m_aTimestamp, sizeof(Entry.m_aTimestamp), "%d/%m %H:%M:%S");
+
+	const char *pMapName = Client()->ServerInfo().m_aMap;
+	if(!pMapName || pMapName[0] == '\0')
+		pMapName = "Unknown Map";
+	str_copy(Entry.m_aMapName, pMapName, sizeof(Entry.m_aMapName));
+	Entry.m_Team = RecordTeam;
+	FormatCurrentRunTime(Entry.m_aRunTime, sizeof(Entry.m_aRunTime));
+	str_copy(Entry.m_aReason, pReason ? pReason : "Manual", sizeof(Entry.m_aReason));
+
+	auto AddPlayerToEntry = [&](int CID, bool IsLocal) {
+		CSavedPlayerStat PStat;
+		const char *pPlayerName = GameClient()->m_aClients[CID].m_aName;
+		str_copy(PStat.m_aName, (pPlayerName && pPlayerName[0]) ? pPlayerName : "Nameless", sizeof(PStat.m_aName));
+
+		const char *pSkinName = GameClient()->m_aClients[CID].m_aSkinName;
+		str_copy(PStat.m_aSkinName, (pSkinName && pSkinName[0]) ? pSkinName : "default", sizeof(PStat.m_aSkinName));
+
+		PStat.m_CustomColors = GameClient()->m_aClients[CID].m_UseCustomColor != 0;
+		PStat.m_ColorBody = GameClient()->m_aClients[CID].m_ColorBody;
+		PStat.m_ColorFeet = GameClient()->m_aClients[CID].m_ColorFeet;
+		PStat.m_Freezes = m_aPlayerStats[CID].m_Freezes;
+		PStat.m_Saves = m_aPlayerStats[CID].m_Saves;
+		PStat.m_Lasts = m_aPlayerStats[CID].m_Lasts;
+		PStat.m_EfficiencyPercent = m_aPlayerStats[CID].GetEfficiencyPercent();
+		PStat.m_IsLocal = IsLocal;
+		Entry.m_vPlayers.push_back(PStat);
+	};
+
+	if(GameClient()->m_Snap.m_apPlayerInfos[LocalClientId])
+		AddPlayerToEntry(LocalClientId, true);
+
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		if(i == LocalClientId || !GameClient()->m_Snap.m_apPlayerInfos[i])
+			continue;
+
+		bool SameTeam = (RecordTeam > 0 && GameClient()->m_Teams.Team(i) == RecordTeam) || (RecordTeam == 0);
+		bool HasActivity = (m_aPlayerStats[i].m_Freezes > 0 || m_aPlayerStats[i].m_Saves > 0 || m_aPlayerStats[i].m_Lasts > 0);
+		if(SameTeam || HasActivity)
+			AddPlayerToEntry(i, false);
+	}
+
+	if(Entry.m_vPlayers.empty())
+		return false;
+
+	// Insertar al inicio para ver las más recientes primero (límite de 100 entradas)
+	m_vSavedEntries.insert(m_vSavedEntries.begin(), Entry);
+	if(m_vSavedEntries.size() > 100)
+		m_vSavedEntries.resize(100);
+
+	SaveHistoryToFile();
+
+	if(NotifyChat)
+	{
+		char aMsg[128];
+		str_format(aMsg, sizeof(aMsg), "RaceStats guardadas! (%s - Run: %s)", Entry.m_aMapName, Entry.m_aRunTime);
+		GameClient()->m_Chat.Echo(aMsg);
+	}
+
+	return true;
+}
+
+void CRaceStats::DeleteSavedEntry(int Index)
+{
+	if(Index < 0 || Index >= (int)m_vSavedEntries.size())
+		return;
+	m_vSavedEntries.erase(m_vSavedEntries.begin() + Index);
+	SaveHistoryToFile();
+}
+
+void CRaceStats::ClearSavedHistory()
+{
+	m_vSavedEntries.clear();
+	SaveHistoryToFile();
+}
+
+void CRaceStats::SaveHistoryToFile()
+{
+	if(!Storage())
+		return;
+
+	IOHANDLE File = Storage()->OpenFile(RACESTATS_HISTORY_FILE, IOFLAG_WRITE, IStorage::TYPE_SAVE);
+	if(!File)
+		return;
+
+	char aLine[512];
+	for(const auto &Entry : m_vSavedEntries)
+	{
+		str_format(aLine, sizeof(aLine), "ENTRY\t%s\t%s\t%d\t%s\t%s\n",
+			Entry.m_aTimestamp, Entry.m_aMapName, Entry.m_Team, Entry.m_aRunTime, Entry.m_aReason);
+		io_write(File, aLine, str_length(aLine));
+
+		for(const auto &Pl : Entry.m_vPlayers)
+		{
+			str_format(aLine, sizeof(aLine), "PLAYER\t%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
+				Pl.m_aName, Pl.m_aSkinName, Pl.m_CustomColors ? 1 : 0, Pl.m_ColorBody, Pl.m_ColorFeet,
+				Pl.m_Freezes, Pl.m_Saves, Pl.m_Lasts, Pl.m_EfficiencyPercent, Pl.m_IsLocal ? 1 : 0);
+			io_write(File, aLine, str_length(aLine));
+		}
+
+		const char *pEnd = "END\n";
+		io_write(File, pEnd, str_length(pEnd));
+	}
+
+	io_close(File);
+}
+
+static bool NextTabToken(const char **ppCursor, char *pOut, int OutSize)
+{
+	if(!ppCursor || !*ppCursor || **ppCursor == '\0')
+	{
+		pOut[0] = '\0';
+		return false;
+	}
+	const char *pStart = *ppCursor;
+	const char *pTab = strchr(pStart, '\t');
+	if(pTab)
+	{
+		int Len = (int)(pTab - pStart);
+		if(Len >= OutSize)
+			Len = OutSize - 1;
+		mem_copy(pOut, pStart, Len);
+		pOut[Len] = '\0';
+		*ppCursor = pTab + 1;
+	}
+	else
+	{
+		str_copy(pOut, pStart, OutSize);
+		*ppCursor = pStart + str_length(pStart);
+	}
+	return true;
+}
+
+void CRaceStats::LoadHistoryFromFile()
+{
+	if(!Storage())
+		return;
+
+	IOHANDLE File = Storage()->OpenFile(RACESTATS_HISTORY_FILE, IOFLAG_READ, IStorage::TYPE_ALL);
+	if(!File)
+		return;
+
+	CLineReader LineReader;
+	if(!LineReader.OpenFile(File))
+		return;
+
+	m_vSavedEntries.clear();
+	CSavedRaceStatsEntry CurrentEntry;
+	bool InEntry = false;
+
+	while(const char *pLine = LineReader.Get())
+	{
+		const char *pCursor = pLine;
+		char aTag[32];
+		if(!NextTabToken(&pCursor, aTag, sizeof(aTag)))
+			continue;
+
+		if(str_comp(aTag, "ENTRY") == 0)
+		{
+			CurrentEntry = CSavedRaceStatsEntry();
+			char aTeam[16];
+			NextTabToken(&pCursor, CurrentEntry.m_aTimestamp, sizeof(CurrentEntry.m_aTimestamp));
+			NextTabToken(&pCursor, CurrentEntry.m_aMapName, sizeof(CurrentEntry.m_aMapName));
+			NextTabToken(&pCursor, aTeam, sizeof(aTeam));
+			CurrentEntry.m_Team = str_toint(aTeam);
+			NextTabToken(&pCursor, CurrentEntry.m_aRunTime, sizeof(CurrentEntry.m_aRunTime));
+			if(CurrentEntry.m_aRunTime[0] == '\0')
+				str_copy(CurrentEntry.m_aRunTime, "00:00", sizeof(CurrentEntry.m_aRunTime));
+			NextTabToken(&pCursor, CurrentEntry.m_aReason, sizeof(CurrentEntry.m_aReason));
+			if(CurrentEntry.m_aReason[0] == '\0')
+				str_copy(CurrentEntry.m_aReason, "Saved", sizeof(CurrentEntry.m_aReason));
+			InEntry = true;
+		}
+		else if(str_comp(aTag, "PLAYER") == 0 && InEntry)
+		{
+			CSavedPlayerStat Pl;
+			char aBuf[32];
+			NextTabToken(&pCursor, Pl.m_aName, sizeof(Pl.m_aName));
+			NextTabToken(&pCursor, Pl.m_aSkinName, sizeof(Pl.m_aSkinName));
+			NextTabToken(&pCursor, aBuf, sizeof(aBuf));
+			Pl.m_CustomColors = str_toint(aBuf) != 0;
+			NextTabToken(&pCursor, aBuf, sizeof(aBuf));
+			Pl.m_ColorBody = str_toint(aBuf);
+			NextTabToken(&pCursor, aBuf, sizeof(aBuf));
+			Pl.m_ColorFeet = str_toint(aBuf);
+			NextTabToken(&pCursor, aBuf, sizeof(aBuf));
+			Pl.m_Freezes = str_toint(aBuf);
+			NextTabToken(&pCursor, aBuf, sizeof(aBuf));
+			Pl.m_Saves = str_toint(aBuf);
+			NextTabToken(&pCursor, aBuf, sizeof(aBuf));
+			Pl.m_Lasts = str_toint(aBuf);
+			NextTabToken(&pCursor, aBuf, sizeof(aBuf));
+			Pl.m_EfficiencyPercent = str_toint(aBuf);
+			NextTabToken(&pCursor, aBuf, sizeof(aBuf));
+			Pl.m_IsLocal = str_toint(aBuf) != 0;
+			CurrentEntry.m_vPlayers.push_back(Pl);
+		}
+		else if(str_comp(aTag, "END") == 0 && InEntry)
+		{
+			if(!CurrentEntry.m_vPlayers.empty())
+				m_vSavedEntries.push_back(CurrentEntry);
+			InEntry = false;
+		}
+	}
 }
 
 void CRaceStats::OnMessage(int MsgType, void *pRawMsg)
 {
+	int LocalClientId = GameClient()->m_Snap.m_LocalClientId;
+	if(LocalClientId < 0 || LocalClientId >= MAX_CLIENTS)
+		return;
+
+	int LocalTeam = GameClient()->m_Teams.Team(LocalClientId);
+
 	if(MsgType == NETMSGTYPE_SV_KILLMSG)
 	{
 		CNetMsg_Sv_KillMsg *pMsg = (CNetMsg_Sv_KillMsg *)pRawMsg;
 		if(pMsg->m_Victim >= 0 && pMsg->m_Victim < MAX_CLIENTS)
 		{
-			m_aPlayerStats[pMsg->m_Victim].m_Deaths++;
-			if(pMsg->m_Victim == GameClient()->m_Snap.m_LocalClientId)
+			bool IsLocalKill = (pMsg->m_Victim == LocalClientId);
+			bool IsTeammateKill = (LocalTeam > 0 && GameClient()->m_Teams.Team(pMsg->m_Victim) == LocalTeam);
+
+			if(g_Config.m_TcStatboardResetOnTeamKill && (IsLocalKill || IsTeammateKill))
 			{
-				m_RoundDeaths++;
-				m_SessionDeaths++;
+				if(g_Config.m_TcStatboardAutoSave)
+					SaveCurrentStats("Auto (/kill)", true, false);
+				ResetTeamStats();
 			}
 		}
 	}
-}
-
-void CRaceStats::CheckTeamWipe()
-{
-	if(!g_Config.m_TcStatboardResetOnTeamKill)
-		return;
-
-	int LocalTeam = GameClient()->m_Teams.Team(GameClient()->m_Snap.m_LocalClientId);
-	if(LocalTeam <= 0)
-		return;
-
-	bool AnyAlive = false;
-	for(int i = 0; i < MAX_CLIENTS; i++)
+	else if(MsgType == NETMSGTYPE_SV_KILLMSGTEAM)
 	{
-		if(GameClient()->m_Snap.m_apPlayerInfos[i] && GameClient()->m_Teams.Team(i) == LocalTeam)
+		CNetMsg_Sv_KillMsgTeam *pMsg = (CNetMsg_Sv_KillMsgTeam *)pRawMsg;
+		if(g_Config.m_TcStatboardResetOnTeamKill && pMsg->m_Team == LocalTeam)
 		{
-			if(GameClient()->m_Snap.m_aCharacters[i].m_Active)
-			{
-				AnyAlive = true;
-				break;
-			}
+			if(g_Config.m_TcStatboardAutoSave)
+				SaveCurrentStats("Auto (/kill)", true, false);
+			ResetTeamStats();
 		}
-	}
-
-	if(!AnyAlive && m_RoundDeaths > 0)
-	{
-		for(int i = 0; i < MAX_CLIENTS; i++)
-		{
-			if(GameClient()->m_Teams.Team(i) == LocalTeam)
-				m_aPlayerStats[i].Reset();
-		}
-		m_RoundDeaths = 0;
 	}
 }
 
@@ -115,11 +394,32 @@ void CRaceStats::OnRender()
 	if(!GameClient()->m_Snap.m_pGameInfoObj)
 		return;
 
-	CheckTeamWipe();
+	int LocalClientId = GameClient()->m_Snap.m_LocalClientId;
+	if(LocalClientId < 0 || LocalClientId >= MAX_CLIENTS)
+		return;
 
 	int CurrentTick = Client()->GameTick(g_Config.m_ClDummy);
+	if(m_RunStartTick <= 0)
+		m_RunStartTick = CurrentTick;
 
-	// Detección de Freezes, Saves y Lasts
+	// Detectar cambio de equipo (/team 1, /team 0, etc.)
+	int CurrentTeam = GameClient()->m_Teams.Team(LocalClientId);
+	if(m_LastLocalTeam != -1 && CurrentTeam != m_LastLocalTeam)
+	{
+		if(g_Config.m_TcStatboardResetOnTeamKill)
+		{
+			if(g_Config.m_TcStatboardAutoSave)
+				SaveCurrentStats("Auto (/team)", true, false);
+			ResetTeamStats();
+		}
+	}
+	m_LastLocalTeam = CurrentTeam;
+
+	// Detección de Freezes y Saves
+	int TeamActivePlayers = 0;
+	int TeamUnfrozenPlayers = 0;
+	int LastUnfrozenCID = -1;
+
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
 		if(!GameClient()->m_Snap.m_apPlayerInfos[i] || !GameClient()->m_Snap.m_aCharacters[i].m_Active)
@@ -132,6 +432,16 @@ void CRaceStats::OnRender()
 		const auto &Char = GameClient()->m_Snap.m_aCharacters[i];
 
 		bool IsFrozen = (ClientData.m_FreezeEnd > 0 || ClientData.m_DeepFrozen);
+
+		if(GameClient()->m_Teams.Team(i) == CurrentTeam)
+		{
+			TeamActivePlayers++;
+			if(!IsFrozen)
+			{
+				TeamUnfrozenPlayers++;
+				LastUnfrozenCID = i;
+			}
+		}
 
 		// Seguimiento de ataque de martillo
 		if(Char.m_Cur.m_Weapon == WEAPON_HAMMER && (Char.m_Cur.m_AttackTick != m_aPlayerStats[i].m_LastAttackTick))
@@ -182,6 +492,24 @@ void CRaceStats::OnRender()
 		}
 
 		m_aPlayerStats[i].m_WasFrozen = IsFrozen;
+	}
+
+	// Detección de Lasts (único sobreviviente descongelado en un equipo de >= 2 jugadores)
+	if(TeamActivePlayers >= 2 && TeamUnfrozenPlayers == 1 && LastUnfrozenCID != -1)
+	{
+		if(!m_aPlayerStats[LastUnfrozenCID].m_WasSoleSurvivor)
+		{
+			m_aPlayerStats[LastUnfrozenCID].m_Lasts++;
+			m_aPlayerStats[LastUnfrozenCID].m_WasSoleSurvivor = true;
+		}
+	}
+	else if(TeamUnfrozenPlayers != 1)
+	{
+		for(int i = 0; i < MAX_CLIENTS; i++)
+		{
+			if(GameClient()->m_Teams.Team(i) == CurrentTeam)
+				m_aPlayerStats[i].m_WasSoleSurvivor = false;
+		}
 	}
 
 	if(g_Config.m_TcMiniStatboard || m_Active)
@@ -251,9 +579,8 @@ void CRaceStats::RenderMiniStatboard()
 	bool ShowSave   = (g_Config.m_TcMiniStatboardColumns & 2) != 0;
 	bool ShowLast   = (g_Config.m_TcMiniStatboardColumns & 4) != 0;
 	bool ShowEff    = (g_Config.m_TcMiniStatboardColumns & 8) != 0;
-	bool ShowDeath  = (g_Config.m_TcMiniStatboardColumns & 16) != 0;
 
-	int NumStatCols = (ShowFreeze ? 1 : 0) + (ShowSave ? 1 : 0) + (ShowLast ? 1 : 0) + (ShowEff ? 1 : 0) + (ShowDeath ? 1 : 0);
+	int NumStatCols = (ShowFreeze ? 1 : 0) + (ShowSave ? 1 : 0) + (ShowLast ? 1 : 0) + (ShowEff ? 1 : 0);
 	float TotalWidth = ColWidthName + (float)NumStatCols * ColWidthStat + Padding * 2.0f;
 
 	float HeaderHeight = RowHeight + 1.0f * Scale;
@@ -333,11 +660,6 @@ void CRaceStats::RenderMiniStatboard()
 		DrawIcon(m_aTextures[ICON_EFF], CurrX + (ColWidthStat - IconSize) / 2.0f, HeaderY, IconSize, ColorRGBA(0.9f, 0.5f, 1.0f, 1.0f));
 		CurrX += ColWidthStat;
 	}
-	if(ShowDeath)
-	{
-		DrawIcon(m_aTextures[ICON_SKULL], CurrX + (ColWidthStat - IconSize) / 2.0f, HeaderY, IconSize, ColorRGBA(1.0f, 0.35f, 0.35f, 1.0f));
-		CurrX += ColWidthStat;
-	}
 
 	// Filas de Jugadores
 	float RowY = BaseY + Padding + HeaderHeight;
@@ -369,7 +691,7 @@ void CRaceStats::RenderMiniStatboard()
 
 		float NameX = CurrX + TeeInfo.m_Size + 2.0f * Scale;
 
-		// Nombre de Jugador completo en 1 sola línea (sin cortar y sin saltar de línea)
+		// Nombre de Jugador completo en 1 sola línea
 		if(IsMe)
 			TextRender()->TextColor(1.0f, 0.9f, 0.3f, 1.0f);
 		else
@@ -407,11 +729,6 @@ void CRaceStats::RenderMiniStatboard()
 		{
 			str_format(aBuf, sizeof(aBuf), "%d", m_aPlayerStats[CID].GetEfficiencyPercent());
 			DrawStatNum(aBuf, ColorRGBA(0.95f, 0.65f, 1.0f, 0.95f));
-		}
-		if(ShowDeath)
-		{
-			str_format(aBuf, sizeof(aBuf), "%d", m_aPlayerStats[CID].m_Deaths);
-			DrawStatNum(aBuf, ColorRGBA(1.0f, 0.4f, 0.4f, 0.95f));
 		}
 
 		RowY += RowHeight;
