@@ -315,7 +315,7 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 			return true;
 		}
 
-		// Clientx30: Autocompletado directo para /invite friends y /invite all
+		// Clientx30: Autocompletado directo para /invite friends
 		const char *pInputStr = m_Input.GetString();
 		if(str_startswith_nocase(pInputStr, "/invite"))
 		{
@@ -324,25 +324,9 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 				pArg++;
 
 			const char *pTarget = nullptr;
-			if(str_comp_nocase(pInputStr, "/invite friends") == 0)
-			{
-				pTarget = "/invite all";
-			}
-			else if(str_comp_nocase(pInputStr, "/invite all") == 0)
+			if(str_comp_nocase(pInputStr, "/invite") == 0 || (pInputStr[7] == ' ' && *pArg == '\0') || str_startswith_nocase("friends", pArg))
 			{
 				pTarget = "/invite friends";
-			}
-			else if(*pArg != '\0' && str_startswith_nocase("friends", pArg))
-			{
-				pTarget = "/invite friends";
-			}
-			else if(*pArg != '\0' && str_startswith_nocase("all", pArg))
-			{
-				pTarget = "/invite all";
-			}
-			else if(*pArg == '\0' && pInputStr[7] == ' ')
-			{
-				pTarget = "/invite all";
 			}
 
 			if(pTarget)
@@ -1672,15 +1656,16 @@ bool CChat::TryHandleBulkInviteCommand(const char *pLine)
 		return false;
 
 	const char *pTrimmed = str_utf8_skip_whitespaces(pLine);
-	bool InviteAll = false;
-	bool InviteFriends = false;
-
 	if(str_comp_nocase(pTrimmed, "/invite all") == 0)
-		InviteAll = true;
-	else if(str_comp_nocase(pTrimmed, "/invite friends") == 0)
-		InviteFriends = true;
-	else
+	{
+		Echo(TCLocalize("[Clientx30] /invite all has been disabled. Use /invite friends."));
+		return true;
+	}
+
+	if(str_comp_nocase(pTrimmed, "/invite friends") != 0)
 		return false;
+
+	bool InviteFriends = true;
 
 	if(Client()->State() != IClient::STATE_ONLINE)
 	{

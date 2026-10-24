@@ -1053,3 +1053,63 @@ Keep stats on death (do not reset on /kill)
 
 Column: Deaths
 == Колонка: Смерти
+
+Shows the compact live team statistics table on your screen during the game.
+== Отображает компактную таблицу статистики команды на экране во время игры.
+
+Keeps your accumulated statistics intact even if you or a teammate dies or uses /kill.
+== Сохраняет накопленную статистику, даже если вы или тиммейт погибли (/kill).
+
+Automatically resets statistics whenever the team dies or you switch rooms (/team).
+== Автоматически сбрасывает статистику при гибели команды или смене (/team).
+
+Automatically saves current run stats to RaceStats history file before resetting.
+== Автоматически сохраняет статистику в историю RaceStats перед сбросом.
+
+Shows how many times each player was frozen during the current run.
+== Показывает, сколько раз игрок замерзал за текущий забег.
+
+Shows how many times each player unfroze a teammate using the hammer.
+== Показывает, сколько раз игрок разморозил тиммейта молотом.
+
+Shows the number of deaths or /kill for each player during the current run.
+== Показывает количество смертей или /kill каждого игрока в текущем забеге.
+
+Save success rate: Saves / (Saves + Freezes) %. Dynamically shifts colors from Red (0%) to Emerald Green (100%).
+== Эффективность: Saves / (Saves + Freezes) %. Плавно меняет цвет от красного (0%) до зелёного (100%).
+
+Column: Net Balance (+/-)
+== Колонка: Чистый баланс (+/-)
+
+Direct difference between Saves and Freezes (Saves - Freezes). Green if positive (+), Gray if zero, Red if negative (-).
+== Разница Saves - Freezes. Зелёный при плюсе (+), серый при нуле, красный при минусе (-).
+
+Column: Frozen Time
+== Колонка: Время в заморозке
+
+Total accumulated time the player spent stuck inside freeze during the run (e.g. 15s or 1m 24s).
+== Суммарное время, проведённое игроком в заморозке за забег (напр. 15s или 1m 24s).
+
+Column: Hook Accuracy
+== Колонка: Точность хука
+
+Hook hit accuracy: hooks that latched onto a player vs total hooks fired.
+== Метрика точности: процент хуков, попавших в игрока, от общего числа бросков.
+
+Times the player was the sole unfrozen survivor alive in the team (requires 15+ ticks stabilization).
+== Сколько раз игрок оставался единственным незамороженным выжившим в команде (от 15 тиков).
+
+* Race Stats HUD & History:
+== * Race Stats HUD и история:
+
+Live stats (Freezes, Saves, Deaths, Dynamic % Eff, Net +/-, Frozen time, Hook accuracy) & auto-saved log.
+== Живая статистика (Freezes, Saves, Смерти, динамический % Eff, Баланс +/-, Время, Точность) и авто-лог.
+
+* Auto-Invite Friends:
+== * Авто-приглашение друзей:
+
+Invite all online friends to your team with /invite friends, with anti-flood queue and Tab auto-complete.
+== Пригласите всех друзей онлайн в команду командой /invite friends (защита от флуда и автодополнение).
+
+[Clientx30] /invite all has been disabled. Use /invite friends.
+== [Clientx30] /invite all отключена. Используйте /invite friends.

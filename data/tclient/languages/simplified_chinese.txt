@@ -1106,3 +1106,63 @@ Keep stats on death (do not reset on /kill)
 
 Column: Deaths
 == 显示列: 死亡次数
+
+Shows the compact live team statistics table on your screen during the game.
+== 在游戏屏幕上显示团队实时紧凑统计表。
+
+Keeps your accumulated statistics intact even if you or a teammate dies or uses /kill.
+== 即便自己或队友阵亡 (/kill)，也保留累计统计数据。
+
+Automatically resets statistics whenever the team dies or you switch rooms (/team).
+== 当队伍全灭或切换队伍 (/team) 时自动重置统计数据。
+
+Automatically saves current run stats to RaceStats history file before resetting.
+== 在重置前自动将当前记录保存到 RaceStats 历史记录中。
+
+Shows how many times each player was frozen during the current run.
+== 显示每位玩家在当前轮次中被冰冻的次数。
+
+Shows how many times each player unfroze a teammate using the hammer.
+== 显示每位玩家使用锤子解冻救起队友的次数。
+
+Shows the number of deaths or /kill for each player during the current run.
+== 显示每位玩家在当前轮次中的阵亡或 /kill 次数。
+
+Save success rate: Saves / (Saves + Freezes) %. Dynamically shifts colors from Red (0%) to Emerald Green (100%).
+== 救援效率: Saves / (Saves + Freezes) %。颜色从红 (0%) 动态过渡至翡翠绿 (100%)。
+
+Column: Net Balance (+/-)
+== 列: 净贡献值 (+/-)
+
+Direct difference between Saves and Freezes (Saves - Freezes). Green if positive (+), Gray if zero, Red if negative (-).
+== 净救援差值 (Saves - Freezes)。正数绿色 (+)，归零灰色，负数红色 (-)。
+
+Column: Frozen Time
+== 列: 被冻时长
+
+Total accumulated time the player spent stuck inside freeze during the run (e.g. 15s or 1m 24s).
+== 玩家在当前跑图中处于冰冻状态的累计总时间 (例如 15s 或 1m 24s)。
+
+Column: Hook Accuracy
+== 列: 抓钩命中率
+
+Hook hit accuracy: hooks that latched onto a player vs total hooks fired.
+== 抓钩命中率: 成功抓取玩家的钩子次数 / 发射钩子总次数 %。
+
+Times the player was the sole unfrozen survivor alive in the team (requires 15+ ticks stabilization).
+== 成为队伍中唯一存活未被冰冻玩家的次数 (防抖需保持 15+ ticks 以上)。
+
+* Race Stats HUD & History:
+== * 竞赛实时 HUD 与历史记录:
+
+Live stats (Freezes, Saves, Deaths, Dynamic % Eff, Net +/-, Frozen time, Hook accuracy) & auto-saved log.
+== 实时团队数据 (冰冻、解冻救援、阵亡、动态 % 效率、净分值、被冻时长、抓钩率) 及自动保存日志。
+
+* Auto-Invite Friends:
+== * 一键邀请在线好友:
+
+Invite all online friends to your team with /invite friends, with anti-flood queue and Tab auto-complete.
+== 使用 /invite friends 邀请全服在线好友入队，带防刷屏队列及 Tab 自动补全。
+
+[Clientx30] /invite all has been disabled. Use /invite friends.
+== [Clientx30] /invite all 已停用，请使用 /invite friends。

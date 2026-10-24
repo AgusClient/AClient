@@ -1044,3 +1044,63 @@ Keep stats on death (do not reset on /kill)
 
 Column: Deaths
 == Columna: Muertes
+
+Shows the compact live team statistics table on your screen during the game.
+== Muestra la tabla compacta de estadísticas de equipo en pantalla durante la partida.
+
+Keeps your accumulated statistics intact even if you or a teammate dies or uses /kill.
+== Conserva acumuladas las estadísticas aunque tú o tu compañero mueran (/kill).
+
+Automatically resets statistics whenever the team dies or you switch rooms (/team).
+== Reinicia automáticamente las estadísticas al morir el equipo o al cambiar de sala (/team).
+
+Automatically saves current run stats to RaceStats history file before resetting.
+== Guarda automáticamente la partida en el historial de RaceStats antes de reiniciar.
+
+Shows how many times each player was frozen during the current run.
+== Muestra cuántas veces el jugador cayó en freeze durante la ronda actual.
+
+Shows how many times each player unfroze a teammate using the hammer.
+== Muestra cuántas veces el jugador salvó/descongeló a un compañero con el martillo.
+
+Shows the number of deaths or /kill for each player during the current run.
+== Muestra la cantidad de muertes o /kill de cada jugador en la ronda actual.
+
+Save success rate: Saves / (Saves + Freezes) %. Dynamically shifts colors from Red (0%) to Emerald Green (100%).
+== Tasa de éxito: Saves / (Saves + Freezes) %. Cambia dinámicamente de Rojo (0%) a Verde Esmeralda (100%).
+
+Column: Net Balance (+/-)
+== Columna: Balance Neto (+/-)
+
+Direct difference between Saves and Freezes (Saves - Freezes). Green if positive (+), Gray if zero, Red if negative (-).
+== Diferencia directa: Saves - Freezes. Verde si es positivo (+), Gris si es cero y Rojo si es negativo (-).
+
+Column: Frozen Time
+== Columna: Tiempo Congelado
+
+Total accumulated time the player spent stuck inside freeze during the run (e.g. 15s or 1m 24s).
+== Tiempo total acumulado que el jugador pasó atrapado en freeze durante la ronda (ej. 15s o 1m 24s).
+
+Column: Hook Accuracy
+== Columna: Precisión de Gancho
+
+Hook hit accuracy: hooks that latched onto a player vs total hooks fired.
+== Porcentaje de precisión: hooks que atraparon a un jugador vs total de hooks lanzados al aire.
+
+Times the player was the sole unfrozen survivor alive in the team (requires 15+ ticks stabilization).
+== Veces que el jugador quedó como el único miembro descongelado con vida en su equipo (requiere 15+ ticks).
+
+* Race Stats HUD & History:
+== * Race Stats HUD e Historial:
+
+Live stats (Freezes, Saves, Deaths, Dynamic % Eff, Net +/-, Frozen time, Hook accuracy) & auto-saved log.
+== Stats en vivo (Freezes, Saves, Muertes, % Eficiencia dinámico, Net +/-, Tiempo congelado, Precisión) e historial.
+
+* Auto-Invite Friends:
+== * Invitación Automática a Amigos:
+
+Invite all online friends to your team with /invite friends, with anti-flood queue and Tab auto-complete.
+== Invita a todos tus amigos conectados al equipo con /invite friends (cola anti-flood y tecla rápida).
+
+[Clientx30] /invite all has been disabled. Use /invite friends.
+== [Clientx30] /invite all ha sido desactivado. Usa /invite friends.
