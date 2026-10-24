@@ -287,12 +287,13 @@ MACRO_CONFIG_INT(TcShowhudDummySpeed, tc_showhud_dummy_speed, 0, 0, 1, CFGFLAG_C
 MACRO_CONFIG_INT(TcShowhudDummyAngle, tc_showhud_dummy_angle, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show ingame HUD (Dummy Aim Angle)")
 
 
-// RaceStats & Death Counter
+// RaceStats
 MACRO_CONFIG_INT(TcMiniStatboard, tc_mini_statboard, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show compact team stats in HUD")
-MACRO_CONFIG_INT(TcMiniStatboardColumns, tc_mini_statboard_columns, 31, 0, 31, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Visible columns bitmask: 1=Freezes, 2=Saves, 4=Lasts, 8=Eff, 16=Deaths")
-MACRO_CONFIG_INT(TcStatboardResetOnTeamKill, tc_statboard_reset_on_team_kill, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Reset live stats when team is wiped")
+MACRO_CONFIG_INT(TcMiniStatboardColumns, tc_mini_statboard_columns, 15, 0, 15, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Visible columns bitmask: 1=Freezes, 2=Saves, 4=Lasts, 8=Eff")
+MACRO_CONFIG_INT(TcStatboardResetOnTeamKill, tc_statboard_reset_on_team_kill, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Reset live stats on /kill or team change")
+MACRO_CONFIG_INT(TcStatboardAutoSave, tc_statboard_auto_save, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Auto-save race stats to history before resetting on /kill or /team")
 MACRO_CONFIG_INT(TcMiniStatboardMaxPlayers, tc_mini_statboard_max_players, 5, 0, 64, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Max visible players in statboard")
 MACRO_CONFIG_INT(TcMiniStatboardScale, tc_mini_statboard_scale, 70, 20, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mini statboard scale percent")
 MACRO_CONFIG_INT(TcMiniStatboardOpacity, tc_mini_statboard_opacity, 60, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mini statboard background opacity")
-MACRO_CONFIG_INT(TcMiniStatboardX, tc_mini_statboard_x, 95, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mini statboard HUD X position percent")
+MACRO_CONFIG_INT(TcMiniStatboardX, tc_mini_statboard_x, 95, 0, 100, CFGFLAG_CLIENT | CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mini statboard HUD X position percent")
 MACRO_CONFIG_INT(TcMiniStatboardY, tc_mini_statboard_y, 50, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mini statboard HUD Y position percent")
