@@ -13,7 +13,11 @@ AUTH_ADD_PRESENT_REGEX = re.compile(r"(^|\W)auth_add($|\W)")
 
 def hash_password(password):
 	salt = os.urandom(8)
-	h = hashlib.md5()
+	# codeql[py/weak-sensitive-data-hashing] - DDNet server protocol historically uses salted MD5 for auth_add_p
+	try:
+		h = hashlib.md5(usedforsecurity=False)
+	except TypeError:
+		h = hashlib.md5()
 	h.update(password.encode())
 	h.update(salt)
 	return h.hexdigest(), binascii.hexlify(salt).decode("ascii")

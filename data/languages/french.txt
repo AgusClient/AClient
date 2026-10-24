@@ -2692,3 +2692,159 @@ Unmute emoticons
 
 Mute emoticons
 == 
+
+Commands
+== Commandes
+
+Run Time
+== Temps de la Run
+
+Saved
+== Sauvegardé
+
+Team & Invites (Chat)
+== Équipe et Invitations (Chat)
+
+Invites all connected players on the server to your team.
+== Invite tous les joueurs connectés du serveur dans votre équipe.
+
+Invites only connected players on your friends list to your team.
+== Invite uniquement les joueurs de votre liste d'amis dans votre équipe.
+
+Race Stats & Overlay (Console / Binds)
+== Race Stats et Overlay (Console / Binds)
+
+Toggles the race stats HUD overlay visibility.
+== Affiche ou masque l'overlay des statistiques de course.
+
+Manually saves current run stats to history log.
+== Enregistre manuellement les statistiques de la run actuelle dans l'historique.
+
+Fast Practice / Ghost Mode
+== Fast Practice / Mode Fantôme
+
+Enables or disables ghost practice mode without leaving your run.
+== Active ou désactive le mode entraînement fantôme sans quitter votre run.
+
+Teleports you to your cursor in local practice world.
+== Vous téléporte à la position de votre curseur dans le monde d'entraînement.
+
+Toggles telecursor mode (quick teleport with aim/mouse).
+== Active/désactive le mode télécurseur (téléportation rapide à la souris).
+
+Toggles local invincibility against freeze in practice mode.
+== Active l'invincibilité locale contre le freeze en mode entraînement.
+
+Gives you all weapons in local practice mode.
+== Donne toutes les armes en mode entraînement local.
+
+Saves and loads local practice positions to repeat map parts.
+== Sauvegarde et charge des positions pour répéter des passages de carte.
+
+Practice commands: /tp  /tc  /invincible  /weapons  /save  /load
+== Commandes d'entraînement : /tp  /tc  /invincible  /weapons  /save  /load
+
+Chat: /invite all  (invites all server players to team)
+== Chat : /invite all (invite tout le serveur dans l'équipe)
+
+Chat: /invite friends  (invites only friends to team)
+== Chat : /invite friends (invite seulement les amis dans l'équipe)
+
+Invite all key (/invite all)
+== Touche pour inviter tout le monde (/invite all)
+
+Invite friends key (/invite friends)
+== Touche pour inviter les amis (/invite friends)
+
+Invite All (/invite all)
+== Inviter Tout le Monde (/invite all)
+
+Invite Friends (/invite friends)
+== Inviter les Amis (/invite friends)
+
+Auto Team Lock & Invites
+== Verrouillage Automatique d'Équipe et Invitations
+
+Lock delay (max 5m)
+== Délai de verrouillage (max 5m)
+
+Ghost transparency
+== Transparence du fantôme
+
+Show practice mode text (/tc /invincible)
+== Afficher le texte du mode entraînement (/tc /invincible)
+
+Disable Fast Practice (Return to Run)
+== Désactiver Fast Practice (Retourner à la Run)
+
+Enable Fast Practice (Ghost Mode)
+== Activer Fast Practice (Mode Fantôme)
+
+Fast Practice key (Ghost mode)
+== Touche Fast Practice (Mode fantôme)
+
+Toggle stats overlay key
+== Touche pour afficher l'overlay de stats
+
+Save stats key
+== Touche pour enregistrer les stats
+
+What's New in Clientx30 (Quick Summary)
+== Nouveautés de Clientx30 (Résumé Rapide)
+
+* Race Stats Overlay + Log:
+== * Overlay de Race Stats + Historique :
+
+Live HUD stats (Freezes, Saves, Lasts, Efficiency) and auto-saved run time.
+== Stats en direct (Freezes, Saves, Lasts, Efficacité) et temps de run enregistré.
+
+* Fast Practice (Ghost Mode):
+== * Fast Practice (Mode Fantôme) :
+
+Practice any map part with /tp, /tc, /invincible without leaving your real run.
+== Entraînez-vous sur la carte avec /tp, /tc, /invincible sans quitter votre run.
+
+* Independent Fast Input:
+== * Fast Input Indépendant :
+
+Set separate visual prediction ms for yourself (Amount) and others (Others Amount).
+== Réglez la prédiction visuelle séparément pour vous (Amount) et les autres (Others Amount).
+
+* Auto Team Lock (up to 5m):
+== * Verrouillage d'équipe auto (jusqu'à 5m) :
+
+Automatically locks team (/lock 1) after configured delay when joining.
+== Verrouille l'équipe automatiquement (/lock 1) après le délai défini.
+
+* Bulk Invites:
+== * Invitations Groupées :
+
+Use /invite all or /invite friends with anti-flood queue and Tab auto-complete.
+== Utilisez /invite all ou /invite friends avec file anti-spam et complétion Tab.
+
+* Active Vulkan Renderer:
+== * Moteur de Rendu Vulkan Actif :
+
+Compiled SPIR-V shaders included for smoother frame rates and lower CPU usage.
+== Shaders SPIR-V inclus pour un framerate plus fluide et moins d'utilisation CPU.
+
+[Clientx30] You must be connected to a server to use /invite.
+== [Clientx30] Vous devez être connecté à un serveur pour utiliser /invite.
+
+[Clientx30] Join a team first (e.g. /team 1) before using /invite.
+== [Clientx30] Rejoignez une équipe d'abord (ex. /team 1) avant d'utiliser /invite.
+
+[Clientx30] No connected friends outside your team found to invite.
+== [Clientx30] Aucun ami connecté trouvé hors de votre équipe à inviter.
+
+[Clientx30] No other players outside your team found to invite.
+== [Clientx30] Aucun autre joueur trouvé hors de votre équipe à inviter.
+
+[Clientx30] Inviting %d %s to Team %d...
+== [Clientx30] Invitation de %d %s dans l'Équipe %d...
+
+friend(s)
+== ami(s)
+
+player(s)
+== joueur(s)

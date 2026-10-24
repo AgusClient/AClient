@@ -1591,7 +1591,7 @@ bool CChat::TryHandleBulkInviteCommand(const char *pLine)
 
 	if(Client()->State() != IClient::STATE_ONLINE)
 	{
-		Echo("[Clientx30] Debes estar conectado a un servidor para usar /invite.");
+		Echo(Localize("[Clientx30] You must be connected to a server to use /invite."));
 		return true;
 	}
 
@@ -1599,7 +1599,7 @@ bool CChat::TryHandleBulkInviteCommand(const char *pLine)
 	const int LocalTeam = (LocalId >= 0 && LocalId < MAX_CLIENTS) ? GameClient()->m_Teams.Team(LocalId) : TEAM_FLOCK;
 	if(LocalTeam <= TEAM_FLOCK || LocalTeam >= TEAM_SUPER)
 	{
-		Echo("[Clientx30] Entra primero a un team (por ej. /team 1) antes de usar /invite.");
+		Echo(Localize("[Clientx30] Join a team first (e.g. /team 1) before using /invite."));
 		return true;
 	}
 
@@ -1624,16 +1624,16 @@ bool CChat::TryHandleBulkInviteCommand(const char *pLine)
 	if(m_vPendingInviteCommands.empty())
 	{
 		if(InviteFriends)
-			Echo("[Clientx30] No hay amigos conectados fuera de tu team para invitar.");
+			Echo(Localize("[Clientx30] No connected friends outside your team found to invite."));
 		else
-			Echo("[Clientx30] No hay otros jugadores fuera de tu team para invitar.");
+			Echo(Localize("[Clientx30] No other players outside your team found to invite."));
 		return true;
 	}
 
 	char aInfo[160];
-	str_format(aInfo, sizeof(aInfo), "[Clientx30] Invitando a %d %s al Team %d...",
+	str_format(aInfo, sizeof(aInfo), Localize("[Clientx30] Inviting %d %s to Team %d..."),
 		(int)m_vPendingInviteCommands.size(),
-		InviteFriends ? "amigo(s)" : "jugador(es)",
+		InviteFriends ? Localize("friend(s)") : Localize("player(s)"),
 		LocalTeam);
 	Echo(aInfo);
 

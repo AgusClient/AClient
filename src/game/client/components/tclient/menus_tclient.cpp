@@ -1285,7 +1285,7 @@ void CMenus::RenderSettingsTClientSettings(CUIRect MainView)
 
 	BottomWhatsNew.HSplitTop(HeadlineHeight, &Label, &BottomWhatsNew);
 	TextRender()->TextColor(1.0f, 0.88f, 0.35f, 1.0f);
-	Ui()->DoLabel(&Label, TCLocalize("Novedades de Clientx30 (Resumen Rapido)"), HeadlineFontSize, TEXTALIGN_ML);
+	Ui()->DoLabel(&Label, TCLocalize("What's New in Clientx30 (Quick Summary)"), HeadlineFontSize, TEXTALIGN_ML);
 	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 	BottomWhatsNew.HSplitTop(MarginSmall, nullptr, &BottomWhatsNew);
 
@@ -1302,12 +1302,12 @@ void CMenus::RenderSettingsTClientSettings(CUIRect MainView)
 		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 	};
 
-	AddNewsLine("* Overlay de Race Stats + Historial:", "Muestra Freezes, Saves, Lasts y Eficiencia en vivo y guarda cada run con su Tiempo de la Run.");
-	AddNewsLine("* Fast Practice (Modo Fantasma):", "Practica el mapa con /tp, /tc, /invincible y /weapons sin salirte de tu run real en el servidor.");
-	AddNewsLine("* Fast Input Independiente:", "Permite configurar ms distintos para tu propio Tee (Amount) y para los demas (Others Amount).");
-	AddNewsLine("* Auto Team Lock (hasta 5m):", "Bloquea el team (/lock 1) automaticamente tras el tiempo configurado al entrar a un equipo.");
-	AddNewsLine("* Invitaciones Masivas:", "Usa /invite all o /invite friends en el chat para invitar a todos o solo a tus amigos sin flood.");
-	AddNewsLine("* Renderizador Vulkan Activo:", "Shaders Vulkan (.spv) incluidos para jugar con mayor fluidez y menos consumo de CPU.");
+	AddNewsLine(TCLocalize("* Race Stats Overlay + Log:"), TCLocalize("Live HUD stats (Freezes, Saves, Lasts, Efficiency) and auto-saved run time."));
+	AddNewsLine(TCLocalize("* Fast Practice (Ghost Mode):"), TCLocalize("Practice any map part with /tp, /tc, /invincible without leaving your real run."));
+	AddNewsLine(TCLocalize("* Independent Fast Input:"), TCLocalize("Set separate visual prediction ms for yourself (Amount) and others (Others Amount)."));
+	AddNewsLine(TCLocalize("* Auto Team Lock (up to 5m):"), TCLocalize("Automatically locks team (/lock 1) after configured delay when joining."));
+	AddNewsLine(TCLocalize("* Bulk Invites:"), TCLocalize("Use /invite all or /invite friends with anti-flood queue and Tab auto-complete."));
+	AddNewsLine(TCLocalize("* Active Vulkan Renderer:"), TCLocalize("Compiled SPIR-V shaders included for smoother frame rates and lower CPU usage."));
 
 	BottomWhatsNew.HSplitTop(MarginExtraSmall, nullptr, &BottomWhatsNew);
 	s_SectionBoxesCx30.back().h = BottomWhatsNew.y - s_SectionBoxesCx30.back().y;
@@ -3309,13 +3309,13 @@ void CMenus::RenderSettingsTClientRaceStats(CUIRect MainView)
 	Ui()->DoLabel(&MetaMap, aTitleBuf, 15.0f, TEXTALIGN_ML);
 
 	char aRunTimeLabel[64];
-	str_format(aRunTimeLabel, sizeof(aRunTimeLabel), "Tiempo de la Run: %s", Sel.m_aRunTime);
+	str_format(aRunTimeLabel, sizeof(aRunTimeLabel), "%s: %s", TCLocalize("Run Time"), Sel.m_aRunTime);
 	TextRender()->TextColor(0.4f, 1.0f, 0.55f, 1.0f);
 	Ui()->DoLabel(&MetaRunTime, aRunTimeLabel, 14.0f, TEXTALIGN_MR);
 
 	char aDetailsBuf[160];
-	str_format(aDetailsBuf, sizeof(aDetailsBuf), "Fecha: %s   |   Team: %d   |   Guardado: %s   |   Jugadores: %d",
-		Sel.m_aTimestamp, Sel.m_Team, Sel.m_aReason, (int)Sel.m_vPlayers.size());
+	str_format(aDetailsBuf, sizeof(aDetailsBuf), "%s: %s   |   %s: %d   |   %s: %s   |   %s: %d",
+		TCLocalize("Date"), Sel.m_aTimestamp, TCLocalize("Team"), Sel.m_Team, TCLocalize("Saved"), Sel.m_aReason, TCLocalize("Players"), (int)Sel.m_vPlayers.size());
 	TextRender()->TextColor(0.8f, 0.85f, 0.92f, 0.95f);
 	Ui()->DoLabel(&MetaBottom, aDetailsBuf, 11.5f, TEXTALIGN_ML);
 
@@ -3473,53 +3473,31 @@ void CMenus::RenderSettingsClientx30Commands(CUIRect MainView)
 	Ui()->DoLabel(&Label, TCLocalize("Team & Invites (Chat)"), HeadlineFontSize, TEXTALIGN_ML);
 	LeftView.HSplitTop(MarginSmall, nullptr, &LeftView);
 
-	DrawCommandCard(LeftView, "/invite all", "Invita a tu team actual a todos los jugadores conectados del servidor.");
-	DrawCommandCard(LeftView, "/invite friends", "Invita a tu team actual solo a los jugadores que tenes en Amigos.");
+	DrawCommandCard(LeftView, "/invite all", TCLocalize("Invites all connected players on the server to your team."));
+	DrawCommandCard(LeftView, "/invite friends", TCLocalize("Invites only connected players on your friends list to your team."));
 
 	LeftView.HSplitTop(Margin, nullptr, &LeftView);
 	LeftView.HSplitTop(HeadlineHeight, &Label, &LeftView);
-	Ui()->DoLabel(&Label, TCLocalize("Race Stats & Overlay (Consola / Binds)"), HeadlineFontSize, TEXTALIGN_ML);
+	Ui()->DoLabel(&Label, TCLocalize("Race Stats & Overlay (Console / Binds)"), HeadlineFontSize, TEXTALIGN_ML);
 	LeftView.HSplitTop(MarginSmall, nullptr, &LeftView);
 
-	DrawCommandCard(LeftView, "toggle tc_mini_statboard 0 1", "Muestra u oculta el overlay de estadisticas (Race Stats HUD).");
-	DrawCommandCard(LeftView, "tc_save_racestats", "Guarda manualmente las estadisticas de la run actual en el historial.");
+	DrawCommandCard(LeftView, "toggle tc_mini_statboard 0 1", TCLocalize("Toggles the race stats HUD overlay visibility."));
+	DrawCommandCard(LeftView, "tc_save_racestats", TCLocalize("Manually saves current run stats to history log."));
 
 	// Columna Derecha: Fast Practice (Modo Fantasma)
 	RightView.HSplitTop(HeadlineHeight, &Label, &RightView);
-	Ui()->DoLabel(&Label, TCLocalize("Fast Practice / Modo Fantasma"), HeadlineFontSize, TEXTALIGN_ML);
+	Ui()->DoLabel(&Label, TCLocalize("Fast Practice / Ghost Mode"), HeadlineFontSize, TEXTALIGN_ML);
 	RightView.HSplitTop(MarginSmall, nullptr, &RightView);
 
-	DrawCommandCard(RightView, "fast_practice_toggle (Consola / Bind)", "Activa o desactiva el modo fantasma sin salir de tu run real.");
-	DrawCommandCard(RightView, "/tp  (en el Chat durante Practice)", "Te teletransporta a la posicion de tu cursor en el mundo local.");
-	DrawCommandCard(RightView, "/tc  (en el Chat durante Practice)", "Activa o desactiva el telecursor (teletransporte rapido con el mouse).");
-	DrawCommandCard(RightView, "/invincible  (en el Chat durante Practice)", "Activa invencibilidad local contra freeze en modo practica.");
-	DrawCommandCard(RightView, "/weapons  (en el Chat durante Practice)", "Te otorga todas las armas localmente (shotgun, grenade, laser, etc.).");
-	DrawCommandCard(RightView, "/save  y  /load  (en el Chat durante Practice)", "Guarda y carga una posicion local de practica para repetir una parte.");
+	DrawCommandCard(RightView, "fast_practice_toggle", TCLocalize("Enables or disables ghost practice mode without leaving your run."));
+	DrawCommandCard(RightView, "/tp", TCLocalize("Teleports you to your cursor in local practice world."));
+	DrawCommandCard(RightView, "/tc", TCLocalize("Toggles telecursor mode (quick teleport with aim/mouse)."));
+	DrawCommandCard(RightView, "/invincible", TCLocalize("Toggles local invincibility against freeze in practice mode."));
+	DrawCommandCard(RightView, "/weapons", TCLocalize("Gives you all weapons in local practice mode."));
+	DrawCommandCard(RightView, "/save & /load", TCLocalize("Saves and loads local practice positions to repeat map parts."));
 }
 
-#if 0
-	static CButtonContainer s_aClientx30Tabs[2] = {};
-	const char *apTabNames[2] = {
-		TCLocalize("Settings"),
-		TCLocalize("Race Stats")};
 
-	for(int Tab = 0; Tab < 2; ++Tab)
-	{
-		TabBar.VSplitLeft(TabWidth, &Button, &TabBar);
-		const int Corners = Tab == 0 ? IGraphics::CORNER_L : IGraphics::CORNER_R;
-		if(DoButton_MenuTab(&s_aClientx30Tabs[Tab], apTabNames[Tab], s_CurClientx30Tab == Tab, &Button, Corners, nullptr, nullptr, nullptr, nullptr, 4.0f))
-			s_CurClientx30Tab = Tab;
-	}
-
-	MainView.HSplitTop(Margin, nullptr, &MainView);
-
-	if(s_CurClientx30Tab == 0)
-		RenderSettingsClientx30Settings(MainView);
-	else
-		RenderSettingsTClientRaceStats(MainView);
-}
-
-#endif
 
 void CMenus::RenderSettingsClientx30Settings(CUIRect MainView)
 {
@@ -3674,7 +3652,7 @@ void CMenus::RenderSettingsClientx30Settings(CUIRect MainView)
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	Column.HSplitTop(16.0f, &Label, &Column);
 	TextRender()->TextColor(0.55f, 0.9f, 1.0f, 1.0f);
-	Ui()->DoLabel(&Label, "Comandos en Practice: /tp  /tc  /invincible  /weapons  /save  /load", 11.5f, TEXTALIGN_ML);
+	Ui()->DoLabel(&Label, TCLocalize("Practice commands: /tp  /tc  /invincible  /weapons  /save  /load"), 11.5f, TEXTALIGN_ML);
 	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 
 	if(Client()->State() == IClient::STATE_ONLINE)
@@ -3706,9 +3684,9 @@ void CMenus::RenderSettingsClientx30Settings(CUIRect MainView)
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	Column.HSplitTop(16.0f, &Label, &Column);
 	TextRender()->TextColor(1.0f, 0.88f, 0.35f, 1.0f);
-	Ui()->DoLabel(&Label, "Chat: /invite all  (invita a todo el server al team)", 12.0f, TEXTALIGN_ML);
+	Ui()->DoLabel(&Label, TCLocalize("Chat: /invite all  (invites all server players to team)"), 12.0f, TEXTALIGN_ML);
 	Column.HSplitTop(16.0f, &Label, &Column);
-	Ui()->DoLabel(&Label, "Chat: /invite friends  (invita solo amigos al team)", 12.0f, TEXTALIGN_ML);
+	Ui()->DoLabel(&Label, TCLocalize("Chat: /invite friends  (invites only friends to team)"), 12.0f, TEXTALIGN_ML);
 	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
@@ -3746,7 +3724,7 @@ void CMenus::RenderSettingsClientx30Settings(CUIRect MainView)
 
 	BottomWhatsNew.HSplitTop(HeadlineHeight, &Label, &BottomWhatsNew);
 	TextRender()->TextColor(1.0f, 0.88f, 0.35f, 1.0f);
-	Ui()->DoLabel(&Label, TCLocalize("Novedades de Clientx30 (Resumen Rapido)"), HeadlineFontSize, TEXTALIGN_ML);
+	Ui()->DoLabel(&Label, TCLocalize("What's New in Clientx30 (Quick Summary)"), HeadlineFontSize, TEXTALIGN_ML);
 	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 	BottomWhatsNew.HSplitTop(MarginSmall, nullptr, &BottomWhatsNew);
 
@@ -3763,12 +3741,12 @@ void CMenus::RenderSettingsClientx30Settings(CUIRect MainView)
 		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 	};
 
-	AddNewsLine("* Overlay de Race Stats + Historial:", "Muestra Freezes, Saves, Lasts y Eficiencia en vivo y guarda cada run con su Tiempo de la Run.");
-	AddNewsLine("* Fast Practice (Modo Fantasma):", "Practica el mapa con /tp, /tc, /invincible y /weapons sin salirte de tu run real en el servidor.");
-	AddNewsLine("* Fast Input Independiente:", "Permite configurar ms distintos para tu propio Tee (Amount) y para los demas (Others Amount).");
-	AddNewsLine("* Auto Team Lock (hasta 5m):", "Bloquea el team (/lock 1) automaticamente tras el tiempo configurado al entrar a un equipo.");
-	AddNewsLine("* Invitaciones Masivas:", "Usa /invite all o /invite friends en el chat para invitar a todos o solo a tus amigos sin flood.");
-	AddNewsLine("* Renderizador Vulkan Activo:", "Shaders Vulkan (.spv) incluidos para jugar con mayor fluidez y menos consumo de CPU.");
+	AddNewsLine(TCLocalize("* Race Stats Overlay + Log:"), TCLocalize("Live HUD stats (Freezes, Saves, Lasts, Efficiency) and auto-saved run time."));
+	AddNewsLine(TCLocalize("* Fast Practice (Ghost Mode):"), TCLocalize("Practice any map part with /tp, /tc, /invincible without leaving your real run."));
+	AddNewsLine(TCLocalize("* Independent Fast Input:"), TCLocalize("Set separate visual prediction ms for yourself (Amount) and others (Others Amount)."));
+	AddNewsLine(TCLocalize("* Auto Team Lock (up to 5m):"), TCLocalize("Automatically locks team (/lock 1) after configured delay when joining."));
+	AddNewsLine(TCLocalize("* Bulk Invites:"), TCLocalize("Use /invite all or /invite friends with anti-flood queue and Tab auto-complete."));
+	AddNewsLine(TCLocalize("* Active Vulkan Renderer:"), TCLocalize("Compiled SPIR-V shaders included for smoother frame rates and lower CPU usage."));
 
 	BottomWhatsNew.HSplitTop(MarginExtraSmall, nullptr, &BottomWhatsNew);
 	s_SectionBoxesCx30.back().h = BottomWhatsNew.y - s_SectionBoxesCx30.back().y;

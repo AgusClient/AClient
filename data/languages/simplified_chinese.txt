@@ -2692,3 +2692,159 @@ Always predict frozen players
 
 No country flags match your filter criteria
 == 
+
+Commands
+== 命令
+
+Run Time
+== 通关用时
+
+Saved
+== 保存方式
+
+Team & Invites (Chat)
+== 队伍与邀请 (聊天框)
+
+Invites all connected players on the server to your team.
+== 邀请服务器内所有在线玩家加入你的队伍。
+
+Invites only connected players on your friends list to your team.
+== 仅邀请好友列表中的在线玩家加入队伍。
+
+Race Stats & Overlay (Console / Binds)
+== 比赛统计与悬浮窗 (控制台 / 快捷键)
+
+Toggles the race stats HUD overlay visibility.
+== 开关队伍比赛统计悬浮窗 (Race Stats HUD)。
+
+Manually saves current run stats to history log.
+== 手动将当前局统计数据保存至历史记录。
+
+Fast Practice / Ghost Mode
+== 快速练习 / 幽灵模式
+
+Enables or disables ghost practice mode without leaving your run.
+== 在不退出真实比赛的情况下开启或关闭幽灵练习模式。
+
+Teleports you to your cursor in local practice world.
+== 在本地练习世界中传送到鼠标光标位置。
+
+Toggles telecursor mode (quick teleport with aim/mouse).
+== 开关鼠标传送模式 (通过瞄准即时传送)。
+
+Toggles local invincibility against freeze in practice mode.
+== 在练习模式中开启防冻结无敌状态。
+
+Gives you all weapons in local practice mode.
+== 在本地练习模式中获取全部武器。
+
+Saves and loads local practice positions to repeat map parts.
+== 保存与加载本地练习点以便反复练习难点路线。
+
+Practice commands: /tp  /tc  /invincible  /weapons  /save  /load
+== 练习指令: /tp  /tc  /invincible  /weapons  /save  /load
+
+Chat: /invite all  (invites all server players to team)
+== 聊天: /invite all (邀请全服玩家进队)
+
+Chat: /invite friends  (invites only friends to team)
+== 聊天: /invite friends (仅邀请好友进队)
+
+Invite all key (/invite all)
+== 一键邀请全服 (/invite all)
+
+Invite friends key (/invite friends)
+== 一键邀请好友 (/invite friends)
+
+Invite All (/invite all)
+== 邀请全服 (/invite all)
+
+Invite Friends (/invite friends)
+== 邀请好友 (/invite friends)
+
+Auto Team Lock & Invites
+== 自动锁队与组队邀请
+
+Lock delay (max 5m)
+== 锁队延迟 (最高5分钟)
+
+Ghost transparency
+== 幽灵本体透明度
+
+Show practice mode text (/tc /invincible)
+== 显示练习模式顶部提示 (/tc /invincible)
+
+Disable Fast Practice (Return to Run)
+== 关闭快速练习 (返回实际比赛)
+
+Enable Fast Practice (Ghost Mode)
+== 开启快速练习 (幽灵模式)
+
+Fast Practice key (Ghost mode)
+== 快速练习快捷键 (幽灵模式)
+
+Toggle stats overlay key
+== 开关统计悬浮窗快捷键
+
+Save stats key
+== 手动保存统计快捷键
+
+What's New in Clientx30 (Quick Summary)
+== Clientx30 新功能一览
+
+* Race Stats Overlay + Log:
+== * 比赛统计悬浮窗 + 历史归档:
+
+Live HUD stats (Freezes, Saves, Lasts, Efficiency) and auto-saved run time.
+== 实时显示冰冻、营救、遗留、救援效率，并自动记录通关耗时。
+
+* Fast Practice (Ghost Mode):
+== * 快速练习 (幽灵模式):
+
+Practice any map part with /tp, /tc, /invincible without leaving your real run.
+== 使用 /tp、/tc、/invincible 自由练习关卡，无需中断真实比赛。
+
+* Independent Fast Input:
+== * 独立输入预判 (Fast Input):
+
+Set separate visual prediction ms for yourself (Amount) and others (Others Amount).
+== 可分别调整自己 (Amount) 与其他玩家 (Others Amount) 的预判毫秒数。
+
+* Auto Team Lock (up to 5m):
+== * 自动队伍锁定 (最高5分钟):
+
+Automatically locks team (/lock 1) after configured delay when joining.
+== 进队后按照设置的延迟自动执行 /lock 1 锁定队伍。
+
+* Bulk Invites:
+== * 批量队伍邀请:
+
+Use /invite all or /invite friends with anti-flood queue and Tab auto-complete.
+== 支持 /invite all 与 /invite friends，具备防刷屏队列及 Tab 自动补全。
+
+* Active Vulkan Renderer:
+== * 原生 Vulkan 渲染后端:
+
+Compiled SPIR-V shaders included for smoother frame rates and lower CPU usage.
+== 内置编译好的 SPIR-V 着色器，帧率更稳且大幅降低 CPU 占用。
+
+[Clientx30] You must be connected to a server to use /invite.
+== [Clientx30] 必须在服务器在线状态下才能使用 /invite。
+
+[Clientx30] Join a team first (e.g. /team 1) before using /invite.
+== [Clientx30] 请先加入队伍 (例如 /team 1) 再使用 /invite。
+
+[Clientx30] No connected friends outside your team found to invite.
+== [Clientx30] 未发现队伍外的好友在线。
+
+[Clientx30] No other players outside your team found to invite.
+== [Clientx30] 未发现队伍外的其他玩家。
+
+[Clientx30] Inviting %d %s to Team %d...
+== [Clientx30] 正在邀请 %d 名%s加入队伍 %d...
+
+friend(s)
+== 好友
+
+player(s)
+== 玩家
