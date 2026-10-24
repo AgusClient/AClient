@@ -143,6 +143,7 @@ public:
 
 	static void ConKeyCompactStatboard(IConsole::IResult *pResult, void *pUserData);
 	static void ConSaveRaceStats(IConsole::IResult *pResult, void *pUserData);
+	static ColorRGBA GetEfficiencyColor(int Percent);
 
 	void RenderMiniStatboard();
 	bool HasCurrentTeamActivity() const;
