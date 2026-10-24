@@ -2561,7 +2561,78 @@ void CGameClient::OnNewSnapshot(bool DummySwapped)
 	UpdateLocalTuning();
 	m_IsDummySwapping = 0;
 	if(Client()->State() != IClient::STATE_DEMOPLAYBACK)
+	if(Client()->State() != IClient::STATE_DEMOPLAYBACK)
+	{
 		UpdatePrediction();
+		UpdateAutoTeamLock();
+	}
+}
+
+void CGameClient::ResetAutoTeamLockState()
+{
+	for(int i = 0; i < NUM_DUMMIES; i++)
+	{
+		m_aAutoTeamLockLastTeam[i] = -1;
+		m_aAutoTeamLockDeadlineTick[i] = 0;
+		m_aAutoTeamLockPending[i] = false;
+	}
+}
+
+void CGameClient::UpdateAutoTeamLock()
+{
+	if(Client()->State() != IClient::STATE_ONLINE || m_Snap.m_SpecInfo.m_Active)
+	{
+		ResetAutoTeamLockState();
+		return;
+	}
+
+	if(!g_Config.m_TcAutoTeamLock)
+	{
+		for(int i = 0; i < NUM_DUMMIES; i++)
+		{
+			m_aAutoTeamLockPending[i] = false;
+			const int LocalId = m_aLocalIds[i];
+			m_aAutoTeamLockLastTeam[i] = (LocalId >= 0 && LocalId < MAX_CLIENTS) ? m_Teams.Team(LocalId) : -1;
+		}
+		return;
+	}
+
+	const int NowTick = Client()->GameTick(g_Config.m_ClDummy);
+	const int DelayTicks = std::clamp(g_Config.m_TcAutoTeamLockDelay, 0, 300) * Client()->GameTickSpeed();
+
+	for(int i = 0; i < NUM_DUMMIES; i++)
+	{
+		const int LocalId = m_aLocalIds[i];
+		if(LocalId < 0 || LocalId >= MAX_CLIENTS)
+		{
+			m_aAutoTeamLockLastTeam[i] = -1;
+			m_aAutoTeamLockPending[i] = false;
+			continue;
+		}
+
+		const int Team = m_Teams.Team(LocalId);
+		const int PrevTeam = m_aAutoTeamLockLastTeam[i];
+		m_aAutoTeamLockLastTeam[i] = Team;
+
+		const bool InValidTeam = Team > TEAM_FLOCK && Team < TEAM_SUPER;
+		if(!InValidTeam)
+		{
+			m_aAutoTeamLockPending[i] = false;
+			continue;
+		}
+
+		if(PrevTeam != Team && PrevTeam >= 0)
+		{
+			m_aAutoTeamLockPending[i] = true;
+			m_aAutoTeamLockDeadlineTick[i] = NowTick + DelayTicks;
+		}
+
+		if(m_aAutoTeamLockPending[i] && i == g_Config.m_ClDummy && NowTick >= m_aAutoTeamLockDeadlineTick[i])
+		{
+			m_Chat.SendChat(0, "/lock 1");
+			m_aAutoTeamLockPending[i] = false;
+		}
+	}
 }
 
 std::function<bool(int, int, int, int)> CGameClient::GetScoreComparator(bool TimeScore, bool ReceivedMillisecondFinishTimes, bool Race7)

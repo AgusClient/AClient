@@ -298,3 +298,9 @@ MACRO_CONFIG_INT(TcMiniStatboardScale, tc_mini_statboard_scale, 70, 20, 200, CFG
 MACRO_CONFIG_INT(TcMiniStatboardOpacity, tc_mini_statboard_opacity, 60, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mini statboard background opacity")
 MACRO_CONFIG_INT(TcMiniStatboardX, tc_mini_statboard_x, 95, 0, 100, CFGFLAG_CLIENT | CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mini statboard HUD X position percent")
 MACRO_CONFIG_INT(TcMiniStatboardY, tc_mini_statboard_y, 50, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mini statboard HUD Y position percent")
+
+// Fast Practice & Auto Team Lock (Clientx30)
+MACRO_CONFIG_INT(TcFastPracticeGhostAlpha, tc_fast_practice_ghost_alpha, 45, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Ghost transparency percentage in Fast Practice mode")
+MACRO_CONFIG_INT(TcFastPracticeShowText, tc_fast_practice_show_text, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show top practice mode text (/tc /invincible) in Fast Practice")
+MACRO_CONFIG_INT(TcAutoTeamLock, tc_auto_team_lock, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Automatically lock team (/lock 1) after joining a team")
+MACRO_CONFIG_INT(TcAutoTeamLockDelay, tc_auto_team_lock_delay, 1, 0, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Delay in seconds before sending /lock 1 after joining a team")

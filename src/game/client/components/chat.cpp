@@ -152,6 +152,7 @@ void CChat::Reset()
 	m_aCurrentInputText[0] = '\0';
 	DisableMode();
 	m_vServerCommands.clear();
+	m_vPendingInviteCommands.clear();
 
 	for(int64_t &LastSoundPlayed : m_aLastSoundPlayed)
 		LastSoundPlayed = 0;
@@ -334,6 +335,14 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 
 		if(GameClient()->m_BindChat.ChatDoAutocomplete(ShiftPressed))
 		{
+		}
+		else if(str_startswith_nocase(m_aCompletionBuffer, "/invite ") && (str_startswith_nocase("all", m_aCompletionBuffer + 8) || str_startswith_nocase("friends", m_aCompletionBuffer + 8)))
+		{
+			const char *pArg = m_aCompletionBuffer + 8;
+			const char *pCompleted = str_startswith_nocase("friends", pArg) ? "/invite friends" : "/invite all";
+			m_Input.Set(pCompleted);
+			m_Input.SetCursorOffset(str_length(pCompleted));
+			m_CompletionUsed = true;
 		}
 		else if(m_aCompletionBuffer[0] == '/' && !m_vServerCommands.empty())
 		{
@@ -592,6 +601,7 @@ void CChat::OnMessage(int MsgType, void *pRawMsg)
 		if(!m_ServerSupportsCommandInfo)
 		{
 			m_vServerCommands.clear();
+	m_vPendingInviteCommands.clear();
 			m_ServerSupportsCommandInfo = true;
 		}
 		RegisterCommand(pMsg->m_pName, pMsg->m_pArgsFormat, pMsg->m_pHelpText);
@@ -1286,7 +1296,14 @@ void CChat::OnRender()
 		return;
 
 	// send pending chat messages
-	if(m_PendingChatCounter > 0 && m_LastChatSend + time_freq() < time())
+	// send pending chat messages
+	if(!m_vPendingInviteCommands.empty() && m_LastChatSend + time_freq() < time())
+	{
+		std::string NextCmd = m_vPendingInviteCommands.front();
+		m_vPendingInviteCommands.erase(m_vPendingInviteCommands.begin());
+		SendChat(0, NextCmd.c_str());
+	}
+	else if(m_PendingChatCounter > 0 && m_LastChatSend + time_freq() < time())
 	{
 		CHistoryEntry *pEntry = m_History.Last();
 		for(int i = m_PendingChatCounter - 1; pEntry; --i, pEntry = m_History.Prev(pEntry))
@@ -1362,7 +1379,25 @@ void CChat::OnRender()
 		m_Input.SetScrollOffsetChange(ScrollOffsetChange);
 
 		// Autocompletion hint
-		if(m_Input.GetString()[0] == '/' && m_Input.GetString()[1] != '\0' && !m_vServerCommands.empty())
+		// Autocompletion hint
+		if(str_startswith_nocase(m_Input.GetString(), "/invite ") && m_Input.GetString()[8] != '\0')
+		{
+			const char *pArg = m_Input.GetString() + 8;
+			const char *apInviteSubCmds[2] = {"all", "friends"};
+			for(const char *pSubCmd : apInviteSubCmds)
+			{
+				if(str_startswith_nocase(pSubCmd, pArg) && str_comp_nocase(pSubCmd, pArg) != 0)
+				{
+					InputCursor.m_X = InputCursor.m_X + TextRender()->TextWidth(InputCursor.m_FontSize, m_Input.GetString(), -1, InputCursor.m_LineWidth);
+					InputCursor.m_Y = m_Input.GetCaretPosition().y;
+					TextRender()->TextColor(1.0f, 1.0f, 1.0f, 0.5f);
+					TextRender()->TextEx(&InputCursor, pSubCmd + str_length(pArg));
+					TextRender()->TextColor(TextRender()->DefaultTextColor());
+					break;
+				}
+			}
+		}
+		else if(m_Input.GetString()[0] == '/' && m_Input.GetString()[1] != '\0' && !m_vServerCommands.empty())
 		{
 			for(const auto &Command : m_vServerCommands)
 			{
@@ -1489,6 +1524,9 @@ void CChat::SendChat(int Team, const char *pLine)
 	if(GameClient()->m_FastPractice.ConsumePracticeChatCommand(Team, pLine))
 		return;
 
+	if(TryHandleBulkInviteCommand(pLine))
+		return;
+
 	m_LastChatSend = time();
 
 	if(GameClient()->Client()->IsSixup())
@@ -1532,5 +1570,87 @@ void CChat::SendChatQueued(const char *pLine)
 		CHistoryEntry *pEntry = m_History.Allocate(sizeof(CHistoryEntry) + Length);
 		pEntry->m_Team = m_Mode == MODE_ALL ? 0 : 1;
 		str_copy(pEntry->m_aText, pLine, Length + 1);
+	}
+}
+
+bool CChat::TryHandleBulkInviteCommand(const char *pLine)
+{
+	if(!pLine)
+		return false;
+
+	const char *pTrimmed = str_utf8_skip_whitespaces(pLine);
+	bool InviteAll = false;
+	bool InviteFriends = false;
+
+	if(str_comp_nocase(pTrimmed, "/invite all") == 0)
+		InviteAll = true;
+	else if(str_comp_nocase(pTrimmed, "/invite friends") == 0)
+		InviteFriends = true;
+	else
+		return false;
+
+	if(Client()->State() != IClient::STATE_ONLINE)
+	{
+		Echo("[Clientx30] Debes estar conectado a un servidor para usar /invite.");
+		return true;
+	}
+
+	const int LocalId = GameClient()->m_aLocalIds[g_Config.m_ClDummy];
+	const int LocalTeam = (LocalId >= 0 && LocalId < MAX_CLIENTS) ? GameClient()->m_Teams.Team(LocalId) : TEAM_FLOCK;
+	if(LocalTeam <= TEAM_FLOCK || LocalTeam >= TEAM_SUPER)
+	{
+		Echo("[Clientx30] Entra primero a un team (por ej. /team 1) antes de usar /invite.");
+		return true;
+	}
+
+	m_vPendingInviteCommands.clear();
+	for(int i = 0; i < MAX_CLIENTS; ++i)
+	{
+		if(i == LocalId)
+			continue;
+		const auto &ClientData = GameClient()->m_aClients[i];
+		if(!ClientData.m_Active || ClientData.m_aName[0] == '\0')
+			continue;
+		if(GameClient()->m_Teams.Team(i) == LocalTeam)
+			continue;
+		if(InviteFriends && !ClientData.m_Friend)
+			continue;
+
+		char aCmd[128];
+		str_format(aCmd, sizeof(aCmd), "/invite %s", ClientData.m_aName);
+		m_vPendingInviteCommands.emplace_back(aCmd);
+	}
+
+	if(m_vPendingInviteCommands.empty())
+	{
+		if(InviteFriends)
+			Echo("[Clientx30] No hay amigos conectados fuera de tu team para invitar.");
+		else
+			Echo("[Clientx30] No hay otros jugadores fuera de tu team para invitar.");
+		return true;
+	}
+
+	char aInfo[160];
+	str_format(aInfo, sizeof(aInfo), "[Clientx30] Invitando a %d %s al Team %d...",
+		(int)m_vPendingInviteCommands.size(),
+		InviteFriends ? "amigo(s)" : "jugador(es)",
+		LocalTeam);
+	Echo(aInfo);
+
+	if(m_LastChatSend + time_freq() < time())
+	{
+		std::string FirstCmd = m_vPendingInviteCommands.front();
+		m_vPendingInviteCommands.erase(m_vPendingInviteCommands.begin());
+		if(true)
+		{
+			SendChat(0, FirstCmd.c_str());
+		}
+	}
+	return true;
+	if(false)
+	{
+		{
+	}
+	return true;
 	}
 }

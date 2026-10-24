@@ -1087,6 +1087,12 @@ public:
 	bool CheckNewInput() override;
 	std::optional<CServerInfo> m_ConnectServerInfo = std::nullopt;
 	void SetConnectInfo(const NETADDR *pAddress) override;
+
+	int m_aAutoTeamLockLastTeam[NUM_DUMMIES] = {-1, -1};
+	int m_aAutoTeamLockDeadlineTick[NUM_DUMMIES] = {0, 0};
+	bool m_aAutoTeamLockPending[NUM_DUMMIES] = {false, false};
+	void ResetAutoTeamLockState();
+	void UpdateAutoTeamLock();
 };
 
 ColorRGBA CalculateNameColor(ColorHSLA TextColorHSL);

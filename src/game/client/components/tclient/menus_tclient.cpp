@@ -826,7 +826,9 @@ void CMenus::RenderSettingsTClientSettings(CUIRect MainView)
 	LeftView = Column;
 	Column = RightView;
 
-	// ***** Race Stats ***** //
+	// ***** Race Stats (moved to Clientx30 tab) ***** //
+	if(false)
+	{
 	Column.HSplitTop(Margin, nullptr, &Column);
 	s_SectionBoxes.push_back(Column);
 	Column.HSplitTop(HeadlineHeight, &Label, &Column);
@@ -883,6 +885,8 @@ void CMenus::RenderSettingsTClientSettings(CUIRect MainView)
 	Ui()->DoScrollbarOption(&g_Config.m_TcMiniStatboardMaxPlayers, &g_Config.m_TcMiniStatboardMaxPlayers, &Button, TCLocalize("Max visible players"), 0, MAX_CLIENTS);
 
 	s_SectionBoxes.back().h = Column.y - s_SectionBoxes.back().y;
+
+	}
 
 	// ***** HUD ***** //
 	Column.HSplitTop(Margin, nullptr, &Column);
@@ -1267,7 +1271,51 @@ void CMenus::RenderSettingsTClientSettings(CUIRect MainView)
 
 	// ***** END OF PAGE 1 SETTINGS ***** //
 	RightView = Column;
+#if 0
+	RightView = Column;
 
+	// ***** Bloque Inferior: Novedades de Clientx30 ***** //
+	CUIRect BottomWhatsNew;
+	BottomWhatsNew.x = LeftView.x;
+	BottomWhatsNew.y = std::max(LeftView.y, RightView.y) + MarginBetweenSections;
+	BottomWhatsNew.w = (RightView.x + RightView.w) - LeftView.x;
+	BottomWhatsNew.h = 300.0f;
+
+	s_SectionBoxesCx30.push_back(BottomWhatsNew);
+
+	BottomWhatsNew.HSplitTop(HeadlineHeight, &Label, &BottomWhatsNew);
+	TextRender()->TextColor(1.0f, 0.88f, 0.35f, 1.0f);
+	Ui()->DoLabel(&Label, TCLocalize("Novedades de Clientx30 (Resumen Rapido)"), HeadlineFontSize, TEXTALIGN_ML);
+	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+	BottomWhatsNew.HSplitTop(MarginSmall, nullptr, &BottomWhatsNew);
+
+	auto AddNewsLine = [&](const char *pTitle, const char *pDetail) {
+		CUIRect LineRect;
+		BottomWhatsNew.HSplitTop(18.0f, &LineRect, &BottomWhatsNew);
+		TextRender()->TextColor(0.45f, 0.92f, 1.0f, 1.0f);
+		float TitleW = TextRender()->TextWidth(12.5f, pTitle) + 6.0f;
+		CUIRect TitleRect, DetailRect;
+		LineRect.VSplitLeft(TitleW, &TitleRect, &DetailRect);
+		Ui()->DoLabel(&TitleRect, pTitle, 12.5f, TEXTALIGN_ML);
+		TextRender()->TextColor(0.88f, 0.90f, 0.95f, 0.95f);
+		Ui()->DoLabel(&DetailRect, pDetail, 12.0f, TEXTALIGN_ML);
+		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+	};
+
+	AddNewsLine("* Overlay de Race Stats + Historial:", "Muestra Freezes, Saves, Lasts y Eficiencia en vivo y guarda cada run con su Tiempo de la Run.");
+	AddNewsLine("* Fast Practice (Modo Fantasma):", "Practica el mapa con /tp, /tc, /invincible y /weapons sin salirte de tu run real en el servidor.");
+	AddNewsLine("* Fast Input Independiente:", "Permite configurar ms distintos para tu propio Tee (Amount) y para los demas (Others Amount).");
+	AddNewsLine("* Auto Team Lock (hasta 5m):", "Bloquea el team (/lock 1) automaticamente tras el tiempo configurado al entrar a un equipo.");
+	AddNewsLine("* Invitaciones Masivas:", "Usa /invite all o /invite friends en el chat para invitar a todos o solo a tus amigos sin flood.");
+	AddNewsLine("* Renderizador Vulkan Activo:", "Shaders Vulkan (.spv) incluidos para jugar con mayor fluidez y menos consumo de CPU.");
+
+	BottomWhatsNew.HSplitTop(MarginExtraSmall, nullptr, &BottomWhatsNew);
+	s_SectionBoxesCx30.back().h = BottomWhatsNew.y - s_SectionBoxesCx30.back().y;
+
+	LeftView.y = BottomWhatsNew.y;
+	RightView.y = BottomWhatsNew.y;
+
+#endif
 	// Scroll
 	CUIRect ScrollRegion;
 	ScrollRegion.x = MainView.x;
@@ -1510,6 +1558,7 @@ void CMenus::RenderSettingsTClientChatBinds(CUIRect MainView)
 		Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 	};
 
+#if 1
 	float SizeL = 0.0f, SizeR = 0.0f;
 	for(auto &[pTitle, vBindDefaults] : CBindChat::BIND_DEFAULTS)
 	{
@@ -1519,6 +1568,7 @@ void CMenus::RenderSettingsTClientChatBinds(CUIRect MainView)
 		Size += vBindDefaults.size() * (MarginSmall + LineSize) + HeadlineHeight + HeadlineFontSize + MarginSmall * 2.0f;
 	}
 
+#endif
 	// Scroll
 	CUIRect ScrollRegion;
 	ScrollRegion.x = MainView.x;
@@ -3365,4 +3415,372 @@ void CMenus::RenderSettingsTClientRaceStats(CUIRect MainView)
 
 	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 	s_PlayersScroll.End();
+}
+
+void CMenus::RenderSettingsClientx30(CUIRect MainView)
+{
+	static int s_CurClientx30Tab = 0;
+
+	CUIRect TabBar, Button;
+	MainView.HSplitTop(LineSize, &TabBar, &MainView);
+	const float TabWidth = TabBar.w / 3.0f;
+	static CButtonContainer s_aClientx30Tabs[3] = {};
+	const char *apTabNames[3] = {
+		TCLocalize("Settings"),
+		TCLocalize("Race Stats"),
+		TCLocalize("Commands")};
+
+	for(int Tab = 0; Tab < 3; ++Tab)
+	{
+		TabBar.VSplitLeft(TabWidth, &Button, &TabBar);
+		const int Corners = Tab == 0 ? IGraphics::CORNER_L : (Tab == 2 ? IGraphics::CORNER_R : IGraphics::CORNER_NONE);
+		if(DoButton_MenuTab(&s_aClientx30Tabs[Tab], apTabNames[Tab], s_CurClientx30Tab == Tab, &Button, Corners, nullptr, nullptr, nullptr, nullptr, 4.0f))
+			s_CurClientx30Tab = Tab;
+	}
+
+	MainView.HSplitTop(Margin, nullptr, &MainView);
+
+	if(s_CurClientx30Tab == 0)
+		RenderSettingsClientx30Settings(MainView);
+	else if(s_CurClientx30Tab == 1)
+		RenderSettingsTClientRaceStats(MainView);
+	else
+		RenderSettingsClientx30Commands(MainView);
+}
+
+void CMenus::RenderSettingsClientx30Commands(CUIRect MainView)
+{
+	CUIRect LeftView, RightView, Label, Row;
+	MainView.HSplitTop(MarginSmall, nullptr, &MainView);
+	MainView.VSplitMid(&LeftView, &RightView, MarginBetweenViews);
+
+	auto DrawCommandCard = [&](CUIRect &Col, const char *pCmd, const char *pDesc) {
+		Col.HSplitTop(44.0f, &Row, &Col);
+		Row.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.28f), IGraphics::CORNER_ALL, 6.0f);
+		Row.Margin(6.0f, &Row);
+		CUIRect TopLine, BottomLine;
+		Row.HSplitMid(&TopLine, &BottomLine);
+		TextRender()->TextColor(1.0f, 0.88f, 0.35f, 1.0f);
+		Ui()->DoLabel(&TopLine, pCmd, 14.0f, TEXTALIGN_ML);
+		TextRender()->TextColor(0.85f, 0.88f, 0.94f, 0.95f);
+		Ui()->DoLabel(&BottomLine, pDesc, 11.5f, TEXTALIGN_ML);
+		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+		Col.HSplitTop(MarginSmall, nullptr, &Col);
+	};
+
+	// Columna Izquierda: Team & Invites + Race Stats
+	LeftView.HSplitTop(HeadlineHeight, &Label, &LeftView);
+	Ui()->DoLabel(&Label, TCLocalize("Team & Invites (Chat)"), HeadlineFontSize, TEXTALIGN_ML);
+	LeftView.HSplitTop(MarginSmall, nullptr, &LeftView);
+
+	DrawCommandCard(LeftView, "/invite all", "Invita a tu team actual a todos los jugadores conectados del servidor.");
+	DrawCommandCard(LeftView, "/invite friends", "Invita a tu team actual solo a los jugadores que tenes en Amigos.");
+
+	LeftView.HSplitTop(Margin, nullptr, &LeftView);
+	LeftView.HSplitTop(HeadlineHeight, &Label, &LeftView);
+	Ui()->DoLabel(&Label, TCLocalize("Race Stats & Overlay (Consola / Binds)"), HeadlineFontSize, TEXTALIGN_ML);
+	LeftView.HSplitTop(MarginSmall, nullptr, &LeftView);
+
+	DrawCommandCard(LeftView, "toggle tc_mini_statboard 0 1", "Muestra u oculta el overlay de estadisticas (Race Stats HUD).");
+	DrawCommandCard(LeftView, "tc_save_racestats", "Guarda manualmente las estadisticas de la run actual en el historial.");
+
+	// Columna Derecha: Fast Practice (Modo Fantasma)
+	RightView.HSplitTop(HeadlineHeight, &Label, &RightView);
+	Ui()->DoLabel(&Label, TCLocalize("Fast Practice / Modo Fantasma"), HeadlineFontSize, TEXTALIGN_ML);
+	RightView.HSplitTop(MarginSmall, nullptr, &RightView);
+
+	DrawCommandCard(RightView, "fast_practice_toggle (Consola / Bind)", "Activa o desactiva el modo fantasma sin salir de tu run real.");
+	DrawCommandCard(RightView, "/tp  (en el Chat durante Practice)", "Te teletransporta a la posicion de tu cursor en el mundo local.");
+	DrawCommandCard(RightView, "/tc  (en el Chat durante Practice)", "Activa o desactiva el telecursor (teletransporte rapido con el mouse).");
+	DrawCommandCard(RightView, "/invincible  (en el Chat durante Practice)", "Activa invencibilidad local contra freeze en modo practica.");
+	DrawCommandCard(RightView, "/weapons  (en el Chat durante Practice)", "Te otorga todas las armas localmente (shotgun, grenade, laser, etc.).");
+	DrawCommandCard(RightView, "/save  y  /load  (en el Chat durante Practice)", "Guarda y carga una posicion local de practica para repetir una parte.");
+}
+
+#if 0
+	static CButtonContainer s_aClientx30Tabs[2] = {};
+	const char *apTabNames[2] = {
+		TCLocalize("Settings"),
+		TCLocalize("Race Stats")};
+
+	for(int Tab = 0; Tab < 2; ++Tab)
+	{
+		TabBar.VSplitLeft(TabWidth, &Button, &TabBar);
+		const int Corners = Tab == 0 ? IGraphics::CORNER_L : IGraphics::CORNER_R;
+		if(DoButton_MenuTab(&s_aClientx30Tabs[Tab], apTabNames[Tab], s_CurClientx30Tab == Tab, &Button, Corners, nullptr, nullptr, nullptr, nullptr, 4.0f))
+			s_CurClientx30Tab = Tab;
+	}
+
+	MainView.HSplitTop(Margin, nullptr, &MainView);
+
+	if(s_CurClientx30Tab == 0)
+		RenderSettingsClientx30Settings(MainView);
+	else
+		RenderSettingsTClientRaceStats(MainView);
+}
+
+#endif
+
+void CMenus::RenderSettingsClientx30Settings(CUIRect MainView)
+{
+	CUIRect Column, LeftView, RightView, Button, Label;
+
+	static CScrollRegion s_ScrollRegionCx30;
+	CScrollRegionParams ScrollParams;
+	ScrollParams.m_ScrollUnit = 60.0f;
+	ScrollParams.m_ForceShowScrollbar = true;
+	ScrollParams.m_ScrollbarMargin = 5.0f;
+	s_ScrollRegionCx30.Begin(&MainView, &ScrollParams);
+
+	static std::vector<CUIRect> s_SectionBoxesCx30;
+	const float ScrollOffset = MainView.y;
+	static float s_PrevScrollOffsetCx30 = 0.0f;
+
+	MainView.VSplitRight(5.0f, &MainView, nullptr);
+	MainView.VSplitLeft(5.0f, nullptr, &MainView);
+
+	MainView.VSplitMid(&LeftView, &RightView, MarginBetweenViews);
+	LeftView.VSplitLeft(MarginSmall, nullptr, &LeftView);
+	RightView.VSplitRight(MarginSmall, &RightView, nullptr);
+
+	for(CUIRect &Section : s_SectionBoxesCx30)
+	{
+		float Padding = MarginBetweenViews * 0.6666f;
+		Section.w += Padding;
+		Section.h += Padding;
+		Section.x -= Padding * 0.5f;
+		Section.y -= Padding * 0.5f;
+		Section.y -= s_PrevScrollOffsetCx30 - ScrollOffset;
+		Section.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 10.0f);
+	}
+	s_PrevScrollOffsetCx30 = ScrollOffset;
+	s_SectionBoxesCx30.clear();
+
+	// ***** LeftView: Overlay ***** //
+	Column = LeftView;
+	Column.HSplitTop(Margin, nullptr, &Column);
+	s_SectionBoxesCx30.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("Overlay"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcMiniStatboard, TCLocalize("Enable Mini Statboard HUD"), &g_Config.m_TcMiniStatboard, &Column, LineSize);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcStatboardResetOnTeamKill, TCLocalize("Reset stats on /kill or /team change"), &g_Config.m_TcStatboardResetOnTeamKill, &Column, LineSize);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcStatboardAutoSave, TCLocalize("Auto-save stats before reset (/kill or /team)"), &g_Config.m_TcStatboardAutoSave, &Column, LineSize);
+
+	static CButtonContainer s_ReaderButtonToggleStatsCx30, s_ClearButtonToggleStatsCx30;
+	DoLine_KeyReader(Column, s_ReaderButtonToggleStatsCx30, s_ClearButtonToggleStatsCx30, TCLocalize("Toggle stats overlay key"), "toggle tc_mini_statboard 0 1");
+	static CButtonContainer s_ReaderButtonSaveStatsCx30, s_ClearButtonSaveStatsCx30;
+	DoLine_KeyReader(Column, s_ReaderButtonSaveStatsCx30, s_ClearButtonSaveStatsCx30, TCLocalize("Save stats key"), "tc_save_racestats");
+
+	static int s_ColFreezesCx30 = 0;
+	s_ColFreezesCx30 = (g_Config.m_TcMiniStatboardColumns & 1) ? 1 : 0;
+	if(DoButton_CheckBoxAutoVMarginAndSet(&s_ColFreezesCx30, TCLocalize("Column: Freezes"), &s_ColFreezesCx30, &Column, LineSize))
+		g_Config.m_TcMiniStatboardColumns ^= 1;
+
+	static int s_ColSavesCx30 = 0;
+	s_ColSavesCx30 = (g_Config.m_TcMiniStatboardColumns & 2) ? 1 : 0;
+	if(DoButton_CheckBoxAutoVMarginAndSet(&s_ColSavesCx30, TCLocalize("Column: Saves (Hammer unfreeze)"), &s_ColSavesCx30, &Column, LineSize))
+		g_Config.m_TcMiniStatboardColumns ^= 2;
+
+	static int s_ColLastsCx30 = 0;
+	s_ColLastsCx30 = (g_Config.m_TcMiniStatboardColumns & 4) ? 1 : 0;
+	if(DoButton_CheckBoxAutoVMarginAndSet(&s_ColLastsCx30, TCLocalize("Column: Lasts (Sole survivor)"), &s_ColLastsCx30, &Column, LineSize))
+		g_Config.m_TcMiniStatboardColumns ^= 4;
+
+	static int s_ColEffCx30 = 0;
+	s_ColEffCx30 = (g_Config.m_TcMiniStatboardColumns & 8) ? 1 : 0;
+	if(DoButton_CheckBoxAutoVMarginAndSet(&s_ColEffCx30, TCLocalize("Column: Efficiency ratio"), &s_ColEffCx30, &Column, LineSize))
+		g_Config.m_TcMiniStatboardColumns ^= 8;
+
+	Column.HSplitTop(LineSize, &Button, &Column);
+	Ui()->DoScrollbarOption(&g_Config.m_TcMiniStatboardX, &g_Config.m_TcMiniStatboardX, &Button, TCLocalize("Horizontal Position (X)"), 0, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
+
+	Column.HSplitTop(LineSize, &Button, &Column);
+	Ui()->DoScrollbarOption(&g_Config.m_TcMiniStatboardY, &g_Config.m_TcMiniStatboardY, &Button, TCLocalize("Vertical Position (Y)"), 0, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
+
+	Column.HSplitTop(LineSize, &Button, &Column);
+	Ui()->DoScrollbarOption(&g_Config.m_TcMiniStatboardScale, &g_Config.m_TcMiniStatboardScale, &Button, TCLocalize("HUD Scale (Size / Z)"), 30, 200, &CUi::ms_LinearScrollbarScale, 0, "%");
+
+	Column.HSplitTop(LineSize, &Button, &Column);
+	Ui()->DoScrollbarOption(&g_Config.m_TcMiniStatboardOpacity, &g_Config.m_TcMiniStatboardOpacity, &Button, TCLocalize("Background Opacity"), 0, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
+
+	Column.HSplitTop(LineSize, &Button, &Column);
+	Ui()->DoScrollbarOption(&g_Config.m_TcMiniStatboardMaxPlayers, &g_Config.m_TcMiniStatboardMaxPlayers, &Button, TCLocalize("Max visible players"), 0, MAX_CLIENTS);
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	{
+		CUIRect ActionRow, BtnSave, BtnReset;
+		Column.HSplitTop(LineSize + 4.0f, &ActionRow, &Column);
+		ActionRow.VSplitMid(&BtnSave, &BtnReset, MarginSmall);
+		static CButtonContainer s_BtnSaveOverlayNow, s_BtnResetOverlayNow;
+		if(DoButton_Menu(&s_BtnSaveOverlayNow, TCLocalize("Save Stats Now"), 0, &BtnSave))
+			GameClient()->m_RaceStats.SaveCurrentStats("Manual");
+		if(DoButton_Menu(&s_BtnResetOverlayNow, TCLocalize("Reset Live Stats"), 0, &BtnReset))
+			GameClient()->m_RaceStats.ResetTeamStats();
+	}
+
+	s_SectionBoxesCx30.back().h = Column.y - s_SectionBoxesCx30.back().y;
+
+	// ***** RightView ***** //
+	LeftView = Column;
+	Column = RightView;
+
+	// ***** Input (Fast Input) ***** //
+	Column.HSplitTop(Margin, nullptr, &Column);
+	s_SectionBoxesCx30.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("Input"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcFastInput, TCLocalize("Fast Input (reduced visual delay)"), &g_Config.m_TcFastInput, &Column, LineSize);
+
+	Column.HSplitTop(LineSize, &Button, &Column);
+	DoSliderWithScaledValue(&g_Config.m_TcFastInputAmount, &g_Config.m_TcFastInputAmount, &Button, TCLocalize("Amount"), 1, 40, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "ms");
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	if(g_Config.m_TcFastInput)
+	{
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcFastInputOthers, TCLocalize("Fast Input others"), &g_Config.m_TcFastInputOthers, &Column, LineSize);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		if(g_Config.m_TcFastInputOthers)
+			DoSliderWithScaledValue(&g_Config.m_TcFastInputOthersAmount, &g_Config.m_TcFastInputOthersAmount, &Button, TCLocalize("Others Amount"), 1, 40, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "ms");
+	}
+	else
+		Column.HSplitTop(LineSize, nullptr, &Column);
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClSubTickAiming, TCLocalize("Sub-Tick aiming"), &g_Config.m_ClSubTickAiming, &Column, LineSize);
+	if(!g_Config.m_ClSubTickAiming)
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcFastInputRepredictHook, TCLocalize("Repredict on mid-tick hook direction change (may lag)"), &g_Config.m_TcFastInputRepredictHook, &Column, LineSize);
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	s_SectionBoxesCx30.back().h = Column.y - s_SectionBoxesCx30.back().y;
+
+	// ***** Fast Practice ***** //
+	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	s_SectionBoxesCx30.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("Fast Practice"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	static CButtonContainer s_ReaderButtonFastPracticeCx30, s_ClearButtonFastPracticeCx30;
+	DoLine_KeyReader(Column, s_ReaderButtonFastPracticeCx30, s_ClearButtonFastPracticeCx30, TCLocalize("Fast Practice key (Ghost mode)"), "fast_practice_toggle");
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcFastPracticeShowText, TCLocalize("Show practice mode text (/tc /invincible)"), &g_Config.m_TcFastPracticeShowText, &Column, LineSize);
+
+	Column.HSplitTop(LineSize, &Button, &Column);
+	Ui()->DoScrollbarOption(&g_Config.m_TcFastPracticeGhostAlpha, &g_Config.m_TcFastPracticeGhostAlpha, &Button, TCLocalize("Ghost transparency"), 0, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	Column.HSplitTop(16.0f, &Label, &Column);
+	TextRender()->TextColor(0.55f, 0.9f, 1.0f, 1.0f);
+	Ui()->DoLabel(&Label, "Comandos en Practice: /tp  /tc  /invincible  /weapons  /save  /load", 11.5f, TEXTALIGN_ML);
+	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+	if(Client()->State() == IClient::STATE_ONLINE)
+	{
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize + 4.0f, &Button, &Column);
+		static CButtonContainer s_BtnToggleFastPracticeNow;
+		const char *pBtnLabel = GameClient()->m_FastPractice.Enabled() ? TCLocalize("Disable Fast Practice (Return to Run)") : TCLocalize("Enable Fast Practice (Ghost Mode)");
+		if(DoButton_Menu(&s_BtnToggleFastPracticeNow, pBtnLabel, GameClient()->m_FastPractice.Enabled() ? 1 : 0, &Button))
+			GameClient()->m_FastPractice.Toggle();
+	}
+
+	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+	s_SectionBoxesCx30.back().h = Column.y - s_SectionBoxesCx30.back().y;
+
+	// ***** Auto Team Lock ***** //
+	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	s_SectionBoxesCx30.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("Auto Team Lock & Invites"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcAutoTeamLock, TCLocalize("Auto lock team on join (/lock 1)"), &g_Config.m_TcAutoTeamLock, &Column, LineSize);
+
+	Column.HSplitTop(LineSize, &Button, &Column);
+	Column.HSplitTop(LineSize, &Button, &Column);
+	Ui()->DoScrollbarOption(&g_Config.m_TcAutoTeamLockDelay, &g_Config.m_TcAutoTeamLockDelay, &Button, TCLocalize("Lock delay (max 5m)"), 0, 300, &CUi::ms_LinearScrollbarScale, 0, "s");
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	Column.HSplitTop(16.0f, &Label, &Column);
+	TextRender()->TextColor(1.0f, 0.88f, 0.35f, 1.0f);
+	Ui()->DoLabel(&Label, "Chat: /invite all  (invita a todo el server al team)", 12.0f, TEXTALIGN_ML);
+	Column.HSplitTop(16.0f, &Label, &Column);
+	Ui()->DoLabel(&Label, "Chat: /invite friends  (invita solo amigos al team)", 12.0f, TEXTALIGN_ML);
+	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	static CButtonContainer s_ReaderInviteAllCx30, s_ClearInviteAllCx30;
+	DoLine_KeyReader(Column, s_ReaderInviteAllCx30, s_ClearInviteAllCx30, TCLocalize("Invite all key (/invite all)"), "say /invite all");
+	static CButtonContainer s_ReaderInviteFriendsCx30, s_ClearInviteFriendsCx30;
+	DoLine_KeyReader(Column, s_ReaderInviteFriendsCx30, s_ClearInviteFriendsCx30, TCLocalize("Invite friends key (/invite friends)"), "say /invite friends");
+
+	if(Client()->State() == IClient::STATE_ONLINE)
+	{
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		CUIRect InviteRow, BtnInvAll, BtnInvFriends;
+		Column.HSplitTop(LineSize + 4.0f, &InviteRow, &Column);
+		InviteRow.VSplitMid(&BtnInvAll, &BtnInvFriends, MarginSmall);
+		static CButtonContainer s_BtnInviteAllNow, s_BtnInviteFriendsNow;
+		if(DoButton_Menu(&s_BtnInviteAllNow, TCLocalize("Invite All (/invite all)"), 0, &BtnInvAll))
+			GameClient()->m_Chat.SendChat(0, "/invite all");
+		if(DoButton_Menu(&s_BtnInviteFriendsNow, TCLocalize("Invite Friends (/invite friends)"), 0, &BtnInvFriends))
+			GameClient()->m_Chat.SendChat(0, "/invite friends");
+	}
+
+	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+	s_SectionBoxesCx30.back().h = Column.y - s_SectionBoxesCx30.back().y;
+
+	RightView = Column;
+
+	// ***** Bloque Inferior: Novedades de Clientx30 ***** //
+	CUIRect BottomWhatsNew;
+	BottomWhatsNew.x = LeftView.x;
+	BottomWhatsNew.y = std::max(LeftView.y, RightView.y) + MarginBetweenSections;
+	BottomWhatsNew.w = (RightView.x + RightView.w) - LeftView.x;
+	BottomWhatsNew.h = 300.0f;
+
+	s_SectionBoxesCx30.push_back(BottomWhatsNew);
+
+	BottomWhatsNew.HSplitTop(HeadlineHeight, &Label, &BottomWhatsNew);
+	TextRender()->TextColor(1.0f, 0.88f, 0.35f, 1.0f);
+	Ui()->DoLabel(&Label, TCLocalize("Novedades de Clientx30 (Resumen Rapido)"), HeadlineFontSize, TEXTALIGN_ML);
+	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+	BottomWhatsNew.HSplitTop(MarginSmall, nullptr, &BottomWhatsNew);
+
+	auto AddNewsLine = [&](const char *pTitle, const char *pDetail) {
+		CUIRect LineRect;
+		BottomWhatsNew.HSplitTop(18.0f, &LineRect, &BottomWhatsNew);
+		TextRender()->TextColor(0.45f, 0.92f, 1.0f, 1.0f);
+		float TitleW = TextRender()->TextWidth(12.5f, pTitle) + 6.0f;
+		CUIRect TitleRect, DetailRect;
+		LineRect.VSplitLeft(TitleW, &TitleRect, &DetailRect);
+		Ui()->DoLabel(&TitleRect, pTitle, 12.5f, TEXTALIGN_ML);
+		TextRender()->TextColor(0.88f, 0.90f, 0.95f, 0.95f);
+		Ui()->DoLabel(&DetailRect, pDetail, 12.0f, TEXTALIGN_ML);
+		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+	};
+
+	AddNewsLine("* Overlay de Race Stats + Historial:", "Muestra Freezes, Saves, Lasts y Eficiencia en vivo y guarda cada run con su Tiempo de la Run.");
+	AddNewsLine("* Fast Practice (Modo Fantasma):", "Practica el mapa con /tp, /tc, /invincible y /weapons sin salirte de tu run real en el servidor.");
+	AddNewsLine("* Fast Input Independiente:", "Permite configurar ms distintos para tu propio Tee (Amount) y para los demas (Others Amount).");
+	AddNewsLine("* Auto Team Lock (hasta 5m):", "Bloquea el team (/lock 1) automaticamente tras el tiempo configurado al entrar a un equipo.");
+	AddNewsLine("* Invitaciones Masivas:", "Usa /invite all o /invite friends en el chat para invitar a todos o solo a tus amigos sin flood.");
+	AddNewsLine("* Renderizador Vulkan Activo:", "Shaders Vulkan (.spv) incluidos para jugar con mayor fluidez y menos consumo de CPU.");
+
+	BottomWhatsNew.HSplitTop(MarginExtraSmall, nullptr, &BottomWhatsNew);
+	s_SectionBoxesCx30.back().h = BottomWhatsNew.y - s_SectionBoxesCx30.back().y;
+
+	LeftView.y = BottomWhatsNew.y;
+	RightView.y = BottomWhatsNew.y;
+
+	CUIRect ScrollRegion;
+	ScrollRegion.x = MainView.x;
+	ScrollRegion.y = std::max(LeftView.y, RightView.y) + MarginSmall * 2.0f;
+	ScrollRegion.w = MainView.w;
+	ScrollRegion.h = 0.0f;
+	s_ScrollRegionCx30.AddRect(ScrollRegion);
+	s_ScrollRegionCx30.End();
 }
