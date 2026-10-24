@@ -424,28 +424,16 @@ int CMenus::DoButton_CheckBoxAutoVMarginAndSet(const void *pId, const char *pTex
 
 int CMenus::DoCheckboxWithHelp(const void *pId, const char *pText, const char *pHelpText, int *pValue, CUIRect *pRect, float VMargin)
 {
-	CUIRect Row, CheckBoxRect, HelpRect;
+	CUIRect Row;
 	pRect->HSplitTop(VMargin, &Row, pRect);
 
-	Row.VSplitRight(22.0f, &CheckBoxRect, &HelpRect);
-
-	int Logic = DoButton_CheckBox_Common(pId, pText, *pValue ? "X" : "", &CheckBoxRect, BUTTONFLAG_LEFT);
+	int Logic = DoButton_CheckBox_Common(pId, pText, *pValue ? "X" : "", &Row, BUTTONFLAG_LEFT);
 	if(Logic)
 		*pValue ^= 1;
 
-	HelpRect.Margin(2.0f, &HelpRect);
-	bool IsHovered = Ui()->MouseInside(&HelpRect) || Ui()->MouseInside(&CheckBoxRect);
-	HelpRect.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.28f), IGraphics::CORNER_ALL, 4.0f);
-
-	ColorRGBA HelpColor = IsHovered ? ColorRGBA(0.40f, 0.85f, 1.0f, 1.0f) : ColorRGBA(1.0f, 1.0f, 1.0f, 0.40f);
-	TextRender()->TextColor(HelpColor);
-	Ui()->DoLabel(&HelpRect, "?", 12.0f, TEXTALIGN_MC);
-	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
-
 	if(pHelpText && pHelpText[0] != '\0')
 	{
-		GameClient()->m_Tooltips.DoToolTip(pId, &HelpRect, pHelpText);
-		GameClient()->m_Tooltips.DoToolTip(pId, &CheckBoxRect, pHelpText);
+		GameClient()->m_Tooltips.DoToolTip(pId, &Row, pHelpText);
 	}
 
 	return Logic;

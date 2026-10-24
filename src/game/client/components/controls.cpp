@@ -216,8 +216,8 @@ int CControls::SnapInput(int *pData)
 		break;
 	}
 
-	// TClient
-	if(g_Config.m_TcHideChatBubbles && Client()->RconAuthed())
+	// Clientx30: Silent typing (ocultar burbuja con 3 puntitos al escribir)
+	if(g_Config.m_TcSilentTyping || g_Config.m_ClSilentTyping || g_Config.m_TcHideChatBubbles)
 		for(auto &InputData : m_aInputData)
 			InputData.m_PlayerFlags &= ~PLAYERFLAG_CHATTING;
 

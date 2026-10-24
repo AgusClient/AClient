@@ -3001,3 +3001,12 @@ Invite all online friends to your team with /invite friends, with anti-flood que
 
 [Clientx30] /invite all has been disabled. Use /invite friends.
 == [Clientx30] /invite all foi desativado. Use /invite friends.
+
+== Silent typing (Hide 3-dots bubble when typing)
+== Digitação silenciosa (Ocultar bolha de 3 pontos)
+== Prevents the 3-dots bubble (...) from appearing above your Tee when the chat is open.
+== Evita que a bolha com 3 pontos (...) apareça sobre seu Tee quando o chat estiver aberto.
+== Hide typing bubbles of other players
+== Ocultar bolhas de chat dos outros jogadores
+== Hides the 3-dots typing bubble of other players on your screen when they are typing.
+== Oculta visualmente em sua tela a bolha de 3 pontos sobre os outros jogadores quando eles estiverem digitando.

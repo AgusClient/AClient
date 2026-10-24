@@ -3001,3 +3001,12 @@ Invite all online friends to your team with /invite friends, with anti-flood que
 
 [Clientx30] /invite all has been disabled. Use /invite friends.
 == [Clientx30] /invite all отключена. Используйте /invite friends.
+
+== Silent typing (Hide 3-dots bubble when typing)
+== Бесшумный ввод (Скрыть облачко при вводе)
+== Prevents the 3-dots bubble (...) from appearing above your Tee when the chat is open.
+== Предотвращает появление облачка с точками (...) над вашим персонажем, когда открыт чат.
+== Hide typing bubbles of other players
+== Скрыть облачка чата других игроков
+== Hides the 3-dots typing bubble of other players on your screen when they are typing.
+== Скрывает на вашем экране облачко с точками у других игроков, когда они пишут.
