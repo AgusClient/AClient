@@ -1285,7 +1285,7 @@ void CMenus::RenderSettingsTClientSettings(CUIRect MainView)
 	BottomWhatsNew.x = LeftView.x;
 	BottomWhatsNew.y = std::max(LeftView.y, RightView.y) + MarginBetweenSections;
 	BottomWhatsNew.w = (RightView.x + RightView.w) - LeftView.x;
-	BottomWhatsNew.h = 300.0f;
+	BottomWhatsNew.h = 360.0f;
 
 	s_SectionBoxesCx30.push_back(BottomWhatsNew);
 
@@ -1310,10 +1310,13 @@ void CMenus::RenderSettingsTClientSettings(CUIRect MainView)
 
 	AddNewsLine(TCLocalize("* Race Stats Overlay + Log:"), TCLocalize("Live HUD stats (Freezes, Saves, Lasts, Efficiency) and auto-saved run time."));
 	AddNewsLine(TCLocalize("* Fast Practice (Ghost Mode):"), TCLocalize("Practice any map part with /tp, /tc, /invincible without leaving your real run."));
+	AddNewsLine(TCLocalize("* Background Alerts (Tabbed out):"), TCLocalize("Granular alerts (sound, taskbar flash, desktop notification) on unfreeze or tile change."));
+	AddNewsLine(TCLocalize("* Skin Stealer:"), TCLocalize("Instantly copy skins and colors by aiming with bind, via /stealskin [name] or from Scoreboard (Tab)."));
 	AddNewsLine(TCLocalize("* Independent Fast Input:"), TCLocalize("Set separate visual prediction ms for yourself (Amount) and others (Others Amount)."));
 	AddNewsLine(TCLocalize("* Auto Team Lock (up to 5m):"), TCLocalize("Automatically locks team (/lock 1) after configured delay when joining."));
 	AddNewsLine(TCLocalize("* Bulk Invites:"), TCLocalize("Use /invite all or /invite friends with anti-flood queue and Tab auto-complete."));
 	AddNewsLine(TCLocalize("* Active Vulkan Renderer:"), TCLocalize("Compiled SPIR-V shaders included for smoother frame rates and lower CPU usage."));
+	AddNewsLine(TCLocalize("* Client Echo Control:"), TCLocalize("Enable or silence local client notices ([Clientx30], command confirmations, script echoes)."));
 
 	BottomWhatsNew.HSplitTop(MarginExtraSmall, nullptr, &BottomWhatsNew);
 	s_SectionBoxesCx30.back().h = BottomWhatsNew.y - s_SectionBoxesCx30.back().y;
@@ -3616,6 +3619,65 @@ void CMenus::RenderSettingsClientx30Settings(CUIRect MainView)
 
 	s_SectionBoxesCx30.back().h = Column.y - s_SectionBoxesCx30.back().y;
 
+	// ***** Background Alerts (Tabbed out) ***** //
+	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	s_SectionBoxesCx30.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("Background Alerts (Tabbed out)"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcNotifyUnfreeze, TCLocalize("Notify when unfreezing (tabbed out)"), &g_Config.m_TcNotifyUnfreeze, &Column, LineSize);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClChangeTileNotification, TCLocalize("Notify when moved or tile changes (tabbed out)"), &g_Config.m_ClChangeTileNotification, &Column, LineSize);
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	Column.HSplitTop(16.0f, &Label, &Column);
+	TextRender()->TextColor(0.55f, 0.9f, 1.0f, 1.0f);
+	Ui()->DoLabel(&Label, TCLocalize("Alert methods (independent):"), 12.0f, TEXTALIGN_ML);
+	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcNotifySound, TCLocalize("Sound alert"), &g_Config.m_TcNotifySound, &Column, LineSize);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcNotifyFlash, TCLocalize("Taskbar flash"), &g_Config.m_TcNotifyFlash, &Column, LineSize);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcNotifyDesktop, TCLocalize("Desktop notification"), &g_Config.m_TcNotifyDesktop, &Column, LineSize);
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	s_SectionBoxesCx30.back().h = Column.y - s_SectionBoxesCx30.back().y;
+
+	// ***** Skin Stealer ***** //
+	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	s_SectionBoxesCx30.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("Skin Stealer"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	static CButtonContainer s_ReaderStealSkinCx30, s_ClearStealSkinCx30;
+	DoLine_KeyReader(Column, s_ReaderStealSkinCx30, s_ClearStealSkinCx30, TCLocalize("Steal skin key (aiming at player)"), "steal_skin");
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	Column.HSplitTop(16.0f, &Label, &Column);
+	TextRender()->TextColor(1.0f, 0.88f, 0.35f, 1.0f);
+	Ui()->DoLabel(&Label, TCLocalize("Chat: /stealskin [name]  or  Console: steal_skin [name]"), 12.0f, TEXTALIGN_ML);
+	Column.HSplitTop(16.0f, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("You can also right-click / click on any player in Scoreboard (Tab) to steal skin."), 11.5f, TEXTALIGN_ML);
+	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+	if(Client()->State() == IClient::STATE_ONLINE)
+	{
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize + 4.0f, &Button, &Column);
+		static CButtonContainer s_BtnStealSkinAimedNow;
+		if(DoButton_Menu(&s_BtnStealSkinAimedNow, TCLocalize("Steal skin from aimed player now"), 0, &Button))
+		{
+			int TargetId = GameClient()->FindStealTarget(nullptr);
+			if(TargetId >= 0)
+				GameClient()->StealSkin(TargetId);
+			else
+				GameClient()->m_Chat.Echo(TCLocalize("[Clientx30] No target player found to steal skin from."));
+		}
+	}
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	s_SectionBoxesCx30.back().h = Column.y - s_SectionBoxesCx30.back().y;
+
 	// ***** RightView ***** //
 	LeftView = Column;
 	Column = RightView;
@@ -3727,6 +3789,35 @@ void CMenus::RenderSettingsClientx30Settings(CUIRect MainView)
 	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
 	s_SectionBoxesCx30.back().h = Column.y - s_SectionBoxesCx30.back().y;
 
+	// ***** Chat & Client Messages (Echo) ***** //
+	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	s_SectionBoxesCx30.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("Chat & Client Messages (Echo)"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	if(DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcShowChatClient, TCLocalize("Show client messages in chat (Echo / Local notices)"), &g_Config.m_TcShowChatClient, &Column, LineSize))
+	{
+		g_Config.m_ClShowChatClient = g_Config.m_TcShowChatClient;
+	}
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	Column.HSplitTop(16.0f, &Label, &Column);
+	TextRender()->TextColor(0.85f, 0.88f, 0.95f, 0.9f);
+	Ui()->DoLabel(&Label, TCLocalize("Controls whether local echo messages (like [Clientx30], command feedback and notices) appear in the chat."), 11.5f, TEXTALIGN_ML);
+	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize + 4.0f, &Button, &Column);
+	static CButtonContainer s_BtnTestEchoNow;
+	if(DoButton_Menu(&s_BtnTestEchoNow, TCLocalize("Send Test Echo Message"), 0, &Button))
+	{
+		GameClient()->Echo(TCLocalize("[Clientx30] This is a test Echo message."));
+	}
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	s_SectionBoxesCx30.back().h = Column.y - s_SectionBoxesCx30.back().y;
+
 	RightView = Column;
 
 	// ***** Bloque Inferior: Novedades de Clientx30 ***** //
@@ -3734,7 +3825,7 @@ void CMenus::RenderSettingsClientx30Settings(CUIRect MainView)
 	BottomWhatsNew.x = LeftView.x;
 	BottomWhatsNew.y = std::max(LeftView.y, RightView.y) + MarginBetweenSections;
 	BottomWhatsNew.w = (RightView.x + RightView.w) - LeftView.x;
-	BottomWhatsNew.h = 300.0f;
+	BottomWhatsNew.h = 360.0f;
 
 	s_SectionBoxesCx30.push_back(BottomWhatsNew);
 

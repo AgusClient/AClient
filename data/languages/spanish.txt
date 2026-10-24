@@ -2854,3 +2854,90 @@ Keep stats on death (do not reset on /kill)
 
 Column: Deaths
 == Columna: Muertes
+
+== Background Alerts (Tabbed out)
+Alertas en Segundo Plano (Tabeado)
+
+== Notify when unfreezing (tabbed out)
+Avisar al descongelarme (tabeado)
+
+== Notify when moved or tile changes (tabbed out)
+Avisar si me mueven / cambio de tile (tabeado)
+
+== Alert methods (independent):
+Métodos de alerta (independientes):
+
+== Sound alert
+Sonido de alerta
+
+== Taskbar flash
+Parpadeo en la barra de tareas
+
+== Desktop notification
+Notificación de escritorio
+
+== Skin Stealer
+Skin Stealer (Copiar Skins)
+
+== Steal skin key (aiming at player)
+Tecla para copiar skin (apuntando al jugador)
+
+== Chat: /stealskin [name]  or  Console: steal_skin [name]
+Chat: /stealskin [nombre]  |  Consola: steal_skin [nombre]
+
+== You can also right-click / click on any player in Scoreboard (Tab) to steal skin.
+También puedes hacer clic sobre cualquier jugador en el Scoreboard (Tab) para copiar su skin.
+
+== Steal skin from aimed player now
+Copiar skin del jugador apuntado ahora
+
+== Steal Skin
+Copiar Skin
+
+== You were unfrozen!
+¡Has sido descongelado!
+
+== You were moved or changed tile!
+¡Te han movido o has cambiado de casilla!
+
+== [Clientx30] Skin copied from %s: %s
+[Clientx30] Skin copiada de %s: %s
+
+== [Clientx30] No target player found to steal skin from.
+[Clientx30] No se encontró ningún jugador objetivo para copiar skin.
+
+== [Clientx30] You cannot steal your own skin.
+[Clientx30] No puedes copiar tu propia skin.
+
+== * Background Alerts (Tabbed out):
+* Alertas en Segundo Plano (Tabeado):
+
+== Granular alerts (sound, taskbar flash, desktop notification) on unfreeze or tile change.
+Avisos configurables (sonido, parpadeo de ventana, notificación de escritorio) al descongelarte o moverte.
+
+== * Skin Stealer:
+* Skin Stealer (Copiar Skins):
+
+== Instantly copy skins and colors by aiming with bind, via /stealskin [name] or from Scoreboard (Tab).
+Copia al instante la skin y colores apuntando con tu bind, con /stealskin [nombre] o desde el Scoreboard.
+
+== Chat & Client Messages (Echo)
+Chat y Mensajes de Cliente (Echo)
+
+== Show client messages in chat (Echo / Local notices)
+Mostrar mensajes de cliente en chat (Echo / Avisos locales)
+
+== Controls whether local echo messages (like [Clientx30], command feedback and notices) appear in the chat.
+Controla si los mensajes locales de echo (como [Clientx30], confirmaciones y avisos) aparecen en el chat.
+
+== Send Test Echo Message
+Enviar Mensaje de Prueba (Echo Test)
+
+== [Clientx30] This is a test Echo message.
+[Clientx30] Este es un mensaje de prueba de Echo.
+
+== * Client Echo Control:
+* Control de Mensajes Echo:
+
+== Enable or silence local client notices ([Clientx30], command confirmations, script echoes).
+Activa o silencia avisos locales ([Clientx30], confirmación de comandos y ecos de scripts).

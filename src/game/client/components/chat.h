@@ -156,6 +156,7 @@ class CChat : public CComponent
 	bool m_ServerSupportsCommandInfo;
 	std::vector<std::string> m_vPendingInviteCommands;
 	bool TryHandleBulkInviteCommand(const char *pLine);
+	bool TryHandleStealSkinCommand(const char *pLine);
 
 	static void ConSay(IConsole::IResult *pResult, void *pUserData);
 	static void ConSayTeam(IConsole::IResult *pResult, void *pUserData);
@@ -167,6 +168,7 @@ class CChat : public CComponent
 	static void ConchainChatOld(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
 	static void ConchainChatFontSize(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
 	static void ConchainChatWidth(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
+	static void ConchainShowChatClient(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
 
 	bool LineShouldHighlight(const char *pLine, const char *pName);
 	void StoreSave(const char *pText);
