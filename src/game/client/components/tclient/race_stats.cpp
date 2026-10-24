@@ -20,7 +20,7 @@
 #include <cstring>
 #include <vector>
 
-static const float HAMMER_MAX_DIST = 64.0f;
+static const float HAMMER_MAX_DIST = 110.0f;
 static const char *RACESTATS_HISTORY_FILE = "tclient_racestats_history.txt";
 
 void CRaceStats::OnInit()
@@ -180,10 +180,18 @@ bool CRaceStats::SaveCurrentStats(const char *pReason, bool RequireActivity, boo
 		if(i == LocalClientId || !GameClient()->m_Snap.m_apPlayerInfos[i])
 			continue;
 
-		bool SameTeam = (RecordTeam > 0 && GameClient()->m_Teams.Team(i) == RecordTeam) || (RecordTeam == 0);
-		bool HasActivity = (m_aPlayerStats[i].m_Freezes > 0 || m_aPlayerStats[i].m_Saves > 0 || m_aPlayerStats[i].m_Lasts > 0);
-		if(SameTeam || HasActivity)
-			AddPlayerToEntry(i, false);
+		int PlayerTeam = GameClient()->m_Teams.Team(i);
+		if(RecordTeam > 0)
+		{
+			if(PlayerTeam == RecordTeam)
+				AddPlayerToEntry(i, false);
+		}
+		else
+		{
+			bool HasActivity = (m_aPlayerStats[i].m_Freezes > 0 || m_aPlayerStats[i].m_Saves > 0 || m_aPlayerStats[i].m_Lasts > 0);
+			if(PlayerTeam == 0 && HasActivity)
+				AddPlayerToEntry(i, false);
+		}
 	}
 
 	if(Entry.m_vPlayers.empty())
@@ -447,6 +455,8 @@ void CRaceStats::OnRender()
 		if(Char.m_Cur.m_Weapon == WEAPON_HAMMER && (Char.m_Cur.m_AttackTick != m_aPlayerStats[i].m_LastAttackTick))
 		{
 			m_aPlayerStats[i].m_LastAttackTick = Char.m_Cur.m_AttackTick;
+			m_aPlayerStats[i].m_LastHammerTick = CurrentTick;
+			m_aPlayerStats[i].m_LastHammerPos = vec2(Char.m_Cur.m_X, Char.m_Cur.m_Y);
 		}
 
 		// Transición: Entró en congelación
@@ -473,10 +483,13 @@ void CRaceStats::OnRender()
 				if(GameClient()->m_Teams.Team(j) != Team)
 					continue;
 
-				if(std::abs(CurrentTick - m_aPlayerStats[j].m_LastAttackTick) <= 3)
+				int TickDiff = std::abs(CurrentTick - m_aPlayerStats[j].m_LastHammerTick);
+				if(TickDiff <= 10)
 				{
 					vec2 AttackerPos = vec2(GameClient()->m_Snap.m_aCharacters[j].m_Cur.m_X, GameClient()->m_Snap.m_aCharacters[j].m_Cur.m_Y);
-					float Dist = distance(VictimPos, AttackerPos);
+					float DistCurrent = distance(VictimPos, AttackerPos);
+					float DistAtHit = distance(VictimPos, m_aPlayerStats[j].m_LastHammerPos);
+					float Dist = std::min(DistCurrent, DistAtHit);
 					if(Dist <= BestDist)
 					{
 						BestDist = Dist;

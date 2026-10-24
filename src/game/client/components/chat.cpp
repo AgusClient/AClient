@@ -293,6 +293,45 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 	{
 		const bool ShiftPressed = Input()->ShiftIsPressed();
 
+		// Clientx30: Autocompletado directo para /invite friends y /invite all
+		const char *pInputStr = m_Input.GetString();
+		if(str_startswith_nocase(pInputStr, "/invite"))
+		{
+			const char *pArg = pInputStr + 7;
+			while(*pArg == ' ')
+				pArg++;
+
+			const char *pTarget = nullptr;
+			if(str_comp_nocase(pInputStr, "/invite friends") == 0)
+			{
+				pTarget = "/invite all";
+			}
+			else if(str_comp_nocase(pInputStr, "/invite all") == 0)
+			{
+				pTarget = "/invite friends";
+			}
+			else if(*pArg != '\0' && str_startswith_nocase("friends", pArg))
+			{
+				pTarget = "/invite friends";
+			}
+			else if(*pArg != '\0' && str_startswith_nocase("all", pArg))
+			{
+				pTarget = "/invite all";
+			}
+			else if(*pArg == '\0' && pInputStr[7] == ' ')
+			{
+				pTarget = "/invite all";
+			}
+
+			if(pTarget)
+			{
+				m_Input.Set(pTarget);
+				m_Input.SetCursorOffset(str_length(pTarget));
+				m_CompletionUsed = true;
+				return true;
+			}
+		}
+
 		// fill the completion buffer
 		if(!m_CompletionUsed)
 		{
@@ -336,7 +375,7 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 		if(GameClient()->m_BindChat.ChatDoAutocomplete(ShiftPressed))
 		{
 		}
-		else if(str_startswith_nocase(m_aCompletionBuffer, "/invite ") && (str_startswith_nocase("all", m_aCompletionBuffer + 8) || str_startswith_nocase("friends", m_aCompletionBuffer + 8)))
+		else if(false)
 		{
 			const char *pArg = m_aCompletionBuffer + 8;
 			const char *pCompleted = str_startswith_nocase("friends", pArg) ? "/invite friends" : "/invite all";
@@ -1297,7 +1336,7 @@ void CChat::OnRender()
 
 	// send pending chat messages
 	// send pending chat messages
-	if(!m_vPendingInviteCommands.empty() && m_LastChatSend + time_freq() < time())
+	if(!m_vPendingInviteCommands.empty() && m_LastChatSend + (time_freq() * 5) / 2 < time())
 	{
 		std::string NextCmd = m_vPendingInviteCommands.front();
 		m_vPendingInviteCommands.erase(m_vPendingInviteCommands.begin());
@@ -1591,7 +1630,7 @@ bool CChat::TryHandleBulkInviteCommand(const char *pLine)
 
 	if(Client()->State() != IClient::STATE_ONLINE)
 	{
-		Echo(Localize("[Clientx30] You must be connected to a server to use /invite."));
+		Echo(TCLocalize("[Clientx30] You must be connected to a server to use /invite."));
 		return true;
 	}
 
@@ -1599,7 +1638,7 @@ bool CChat::TryHandleBulkInviteCommand(const char *pLine)
 	const int LocalTeam = (LocalId >= 0 && LocalId < MAX_CLIENTS) ? GameClient()->m_Teams.Team(LocalId) : TEAM_FLOCK;
 	if(LocalTeam <= TEAM_FLOCK || LocalTeam >= TEAM_SUPER)
 	{
-		Echo(Localize("[Clientx30] Join a team first (e.g. /team 1) before using /invite."));
+		Echo(TCLocalize("[Clientx30] Join a team first (e.g. /team 1) before using /invite."));
 		return true;
 	}
 
@@ -1624,33 +1663,24 @@ bool CChat::TryHandleBulkInviteCommand(const char *pLine)
 	if(m_vPendingInviteCommands.empty())
 	{
 		if(InviteFriends)
-			Echo(Localize("[Clientx30] No connected friends outside your team found to invite."));
+			Echo(TCLocalize("[Clientx30] No connected friends outside your team found to invite."));
 		else
-			Echo(Localize("[Clientx30] No other players outside your team found to invite."));
+			Echo(TCLocalize("[Clientx30] No other players outside your team found to invite."));
 		return true;
 	}
 
 	char aInfo[160];
-	str_format(aInfo, sizeof(aInfo), Localize("[Clientx30] Inviting %d %s to Team %d..."),
+	str_format(aInfo, sizeof(aInfo), TCLocalize("[Clientx30] Inviting %d %s to Team %d..."),
 		(int)m_vPendingInviteCommands.size(),
-		InviteFriends ? Localize("friend(s)") : Localize("player(s)"),
+		InviteFriends ? TCLocalize("friend(s)") : TCLocalize("player(s)"),
 		LocalTeam);
 	Echo(aInfo);
 
-	if(m_LastChatSend + time_freq() < time())
+	if(m_LastChatSend + (time_freq() * 5) / 2 < time())
 	{
 		std::string FirstCmd = m_vPendingInviteCommands.front();
 		m_vPendingInviteCommands.erase(m_vPendingInviteCommands.begin());
-		if(true)
-		{
-			SendChat(0, FirstCmd.c_str());
-		}
+		SendChat(0, FirstCmd.c_str());
 	}
 	return true;
-	if(false)
-	{
-		{
-	}
-	return true;
-	}
 }

@@ -7,6 +7,7 @@
 #include <generated/protocol.h>
 
 #include <cmath>
+#include <algorithm>
 #include <vector>
 
 class CRaceStats : public CComponent
@@ -32,6 +33,8 @@ public:
 		int m_Saves;
 		int m_Lasts;
 		int m_LastAttackTick;
+		int m_LastHammerTick;
+		vec2 m_LastHammerPos;
 		int m_LastFreezeTick;
 		bool m_WasFrozen;
 		bool m_WasSoleSurvivor;
@@ -43,6 +46,8 @@ public:
 			m_Saves = 0;
 			m_Lasts = 0;
 			m_LastAttackTick = 0;
+			m_LastHammerTick = 0;
+			m_LastHammerPos = vec2(0.0f, 0.0f);
 			m_LastFreezeTick = 0;
 			m_WasFrozen = false;
 			m_WasSoleSurvivor = false;
@@ -59,7 +64,8 @@ public:
 		{
 			if(m_Freezes == 0)
 				return m_Saves > 0 ? 100 : 0;
-			return (int)std::round(((float)m_Saves / (float)m_Freezes) * 100.0f);
+			int Pct = (int)std::round(((float)m_Saves / (float)m_Freezes) * 100.0f);
+			return std::clamp(Pct, 0, 100);
 		}
 	};
 
