@@ -707,8 +707,9 @@ public:
 
 	enum
 	{
-		SETTINGS_LANGUAGE = 0,
-		SETTINGS_GENERAL,
+		SETTINGS_GENERAL = 0,
+		SETTINGS_LANGUAGE = SETTINGS_GENERAL,
+
 		SETTINGS_PLAYER,
 		SETTINGS_TEE,
 		SETTINGS_APPEARANCE,
@@ -718,6 +719,7 @@ public:
 		SETTINGS_DDNET,
 		SETTINGS_ASSETS,
 		SETTINGS_TCLIENT, // TClient
+		SETTINGS_CLIENTX30, // Clientx30
 		SETTINGS_PROFILES, // TClient
 		SETTINGS_CONFIGS, // TClient
 		SETTINGS_CREDITS,
@@ -875,6 +877,9 @@ private:
 	void RenderSettingsTClientInfo(CUIRect MainView);
 	void RenderSettingsTClientStatusBar(CUIRect MainView);
 	void RenderSettingsTClientRaceStats(CUIRect MainView);
+	void RenderSettingsClientx30(CUIRect MainView);
+	void RenderSettingsClientx30Settings(CUIRect MainView);
+	void RenderSettingsClientx30Commands(CUIRect MainView);
 	void RenderSettingsTClientProfiles(CUIRect MainView);
 	void RenderSettingsTClientConfigs(CUIRect MainView);
 	void RenderTeeCute(const CAnimState *pAnim, const CTeeRenderInfo *pInfo, int Emote, vec2 Dir, vec2 Pos, bool CuteEyes, float Alpha = 1.0f);

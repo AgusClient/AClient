@@ -1937,8 +1937,9 @@ void CFastPractice::OnRender()
 		RenderGhost(Ghost, Alpha);
 	};
 
-	RenderRealMarker(m_MainGhost, 0.28f);
-	RenderRealMarker(m_DummyGhost, 0.22f);
+	const float GhostAlpha = std::clamp(g_Config.m_TcFastPracticeGhostAlpha / 100.0f, 0.0f, 1.0f);
+	RenderRealMarker(m_MainGhost, GhostAlpha);
+	RenderRealMarker(m_DummyGhost, GhostAlpha * 0.85f);
 }
 
 void CFastPractice::EchoPractice(const char *pFormat, ...) const

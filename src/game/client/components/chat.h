@@ -154,6 +154,8 @@ class CChat : public CComponent
 	bool m_EditingNewLine;
 
 	bool m_ServerSupportsCommandInfo;
+	std::vector<std::string> m_vPendingInviteCommands;
+	bool TryHandleBulkInviteCommand(const char *pLine);
 
 	static void ConSay(IConsole::IResult *pResult, void *pUserData);
 	static void ConSayTeam(IConsole::IResult *pResult, void *pUserData);

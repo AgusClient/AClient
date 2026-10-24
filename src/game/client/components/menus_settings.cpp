@@ -41,7 +41,7 @@ void CMenus::RenderSettings(CUIRect MainView)
 	Button.Draw(ms_ColorTabbarActive, IGraphics::CORNER_BR, 10.0f);
 
 	const char *apTabs[SETTINGS_LENGTH] = {
-		Localize("Language"),
+
 		Localize("General"),
 		Localize("Player"),
 		Client()->IsSixup() ? "Tee 0.7" : Localize("Tee"),
@@ -52,6 +52,7 @@ void CMenus::RenderSettings(CUIRect MainView)
 		Localize("DDNet"),
 		Localize("Assets"),
 		TCLocalize("TClient"), // TClient
+		"Clientx30", // Clientx30
 		Localize("Profiles"), // TClient
 		Localize("Configs"), // TClient
 		Localize("Credits")};
@@ -68,7 +69,33 @@ void CMenus::RenderSettings(CUIRect MainView)
 	if(g_Config.m_UiSettingsPage == SETTINGS_LANGUAGE)
 	{
 		GameClient()->m_MenuBackground.ChangePosition(CMenuBackground::POS_SETTINGS_LANGUAGE);
-		RenderLanguageSettings(MainView);
+		static int s_CurGeneralSubTab = 0;
+		CUIRect SubTabBar, SubTabButton;
+		MainView.HSplitTop(20.0f, &SubTabBar, &MainView);
+		const float SubTabWidth = SubTabBar.w / 2.0f;
+		static CButtonContainer s_aGeneralSubTabs[2] = {};
+		const char *apGeneralSubTabs[2] = {Localize("General"), Localize("Language")};
+		for(int SubTab = 0; SubTab < 2; ++SubTab)
+		{
+			SubTabBar.VSplitLeft(SubTabWidth, &SubTabButton, &SubTabBar);
+			const int Corners = SubTab == 0 ? IGraphics::CORNER_L : IGraphics::CORNER_R;
+			if(DoButton_MenuTab(&s_aGeneralSubTabs[SubTab], apGeneralSubTabs[SubTab], s_CurGeneralSubTab == SubTab, &SubTabButton, Corners, nullptr, nullptr, nullptr, nullptr, 4.0f))
+				s_CurGeneralSubTab = SubTab;
+		}
+		MainView.HSplitTop(10.0f, nullptr, &MainView);
+		if(s_CurGeneralSubTab == 0)
+		{
+			GameClient()->m_MenuBackground.ChangePosition(CMenuBackground::POS_SETTINGS_GENERAL);
+			RenderSettingsGeneral(MainView);
+		}
+		else
+		{
+			GameClient()->m_MenuBackground.ChangePosition(CMenuBackground::POS_SETTINGS_LANGUAGE);
+			RenderLanguageSettings(MainView);
+		}
+	}
+	else if(false && g_Config.m_UiSettingsPage == SETTINGS_LANGUAGE)
+	{
 	}
 	else if(g_Config.m_UiSettingsPage == SETTINGS_GENERAL)
 	{
@@ -122,6 +149,11 @@ void CMenus::RenderSettings(CUIRect MainView)
 	{
 		GameClient()->m_MenuBackground.ChangePosition(CMenuBackground::POS_SETTINGS_LANGUAGE);
 		RenderSettingsTClient(MainView);
+	}
+	else if(g_Config.m_UiSettingsPage == SETTINGS_CLIENTX30) // Clientx30
+	{
+		GameClient()->m_MenuBackground.ChangePosition(CMenuBackground::POS_SETTINGS_GENERAL);
+		RenderSettingsClientx30(MainView);
 	}
 	else if(g_Config.m_UiSettingsPage == SETTINGS_PROFILES) // TClient
 	{
