@@ -880,3 +880,168 @@ Activating mod weapon on %d: %s\n
 [data_version.h]
 You have probably only installed the TClient DDNet.exe which is not supported, please use the entire TClient folder
 == 
+
+Commands
+== Команды
+
+Run Time
+== Время забега
+
+Date
+== Дата
+
+Team
+== Команда
+
+Saved
+== Сохранено
+
+Players
+== Игроки
+
+Team & Invites (Chat)
+== Команда и приглашения (Чат)
+
+Invites all connected players on the server to your team.
+== Приглашает всех игроков на сервере в вашу команду.
+
+Invites only connected players on your friends list to your team.
+== Приглашает в команду только игроков из списка друзей.
+
+Race Stats & Overlay (Console / Binds)
+== Статистика и оверлей (Консоль / Бинды)
+
+Toggles the race stats HUD overlay visibility.
+== Переключает отображение оверлея статистики.
+
+Manually saves current run stats to history log.
+== Вручную сохраняет статистику текущего забега в историю.
+
+Fast Practice / Ghost Mode
+== Быстрая тренировка / Режим призрака
+
+Enables or disables ghost practice mode without leaving your run.
+== Включает или выключает тренировку призрака, не выходя из забега.
+
+Teleports you to your cursor in local practice world.
+== Телепортирует к курсору в локальном мире тренировки.
+
+Toggles telecursor mode (quick teleport with aim/mouse).
+== Включает или выключает режим телекурсора (телепорт мышью).
+
+Toggles local invincibility against freeze in practice mode.
+== Локальное бессмертие от заморозки в режиме тренировки.
+
+Gives you all weapons in local practice mode.
+== Выдает все оружие в локальном режиме тренировки.
+
+Saves and loads local practice positions to repeat map parts.
+== Сохраняет и загружает позиции тренировки для повторения участков карты.
+
+Practice commands: /tp  /tc  /invincible  /weapons  /save  /load
+== Команды тренировки: /tp  /tc  /invincible  /weapons  /save  /load
+
+Chat: /invite all  (invites all server players to team)
+== Чат: /invite all (пригласить весь сервер в команду)
+
+Chat: /invite friends  (invites only friends to team)
+== Чат: /invite friends (пригласить только друзей в команду)
+
+Invite all key (/invite all)
+== Клавиша пригласить всех (/invite all)
+
+Invite friends key (/invite friends)
+== Клавиша пригласить друзей (/invite friends)
+
+Invite All (/invite all)
+== Пригласить всех (/invite all)
+
+Invite Friends (/invite friends)
+== Пригласить друзей (/invite friends)
+
+Auto Team Lock & Invites
+== Авто-блокировка команды и приглашения
+
+Lock delay (max 5m)
+== Задержка блокировки (макс 5м)
+
+Ghost transparency
+== Прозрачность призрака
+
+Show practice mode text (/tc /invincible)
+== Показывать текст режима тренировки (/tc /invincible)
+
+Disable Fast Practice (Return to Run)
+== Отключить тренировку (Вернуться в забег)
+
+Enable Fast Practice (Ghost Mode)
+== Включить тренировку (Режим призрака)
+
+Fast Practice key (Ghost mode)
+== Клавиша тренировки (Режим призрака)
+
+Toggle stats overlay key
+== Клавиша оверлея статистики
+
+Save stats key
+== Клавиша сохранения статистики
+
+What's New in Clientx30 (Quick Summary)
+== Что нового в Clientx30 (Краткий обзор)
+
+* Race Stats Overlay + Log:
+== * Оверлей статистики + Журнал:
+
+Live HUD stats (Freezes, Saves, Lasts, Efficiency) and auto-saved run time.
+== Статистика в реальном времени (Freezes, Saves, Lasts, Efficiency) и время забега.
+
+* Fast Practice (Ghost Mode):
+== * Быстрая тренировка (Режим призрака):
+
+Practice any map part with /tp, /tc, /invincible without leaving your real run.
+== Тренируйте любой участок карты с /tp, /tc, /invincible, не прерывая забег.
+
+* Independent Fast Input:
+== * Раздельный Fast Input:
+
+Set separate visual prediction ms for yourself (Amount) and others (Others Amount).
+== Отдельная задержка предсказания в мс для себя (Amount) и других (Others Amount).
+
+* Auto Team Lock (up to 5m):
+== * Авто-блок команды (до 5 мин):
+
+Automatically locks team (/lock 1) after configured delay when joining.
+== Автоматически блокирует команду (/lock 1) через заданное время при входе.
+
+* Bulk Invites:
+== * Массовые приглашения:
+
+Use /invite all or /invite friends with anti-flood queue and Tab auto-complete.
+== Команды /invite all и /invite friends с защитой от флуда и автодополнением по Tab.
+
+* Active Vulkan Renderer:
+== * Активный рендерер Vulkan:
+
+Compiled SPIR-V shaders included for smoother frame rates and lower CPU usage.
+== Встроенные шейдеры SPIR-V для плавной частоты кадров и снижения нагрузки на ЦП.
+
+[Clientx30] You must be connected to a server to use /invite.
+== [Clientx30] Вы должны быть подключены к серверу для использования /invite.
+
+[Clientx30] Join a team first (e.g. /team 1) before using /invite.
+== [Clientx30] Сначала вступите в команду (например, /team 1) перед вызовом /invite.
+
+[Clientx30] No connected friends outside your team found to invite.
+== [Clientx30] Друзей вне вашей команды для приглашения не найдено.
+
+[Clientx30] No other players outside your team found to invite.
+== [Clientx30] Других игроков вне вашей команды для приглашения не найдено.
+
+[Clientx30] Inviting %d %s to Team %d...
+== [Clientx30] Приглашение %d %s в Команду %d...
+
+friend(s)
+== друзей
+
+player(s)
+== игроков
