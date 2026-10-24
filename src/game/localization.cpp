@@ -11,6 +11,8 @@
 #include <engine/console.h>
 #include <engine/shared/linereader.h>
 #include <engine/storage.h>
+#include <engine/shared/config.h>
+#include "tclient_embedded_languages.h"
 
 const char *Localize(const char *pStr, const char *pContext)
 {
@@ -21,7 +23,15 @@ const char *Localize(const char *pStr, const char *pContext)
 // TClient
 const char *TCLocalize(const char *pStr, const char *pContext)
 {
-	return Localize(pStr, pContext);
+	const char *pTranslated = Localize(pStr, pContext);
+	if(pTranslated != pStr)
+		return pTranslated;
+
+	const char *pEmbedded = TCLocalizeEmbedded(pStr, g_Config.m_ClLanguagefile);
+	if(pEmbedded)
+		return pEmbedded;
+
+	return pStr;
 }
 
 void CLocalizationDatabase::LoadIndexfile(IStorage *pStorage, IConsole *pConsole)
