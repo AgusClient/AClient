@@ -27,7 +27,7 @@ if(NOT GLSLANG_VALIDATOR_PROGRAM)
   endif()
 endif()
 
-# Find spirv-opt
+# Find spirv-opt (optional if glslangValidator is available)
 find_program(SPIRV_OPTIMIZER_PROGRAM spirv-opt)
 set(SPIRV_OPTIMIZER_PROGRAM_FOUND TRUE)
 if(NOT SPIRV_OPTIMIZER_PROGRAM)
@@ -43,10 +43,6 @@ if(NOT SPIRV_OPTIMIZER_PROGRAM)
   if(EXISTS ${SPIRV_OPTIMIZER_PROGRAM})
     set(SPIRV_OPTIMIZER_PROGRAM_FOUND TRUE)
   endif()
-
-  if(NOT SPIRV_OPTIMIZER_PROGRAM_FOUND)
-    message(FATAL_ERROR "spirv-opt binary was not found. Install the Vulkan SDK / packages. Alternatively, set VULKAN=OFF to build without Vulkan.")
-  endif()
 endif()
 
 # Settings
@@ -61,15 +57,25 @@ function(generate_shader_file FILE_ARGS1 FILE_ARGS2 FILE_NAME FILE_OUTPUT_NAME)
   set(OUTPUT_PATH "${PROJECT_BINARY_DIR}/${OUTPUT_PATH_RELATIVE}")
   set(TMP_OUTPUT_PATH "${OUTPUT_PATH}.tmp")
 
-  add_custom_command(
-    OUTPUT "${OUTPUT_PATH}"
-    COMMAND ${GLSLANG_VALIDATOR_PROGRAM} --quiet --client ${TW_VULKAN_VERSION} ${FILE_ARGS1} ${FILE_ARGS2} "${INPUT_PATH}" -o "${TMP_OUTPUT_PATH}"
-    COMMAND ${SPIRV_OPTIMIZER_PROGRAM} -O "${TMP_OUTPUT_PATH}" -o "${OUTPUT_PATH}"
-    COMMAND ${CMAKE_COMMAND} -E remove "${TMP_OUTPUT_PATH}"
-    DEPENDS "${INPUT_PATH}"
-    COMMENT "Compiling Vulkan shader ${FILE_OUTPUT_NAME}"
-    VERBATIM
-  )
+  if(SPIRV_OPTIMIZER_PROGRAM_FOUND)
+    add_custom_command(
+      OUTPUT "${OUTPUT_PATH}"
+      COMMAND ${GLSLANG_VALIDATOR_PROGRAM} --quiet --client ${TW_VULKAN_VERSION} ${FILE_ARGS1} ${FILE_ARGS2} "${INPUT_PATH}" -o "${TMP_OUTPUT_PATH}"
+      COMMAND ${SPIRV_OPTIMIZER_PROGRAM} -O "${TMP_OUTPUT_PATH}" -o "${OUTPUT_PATH}"
+      COMMAND ${CMAKE_COMMAND} -E remove "${TMP_OUTPUT_PATH}"
+      DEPENDS "${INPUT_PATH}"
+      COMMENT "Compiling Vulkan shader ${FILE_OUTPUT_NAME}"
+      VERBATIM
+    )
+  else()
+    add_custom_command(
+      OUTPUT "${OUTPUT_PATH}"
+      COMMAND ${GLSLANG_VALIDATOR_PROGRAM} --quiet --client ${TW_VULKAN_VERSION} ${FILE_ARGS1} ${FILE_ARGS2} "${INPUT_PATH}" -o "${OUTPUT_PATH}"
+      DEPENDS "${INPUT_PATH}"
+      COMMENT "Compiling Vulkan shader ${FILE_OUTPUT_NAME}"
+      VERBATIM
+    )
+  endif()
 
   list(APPEND VULKAN_SHADER_FILE_LIST "${OUTPUT_PATH_RELATIVE}")
   set(VULKAN_SHADER_FILE_LIST ${VULKAN_SHADER_FILE_LIST} PARENT_SCOPE)
