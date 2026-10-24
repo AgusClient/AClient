@@ -3332,8 +3332,27 @@ void CMenus::RenderSettingsTClientRaceStats(CUIRect MainView)
 	CUIRect TableHeader;
 	const float RowH = 26.0f;
 	const float IconSz = 16.0f;
-	const float ColStatW = 44.0f;
-	const float ColNameW = std::max(100.0f, RightView.w - (ColStatW * 5.0f) - 16.0f);
+
+	bool ShowFreeze = (g_Config.m_TcMiniStatboardColumns & 1) != 0;
+	bool ShowSave   = (g_Config.m_TcMiniStatboardColumns & 2) != 0;
+	bool ShowLast   = (g_Config.m_TcMiniStatboardColumns & 4) != 0;
+	bool ShowEff    = (g_Config.m_TcMiniStatboardColumns & 8) != 0;
+	bool ShowDeath  = (g_Config.m_TcMiniStatboardColumns & 16) != 0;
+	bool ShowNet    = (g_Config.m_TcMiniStatboardColumns & 32) != 0;
+	bool ShowTime   = (g_Config.m_TcMiniStatboardColumns & 64) != 0;
+	bool ShowHook   = (g_Config.m_TcMiniStatboardColumns & 128) != 0;
+
+	int NumActiveCols = (ShowFreeze ? 1 : 0) + (ShowSave ? 1 : 0) + (ShowDeath ? 1 : 0) +
+	                    (ShowEff ? 1 : 0) + (ShowNet ? 1 : 0) + (ShowTime ? 1 : 0) +
+	                    (ShowHook ? 1 : 0) + (ShowLast ? 1 : 0);
+	if(NumActiveCols == 0)
+	{
+		ShowFreeze = ShowSave = ShowDeath = ShowEff = ShowNet = ShowTime = ShowHook = ShowLast = true;
+		NumActiveCols = 8;
+	}
+
+	const float ColStatW = (NumActiveCols > 5) ? 36.0f : 44.0f;
+	const float ColNameW = std::max(70.0f, RightView.w - (ColStatW * (float)NumActiveCols) - 16.0f);
 
 	RightView.HSplitTop(RowH + 4.0f, &TableHeader, &RightView);
 	TableHeader.Draw(ColorRGBA(0.14f, 0.15f, 0.22f, 0.75f), IGraphics::CORNER_T, 6.0f);
@@ -3355,19 +3374,14 @@ void CMenus::RenderSettingsTClientRaceStats(CUIRect MainView)
 	DrawTexIcon(RaceStats.m_aTextures[CRaceStats::ICON_USER], HeadX + 4.0f, HeadY, IconSz, ColorRGBA(1.0f, 1.0f, 1.0f, 0.95f));
 	HeadX += ColNameW;
 
-	DrawTexIcon(RaceStats.m_aTextures[CRaceStats::ICON_FREEZE], HeadX + (ColStatW - IconSz) * 0.5f, HeadY, IconSz, ColorRGBA(0.5f, 0.85f, 1.0f, 1.0f));
-	HeadX += ColStatW;
-
-	DrawTexIcon(RaceStats.m_aTextures[CRaceStats::ICON_SAVE], HeadX + (ColStatW - IconSz) * 0.5f, HeadY, IconSz, ColorRGBA(0.4f, 1.0f, 0.5f, 1.0f));
-	HeadX += ColStatW;
-
-	DrawTexIcon(RaceStats.m_aTextures[CRaceStats::ICON_LAST], HeadX + (ColStatW - IconSz) * 0.5f, HeadY, IconSz, ColorRGBA(1.0f, 0.75f, 0.3f, 1.0f));
-	HeadX += ColStatW;
-
-	DrawTexIcon(RaceStats.m_aTextures[CRaceStats::ICON_EFF], HeadX + (ColStatW - IconSz) * 0.5f, HeadY, IconSz, ColorRGBA(0.9f, 0.5f, 1.0f, 1.0f));
-	HeadX += ColStatW;
-
-	DrawTexIcon(RaceStats.m_aTextures[CRaceStats::ICON_SKULL], HeadX + (ColStatW - IconSz) * 0.5f, HeadY, IconSz, ColorRGBA(0.95f, 0.35f, 0.35f, 1.0f));
+	if(ShowFreeze) { DrawTexIcon(RaceStats.m_aTextures[CRaceStats::ICON_FREEZE], HeadX + (ColStatW - IconSz) * 0.5f, HeadY, IconSz, ColorRGBA(0.5f, 0.85f, 1.0f, 1.0f)); HeadX += ColStatW; }
+	if(ShowSave)   { DrawTexIcon(RaceStats.m_aTextures[CRaceStats::ICON_SAVE], HeadX + (ColStatW - IconSz) * 0.5f, HeadY, IconSz, ColorRGBA(0.4f, 1.0f, 0.5f, 1.0f)); HeadX += ColStatW; }
+	if(ShowDeath)  { DrawTexIcon(RaceStats.m_aTextures[CRaceStats::ICON_SKULL], HeadX + (ColStatW - IconSz) * 0.5f, HeadY, IconSz, ColorRGBA(0.95f, 0.35f, 0.35f, 1.0f)); HeadX += ColStatW; }
+	if(ShowEff)    { DrawTexIcon(RaceStats.m_aTextures[CRaceStats::ICON_EFF], HeadX + (ColStatW - IconSz) * 0.5f, HeadY, IconSz, ColorRGBA(0.95f, 0.75f, 0.3f, 1.0f)); HeadX += ColStatW; }
+	if(ShowNet)    { DrawTexIcon(RaceStats.m_aTextures[CRaceStats::ICON_NET], HeadX + (ColStatW - IconSz) * 0.5f, HeadY, IconSz, ColorRGBA(0.45f, 0.90f, 0.95f, 1.0f)); HeadX += ColStatW; }
+	if(ShowTime)   { DrawTexIcon(RaceStats.m_aTextures[CRaceStats::ICON_TIME], HeadX + (ColStatW - IconSz) * 0.5f, HeadY, IconSz, ColorRGBA(0.55f, 0.80f, 1.0f, 1.0f)); HeadX += ColStatW; }
+	if(ShowHook)   { DrawTexIcon(RaceStats.m_aTextures[CRaceStats::ICON_HOOK], HeadX + (ColStatW - IconSz) * 0.5f, HeadY, IconSz, ColorRGBA(1.0f, 0.85f, 0.35f, 1.0f)); HeadX += ColStatW; }
+	if(ShowLast)   { DrawTexIcon(RaceStats.m_aTextures[CRaceStats::ICON_LAST], HeadX + (ColStatW - IconSz) * 0.5f, HeadY, IconSz, ColorRGBA(1.0f, 0.75f, 0.3f, 1.0f)); HeadX += ColStatW; }
 
 	static CScrollRegion s_PlayersScroll;
 	CScrollRegionParams PlScrollParams;
@@ -3408,20 +3422,75 @@ void CMenus::RenderSettingsTClientRaceStats(CUIRect MainView)
 		TextRender()->Text(CurrX + 24.0f, TextY, RowFontSize, Pl.m_aName, -1.0f);
 		CurrX += ColNameW;
 
-		auto DrawSavedStat = [&](int Value, ColorRGBA col) {
-			char aVal[32];
-			str_format(aVal, sizeof(aVal), "%d", Value);
-			float W = TextRender()->TextWidth(RowFontSize, aVal, -1, -1.0f);
+		auto DrawSavedStat = [&](const char *pText, ColorRGBA col) {
+			float W = TextRender()->TextWidth(RowFontSize, pText, -1, -1.0f);
 			TextRender()->TextColor(col);
-			TextRender()->Text(CurrX + (ColStatW - W) * 0.5f, TextY, RowFontSize, aVal, -1.0f);
+			TextRender()->Text(CurrX + (ColStatW - W) * 0.5f, TextY, RowFontSize, pText, -1.0f);
 			CurrX += ColStatW;
 		};
 
-		DrawSavedStat(Pl.m_Freezes, ColorRGBA(0.7f, 0.9f, 1.0f, 0.95f));
-		DrawSavedStat(Pl.m_Saves, ColorRGBA(0.45f, 1.0f, 0.55f, 0.95f));
-		DrawSavedStat(Pl.m_Lasts, ColorRGBA(1.0f, 0.85f, 0.4f, 0.95f));
-		DrawSavedStat(Pl.m_EfficiencyPercent, ColorRGBA(0.95f, 0.65f, 1.0f, 0.95f));
-		DrawSavedStat(Pl.m_Deaths, ColorRGBA(1.0f, 0.45f, 0.45f, 0.95f));
+		char aBuf[32];
+		if(ShowFreeze)
+		{
+			str_format(aBuf, sizeof(aBuf), "%d", Pl.m_Freezes);
+			DrawSavedStat(aBuf, ColorRGBA(0.7f, 0.9f, 1.0f, 0.95f));
+		}
+		if(ShowSave)
+		{
+			str_format(aBuf, sizeof(aBuf), "%d", Pl.m_Saves);
+			DrawSavedStat(aBuf, ColorRGBA(0.45f, 1.0f, 0.55f, 0.95f));
+		}
+		if(ShowDeath)
+		{
+			str_format(aBuf, sizeof(aBuf), "%d", Pl.m_Deaths);
+			DrawSavedStat(aBuf, ColorRGBA(1.0f, 0.45f, 0.45f, 0.95f));
+		}
+		if(ShowEff)
+		{
+			if(Pl.m_EfficiencyPercent < 0)
+				str_copy(aBuf, "-", sizeof(aBuf));
+			else
+				str_format(aBuf, sizeof(aBuf), "%d%%", Pl.m_EfficiencyPercent);
+			DrawSavedStat(aBuf, CRaceStats::GetEfficiencyColor(Pl.m_EfficiencyPercent));
+		}
+		if(ShowNet)
+		{
+			if(Pl.m_NetBalance > 0)
+			{
+				str_format(aBuf, sizeof(aBuf), "+%d", Pl.m_NetBalance);
+				DrawSavedStat(aBuf, ColorRGBA(0.35f, 1.0f, 0.45f, 0.95f));
+			}
+			else if(Pl.m_NetBalance == 0)
+			{
+				DrawSavedStat("0", ColorRGBA(0.80f, 0.80f, 0.85f, 0.90f));
+			}
+			else
+			{
+				str_format(aBuf, sizeof(aBuf), "%d", Pl.m_NetBalance);
+				DrawSavedStat(aBuf, ColorRGBA(1.0f, 0.35f, 0.35f, 0.95f));
+			}
+		}
+		if(ShowTime)
+		{
+			if(Pl.m_FrozenSeconds < 60)
+				str_format(aBuf, sizeof(aBuf), "%ds", Pl.m_FrozenSeconds);
+			else
+				str_format(aBuf, sizeof(aBuf), "%dm %02ds", Pl.m_FrozenSeconds / 60, Pl.m_FrozenSeconds % 60);
+			DrawSavedStat(aBuf, ColorRGBA(0.5f, 0.85f, 1.0f, 0.95f));
+		}
+		if(ShowHook)
+		{
+			if(Pl.m_HookAccuracyPercent < 0)
+				str_copy(aBuf, "-", sizeof(aBuf));
+			else
+				str_format(aBuf, sizeof(aBuf), "%d%%", Pl.m_HookAccuracyPercent);
+			DrawSavedStat(aBuf, ColorRGBA(1.0f, 0.85f, 0.35f, 0.95f));
+		}
+		if(ShowLast)
+		{
+			str_format(aBuf, sizeof(aBuf), "%d", Pl.m_Lasts);
+			DrawSavedStat(aBuf, ColorRGBA(1.0f, 0.85f, 0.4f, 0.95f));
+		}
 	}
 
 	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -3561,6 +3630,16 @@ void CMenus::RenderSettingsClientx30Settings(CUIRect MainView)
 	DoLine_KeyReader(Column, s_ReaderButtonToggleStatsCx30, s_ClearButtonToggleStatsCx30, TCLocalize("Toggle stats overlay key"), "toggle tc_mini_statboard 0 1");
 	static CButtonContainer s_ReaderButtonSaveStatsCx30, s_ClearButtonSaveStatsCx30;
 	DoLine_KeyReader(Column, s_ReaderButtonSaveStatsCx30, s_ClearButtonSaveStatsCx30, TCLocalize("Save stats key"), "tc_save_racestats");
+
+	CUIRect PresetRow, BtnAllCols, BtnBasicCols;
+	Column.HSplitTop(LineSize, &PresetRow, &Column);
+	PresetRow.VSplitMid(&BtnAllCols, &BtnBasicCols, MarginSmall);
+	static CButtonContainer s_BtnAllColsId, s_BtnBasicColsId;
+	if(DoButton_Menu(&s_BtnAllColsId, TCLocalize("Show All Stats"), 0, &BtnAllCols))
+		g_Config.m_TcMiniStatboardColumns = 255;
+	if(DoButton_Menu(&s_BtnBasicColsId, TCLocalize("Basic Stats"), 0, &BtnBasicCols))
+		g_Config.m_TcMiniStatboardColumns = 27;
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
 	static int s_ColFreezesCx30 = 0;
 	s_ColFreezesCx30 = (g_Config.m_TcMiniStatboardColumns & 1) ? 1 : 0;

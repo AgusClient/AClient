@@ -629,7 +629,7 @@ void CRaceStats::OnRender()
 	}
 }
 
-static ColorRGBA GetEfficiencyColor(int Percent)
+ColorRGBA CRaceStats::GetEfficiencyColor(int Percent)
 {
 	if(Percent < 0)
 		return ColorRGBA(0.75f, 0.75f, 0.80f, 0.90f); // Sin datos: gris neutro

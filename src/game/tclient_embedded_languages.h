@@ -112,6 +112,8 @@ static const SEmbeddedTranslationEntry s_aEmbeddedTranslations[] = {
 	{"Prevents the 3-dots bubble (...) from appearing above your Tee when the chat is open.", "Evita que aparezca la burbuja con los 3 puntos (...) sobre tu Tee cuando tienes el chat abierto o estás escribiendo.", "Предотвращает появление облачка с точками (...) над вашим персонажем, когда открыт чат.", "Evita que a bolha com 3 pontos (...) apareça sobre seu Tee quando o chat estiver aberto.", "当聊天框打开时，防止在你的提子头顶显示三点聊天气泡 (...)", "Empêche la bulle avec les 3 points (...) d'apparaître au-dessus de votre Tee lorsque le chat est ouvert."},
 	{"Hide typing bubbles of other players", "Ocultar burbujas de chat de los demás jugadores", "Скрыть облачка чата других игроков", "Ocultar bolhas de chat dos outros jogadores", "隐藏其他玩家的聊天气泡", "Masquer les bulles de chat des autres joueurs"},
 	{"Hides the 3-dots typing bubble of other players on your screen when they are typing.", "Oculta visualmente en tu pantalla la burbuja de 3 puntos sobre los demás jugadores cuando ellos estén escribiendo.", "Скрывает на вашем экране облачко с точками у других игроков, когда они пишут.", "Oculta visualmente em sua tela a bolha de 3 pontos sobre os outros jogadores quando eles estiverem digitando.", "当其他玩家正在输入时，在你的屏幕上隐藏他们头顶的三点气泡。", "Masque visuellement sur votre écran la bulle de 3 points au-dessus des autres joueurs lorsqu'ils écrivent."},
+	{"Show All Stats", "Activar Todas", "Все статистики", "Mostrar Todas", "显示所有数据", "Toutes les stats"},
+	{"Basic Stats", "Solo Básicas", "Основные", "Básicas", "基础数据", "Stats de base"},
 };
 
 static const char *TCLocalizeEmbedded(const char *pStr, const char *pLangFile)
