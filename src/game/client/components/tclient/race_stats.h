@@ -80,6 +80,7 @@ public:
 		int m_Saves;
 		int m_Lasts;
 		int m_EfficiencyPercent;
+		int m_Deaths;
 		bool m_IsLocal;
 	};
 

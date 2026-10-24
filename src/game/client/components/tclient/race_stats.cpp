@@ -168,6 +168,7 @@ bool CRaceStats::SaveCurrentStats(const char *pReason, bool RequireActivity, boo
 		PStat.m_Saves = m_aPlayerStats[CID].m_Saves;
 		PStat.m_Lasts = m_aPlayerStats[CID].m_Lasts;
 		PStat.m_EfficiencyPercent = m_aPlayerStats[CID].GetEfficiencyPercent();
+		PStat.m_Deaths = m_aPlayerStats[CID].m_Deaths;
 		PStat.m_IsLocal = IsLocal;
 		Entry.m_vPlayers.push_back(PStat);
 	};
@@ -246,9 +247,9 @@ void CRaceStats::SaveHistoryToFile()
 
 		for(const auto &Pl : Entry.m_vPlayers)
 		{
-			str_format(aLine, sizeof(aLine), "PLAYER\t%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
+			str_format(aLine, sizeof(aLine), "PLAYER\t%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
 				Pl.m_aName, Pl.m_aSkinName, Pl.m_CustomColors ? 1 : 0, Pl.m_ColorBody, Pl.m_ColorFeet,
-				Pl.m_Freezes, Pl.m_Saves, Pl.m_Lasts, Pl.m_EfficiencyPercent, Pl.m_IsLocal ? 1 : 0);
+				Pl.m_Freezes, Pl.m_Saves, Pl.m_Lasts, Pl.m_EfficiencyPercent, Pl.m_IsLocal ? 1 : 0, Pl.m_Deaths);
 			io_write(File, aLine, str_length(aLine));
 		}
 
@@ -347,6 +348,10 @@ void CRaceStats::LoadHistoryFromFile()
 			Pl.m_EfficiencyPercent = str_toint(aBuf);
 			NextTabToken(&pCursor, aBuf, sizeof(aBuf));
 			Pl.m_IsLocal = str_toint(aBuf) != 0;
+			if(NextTabToken(&pCursor, aBuf, sizeof(aBuf)))
+				Pl.m_Deaths = str_toint(aBuf);
+			else
+				Pl.m_Deaths = 0;
 			CurrentEntry.m_vPlayers.push_back(Pl);
 		}
 		else if(str_comp(aTag, "END") == 0 && InEntry)
@@ -371,10 +376,17 @@ void CRaceStats::OnMessage(int MsgType, void *pRawMsg)
 		CNetMsg_Sv_KillMsg *pMsg = (CNetMsg_Sv_KillMsg *)pRawMsg;
 		if(pMsg->m_Victim >= 0 && pMsg->m_Victim < MAX_CLIENTS)
 		{
+			m_aPlayerStats[pMsg->m_Victim].m_Deaths++;
+			if(pMsg->m_Victim == LocalClientId)
+			{
+				m_RoundDeaths++;
+				m_SessionDeaths++;
+			}
+
 			bool IsLocalKill = (pMsg->m_Victim == LocalClientId);
 			bool IsTeammateKill = (LocalTeam > 0 && GameClient()->m_Teams.Team(pMsg->m_Victim) == LocalTeam);
 
-			if(g_Config.m_TcStatboardResetOnTeamKill && (IsLocalKill || IsTeammateKill))
+			if(!g_Config.m_TcStatboardKeepOnDeath && g_Config.m_TcStatboardResetOnTeamKill && (IsLocalKill || IsTeammateKill))
 			{
 				if(g_Config.m_TcStatboardAutoSave)
 					SaveCurrentStats("Auto (/kill)", true, false);
@@ -385,7 +397,23 @@ void CRaceStats::OnMessage(int MsgType, void *pRawMsg)
 	else if(MsgType == NETMSGTYPE_SV_KILLMSGTEAM)
 	{
 		CNetMsg_Sv_KillMsgTeam *pMsg = (CNetMsg_Sv_KillMsgTeam *)pRawMsg;
-		if(g_Config.m_TcStatboardResetOnTeamKill && pMsg->m_Team == LocalTeam)
+		if(pMsg->m_Team >= 0)
+		{
+			for(int i = 0; i < MAX_CLIENTS; i++)
+			{
+				if(GameClient()->m_Teams.Team(i) == pMsg->m_Team)
+				{
+					m_aPlayerStats[i].m_Deaths++;
+					if(i == LocalClientId)
+					{
+						m_RoundDeaths++;
+						m_SessionDeaths++;
+					}
+				}
+			}
+		}
+
+		if(!g_Config.m_TcStatboardKeepOnDeath && g_Config.m_TcStatboardResetOnTeamKill && pMsg->m_Team == LocalTeam)
 		{
 			if(g_Config.m_TcStatboardAutoSave)
 				SaveCurrentStats("Auto (/kill)", true, false);
@@ -592,8 +620,9 @@ void CRaceStats::RenderMiniStatboard()
 	bool ShowSave   = (g_Config.m_TcMiniStatboardColumns & 2) != 0;
 	bool ShowLast   = (g_Config.m_TcMiniStatboardColumns & 4) != 0;
 	bool ShowEff    = (g_Config.m_TcMiniStatboardColumns & 8) != 0;
+	bool ShowDeath  = (g_Config.m_TcMiniStatboardColumns & 16) != 0;
 
-	int NumStatCols = (ShowFreeze ? 1 : 0) + (ShowSave ? 1 : 0) + (ShowLast ? 1 : 0) + (ShowEff ? 1 : 0);
+	int NumStatCols = (ShowFreeze ? 1 : 0) + (ShowSave ? 1 : 0) + (ShowLast ? 1 : 0) + (ShowEff ? 1 : 0) + (ShowDeath ? 1 : 0);
 	float TotalWidth = ColWidthName + (float)NumStatCols * ColWidthStat + Padding * 2.0f;
 
 	float HeaderHeight = RowHeight + 1.0f * Scale;
@@ -674,6 +703,12 @@ void CRaceStats::RenderMiniStatboard()
 		CurrX += ColWidthStat;
 	}
 
+	if(ShowDeath)
+	{
+		DrawIcon(m_aTextures[ICON_SKULL], CurrX + (ColWidthStat - IconSize) / 2.0f, HeaderY, IconSize, ColorRGBA(0.95f, 0.35f, 0.35f, 1.0f));
+		CurrX += ColWidthStat;
+	}
+
 	// Filas de Jugadores
 	float RowY = BaseY + Padding + HeaderHeight;
 
@@ -742,6 +777,12 @@ void CRaceStats::RenderMiniStatboard()
 		{
 			str_format(aBuf, sizeof(aBuf), "%d", m_aPlayerStats[CID].GetEfficiencyPercent());
 			DrawStatNum(aBuf, ColorRGBA(0.95f, 0.65f, 1.0f, 0.95f));
+		}
+
+		if(ShowDeath)
+		{
+			str_format(aBuf, sizeof(aBuf), "%d", m_aPlayerStats[CID].m_Deaths);
+			DrawStatNum(aBuf, ColorRGBA(1.0f, 0.45f, 0.45f, 0.95f));
 		}
 
 		RowY += RowHeight;
