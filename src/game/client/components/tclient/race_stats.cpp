@@ -20,7 +20,7 @@
 #include <cstring>
 #include <vector>
 
-static const float HAMMER_MAX_DIST = 110.0f;
+static const float HAMMER_MAX_DIST = 135.0f;
 static const char *RACESTATS_HISTORY_FILE = "tclient_racestats_history.txt";
 
 void CRaceStats::OnInit()
@@ -475,6 +475,40 @@ void CRaceStats::OnRender()
 	int TeamUnfrozenPlayers = 0;
 	int LastUnfrozenCID = -1;
 
+	// FASE 1: Registro global de ataques de martillo (con soporte para predicción local)
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		if(!GameClient()->m_Snap.m_apPlayerInfos[i] || !GameClient()->m_Snap.m_aCharacters[i].m_Active)
+			continue;
+
+		const auto &Char = GameClient()->m_Snap.m_aCharacters[i];
+		bool IsLocal = (i == LocalClientId);
+
+		bool IsHammer = (Char.m_Cur.m_Weapon == WEAPON_HAMMER);
+		int CurAttackTick = Char.m_Cur.m_AttackTick;
+
+		if(IsLocal)
+		{
+			if(GameClient()->m_aClients[i].m_Predicted.m_ActiveWeapon == WEAPON_HAMMER ||
+			   GameClient()->m_aClients[i].m_RenderCur.m_Weapon == WEAPON_HAMMER)
+			{
+				IsHammer = true;
+			}
+			if(GameClient()->m_aClients[i].m_RenderCur.m_AttackTick > CurAttackTick)
+			{
+				CurAttackTick = GameClient()->m_aClients[i].m_RenderCur.m_AttackTick;
+			}
+		}
+
+		if(IsHammer && (CurAttackTick != m_aPlayerStats[i].m_LastAttackTick))
+		{
+			m_aPlayerStats[i].m_LastAttackTick = CurAttackTick;
+			m_aPlayerStats[i].m_LastHammerTick = CurrentTick;
+			m_aPlayerStats[i].m_LastHammerPos = IsLocal ? GameClient()->m_LocalCharacterPos : vec2(Char.m_Cur.m_X, Char.m_Cur.m_Y);
+		}
+	}
+
+	// FASE 2: Métricas por jugador y resolución de Saves por descongelación
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
 		if(!GameClient()->m_Snap.m_apPlayerInfos[i] || !GameClient()->m_Snap.m_aCharacters[i].m_Active)
@@ -485,8 +519,11 @@ void CRaceStats::OnRender()
 
 		const auto &ClientData = GameClient()->m_aClients[i];
 		const auto &Char = GameClient()->m_Snap.m_aCharacters[i];
+		bool IsLocal = (i == LocalClientId);
 
-		bool IsFrozen = (ClientData.m_FreezeEnd > 0 || ClientData.m_DeepFrozen);
+		bool IsFrozen = (ClientData.m_FreezeEnd != 0 || ClientData.m_DeepFrozen || ClientData.m_LiveFrozen);
+		if(IsLocal)
+			IsFrozen = IsFrozen || (ClientData.m_Predicted.m_FreezeEnd != 0 || ClientData.m_Predicted.m_LiveFrozen);
 
 		if(GameClient()->m_Teams.Team(i) == CurrentTeam)
 		{
@@ -516,14 +553,6 @@ void CRaceStats::OnRender()
 		}
 		m_aPlayerStats[i].m_LastHookState = CurHookState;
 
-		// Seguimiento de ataque de martillo
-		if(Char.m_Cur.m_Weapon == WEAPON_HAMMER && (Char.m_Cur.m_AttackTick != m_aPlayerStats[i].m_LastAttackTick))
-		{
-			m_aPlayerStats[i].m_LastAttackTick = Char.m_Cur.m_AttackTick;
-			m_aPlayerStats[i].m_LastHammerTick = CurrentTick;
-			m_aPlayerStats[i].m_LastHammerPos = vec2(Char.m_Cur.m_X, Char.m_Cur.m_Y);
-		}
-
 		// Transición: Entró en congelación
 		if(IsFrozen && !m_aPlayerStats[i].m_WasFrozen)
 		{
@@ -534,7 +563,7 @@ void CRaceStats::OnRender()
 		// Transición: Se descongeló -> Comprobar si un compañero lo salvó con martillo
 		if(!IsFrozen && m_aPlayerStats[i].m_WasFrozen)
 		{
-			vec2 VictimPos = vec2(Char.m_Cur.m_X, Char.m_Cur.m_Y);
+			vec2 VictimPos = IsLocal ? GameClient()->m_LocalCharacterPos : vec2(Char.m_Cur.m_X, Char.m_Cur.m_Y);
 			int Team = GameClient()->m_Teams.Team(i);
 
 			int SaverCID = -1;
@@ -549,9 +578,9 @@ void CRaceStats::OnRender()
 					continue;
 
 				int TickDiff = std::abs(CurrentTick - m_aPlayerStats[j].m_LastHammerTick);
-				if(TickDiff <= 10)
+				if(TickDiff <= 25)
 				{
-					vec2 AttackerPos = vec2(GameClient()->m_Snap.m_aCharacters[j].m_Cur.m_X, GameClient()->m_Snap.m_aCharacters[j].m_Cur.m_Y);
+					vec2 AttackerPos = (j == LocalClientId) ? GameClient()->m_LocalCharacterPos : vec2(GameClient()->m_Snap.m_aCharacters[j].m_Cur.m_X, GameClient()->m_Snap.m_aCharacters[j].m_Cur.m_Y);
 					float DistCurrent = distance(VictimPos, AttackerPos);
 					float DistAtHit = distance(VictimPos, m_aPlayerStats[j].m_LastHammerPos);
 					float Dist = std::min(DistCurrent, DistAtHit);
