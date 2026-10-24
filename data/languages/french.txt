@@ -2854,3 +2854,90 @@ Keep stats on death (do not reset on /kill)
 
 Column: Deaths
 == Colonne : Morts
+
+== Background Alerts (Tabbed out)
+Alertes en Arrière-plan
+
+== Notify when unfreezing (tabbed out)
+Alerter lors du dégel (arrière-plan)
+
+== Notify when moved or tile changes (tabbed out)
+Alerter si déplacé ou changement de case
+
+== Alert methods (independent):
+Méthodes d'alerte (indépendantes) :
+
+== Sound alert
+Alerte sonore
+
+== Taskbar flash
+Clignotement barre des tâches
+
+== Desktop notification
+Notification de bureau
+
+== Skin Stealer
+Voleur de Skin (Copie)
+
+== Steal skin key (aiming at player)
+Touche pour copier le skin (viser le joueur)
+
+== Chat: /stealskin [name]  or  Console: steal_skin [name]
+Chat : /stealskin [nom]  |  Console : steal_skin [nom]
+
+== You can also right-click / click on any player in Scoreboard (Tab) to steal skin.
+Vous pouvez aussi cliquer sur n'importe quel joueur dans le Scoreboard (Tab) pour copier son skin.
+
+== Steal skin from aimed player now
+Copier le skin du joueur visé maintenant
+
+== Steal Skin
+Copier Skin
+
+== You were unfrozen!
+Vous avez été dégelé !
+
+== You were moved or changed tile!
+Vous avez été déplacé ou avez changé de case !
+
+== [Clientx30] Skin copied from %s: %s
+[Clientx30] Skin copié de %s : %s
+
+== [Clientx30] No target player found to steal skin from.
+[Clientx30] Aucun joueur cible trouvé pour copier le skin.
+
+== [Clientx30] You cannot steal your own skin.
+[Clientx30] Vous ne pouvez pas copier votre propre skin.
+
+== * Background Alerts (Tabbed out):
+* Alertes en Arrière-plan :
+
+== Granular alerts (sound, taskbar flash, desktop notification) on unfreeze or tile change.
+Alertes personnalisables (son, clignotement barre, notification) lors du dégel ou déplacement.
+
+== * Skin Stealer:
+* Voleur de Skin :
+
+== Instantly copy skins and colors by aiming with bind, via /stealskin [name] or from Scoreboard (Tab).
+Copiez instantanément les skins et couleurs en visant, via /stealskin [nom] ou depuis le Scoreboard.
+
+== Chat & Client Messages (Echo)
+Chat et Messages Client (Echo)
+
+== Show client messages in chat (Echo / Local notices)
+Afficher les messages client dans le chat (Echo / Avis locaux)
+
+== Controls whether local echo messages (like [Clientx30], command feedback and notices) appear in the chat.
+Contrôle si les messages d'écho locaux (comme [Clientx30], confirmations de commande et avis) s'affichent dans le chat.
+
+== Send Test Echo Message
+Envoyer un Message Test (Test Echo)
+
+== [Clientx30] This is a test Echo message.
+[Clientx30] Ceci est un message test d'Echo.
+
+== * Client Echo Control:
+* Contrôle des Messages d'Écho :
+
+== Enable or silence local client notices ([Clientx30], command confirmations, script echoes).
+Activez ou coupez les avis locaux ([Clientx30], confirmations de commande, échos de script).

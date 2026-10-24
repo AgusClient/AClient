@@ -230,6 +230,17 @@ void CChat::ConchainChatWidth(IConsole::IResult *pResult, void *pUserData, ICons
 	pChat->RebuildChat();
 }
 
+void CChat::ConchainShowChatClient(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData)
+{
+	pfnCallback(pResult, pCallbackUserData);
+	if(pResult->NumArguments())
+	{
+		int Val = pResult->GetInteger(0);
+		g_Config.m_TcShowChatClient = Val;
+		g_Config.m_ClShowChatClient = Val;
+	}
+}
+
 void CChat::Echo(const char *pString)
 {
 	AddLine(CLIENT_MSG, 0, pString);
@@ -251,6 +262,8 @@ void CChat::OnInit()
 	Console()->Chain("cl_chat_old", ConchainChatOld, this);
 	Console()->Chain("cl_chat_size", ConchainChatFontSize, this);
 	Console()->Chain("cl_chat_width", ConchainChatWidth, this);
+	Console()->Chain("tc_show_chat_client", ConchainShowChatClient, this);
+	Console()->Chain("cl_show_chat_client", ConchainShowChatClient, this);
 }
 
 bool CChat::OnInput(const IInput::CEvent &Event)
@@ -292,6 +305,15 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 	if(Event.m_Flags & IInput::FLAG_PRESS && Event.m_Key == KEY_TAB)
 	{
 		const bool ShiftPressed = Input()->ShiftIsPressed();
+
+		// Clientx30: Autocompletado directo para /stealskin
+		if(str_startswith_nocase("/stealskin", m_Input.GetString()) && str_length(m_Input.GetString()) >= 3)
+		{
+			m_Input.Set("/stealskin ");
+			m_Input.SetCursorOffset(str_length("/stealskin "));
+			m_CompletionUsed = true;
+			return true;
+		}
 
 		// Clientx30: Autocompletado directo para /invite friends y /invite all
 		const char *pInputStr = m_Input.GetString();
@@ -730,7 +752,7 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 		return;
 
 	// TClient
-	if(ClientId == CLIENT_MSG && !g_Config.m_TcShowChatClient)
+	if(ClientId == CLIENT_MSG && (!g_Config.m_TcShowChatClient || !g_Config.m_ClShowChatClient))
 		return;
 
 	// TClient
@@ -1566,6 +1588,9 @@ void CChat::SendChat(int Team, const char *pLine)
 	if(TryHandleBulkInviteCommand(pLine))
 		return;
 
+	if(TryHandleStealSkinCommand(pLine))
+		return;
+
 	m_LastChatSend = time();
 
 	if(GameClient()->Client()->IsSixup())
@@ -1610,6 +1635,35 @@ void CChat::SendChatQueued(const char *pLine)
 		pEntry->m_Team = m_Mode == MODE_ALL ? 0 : 1;
 		str_copy(pEntry->m_aText, pLine, Length + 1);
 	}
+}
+
+bool CChat::TryHandleStealSkinCommand(const char *pLine)
+{
+	if(!pLine)
+		return false;
+
+	const char *pTrimmed = str_utf8_skip_whitespaces(pLine);
+	const char *pRest = str_startswith_nocase(pTrimmed, "/stealskin");
+	if(!pRest)
+		return false;
+
+	if(*pRest != '\0' && *pRest != ' ')
+		return false;
+
+	const char *pArg = str_utf8_skip_whitespaces(pRest);
+	if(*pArg == '\0')
+		pArg = nullptr;
+
+	int TargetId = GameClient()->FindStealTarget(pArg);
+	if(TargetId >= 0)
+	{
+		GameClient()->StealSkin(TargetId);
+	}
+	else
+	{
+		Echo(TCLocalize("[Clientx30] No target player found to steal skin from."));
+	}
+	return true;
 }
 
 bool CChat::TryHandleBulkInviteCommand(const char *pLine)

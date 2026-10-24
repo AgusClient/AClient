@@ -258,6 +258,7 @@ private:
 	class IEngine *m_pEngine;
 	class IInput *m_pInput;
 	class IGraphics *m_pGraphics;
+	class IEngineGraphics *m_pEngineGraphics = nullptr;
 	class ITextRender *m_pTextRender;
 	class IClient *m_pClient;
 	class ISound *m_pSound;
@@ -303,6 +304,7 @@ private:
 	static void ConTeam(IConsole::IResult *pResult, void *pUserData);
 	static void ConKill(IConsole::IResult *pResult, void *pUserData);
 	static void ConReadyChange7(IConsole::IResult *pResult, void *pUserData);
+	static void ConStealSkin(IConsole::IResult *pResult, void *pUserData);
 
 	static void ConchainLanguageUpdate(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
 	static void ConchainSpecialInfoupdate(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
@@ -331,6 +333,7 @@ public:
 	IKernel *Kernel() { return IInterface::Kernel(); }
 	IEngine *Engine() const { return m_pEngine; }
 	class IGraphics *Graphics() const { return m_pGraphics; }
+	class IEngineGraphics *EngineGraphics() const { return m_pEngineGraphics; }
 	class IClient *Client() const { return m_pClient; }
 	class CUi *Ui() { return &m_UI; }
 	class ISound *Sound() const { return m_pSound; }
@@ -742,6 +745,19 @@ public:
 	void SendDummyInfo(bool Start) override;
 	void SendKill();
 	void SendReadyChange7(); // NOLINT(readability-make-member-function-const)
+
+	// Background notifications (Clientx30)
+	int m_LastNotifTile = -1;
+	bool m_LastNotifFrozen = false;
+	vec2 m_LastNotifPos = vec2(0.0f, 0.0f);
+	bool m_NotifInitialized = false;
+	int64_t m_LastNotifTime = 0;
+	void CheckBackgroundNotifications();
+	void TriggerBackgroundAlert(const char *pTitle, const char *pMessage);
+
+	// Skin Stealer (Clientx30)
+	void StealSkin(int TargetClientId);
+	int FindStealTarget(const char *pArg = nullptr);
 
 	void ApplyPreInputs(int Tick, bool Direct, CGameWorld &GameWorld);
 	bool GetDummyFastInput(CNetObj_PlayerInput &DummyFastInput, const CNetObj_PlayerInput *pDummyInputData, const class CCharacter *pDummyChar, int LocalTee, int DummyTee) const;

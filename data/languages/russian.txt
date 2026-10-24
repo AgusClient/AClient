@@ -2854,3 +2854,90 @@ Keep stats on death (do not reset on /kill)
 
 Column: Deaths
 == Колонка: Смерти
+
+== Background Alerts (Tabbed out)
+Оповещения в фоновом режиме
+
+== Notify when unfreezing (tabbed out)
+Оповещать при разморозке в фоне
+
+== Notify when moved or tile changes (tabbed out)
+Оповещать при смене тайла или перемещении
+
+== Alert methods (independent):
+Способы оповещения (независимые):
+
+== Sound alert
+Звуковое оповещение
+
+== Taskbar flash
+Мигание на панели задач
+
+== Desktop notification
+Уведомление на рабочем столе
+
+== Skin Stealer
+Кража скина (Копирование)
+
+== Steal skin key (aiming at player)
+Клавиша копирования скина (по прицелу)
+
+== Chat: /stealskin [name]  or  Console: steal_skin [name]
+Чат: /stealskin [ник]  |  Консоль: steal_skin [ник]
+
+== You can also right-click / click on any player in Scoreboard (Tab) to steal skin.
+Также можно нажать на любого игрока в таблице счета (Tab), чтобы скопировать скин.
+
+== Steal skin from aimed player now
+Скопировать скин игрока под прицелом
+
+== Steal Skin
+Копировать скин
+
+== You were unfrozen!
+Вас разморозили!
+
+== You were moved or changed tile!
+Вас переместили или сменился тайл!
+
+== [Clientx30] Skin copied from %s: %s
+[Clientx30] Скин скопирован у %s: %s
+
+== [Clientx30] No target player found to steal skin from.
+[Clientx30] Целевой игрок для копирования скина не найден.
+
+== [Clientx30] You cannot steal your own skin.
+[Clientx30] Нельзя скопировать свой собственный скин.
+
+== * Background Alerts (Tabbed out):
+* Оповещения в фоновом режиме:
+
+== Granular alerts (sound, taskbar flash, desktop notification) on unfreeze or tile change.
+Настраиваемые оповещения (звук, мигание в панели задач, уведомление) при разморозке или движении.
+
+== * Skin Stealer:
+* Кража скина:
+
+== Instantly copy skins and colors by aiming with bind, via /stealskin [name] or from Scoreboard (Tab).
+Мгновенно копируйте скин и цвета игрока по прицелу биндом, через /stealskin [ник] или из таблицы счета.
+
+== Chat & Client Messages (Echo)
+Чат и клиентские сообщения (Echo)
+
+== Show client messages in chat (Echo / Local notices)
+Показывать сообщения клиента в чате (Echo / локальные оповещения)
+
+== Controls whether local echo messages (like [Clientx30], command feedback and notices) appear in the chat.
+Управляет отображением локальных эхо-сообщений (таких как [Clientx30], подтверждения команд и уведомления) в чате.
+
+== Send Test Echo Message
+Отправить тестовое эхо-сообщение
+
+== [Clientx30] This is a test Echo message.
+[Clientx30] Это тестовое эхо-сообщение.
+
+== * Client Echo Control:
+* Управление эхо-сообщениями:
+
+== Enable or silence local client notices ([Clientx30], command confirmations, script echoes).
+Включение или отключение локальных уведомлений клиента ([Clientx30], подтверждения команд, эхо скриптов).

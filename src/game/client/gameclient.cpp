@@ -217,6 +217,7 @@ void CGameClient::OnConsoleInit()
 	Console()->Register("team", "i[team-id]", CFGFLAG_CLIENT, ConTeam, this, "Switch team");
 	Console()->Register("kill", "", CFGFLAG_CLIENT, ConKill, this, "Kill yourself to restart");
 	Console()->Register("ready_change", "", CFGFLAG_CLIENT, ConReadyChange7, this, "Change ready state (0.7 only)");
+	Console()->Register("steal_skin", "?s[player]", CFGFLAG_CLIENT, ConStealSkin, this, "Copy skin and colors from another player");
 
 	// register game commands to allow the client prediction to load settings from the map
 	Console()->Register("tune", "s[tuning] ?f[value]", CFGFLAG_GAME, ConTuneParam, this, "Tune variable to value");
@@ -353,6 +354,7 @@ void CGameClient::OnInit()
 	});
 
 	m_pGraphics = Kernel()->RequestInterface<IGraphics>();
+	m_pEngineGraphics = Kernel()->RequestInterface<IEngineGraphics>();
 
 	// propagate pointers
 	m_UI.Init(Kernel());
@@ -662,6 +664,12 @@ void CGameClient::OnReset()
 
 	std::fill(std::begin(m_aCheckInfo), std::end(m_aCheckInfo), -1);
 
+	m_LastNotifTile = -1;
+	m_LastNotifFrozen = false;
+	m_LastNotifPos = vec2(0.0f, 0.0f);
+	m_NotifInitialized = false;
+	m_LastNotifTime = 0;
+
 	// m_aDDNetVersionStr is initialized once in OnInit
 
 	std::fill(std::begin(m_aLastPos), std::end(m_aLastPos), vec2(0.0f, 0.0f));
@@ -859,6 +867,11 @@ void CGameClient::OnRender()
 	Input()->Clear();
 
 	CLineInput::RenderCandidates();
+
+	if(Client()->State() == IClient::STATE_ONLINE)
+	{
+		CheckBackgroundNotifications();
+	}
 
 	const bool WasNewTick = m_NewTick;
 
@@ -3861,6 +3874,208 @@ void CGameClient::ConReadyChange7(IConsole::IResult *pResult, void *pUserData)
 	CGameClient *pClient = static_cast<CGameClient *>(pUserData);
 	if(pClient->Client()->State() == IClient::STATE_ONLINE)
 		pClient->SendReadyChange7();
+}
+
+void CGameClient::ConStealSkin(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameClient *pSelf = (CGameClient *)pUserData;
+	if(pSelf->Client()->State() != IClient::STATE_ONLINE)
+		return;
+
+	const char *pArg = pResult->NumArguments() > 0 ? pResult->GetString(0) : nullptr;
+	int TargetId = pSelf->FindStealTarget(pArg);
+	if(TargetId >= 0)
+	{
+		pSelf->StealSkin(TargetId);
+	}
+	else
+	{
+		pSelf->m_Chat.Echo(TCLocalize("[Clientx30] No target player found to steal skin from."));
+	}
+}
+
+int CGameClient::FindStealTarget(const char *pArg)
+{
+	if(Client()->State() != IClient::STATE_ONLINE)
+		return -1;
+
+	const int LocalId = m_Snap.m_LocalClientId;
+
+	if(pArg && *pArg != '\0')
+	{
+		bool IsNum = true;
+		for(const char *p = pArg; *p; ++p)
+		{
+			if(*p < '0' || *p > '9')
+			{
+				IsNum = false;
+				break;
+			}
+		}
+		if(IsNum)
+		{
+			int Id = str_toint(pArg);
+			if(Id >= 0 && Id < MAX_CLIENTS && m_aClients[Id].m_Active && Id != LocalId)
+				return Id;
+		}
+
+		for(int i = 0; i < MAX_CLIENTS; i++)
+		{
+			if(!m_aClients[i].m_Active || i == LocalId)
+				continue;
+			if(str_comp_nocase(m_aClients[i].m_aName, pArg) == 0)
+				return i;
+		}
+
+		for(int i = 0; i < MAX_CLIENTS; i++)
+		{
+			if(!m_aClients[i].m_Active || i == LocalId)
+				continue;
+			if(str_find_nocase(m_aClients[i].m_aName, pArg) != nullptr)
+				return i;
+		}
+
+		return -1;
+	}
+
+	const vec2 TargetPos = m_CursorInfo.WorldTarget();
+	int BestId = -1;
+	float BestDist = 350.0f;
+
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		if(!m_Snap.m_aCharacters[i].m_Active || i == LocalId)
+			continue;
+
+		float Dist = distance(m_aClients[i].m_RenderPos, TargetPos);
+		if(Dist < BestDist)
+		{
+			BestDist = Dist;
+			BestId = i;
+		}
+	}
+
+	return BestId;
+}
+
+void CGameClient::StealSkin(int TargetClientId)
+{
+	if(TargetClientId < 0 || TargetClientId >= MAX_CLIENTS || !m_aClients[TargetClientId].m_Active)
+		return;
+
+	const int LocalId = m_Snap.m_LocalClientId;
+	if(TargetClientId == LocalId)
+	{
+		m_Chat.Echo(TCLocalize("[Clientx30] You cannot steal your own skin."));
+		return;
+	}
+
+	if(m_pClient->IsSixup())
+	{
+		for(int p = 0; p < protocol7::NUM_SKINPARTS; p++)
+		{
+			str_copy(CSkins7::ms_apSkinVariables[0][p], m_aClients[TargetClientId].m_aSixup[0].m_aaSkinPartNames[p], protocol7::MAX_SKIN_ARRAY_SIZE);
+			*CSkins7::ms_apUCCVariables[0][p] = m_aClients[TargetClientId].m_aSixup[0].m_aUseCustomColors[p];
+			*CSkins7::ms_apColorVariables[0][p] = m_aClients[TargetClientId].m_aSixup[0].m_aSkinPartColors[p];
+		}
+	}
+
+	str_copy(g_Config.m_ClPlayerSkin, m_aClients[TargetClientId].m_aSkinName, sizeof(g_Config.m_ClPlayerSkin));
+	g_Config.m_ClPlayerUseCustomColor = m_aClients[TargetClientId].m_UseCustomColor;
+	g_Config.m_ClPlayerColorBody = m_aClients[TargetClientId].m_ColorBody;
+	g_Config.m_ClPlayerColorFeet = m_aClients[TargetClientId].m_ColorFeet;
+
+	m_Skins.m_SkinList.ForceRefresh();
+	SendInfo(false);
+
+	m_Sounds.Play(CSounds::CHN_GUI, SOUND_CHAT_CLIENT, 1.0f);
+
+	char aBuf[256];
+	str_format(aBuf, sizeof(aBuf), TCLocalize("[Clientx30] Skin copied from %s: %s"), m_aClients[TargetClientId].m_aName, m_aClients[TargetClientId].m_aSkinName);
+	m_Chat.Echo(aBuf);
+}
+
+void CGameClient::TriggerBackgroundAlert(const char *pTitle, const char *pMessage)
+{
+	int64_t Now = time_get();
+	if(m_LastNotifTime != 0 && (Now - m_LastNotifTime) < time_freq() * 2)
+		return;
+	m_LastNotifTime = Now;
+
+	if(g_Config.m_TcNotifySound)
+		m_Sounds.Play(CSounds::CHN_GUI, SOUND_CHAT_HIGHLIGHT, 1.0f);
+
+	if(g_Config.m_TcNotifyFlash)
+		Graphics()->NotifyWindow();
+
+	if(g_Config.m_TcNotifyDesktop)
+		Client()->Notify(pTitle, pMessage);
+}
+
+void CGameClient::CheckBackgroundNotifications()
+{
+	if(Client()->State() != IClient::STATE_ONLINE)
+		return;
+
+	const int LocalId = m_Snap.m_LocalClientId;
+	if(LocalId < 0 || LocalId >= MAX_CLIENTS || !m_Snap.m_aCharacters[LocalId].m_Active)
+	{
+		m_NotifInitialized = false;
+		return;
+	}
+
+	const vec2 Pos = vec2(m_Snap.m_aCharacters[LocalId].m_Cur.m_X, m_Snap.m_aCharacters[LocalId].m_Cur.m_Y);
+	const int CurTile = Collision()->GetPureMapIndex(Pos);
+
+	bool CurFrozen = false;
+	if(m_Snap.m_aCharacters[LocalId].m_HasExtendedData)
+		CurFrozen = (m_Snap.m_aCharacters[LocalId].m_ExtendedData.m_FreezeEnd != 0);
+	else
+		CurFrozen = (m_Snap.m_aCharacters[LocalId].m_Cur.m_Weapon == WEAPON_NINJA);
+
+	if(m_aClients[LocalId].m_FreezeEnd != 0 || m_aClients[LocalId].m_DeepFrozen || m_aClients[LocalId].m_LiveFrozen)
+		CurFrozen = true;
+
+	if(EngineGraphics() && EngineGraphics()->WindowActive())
+	{
+		m_LastNotifTile = CurTile;
+		m_LastNotifFrozen = CurFrozen;
+		m_LastNotifPos = Pos;
+		m_NotifInitialized = true;
+		return;
+	}
+
+	if(!m_NotifInitialized)
+	{
+		m_LastNotifTile = CurTile;
+		m_LastNotifFrozen = CurFrozen;
+		m_LastNotifPos = Pos;
+		m_NotifInitialized = true;
+		return;
+	}
+
+	bool ShouldAlert = false;
+	const char *pAlertMsg = nullptr;
+
+	if(g_Config.m_TcNotifyUnfreeze && m_LastNotifFrozen && !CurFrozen)
+	{
+		ShouldAlert = true;
+		pAlertMsg = TCLocalize("You were unfrozen!");
+	}
+	else if(g_Config.m_ClChangeTileNotification && (CurTile != m_LastNotifTile || distance(Pos, m_LastNotifPos) > 32.0f))
+	{
+		ShouldAlert = true;
+		pAlertMsg = TCLocalize("You were moved or changed tile!");
+	}
+
+	if(ShouldAlert && pAlertMsg)
+	{
+		TriggerBackgroundAlert("Clientx30", pAlertMsg);
+	}
+
+	m_LastNotifTile = CurTile;
+	m_LastNotifFrozen = CurFrozen;
+	m_LastNotifPos = Pos;
 }
 
 void CGameClient::ConchainLanguageUpdate(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData)

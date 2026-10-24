@@ -14,6 +14,7 @@ MACRO_CONFIG_INT(TcAllowAnyRes, tc_allow_any_res, 1, 0, 1, CFGFLAG_CLIENT | CFGF
 #endif
 
 MACRO_CONFIG_INT(TcShowChatClient, tc_show_chat_client, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show chat messages from the client such as echo")
+MACRO_CONFIG_INT(ClShowChatClient, cl_show_chat_client, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show chat messages from the client such as echo (alias for tc_show_chat_client)")
 
 MACRO_CONFIG_INT(TcShowFrozenText, tc_frozen_tees_text, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show how many tees in your team are currently frozen. (0 - off, 1 - show alive, 2 - show frozen)")
 MACRO_CONFIG_INT(TcShowFrozenHud, tc_frozen_tees_hud, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show frozen tee HUD")
@@ -305,3 +306,11 @@ MACRO_CONFIG_INT(TcFastPracticeGhostAlpha, tc_fast_practice_ghost_alpha, 45, 0, 
 MACRO_CONFIG_INT(TcFastPracticeShowText, tc_fast_practice_show_text, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show top practice mode text (/tc /invincible) in Fast Practice")
 MACRO_CONFIG_INT(TcAutoTeamLock, tc_auto_team_lock, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Automatically lock team (/lock 1) after joining a team")
 MACRO_CONFIG_INT(TcAutoTeamLockDelay, tc_auto_team_lock_delay, 1, 0, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Delay in seconds before sending /lock 1 after joining a team")
+
+// Background Notifications & Skin Stealer (Clientx30)
+MACRO_CONFIG_INT(TcNotifyUnfreeze, tc_notify_unfreeze, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Notify when unfreezing while tabbed out")
+MACRO_CONFIG_INT(ClChangeTileNotification, cl_change_tile_notification, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Notify when moved or tile changes while tabbed out")
+MACRO_CONFIG_INT(TcNotifySound, tc_notify_sound, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Play sound on background notification")
+MACRO_CONFIG_INT(TcNotifyFlash, tc_notify_flash, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Flash taskbar on background notification")
+MACRO_CONFIG_INT(TcNotifyDesktop, tc_notify_desktop, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show desktop notification banner on background notification")
+
