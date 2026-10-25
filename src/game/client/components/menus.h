@@ -55,6 +55,7 @@ public:
 	int DoCheckboxWithHelp(const void *pId, const char *pText, const char *pHelpText, int *pValue, CUIRect *pRect, float VMargin);
 	int DoButton_CheckBox_Number(const void *pId, const char *pText, int Checked, const CUIRect *pRect);
 
+	void DoTickAmountSlider(int *pValue, const CUIRect *pRect, const char *pLabel, int Min, int Max, int Scale = 100);
 	bool DoSliderWithScaledValue(const void *pId, int *pOption, const CUIRect *pRect, const char *pStr, int Min, int Max, int Scale, const IScrollbarScale *pScale, unsigned Flags = 0u, const char *pSuffix = "");
 	bool DoEditBoxWithLabel(CLineInput *LineInput, const CUIRect *pRect, const char *pLabel, const char *pDefault, char *pBuf, size_t BufSize);
 	bool DoLine_RadioMenu(CUIRect &View, const char *pLabel, std::vector<CButtonContainer> &vButtonContainers, const std::vector<const char *> &vLabels, const std::vector<int> &vValues, int &Value);
@@ -720,8 +721,8 @@ public:
 		SETTINGS_DDNET,
 		SETTINGS_ASSETS,
 		SETTINGS_TCLIENT, // TClient
-		SETTINGS_CLIENTX30, // Clientx30
 		SETTINGS_PROFILES, // TClient
+		SETTINGS_ACLIENT, // AClient
 		SETTINGS_CONFIGS, // TClient
 		SETTINGS_CREDITS,
 		SETTINGS_LENGTH,
@@ -878,9 +879,9 @@ private:
 	void RenderSettingsTClientInfo(CUIRect MainView);
 	void RenderSettingsTClientStatusBar(CUIRect MainView);
 	void RenderSettingsTClientRaceStats(CUIRect MainView);
-	void RenderSettingsClientx30(CUIRect MainView);
-	void RenderSettingsClientx30Settings(CUIRect MainView);
-	void RenderSettingsClientx30Commands(CUIRect MainView);
+	void RenderSettingsAClient(CUIRect MainView);
+	void RenderSettingsAClientSettings(CUIRect MainView);
+	void RenderSettingsAClientCommands(CUIRect MainView);
 	void RenderSettingsTClientProfiles(CUIRect MainView);
 	void RenderSettingsTClientConfigs(CUIRect MainView);
 	void RenderTeeCute(const CAnimState *pAnim, const CTeeRenderInfo *pInfo, int Emote, vec2 Dir, vec2 Pos, bool CuteEyes, float Alpha = 1.0f);

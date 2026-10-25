@@ -29,6 +29,36 @@ public:
 		NUM_ICONS
 	};
 
+	enum EStatboardSort
+	{
+		STATBOARD_SORT_DEFAULT = 0,
+		STATBOARD_SORT_SAVES,
+		STATBOARD_SORT_DEATHS,
+		STATBOARD_SORT_FREEZES,
+		STATBOARD_SORT_EFFICIENCY,
+		STATBOARD_SORT_NET,
+		STATBOARD_SORT_TIME,
+		STATBOARD_SORT_HOOK,
+		STATBOARD_SORT_LASTS,
+		NUM_STATBOARD_SORTS
+	};
+
+	struct SRowAnimState
+	{
+		float m_VisualY = -1.0f;
+		int m_PrevRank = -1;
+		float m_RankChangeTimer = 0.0f;
+		int m_RankChangeDir = 0; // +1 = subio (adelantamiento), -1 = bajo
+
+		void Reset()
+		{
+			m_VisualY = -1.0f;
+			m_PrevRank = -1;
+			m_RankChangeTimer = 0.0f;
+			m_RankChangeDir = 0;
+		}
+	};
+
 	struct CPlayerStats
 	{
 		int m_Deaths;
@@ -134,6 +164,7 @@ public:
 	int m_RunStartTick;
 	bool m_Active;
 	IGraphics::CTextureHandle m_aTextures[NUM_ICONS];
+	SRowAnimState m_aRowAnim[MAX_CLIENTS];
 
 	void OnInit() override;
 	void OnReset() override;
@@ -143,6 +174,7 @@ public:
 
 	static void ConKeyCompactStatboard(IConsole::IResult *pResult, void *pUserData);
 	static void ConSaveRaceStats(IConsole::IResult *pResult, void *pUserData);
+	static void ConClearRaceStatsHistory(IConsole::IResult *pResult, void *pUserData);
 	static ColorRGBA GetEfficiencyColor(int Percent);
 
 	void RenderMiniStatboard();

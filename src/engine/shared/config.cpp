@@ -335,6 +335,8 @@ void CConfigManager::Init()
 	m_pConsole->Register("reset", "s[config-name]", CFGFLAG_SERVER | CFGFLAG_CLIENT | CFGFLAG_STORE, Con_Reset, this, "Reset a config to its default value");
 	m_pConsole->Register("toggle", "s[config-option] s[value 1] s[value 2]", CFGFLAG_SERVER | CFGFLAG_CLIENT, Con_Toggle, this, "Toggle config value");
 	m_pConsole->Register("+toggle", "s[config-option] s[value 1] s[value 2]", CFGFLAG_CLIENT, Con_ToggleStroke, this, "Toggle config value via keypress");
+	m_pConsole->Register("save_config", "", CFGFLAG_SERVER | CFGFLAG_CLIENT, Con_SaveConfig, this, "Save current configuration to files");
+	m_pConsole->Register("ac_save_config", "", CFGFLAG_SERVER | CFGFLAG_CLIENT, Con_SaveConfig, this, "Save current configuration to files (AClient)");
 }
 
 void CConfigManager::Reset(const char *pScriptName)
@@ -578,12 +580,20 @@ void CConfigManager::Con_ToggleStroke(IConsole::IResult *pResult, void *pUserDat
 			continue;
 		}
 
+
+
 		SIntConfigVariable *pIntVariable = static_cast<SIntConfigVariable *>(pVariable);
 		pIntVariable->SetValue(pResult->GetInteger(0) == 0 ? pResult->GetInteger(3) : pResult->GetInteger(2));
 		return;
 	}
 
 	log_error("config", "Invalid command: '%s'.", pScriptName);
+}
+
+void CConfigManager::Con_SaveConfig(IConsole::IResult *pResult, void *pUserData)
+{
+	CConfigManager *pSelf = (CConfigManager *)pUserData;
+	pSelf->Save();
 }
 
 IConfigManager *CreateConfigManager() { return new CConfigManager; }

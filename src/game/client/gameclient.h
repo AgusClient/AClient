@@ -746,7 +746,7 @@ public:
 	void SendKill();
 	void SendReadyChange7(); // NOLINT(readability-make-member-function-const)
 
-	// Background notifications (Clientx30)
+	// Background notifications (AClient)
 	int m_LastNotifTile = -1;
 	bool m_LastNotifFrozen = false;
 	vec2 m_LastNotifPos = vec2(0.0f, 0.0f);
@@ -755,7 +755,7 @@ public:
 	void CheckBackgroundNotifications();
 	void TriggerBackgroundAlert(const char *pTitle, const char *pMessage);
 
-	// Skin Stealer (Clientx30)
+	// Skin Stealer (AClient)
 	void StealSkin(int TargetClientId);
 	int FindStealTarget(const char *pArg = nullptr);
 

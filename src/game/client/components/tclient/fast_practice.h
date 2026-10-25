@@ -30,6 +30,7 @@ public:
 	void Disable();
 	bool ConsumeKillCommand();
 	void PrepareForSpectating();
+	void SendSpecOriginal();
 	bool ConsumePracticeChatCommand(int Team, const char *pLine);
 	void ResetPracticeToAnchor();
 
