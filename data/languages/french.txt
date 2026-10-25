@@ -2789,8 +2789,8 @@ Toggle stats overlay key
 Save stats key
 == Touche pour enregistrer les stats
 
-What's New in Clientx30 (Quick Summary)
-== Nouveautés de Clientx30 (Résumé Rapide)
+What's New in AClient (Quick Summary)
+== Nouveautés de AClient (Résumé Rapide)
 
 * Race Stats Overlay + Log:
 == * Overlay de Race Stats + Historique :
@@ -2828,20 +2828,20 @@ Use /invite all or /invite friends with anti-flood queue and Tab auto-complete.
 Compiled SPIR-V shaders included for smoother frame rates and lower CPU usage.
 == Shaders SPIR-V inclus pour un framerate plus fluide et moins d'utilisation CPU.
 
-[Clientx30] You must be connected to a server to use /invite.
-== [Clientx30] Vous devez être connecté à un serveur pour utiliser /invite.
+[AClient] You must be connected to a server to use /invite.
+== [AClient] Vous devez être connecté à un serveur pour utiliser /invite.
 
-[Clientx30] Join a team first (e.g. /team 1) before using /invite.
-== [Clientx30] Rejoignez une équipe d'abord (ex. /team 1) avant d'utiliser /invite.
+[AClient] Join a team first (e.g. /team 1) before using /invite.
+== [AClient] Rejoignez une équipe d'abord (ex. /team 1) avant d'utiliser /invite.
 
-[Clientx30] No connected friends outside your team found to invite.
-== [Clientx30] Aucun ami connecté trouvé hors de votre équipe à inviter.
+[AClient] No connected friends outside your team found to invite.
+== [AClient] Aucun ami connecté trouvé hors de votre équipe à inviter.
 
-[Clientx30] No other players outside your team found to invite.
-== [Clientx30] Aucun autre joueur trouvé hors de votre équipe à inviter.
+[AClient] No other players outside your team found to invite.
+== [AClient] Aucun autre joueur trouvé hors de votre équipe à inviter.
 
-[Clientx30] Inviting %d %s to Team %d...
-== [Clientx30] Invitation de %d %s dans l'Équipe %d...
+[AClient] Inviting %d %s to Team %d...
+== [AClient] Invitation de %d %s dans l'Équipe %d...
 
 friend(s)
 == ami(s)
@@ -2900,14 +2900,14 @@ Vous avez été dégelé !
 == You were moved or changed tile!
 Vous avez été déplacé ou avez changé de case !
 
-== [Clientx30] Skin copied from %s: %s
-[Clientx30] Skin copié de %s : %s
+== [AClient] Skin copied from %s: %s
+[AClient] Skin copié de %s : %s
 
-== [Clientx30] No target player found to steal skin from.
-[Clientx30] Aucun joueur cible trouvé pour copier le skin.
+== [AClient] No target player found to steal skin from.
+[AClient] Aucun joueur cible trouvé pour copier le skin.
 
-== [Clientx30] You cannot steal your own skin.
-[Clientx30] Vous ne pouvez pas copier votre propre skin.
+== [AClient] You cannot steal your own skin.
+[AClient] Vous ne pouvez pas copier votre propre skin.
 
 == * Background Alerts (Tabbed out):
 * Alertes en Arrière-plan :
@@ -2927,20 +2927,20 @@ Chat et Messages Client (Echo)
 == Show client messages in chat (Echo / Local notices)
 Afficher les messages client dans le chat (Echo / Avis locaux)
 
-== Controls whether local echo messages (like [Clientx30], command feedback and notices) appear in the chat.
-Contrôle si les messages d'écho locaux (comme [Clientx30], confirmations de commande et avis) s'affichent dans le chat.
+== Controls whether local echo messages (like [AClient], command feedback and notices) appear in the chat.
+Contrôle si les messages d'écho locaux (comme [AClient], confirmations de commande et avis) s'affichent dans le chat.
 
 == Send Test Echo Message
 Envoyer un Message Test (Test Echo)
 
-== [Clientx30] This is a test Echo message.
-[Clientx30] Ceci est un message test d'Echo.
+== [AClient] This is a test Echo message.
+[AClient] Ceci est un message test d'Echo.
 
 == * Client Echo Control:
 * Contrôle des Messages d'Écho :
 
-== Enable or silence local client notices ([Clientx30], command confirmations, script echoes).
-Activez ou coupez les avis locaux ([Clientx30], confirmations de commande, échos de script).
+== Enable or silence local client notices ([AClient], command confirmations, script echoes).
+Activez ou coupez les avis locaux ([AClient], confirmations de commande, échos de script).
 
 Shows the compact live team statistics table on your screen during the game.
 == Affiche le tableau compact des statistiques d'équipe à l'écran pendant la partie.
@@ -2999,8 +2999,8 @@ Live stats (Freezes, Saves, Deaths, Dynamic % Eff, Net +/-, Frozen time, Hook ac
 Invite all online friends to your team with /invite friends, with anti-flood queue and Tab auto-complete.
 == Invitez tous vos amis connectés avec /invite friends, avec file anti-spam et complétion Tab.
 
-[Clientx30] /invite all has been disabled. Use /invite friends.
-== [Clientx30] /invite all a été désactivé. Utilisez /invite friends.
+[AClient] /invite all has been disabled. Use /invite friends.
+== [AClient] /invite all a été désactivé. Utilisez /invite friends.
 
 == Silent typing (Hide 3-dots bubble when typing)
 == Saisie silencieuse (Masquer la bulle de 3 points)

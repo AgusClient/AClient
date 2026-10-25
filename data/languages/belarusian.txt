@@ -2789,8 +2789,8 @@ Toggle stats overlay key
 Save stats key
 == Клавиша сохранения статистики
 
-What's New in Clientx30 (Quick Summary)
-== Что нового в Clientx30 (Краткий обзор)
+What's New in AClient (Quick Summary)
+== Что нового в AClient (Краткий обзор)
 
 * Race Stats Overlay + Log:
 == * Оверлей статистики + Журнал:
@@ -2828,20 +2828,20 @@ Use /invite all or /invite friends with anti-flood queue and Tab auto-complete.
 Compiled SPIR-V shaders included for smoother frame rates and lower CPU usage.
 == Встроенные шейдеры SPIR-V для плавной частоты кадров и снижения нагрузки на ЦП.
 
-[Clientx30] You must be connected to a server to use /invite.
-== [Clientx30] Вы должны быть подключены к серверу для использования /invite.
+[AClient] You must be connected to a server to use /invite.
+== [AClient] Вы должны быть подключены к серверу для использования /invite.
 
-[Clientx30] Join a team first (e.g. /team 1) before using /invite.
-== [Clientx30] Сначала вступите в команду (например, /team 1) перед вызовом /invite.
+[AClient] Join a team first (e.g. /team 1) before using /invite.
+== [AClient] Сначала вступите в команду (например, /team 1) перед вызовом /invite.
 
-[Clientx30] No connected friends outside your team found to invite.
-== [Clientx30] Друзей вне вашей команды для приглашения не найдено.
+[AClient] No connected friends outside your team found to invite.
+== [AClient] Друзей вне вашей команды для приглашения не найдено.
 
-[Clientx30] No other players outside your team found to invite.
-== [Clientx30] Других игроков вне вашей команды для приглашения не найдено.
+[AClient] No other players outside your team found to invite.
+== [AClient] Других игроков вне вашей команды для приглашения не найдено.
 
-[Clientx30] Inviting %d %s to Team %d...
-== [Clientx30] Приглашение %d %s в Команду %d...
+[AClient] Inviting %d %s to Team %d...
+== [AClient] Приглашение %d %s в Команду %d...
 
 friend(s)
 == друзей

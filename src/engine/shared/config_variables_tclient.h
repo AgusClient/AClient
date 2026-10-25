@@ -13,9 +13,6 @@ MACRO_CONFIG_INT(TcAllowAnyRes, tc_allow_any_res, 0, 0, 1, CFGFLAG_CLIENT | CFGF
 MACRO_CONFIG_INT(TcAllowAnyRes, tc_allow_any_res, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Whether to allow any resolution in game when zoom is allowed (buggy on Windows)")
 #endif
 
-MACRO_CONFIG_INT(TcShowChatClient, tc_show_chat_client, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show chat messages from the client such as echo")
-MACRO_CONFIG_INT(ClShowChatClient, cl_show_chat_client, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show chat messages from the client such as echo (alias for tc_show_chat_client)")
-
 MACRO_CONFIG_INT(TcShowFrozenText, tc_frozen_tees_text, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show how many tees in your team are currently frozen. (0 - off, 1 - show alive, 2 - show frozen)")
 MACRO_CONFIG_INT(TcShowFrozenHud, tc_frozen_tees_hud, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show frozen tee HUD")
 MACRO_CONFIG_INT(TcShowFrozenHudSkins, tc_frozen_tees_hud_skins, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Use ninja skin, or darkened skin for frozen tees on hud")
@@ -260,10 +257,6 @@ MACRO_CONFIG_STR(TcVolleyBallBetterBallSkin, tc_volleyball_better_ball_skin, 24,
 
 // Mod
 MACRO_CONFIG_INT(TcShowPlayerHitBoxes, tc_show_player_hit_boxes, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show player hit boxes (1 = predicted, 2 = predicted and unpredicted)")
-MACRO_CONFIG_INT(TcSilentTyping, tc_silent_typing, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hide your own typing chat bubble (Silent Typing)")
-MACRO_CONFIG_INT(ClSilentTyping, cl_silent_typing, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hide your own typing chat bubble (alias for tc_silent_typing)")
-MACRO_CONFIG_INT(TcHideChatBubbles, tc_hide_chat_bubbles, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hide your own typing chat bubble (alias for tc_silent_typing)")
-MACRO_CONFIG_INT(TcHideOthersChatBubbles, tc_hide_others_chat_bubbles, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hide typing chat bubbles of other players on your screen")
 MACRO_CONFIG_INT(TcModWeapon, tc_mod_weapon, 0, 0, 1, CFGFLAG_CLIENT, "Run a command (default kill) when you point and shoot at someone, only works when authed in remote console")
 MACRO_CONFIG_STR(TcModWeaponCommand, tc_mod_weapon_command, 256, "rcon kill_pl", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Command to run with tc_mod_weapon, id is appended to end of command")
 
@@ -291,29 +284,4 @@ MACRO_CONFIG_INT(TcShowhudDummyPosition, tc_showhud_dummy_position, 0, 0, 1, CFG
 MACRO_CONFIG_INT(TcShowhudDummySpeed, tc_showhud_dummy_speed, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show ingame HUD (Dummy Speed)")
 MACRO_CONFIG_INT(TcShowhudDummyAngle, tc_showhud_dummy_angle, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show ingame HUD (Dummy Aim Angle)")
 
-
-// RaceStats
-MACRO_CONFIG_INT(TcMiniStatboard, tc_mini_statboard, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show compact team stats in HUD")
-MACRO_CONFIG_INT(TcMiniStatboardColumns, tc_mini_statboard_columns, 27, 0, 255, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Visible columns bitmask: 1=Freezes, 2=Saves, 4=Lasts, 8=Eff, 16=Deaths, 32=Net, 64=Time, 128=Hook")
-MACRO_CONFIG_INT(TcStatboardKeepOnDeath, tc_statboard_keep_on_death, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Keep overlay stats on /kill (do not reset on death)")
-MACRO_CONFIG_INT(TcStatboardResetOnTeamKill, tc_statboard_reset_on_team_kill, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Reset live stats on /kill or team change")
-MACRO_CONFIG_INT(TcStatboardAutoSave, tc_statboard_auto_save, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Auto-save race stats to history before resetting on /kill or /team")
-MACRO_CONFIG_INT(TcMiniStatboardMaxPlayers, tc_mini_statboard_max_players, 5, 0, 64, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Max visible players in statboard")
-MACRO_CONFIG_INT(TcMiniStatboardScale, tc_mini_statboard_scale, 70, 20, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mini statboard scale percent")
-MACRO_CONFIG_INT(TcMiniStatboardOpacity, tc_mini_statboard_opacity, 60, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mini statboard background opacity")
-MACRO_CONFIG_INT(TcMiniStatboardX, tc_mini_statboard_x, 95, 0, 100, CFGFLAG_CLIENT | CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mini statboard HUD X position percent")
-MACRO_CONFIG_INT(TcMiniStatboardY, tc_mini_statboard_y, 50, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mini statboard HUD Y position percent")
-
-// Fast Practice & Auto Team Lock (Clientx30)
-MACRO_CONFIG_INT(TcFastPracticeGhostAlpha, tc_fast_practice_ghost_alpha, 45, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Ghost transparency percentage in Fast Practice mode")
-MACRO_CONFIG_INT(TcFastPracticeShowText, tc_fast_practice_show_text, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show top practice mode text (/tc /invincible) in Fast Practice")
-MACRO_CONFIG_INT(TcAutoTeamLock, tc_auto_team_lock, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Automatically lock team (/lock 1) after joining a team")
-MACRO_CONFIG_INT(TcAutoTeamLockDelay, tc_auto_team_lock_delay, 1, 0, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Delay in seconds before sending /lock 1 after joining a team")
-
-// Background Notifications & Skin Stealer (Clientx30)
-MACRO_CONFIG_INT(TcNotifyUnfreeze, tc_notify_unfreeze, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Notify when unfreezing while tabbed out")
-MACRO_CONFIG_INT(ClChangeTileNotification, cl_change_tile_notification, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Notify when moved or tile changes while tabbed out")
-MACRO_CONFIG_INT(TcNotifySound, tc_notify_sound, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Play sound on background notification")
-MACRO_CONFIG_INT(TcNotifyFlash, tc_notify_flash, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Flash taskbar on background notification")
-MACRO_CONFIG_INT(TcNotifyDesktop, tc_notify_desktop, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show desktop notification banner on background notification")
 

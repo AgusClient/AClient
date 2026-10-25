@@ -12,6 +12,7 @@
 #include <game/client/animstate.h>
 #include <game/client/gameclient.h>
 #include <game/client/render.h>
+#include <game/localization.h>
 #include <generated/protocol.h>
 
 #include <algorithm>
@@ -21,13 +22,16 @@
 #include <vector>
 
 static const float HAMMER_MAX_DIST = 135.0f;
-static const char *RACESTATS_HISTORY_FILE = "tclient_racestats_history.txt";
+static const char *RACESTATS_HISTORY_FILE = "aclient_racestats_history.txt";
+static const char *RACESTATS_HISTORY_FILE_FALLBACK = "tclient_racestats_history.txt";
 
 void CRaceStats::OnInit()
 {
 	m_Active = false;
 	m_LastLocalTeam = -1;
 	m_RunStartTick = 0;
+	for(int i = 0; i < MAX_CLIENTS; i++)
+		m_aRowAnim[i].Reset();
 
 	auto LoadEmbeddedIcon = [&](const uint8_t *pData, size_t Size, const char *pName) -> IGraphics::CTextureHandle {
 		CImageInfo Img;
@@ -63,10 +67,21 @@ void CRaceStats::ConSaveRaceStats(IConsole::IResult *pResult, void *pUserData)
 	pSelf->SaveCurrentStats("Manual / Bind", false, true);
 }
 
+void CRaceStats::ConClearRaceStatsHistory(IConsole::IResult *pResult, void *pUserData)
+{
+	CRaceStats *pSelf = (CRaceStats *)pUserData;
+	pSelf->ClearSavedHistory();
+	if(pSelf->GameClient())
+		pSelf->GameClient()->Echo(TCLocalize("[AClient] RaceStats history cleared."));
+}
+
 void CRaceStats::OnConsoleInit()
 {
 	Console()->Register("+compact_statboard", "", CFGFLAG_CLIENT, ConKeyCompactStatboard, this, "Toggle or hold compact statboard");
-	Console()->Register("tc_save_racestats", "", CFGFLAG_CLIENT, ConSaveRaceStats, this, "Save current RaceStats overlay statistics to history");
+	Console()->Register("ac_save_racestats", "", CFGFLAG_CLIENT, ConSaveRaceStats, this, "Save current RaceStats overlay statistics to history");
+	Console()->Register("tc_save_racestats", "", CFGFLAG_CLIENT, ConSaveRaceStats, this, "Save current RaceStats overlay statistics to history (alias)");
+	Console()->Register("ac_clear_racestats_history", "", CFGFLAG_CLIENT, ConClearRaceStatsHistory, this, "Clear saved RaceStats history");
+	Console()->Register("tc_clear_racestats_history", "", CFGFLAG_CLIENT, ConClearRaceStatsHistory, this, "Clear saved RaceStats history (alias)");
 }
 
 void CRaceStats::OnReset()
@@ -74,6 +89,7 @@ void CRaceStats::OnReset()
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
 		m_aPlayerStats[i].Reset();
+		m_aRowAnim[i].Reset();
 	}
 	m_RoundDeaths = 0;
 	m_LastLocalTeam = -1;
@@ -119,6 +135,7 @@ void CRaceStats::ResetTeamStats()
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
 		m_aPlayerStats[i].Reset();
+		m_aRowAnim[i].Reset();
 	}
 	m_RoundDeaths = 0;
 	if(Client()->State() == IClient::STATE_ONLINE || Client()->State() == IClient::STATE_DEMOPLAYBACK)
@@ -300,6 +317,8 @@ void CRaceStats::LoadHistoryFromFile()
 
 	IOHANDLE File = Storage()->OpenFile(RACESTATS_HISTORY_FILE, IOFLAG_READ, IStorage::TYPE_ALL);
 	if(!File)
+		File = Storage()->OpenFile(RACESTATS_HISTORY_FILE_FALLBACK, IOFLAG_READ, IStorage::TYPE_ALL);
+	if(!File)
 		return;
 
 	CLineReader LineReader;
@@ -405,9 +424,9 @@ void CRaceStats::OnMessage(int MsgType, void *pRawMsg)
 			bool IsLocalKill = (pMsg->m_Victim == LocalClientId);
 			bool IsTeammateKill = (LocalTeam > 0 && GameClient()->m_Teams.Team(pMsg->m_Victim) == LocalTeam);
 
-			if(!g_Config.m_TcStatboardKeepOnDeath && g_Config.m_TcStatboardResetOnTeamKill && (IsLocalKill || IsTeammateKill))
+			if(!g_Config.m_AcStatboardKeepOnDeath && g_Config.m_AcStatboardResetOnTeamKill && (IsLocalKill || IsTeammateKill))
 			{
-				if(g_Config.m_TcStatboardAutoSave)
+				if(g_Config.m_AcStatboardAutoSave)
 					SaveCurrentStats("Auto (/kill)", true, false);
 				ResetTeamStats();
 			}
@@ -432,9 +451,9 @@ void CRaceStats::OnMessage(int MsgType, void *pRawMsg)
 			}
 		}
 
-		if(!g_Config.m_TcStatboardKeepOnDeath && g_Config.m_TcStatboardResetOnTeamKill && pMsg->m_Team == LocalTeam)
+		if(!g_Config.m_AcStatboardKeepOnDeath && g_Config.m_AcStatboardResetOnTeamKill && pMsg->m_Team == LocalTeam)
 		{
-			if(g_Config.m_TcStatboardAutoSave)
+			if(g_Config.m_AcStatboardAutoSave)
 				SaveCurrentStats("Auto (/kill)", true, false);
 			ResetTeamStats();
 		}
@@ -461,9 +480,9 @@ void CRaceStats::OnRender()
 	int CurrentTeam = GameClient()->m_Teams.Team(LocalClientId);
 	if(m_LastLocalTeam != -1 && CurrentTeam != m_LastLocalTeam)
 	{
-		if(g_Config.m_TcStatboardResetOnTeamKill)
+		if(g_Config.m_AcStatboardResetOnTeamKill)
 		{
-			if(g_Config.m_TcStatboardAutoSave)
+			if(g_Config.m_AcStatboardAutoSave)
 				SaveCurrentStats("Auto (/team)", true, false);
 			ResetTeamStats();
 		}
@@ -623,7 +642,7 @@ void CRaceStats::OnRender()
 		}
 	}
 
-	if(g_Config.m_TcMiniStatboard || m_Active)
+	if(g_Config.m_AcMiniStatboard || m_Active)
 	{
 		RenderMiniStatboard();
 	}
@@ -657,7 +676,7 @@ void CRaceStats::RenderMiniStatboard()
 	float Height = 300.0f;
 	Graphics()->MapScreenToSize(Width, Height);
 
-	float Scale = (float)g_Config.m_TcMiniStatboardScale / 100.0f;
+	float Scale = (float)g_Config.m_AcMiniStatboardScale / 100.0f;
 	if(Scale <= 0.05f)
 		Scale = 0.70f;
 
@@ -691,8 +710,68 @@ void CRaceStats::RenderMiniStatboard()
 	if(vPlayers.empty())
 		return;
 
+	// Ordenamiento en tiempo real por estadística seleccionada (ac_mini_statboard_sort)
+	std::sort(vPlayers.begin(), vPlayers.end(), [&](const SPlayerEntry &a, const SPlayerEntry &b) {
+		int CidA = a.m_ClientId;
+		int CidB = b.m_ClientId;
+		const auto &StatA = m_aPlayerStats[CidA];
+		const auto &StatB = m_aPlayerStats[CidB];
+
+		int ValA = 0;
+		int ValB = 0;
+
+		switch(g_Config.m_AcMiniStatboardSort)
+		{
+		case STATBOARD_SORT_SAVES:
+			ValA = StatA.m_Saves;
+			ValB = StatB.m_Saves;
+			break;
+		case STATBOARD_SORT_DEATHS:
+			ValA = StatA.m_Deaths;
+			ValB = StatB.m_Deaths;
+			break;
+		case STATBOARD_SORT_FREEZES:
+			ValA = StatA.m_Freezes;
+			ValB = StatB.m_Freezes;
+			break;
+		case STATBOARD_SORT_EFFICIENCY:
+			ValA = StatA.GetEfficiencyPercent();
+			ValB = StatB.GetEfficiencyPercent();
+			break;
+		case STATBOARD_SORT_NET:
+			ValA = StatA.GetNetBalance();
+			ValB = StatB.GetNetBalance();
+			break;
+		case STATBOARD_SORT_TIME:
+			ValA = StatA.GetFrozenSeconds(Client()->GameTickSpeed());
+			ValB = StatB.GetFrozenSeconds(Client()->GameTickSpeed());
+			break;
+		case STATBOARD_SORT_HOOK:
+			ValA = StatA.GetHookAccuracyPercent();
+			ValB = StatB.GetHookAccuracyPercent();
+			break;
+		case STATBOARD_SORT_LASTS:
+			ValA = StatA.m_Lasts;
+			ValB = StatB.m_Lasts;
+			break;
+		case STATBOARD_SORT_DEFAULT:
+		default:
+			if(a.m_IsLocal != b.m_IsLocal)
+				return a.m_IsLocal;
+			return CidA < CidB;
+		}
+
+		if(ValA != ValB)
+			return ValA > ValB;
+
+		// Desempate estable
+		if(a.m_IsLocal != b.m_IsLocal)
+			return a.m_IsLocal;
+		return CidA < CidB;
+	});
+
 	int TotalTeamPlayers = (int)vPlayers.size();
-	int MaxPlayers = std::clamp((int)g_Config.m_TcMiniStatboardMaxPlayers, 0, (int)MAX_CLIENTS);
+	int MaxPlayers = std::clamp((int)g_Config.m_AcMiniStatboardMaxPlayers, 0, (int)MAX_CLIENTS);
 	int DisplayCount = std::min(TotalTeamPlayers, MaxPlayers);
 	bool HasMore = TotalTeamPlayers > DisplayCount;
 
@@ -707,14 +786,14 @@ void CRaceStats::RenderMiniStatboard()
 	}
 	float ColWidthName = MaxFoundNameW + TeeSize + 8.0f * Scale;
 
-	bool ShowFreeze = (g_Config.m_TcMiniStatboardColumns & 1) != 0;
-	bool ShowSave   = (g_Config.m_TcMiniStatboardColumns & 2) != 0;
-	bool ShowLast   = (g_Config.m_TcMiniStatboardColumns & 4) != 0;
-	bool ShowEff    = (g_Config.m_TcMiniStatboardColumns & 8) != 0;
-	bool ShowDeath  = (g_Config.m_TcMiniStatboardColumns & 16) != 0;
-	bool ShowNet    = (g_Config.m_TcMiniStatboardColumns & 32) != 0;
-	bool ShowTime   = (g_Config.m_TcMiniStatboardColumns & 64) != 0;
-	bool ShowHook   = (g_Config.m_TcMiniStatboardColumns & 128) != 0;
+	bool ShowFreeze = (g_Config.m_AcMiniStatboardColumns & 1) != 0;
+	bool ShowSave   = (g_Config.m_AcMiniStatboardColumns & 2) != 0;
+	bool ShowLast   = (g_Config.m_AcMiniStatboardColumns & 4) != 0;
+	bool ShowEff    = (g_Config.m_AcMiniStatboardColumns & 8) != 0;
+	bool ShowDeath  = (g_Config.m_AcMiniStatboardColumns & 16) != 0;
+	bool ShowNet    = (g_Config.m_AcMiniStatboardColumns & 32) != 0;
+	bool ShowTime   = (g_Config.m_AcMiniStatboardColumns & 64) != 0;
+	bool ShowHook   = (g_Config.m_AcMiniStatboardColumns & 128) != 0;
 
 	auto GetColWidth = [&](int ColType) -> float {
 		if(ColType == ICON_TIME)
@@ -745,15 +824,15 @@ void CRaceStats::RenderMiniStatboard()
 	float PosXPercent = 0.95f;
 	float PosYPercent = 0.50f;
 
-	if(g_Config.m_TcMiniStatboardX <= 100)
-		PosXPercent = (float)g_Config.m_TcMiniStatboardX / 100.0f;
+	if(g_Config.m_AcMiniStatboardX <= 100)
+		PosXPercent = (float)g_Config.m_AcMiniStatboardX / 100.0f;
 	else
-		PosXPercent = (float)g_Config.m_TcMiniStatboardX / Width;
+		PosXPercent = (float)g_Config.m_AcMiniStatboardX / Width;
 
-	if(g_Config.m_TcMiniStatboardY <= 100)
-		PosYPercent = (float)g_Config.m_TcMiniStatboardY / 100.0f;
+	if(g_Config.m_AcMiniStatboardY <= 100)
+		PosYPercent = (float)g_Config.m_AcMiniStatboardY / 100.0f;
 	else
-		PosYPercent = (float)g_Config.m_TcMiniStatboardY / Height;
+		PosYPercent = (float)g_Config.m_AcMiniStatboardY / Height;
 
 	PosXPercent = std::clamp(PosXPercent, 0.0f, 1.0f);
 	PosYPercent = std::clamp(PosYPercent, 0.0f, 1.0f);
@@ -765,7 +844,7 @@ void CRaceStats::RenderMiniStatboard()
 	BaseY = std::clamp(BaseY, 2.0f, Height - TotalHeight - 2.0f);
 
 	// Fondo redondeado elegante con opacidad configurable
-	float Alpha = (float)g_Config.m_TcMiniStatboardOpacity / 100.0f;
+	float Alpha = (float)g_Config.m_AcMiniStatboardOpacity / 100.0f;
 	if(Alpha > 0.0f)
 	{
 		// Panel principal oscuro
@@ -808,32 +887,103 @@ void CRaceStats::RenderMiniStatboard()
 	if(ShowHook)   DrawHeaderCol(m_aTextures[ICON_HOOK], ICON_HOOK, ColorRGBA(1.0f, 0.85f, 0.35f, 1.0f));
 	if(ShowLast)   DrawHeaderCol(m_aTextures[ICON_LAST], ICON_LAST, ColorRGBA(1.0f, 0.75f, 0.3f, 1.0f));
 
-	// Filas de Jugadores
-	float RowY = BaseY + Padding + HeaderHeight;
+	// Filas de Jugadores con Animación Fluida Estilo F1
+	float BaseRowY = BaseY + Padding + HeaderHeight;
+	float RowY = BaseRowY;
+	float DeltaTime = Client()->RenderFrameTime();
+	float AnimSpeed = (float)std::clamp((int)g_Config.m_AcMiniStatboardAnimSpeed, 3, 30);
+	if(AnimSpeed <= 0.0f)
+		AnimSpeed = 10.0f;
+
+	// Actualizar interpolación de movimiento de cada jugador hacia su puesto objetivo
+	for(int idx = 0; idx < DisplayCount; idx++)
+	{
+		int CID = vPlayers[idx].m_ClientId;
+		SRowAnimState &Anim = m_aRowAnim[CID];
+		float TargetY = BaseRowY + (float)idx * RowHeight;
+
+		if(Anim.m_VisualY < 0.0f || !g_Config.m_AcMiniStatboardAnim)
+		{
+			Anim.m_VisualY = TargetY;
+			Anim.m_PrevRank = idx;
+			Anim.m_RankChangeTimer = 0.0f;
+			Anim.m_RankChangeDir = 0;
+		}
+		else
+		{
+			if(Anim.m_PrevRank >= 0 && Anim.m_PrevRank != idx)
+			{
+				if(idx < Anim.m_PrevRank)
+				{
+					// ¡Subió de posición (adelantamiento)! Flash verde F1
+					Anim.m_RankChangeDir = 1;
+					Anim.m_RankChangeTimer = 0.45f;
+				}
+				else
+				{
+					// Bajó de posición
+					Anim.m_RankChangeDir = -1;
+					Anim.m_RankChangeTimer = 0.35f;
+				}
+				Anim.m_PrevRank = idx;
+			}
+
+			float Diff = TargetY - Anim.m_VisualY;
+			if(std::abs(Diff) < 0.20f)
+			{
+				Anim.m_VisualY = TargetY;
+			}
+			else
+			{
+				float Factor = std::clamp(DeltaTime * AnimSpeed, 0.0f, 1.0f);
+				Anim.m_VisualY += Diff * Factor;
+			}
+
+			if(Anim.m_RankChangeTimer > 0.0f)
+				Anim.m_RankChangeTimer = std::max(0.0f, Anim.m_RankChangeTimer - DeltaTime);
+		}
+	}
 
 	for(int idx = 0; idx < DisplayCount; idx++)
 	{
 		int CID = vPlayers[idx].m_ClientId;
 		bool IsMe = vPlayers[idx].m_IsLocal;
+		SRowAnimState &Anim = m_aRowAnim[CID];
+		float CurrentRowY = (Anim.m_VisualY >= 0.0f) ? Anim.m_VisualY : (BaseRowY + (float)idx * RowHeight);
 
 		// Efecto cebra suave
 		if(idx % 2 == 1)
 		{
-			Graphics()->DrawRect(BaseX + 1.0f * Scale, RowY, TotalWidth - 2.0f * Scale, RowHeight, ColorRGBA(1.0f, 1.0f, 1.0f, 0.04f), IGraphics::CORNER_NONE, 0.0f);
+			Graphics()->DrawRect(BaseX + 1.0f * Scale, CurrentRowY, TotalWidth - 2.0f * Scale, RowHeight, ColorRGBA(1.0f, 1.0f, 1.0f, 0.04f), IGraphics::CORNER_NONE, 0.0f);
 		}
 		// Resaltar al jugador local
 		if(IsMe)
 		{
-			Graphics()->DrawRect(BaseX + 1.0f * Scale, RowY, TotalWidth - 2.0f * Scale, RowHeight, ColorRGBA(1.0f, 0.85f, 0.2f, 0.14f), IGraphics::CORNER_ALL, 2.0f * Scale);
+			Graphics()->DrawRect(BaseX + 1.0f * Scale, CurrentRowY, TotalWidth - 2.0f * Scale, RowHeight, ColorRGBA(1.0f, 0.85f, 0.2f, 0.14f), IGraphics::CORNER_ALL, 2.0f * Scale);
+		}
+
+		// Efecto F1 de cambio de posición (adelantamiento)
+		if(Anim.m_RankChangeTimer > 0.0f)
+		{
+			if(Anim.m_RankChangeDir == 1)
+			{
+				float FlashAlpha = 0.28f * (Anim.m_RankChangeTimer / 0.45f);
+				Graphics()->DrawRect(BaseX + 1.0f * Scale, CurrentRowY, TotalWidth - 2.0f * Scale, RowHeight, ColorRGBA(0.20f, 1.0f, 0.40f, FlashAlpha), IGraphics::CORNER_ALL, 2.0f * Scale);
+			}
+			else if(Anim.m_RankChangeDir == -1)
+			{
+				float FlashAlpha = 0.18f * (Anim.m_RankChangeTimer / 0.35f);
+				Graphics()->DrawRect(BaseX + 1.0f * Scale, CurrentRowY, TotalWidth - 2.0f * Scale, RowHeight, ColorRGBA(1.0f, 0.40f, 0.20f, FlashAlpha), IGraphics::CORNER_ALL, 2.0f * Scale);
+			}
 		}
 
 		CurrX = BaseX + Padding;
-		float TextY = RowY + (RowHeight - FontSize) / 2.0f;
+		float TextY = CurrentRowY + (RowHeight - FontSize) / 2.0f;
 
 		// Mini Tee
 		CTeeRenderInfo TeeInfo = GameClient()->m_aClients[CID].m_RenderInfo;
 		TeeInfo.m_Size = FontSize * 1.35f;
-		const vec2 TeePos = vec2(CurrX + TeeInfo.m_Size * 0.5f, RowY + RowHeight * 0.5f);
+		const vec2 TeePos = vec2(CurrX + TeeInfo.m_Size * 0.5f, CurrentRowY + RowHeight * 0.5f);
 		RenderTools()->RenderTee(CAnimState::GetIdle(), &TeeInfo, EMOTE_NORMAL, vec2(1.0f, 0.0f), TeePos);
 
 		float NameX = CurrX + TeeInfo.m_Size + 2.0f * Scale;

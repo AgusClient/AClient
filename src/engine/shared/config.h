@@ -60,6 +60,18 @@ public:
 
 extern CConfig g_Config;
 
+// AClient Fast Input Modes
+enum
+{
+	AC_INPUTS_OFF = 0,
+	AC_INPUTS_FAST,
+	AC_INPUTS_BEST,
+	AC_INPUTS_SAIKO,
+	AC_INPUTS_DELTA,
+	AC_INPUTS_F,
+	AC_INPUTS_CLOUD,
+};
+
 /**
  * The default values of all config variables in @link CConfig @endlink.
  */
@@ -273,6 +285,7 @@ class CConfigManager : public IConfigManager
 	static void Con_Reset(IConsole::IResult *pResult, void *pUserData);
 	static void Con_Toggle(IConsole::IResult *pResult, void *pUserData);
 	static void Con_ToggleStroke(IConsole::IResult *pResult, void *pUserData);
+	static void Con_SaveConfig(IConsole::IResult *pResult, void *pUserData);
 
 public:
 	CConfigManager();

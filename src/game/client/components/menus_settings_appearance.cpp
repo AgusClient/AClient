@@ -224,7 +224,7 @@ void CMenus::RenderSettingsAppearance(CUIRect MainView)
 
 		str_format(aBuf, sizeof(aBuf), "%s (echo)", Localize("Client message"));
 		static CButtonContainer s_ClientMessageColor;
-		DoLine_ColorPicker(&s_ClientMessageColor, ColorPickerLineSize, ColorPickerLabelSize, ColorPickerLineSpacing, &RightView, aBuf, &g_Config.m_ClMessageClientColor, ColorRGBA(0.5f, 0.78f, 1.0f), true, &g_Config.m_TcShowChatClient); // TClient
+		DoLine_ColorPicker(&s_ClientMessageColor, ColorPickerLineSize, ColorPickerLabelSize, ColorPickerLineSpacing, &RightView, aBuf, &g_Config.m_ClMessageClientColor, ColorRGBA(0.5f, 0.78f, 1.0f), true, &g_Config.m_AcShowChatClient); // TClient
 
 		// ***** Chat Preview ***** //
 		Ui()->DoLabel_AutoLineSize(Localize("Preview"), HeadlineFontSize,
@@ -469,7 +469,7 @@ void CMenus::RenderSettingsAppearance(CUIRect MainView)
 				TempY += RenderMessageBackground(PREVIEW_SPAMMER);
 			}
 
-			if(g_Config.m_TcShowChatClient)
+			if(g_Config.m_AcShowChatClient)
 				TempY += RenderMessageBackground(PREVIEW_CLIENT);
 
 			Graphics()->QuadsEnd();
@@ -509,7 +509,7 @@ void CMenus::RenderSettingsAppearance(CUIRect MainView)
 			Y += RenderPreview(PREVIEW_SPAMMER, X, Y).y;
 		}
 		// Client
-		if(g_Config.m_TcShowChatClient)
+		if(g_Config.m_AcShowChatClient)
 			RenderPreview(PREVIEW_CLIENT, X, Y);
 
 		TextRender()->TextColor(TextRender()->DefaultTextColor());

@@ -900,7 +900,7 @@ void CNamePlates::RenderNamePlateGame(vec2 Position, const CNetObj_PlayerInfo *p
 		}
 	}
 	if(GameClient()->m_FastPractice.Enabled() && !GameClient()->m_Snap.m_SpecInfo.m_Active && !GameClient()->m_FastPractice.IsPracticeParticipant(pPlayerInfo->m_ClientId))
-		Alpha = std::min(Alpha, std::clamp(g_Config.m_TcFastPracticeGhostAlpha / 100.0f, 0.0f, 1.0f));
+		Alpha = std::min(Alpha, std::clamp(g_Config.m_AcFastPracticeGhostAlpha / 100.0f, 0.0f, 1.0f));
 	Data.m_Color.a = Alpha;
 
 	int ShowDirectionConfig = g_Config.m_ClShowDirection;

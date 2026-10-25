@@ -515,7 +515,7 @@ void CPlayers::RenderHook(
 	bool OtherTeam = GameClient()->IsOtherTeam(ClientId);
 	float Alpha = (OtherTeam || ClientId < 0) ? g_Config.m_ClShowOthersAlpha / 100.0f : 1.0f;
 	if(ClientId >= 0 && GameClient()->m_FastPractice.Enabled() && !GameClient()->m_Snap.m_SpecInfo.m_Active && !GameClient()->m_FastPractice.IsPracticeParticipant(ClientId))
-		Alpha = std::min(Alpha, std::clamp(g_Config.m_TcFastPracticeGhostAlpha / 100.0f, 0.0f, 1.0f));
+		Alpha = std::min(Alpha, std::clamp(g_Config.m_AcFastPracticeGhostAlpha / 100.0f, 0.0f, 1.0f));
 
 	if(ClientId == -2) // ghost
 		Alpha = g_Config.m_ClRaceGhostAlpha / 100.0f;
@@ -655,7 +655,7 @@ void CPlayers::RenderPlayer(
 		Alpha = 1.0f;
 
 	if(ClientId >= 0 && GameClient()->m_FastPractice.Enabled() && !GameClient()->m_Snap.m_SpecInfo.m_Active && !GameClient()->m_FastPractice.IsPracticeParticipant(ClientId))
-		Alpha = std::min(Alpha, std::clamp(g_Config.m_TcFastPracticeGhostAlpha / 100.0f, 0.0f, 1.0f));
+		Alpha = std::min(Alpha, std::clamp(g_Config.m_AcFastPracticeGhostAlpha / 100.0f, 0.0f, 1.0f));
 
 	if(ClientId == -2) // ghost
 		Alpha = g_Config.m_ClRaceGhostAlpha / 100.0f;
@@ -1062,7 +1062,7 @@ void CPlayers::RenderPlayer(
 		return;
 
 	int QuadOffsetToEmoticon = NUM_WEAPONS * 2 + 2 + 2;
-	if((Player.m_PlayerFlags & PLAYERFLAG_CHATTING) && !GameClient()->m_aClients[ClientId].m_Afk && !g_Config.m_TcHideOthersChatBubbles)
+	if((Player.m_PlayerFlags & PLAYERFLAG_CHATTING) && !GameClient()->m_aClients[ClientId].m_Afk && !g_Config.m_AcHideOthersChatBubbles)
 	{
 		int CurEmoticon = (SPRITE_DOTDOT - SPRITE_OOP);
 		Graphics()->TextureSet(GameClient()->m_EmoticonsSkin.m_aSpriteEmoticons[CurEmoticon]);
@@ -1242,7 +1242,7 @@ void CPlayers::OnRender()
 		const int ClientId = Client.ClientId();
 		float Alpha = (GameClient()->IsOtherTeam(ClientId) || ClientId < 0) ? g_Config.m_ClShowOthersAlpha / 100.f : 1.f;
 		if(ClientId >= 0 && GameClient()->m_FastPractice.Enabled() && !GameClient()->m_Snap.m_SpecInfo.m_Active && !GameClient()->m_FastPractice.IsPracticeParticipant(ClientId))
-		Alpha = std::min(Alpha, std::clamp(g_Config.m_TcFastPracticeGhostAlpha / 100.0f, 0.0f, 1.0f));
+		Alpha = std::min(Alpha, std::clamp(g_Config.m_AcFastPracticeGhostAlpha / 100.0f, 0.0f, 1.0f));
 
 	if(ClientId == -2) // ghost
 		{

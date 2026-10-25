@@ -1,5 +1,6 @@
 /* Copyright © 2026 BestProject Team */
 #include "fast_practice.h"
+#include "aclient_inputs.h"
 
 #include <base/math.h>
 #include <base/mem.h>
@@ -70,22 +71,18 @@ namespace
 	float EffectiveFastInputOffsetTicks(const CGameClient *pGameClient)
 	{
 		(void)pGameClient;
-		if(!g_Config.m_TcFastInput)
-			return 0.0f;
-		return g_Config.m_TcFastInputAmount / 20.0f;
+		return AcInputs::EffectiveOffsetTicks(false);
 	}
 
 	int FastInputPredictionTicks(float OffsetTicks)
 	{
-		if(OffsetTicks <= 0.0f)
-			return 0;
-		return (int)std::ceil(OffsetTicks);
+		return AcInputs::PredictionTicks(OffsetTicks);
 	}
 
 	bool EffectiveFastInputOthers(const CGameClient *pGameClient)
 	{
 		(void)pGameClient;
-		return g_Config.m_TcFastInput && g_Config.m_TcFastInputOthers;
+		return AcInputs::AnyOthers();
 	}
 
 	bool IsFrozenState(const CCharacter *pChar)
@@ -927,6 +924,11 @@ void CFastPractice::Enable(bool PreserveHeldInput)
 		}
 	}
 	GameClient()->m_PredictedTick = m_PracticeBaseWorld.GameTick();
+
+	if(g_Config.m_AcFastPracticeSpecOriginal)
+	{
+		SendSpecOriginal();
+	}
 }
 
 bool CFastPractice::TryAttachDummyFromSnapshot()
@@ -1058,6 +1060,36 @@ void CFastPractice::StandbyCharacter(CCharacter *pChar) const
 	Core.m_NewHook = false;
 	Core.m_TriggeredEvents = 0;
 	pChar->SetCore(Core);
+}
+
+void CFastPractice::SendSpecOriginal()
+{
+	const int MainClientId = GameClient()->m_aLocalIds[IClient::CONN_MAIN];
+	if(MainClientId < 0 || MainClientId >= MAX_CLIENTS)
+		return;
+
+	if(GameClient()->m_Snap.m_pGameInfoObj && GameClient()->m_Snap.m_pGameInfoObj->m_GameStateFlags & GAMESTATEFLAG_PAUSED)
+		return;
+	if(GameClient()->m_aClients[MainClientId].m_Spec || GameClient()->m_aClients[MainClientId].m_Paused)
+		return;
+	if(GameClient()->m_aClients[MainClientId].m_Team == TEAM_SPECTATORS)
+		return;
+
+	if(Client()->IsSixup())
+	{
+		protocol7::CNetMsg_Cl_Say Msg7;
+		Msg7.m_Mode = protocol7::CHAT_ALL;
+		Msg7.m_Target = -1;
+		Msg7.m_pMessage = "/spec";
+		Client()->SendPackMsg(IClient::CONN_MAIN, &Msg7, MSGFLAG_VITAL, true);
+	}
+	else
+	{
+		CNetMsg_Cl_Say Msg;
+		Msg.m_Team = 0;
+		Msg.m_pMessage = "/spec";
+		Client()->SendPackMsg(IClient::CONN_MAIN, &Msg, MSGFLAG_VITAL);
+	}
 }
 
 void CFastPractice::PrepareForSpectating()
@@ -1937,7 +1969,7 @@ void CFastPractice::OnRender()
 		RenderGhost(Ghost, Alpha);
 	};
 
-	const float GhostAlpha = std::clamp(g_Config.m_TcFastPracticeGhostAlpha / 100.0f, 0.0f, 1.0f);
+	const float GhostAlpha = std::clamp(g_Config.m_AcFastPracticeGhostAlpha / 100.0f, 0.0f, 1.0f);
 	RenderRealMarker(m_MainGhost, GhostAlpha);
 	RenderRealMarker(m_DummyGhost, GhostAlpha * 0.85f);
 }
@@ -2882,4 +2914,5 @@ bool CFastPractice::ConsumePracticeChatCommand(int Team, const char *pLine)
 void CFastPractice::OnConsoleInit()
 {
 	Console()->Register("fast_practice_toggle", "", CFGFLAG_CLIENT, ConFastPracticeToggle, this, "Toggle fast practice mode");
+	Console()->Register("ac_fast_practice_toggle", "", CFGFLAG_CLIENT, ConFastPracticeToggle, this, "Toggle fast practice mode (alias)");
 }

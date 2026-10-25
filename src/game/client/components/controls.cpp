@@ -216,8 +216,8 @@ int CControls::SnapInput(int *pData)
 		break;
 	}
 
-	// Clientx30: Silent typing (ocultar burbuja con 3 puntitos al escribir)
-	if(g_Config.m_TcSilentTyping || g_Config.m_ClSilentTyping || g_Config.m_TcHideChatBubbles)
+	// AClient: Silent typing (ocultar burbuja con 3 puntitos al escribir)
+	if(g_Config.m_AcSilentTyping || g_Config.m_AcHideChatBubbles)
 		for(auto &InputData : m_aInputData)
 			InputData.m_PlayerFlags &= ~PLAYERFLAG_CHATTING;
 
@@ -543,7 +543,7 @@ bool CControls::CheckNewInput()
 
 		// When sub tick aiming is disabled on the first tick of a hook it's viable to update the fast input
 		// prediction on every mouse movement before the hook+direction input is sent and finalized.
-		const bool RefreshHookAim = g_Config.m_TcFastInputRepredictHook && !g_Config.m_ClSubTickAiming &&
+		const bool RefreshHookAim = (g_Config.m_TcFastInputRepredictHook || g_Config.m_AcFastInputRepredictHook) && !g_Config.m_ClSubTickAiming &&
 					    Dummy == g_Config.m_ClDummy && TestInput.m_Hook && !m_aLastData[Dummy].m_Hook;
 		bool SetMousePos = RefreshHookAim;
 		// We need to be careful about how we manage the mouse position to avoid mispredicted hooks and fires

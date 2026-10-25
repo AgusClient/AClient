@@ -2015,7 +2015,7 @@ void CHud::OnRender()
 			RenderSpectatorCount();
 			RenderMovementInformation();
 			RenderDDRaceEffects();
-			if(GameClient()->m_FastPractice.Enabled() && g_Config.m_TcFastPracticeShowText)
+			if(GameClient()->m_FastPractice.Enabled() && g_Config.m_AcFastPracticeShowText)
 			{
 				const char *pTitle = "practice mode";
 				const char *pHint = "(you can use practice commands /tc /invincible)";

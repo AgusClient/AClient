@@ -230,14 +230,33 @@ void CChat::ConchainChatWidth(IConsole::IResult *pResult, void *pUserData, ICons
 	pChat->RebuildChat();
 }
 
-void CChat::ConchainShowChatClient(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData)
+void CChat::ConTcShowChatClient(IConsole::IResult *pResult, void *pUserData)
 {
-	pfnCallback(pResult, pCallbackUserData);
+	CChat *pSelf = (CChat *)pUserData;
+	if(pResult->NumArguments())
+		g_Config.m_AcShowChatClient = pResult->GetInteger(0);
+	else
+	{
+		char aBuf[32];
+		str_format(aBuf, sizeof(aBuf), "Value: %d", g_Config.m_AcShowChatClient);
+		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chat", aBuf);
+	}
+}
+
+void CChat::ConTcSilentTyping(IConsole::IResult *pResult, void *pUserData)
+{
+	CChat *pSelf = (CChat *)pUserData;
 	if(pResult->NumArguments())
 	{
 		int Val = pResult->GetInteger(0);
-		g_Config.m_TcShowChatClient = Val;
-		g_Config.m_ClShowChatClient = Val;
+		g_Config.m_AcSilentTyping = Val;
+		g_Config.m_AcHideChatBubbles = Val;
+	}
+	else
+	{
+		char aBuf[32];
+		str_format(aBuf, sizeof(aBuf), "Value: %d", g_Config.m_AcSilentTyping);
+		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chat", aBuf);
 	}
 }
 
@@ -247,9 +266,8 @@ void CChat::ConchainSilentTyping(IConsole::IResult *pResult, void *pUserData, IC
 	if(pResult->NumArguments())
 	{
 		int Val = pResult->GetInteger(0);
-		g_Config.m_TcSilentTyping = Val;
-		g_Config.m_ClSilentTyping = Val;
-		g_Config.m_TcHideChatBubbles = Val;
+		g_Config.m_AcSilentTyping = Val;
+		g_Config.m_AcHideChatBubbles = Val;
 	}
 }
 
@@ -266,6 +284,11 @@ void CChat::OnConsoleInit()
 	Console()->Register("+show_chat", "", CFGFLAG_CLIENT, ConShowChat, this, "Show chat");
 	Console()->Register("echo", "r[message]", CFGFLAG_CLIENT | CFGFLAG_STORE, ConEcho, this, "Echo the text in chat window");
 	Console()->Register("clear_chat", "", CFGFLAG_CLIENT | CFGFLAG_STORE, ConClearChat, this, "Clear chat messages");
+	Console()->Register("tc_show_chat_client", "?i[val]", CFGFLAG_CLIENT, ConTcShowChatClient, this, "Alias for ac_show_chat_client");
+	Console()->Register("cl_show_chat_client", "?i[val]", CFGFLAG_CLIENT, ConTcShowChatClient, this, "Alias for ac_show_chat_client");
+	Console()->Register("tc_silent_typing", "?i[val]", CFGFLAG_CLIENT, ConTcSilentTyping, this, "Alias for ac_silent_typing");
+	Console()->Register("cl_silent_typing", "?i[val]", CFGFLAG_CLIENT, ConTcSilentTyping, this, "Alias for ac_silent_typing");
+	Console()->Register("tc_hide_chat_bubbles", "?i[val]", CFGFLAG_CLIENT, ConTcSilentTyping, this, "Alias for ac_silent_typing");
 }
 
 void CChat::OnInit()
@@ -274,11 +297,8 @@ void CChat::OnInit()
 	Console()->Chain("cl_chat_old", ConchainChatOld, this);
 	Console()->Chain("cl_chat_size", ConchainChatFontSize, this);
 	Console()->Chain("cl_chat_width", ConchainChatWidth, this);
-	Console()->Chain("tc_show_chat_client", ConchainShowChatClient, this);
-	Console()->Chain("cl_show_chat_client", ConchainShowChatClient, this);
-	Console()->Chain("tc_silent_typing", ConchainSilentTyping, this);
-	Console()->Chain("cl_silent_typing", ConchainSilentTyping, this);
-	Console()->Chain("tc_hide_chat_bubbles", ConchainSilentTyping, this);
+	Console()->Chain("ac_silent_typing", ConchainSilentTyping, this);
+	Console()->Chain("ac_hide_chat_bubbles", ConchainSilentTyping, this);
 }
 
 bool CChat::OnInput(const IInput::CEvent &Event)
@@ -321,7 +341,7 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 	{
 		const bool ShiftPressed = Input()->ShiftIsPressed();
 
-		// Clientx30: Autocompletado directo para /stealskin
+		// AClient: Autocompletado directo para /stealskin
 		if(str_startswith_nocase("/stealskin", m_Input.GetString()) && str_length(m_Input.GetString()) >= 3)
 		{
 			m_Input.Set("/stealskin ");
@@ -330,7 +350,7 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 			return true;
 		}
 
-		// Clientx30: Autocompletado directo para /invite friends
+		// AClient: Autocompletado directo para /invite friends
 		const char *pInputStr = m_Input.GetString();
 		if(str_startswith_nocase(pInputStr, "/invite"))
 		{
@@ -751,7 +771,7 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 		return;
 
 	// TClient
-	if(ClientId == CLIENT_MSG && (!g_Config.m_TcShowChatClient || !g_Config.m_ClShowChatClient))
+	if(ClientId == CLIENT_MSG && !g_Config.m_AcShowChatClient)
 		return;
 
 	// TClient
@@ -1660,7 +1680,7 @@ bool CChat::TryHandleStealSkinCommand(const char *pLine)
 	}
 	else
 	{
-		Echo(TCLocalize("[Clientx30] No target player found to steal skin from."));
+		Echo(TCLocalize("[AClient] No target player found to steal skin from."));
 	}
 	return true;
 }
@@ -1673,7 +1693,7 @@ bool CChat::TryHandleBulkInviteCommand(const char *pLine)
 	const char *pTrimmed = str_utf8_skip_whitespaces(pLine);
 	if(str_comp_nocase(pTrimmed, "/invite all") == 0)
 	{
-		Echo(TCLocalize("[Clientx30] /invite all has been disabled. Use /invite friends."));
+		Echo(TCLocalize("[AClient] /invite all has been disabled. Use /invite friends."));
 		return true;
 	}
 
@@ -1684,7 +1704,7 @@ bool CChat::TryHandleBulkInviteCommand(const char *pLine)
 
 	if(Client()->State() != IClient::STATE_ONLINE)
 	{
-		Echo(TCLocalize("[Clientx30] You must be connected to a server to use /invite."));
+		Echo(TCLocalize("[AClient] You must be connected to a server to use /invite."));
 		return true;
 	}
 
@@ -1692,7 +1712,7 @@ bool CChat::TryHandleBulkInviteCommand(const char *pLine)
 	const int LocalTeam = (LocalId >= 0 && LocalId < MAX_CLIENTS) ? GameClient()->m_Teams.Team(LocalId) : TEAM_FLOCK;
 	if(LocalTeam <= TEAM_FLOCK || LocalTeam >= TEAM_SUPER)
 	{
-		Echo(TCLocalize("[Clientx30] Join a team first (e.g. /team 1) before using /invite."));
+		Echo(TCLocalize("[AClient] Join a team first (e.g. /team 1) before using /invite."));
 		return true;
 	}
 
@@ -1717,14 +1737,14 @@ bool CChat::TryHandleBulkInviteCommand(const char *pLine)
 	if(m_vPendingInviteCommands.empty())
 	{
 		if(InviteFriends)
-			Echo(TCLocalize("[Clientx30] No connected friends outside your team found to invite."));
+			Echo(TCLocalize("[AClient] No connected friends outside your team found to invite."));
 		else
-			Echo(TCLocalize("[Clientx30] No other players outside your team found to invite."));
+			Echo(TCLocalize("[AClient] No other players outside your team found to invite."));
 		return true;
 	}
 
 	char aInfo[160];
-	str_format(aInfo, sizeof(aInfo), TCLocalize("[Clientx30] Inviting %d %s to Team %d..."),
+	str_format(aInfo, sizeof(aInfo), TCLocalize("[AClient] Inviting %d %s to Team %d..."),
 		(int)m_vPendingInviteCommands.size(),
 		InviteFriends ? TCLocalize("friend(s)") : TCLocalize("player(s)"),
 		LocalTeam);

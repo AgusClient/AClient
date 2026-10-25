@@ -52,8 +52,8 @@ void CMenus::RenderSettings(CUIRect MainView)
 		Localize("DDNet"),
 		Localize("Assets"),
 		TCLocalize("TClient"), // TClient
-		"Clientx30", // Clientx30
 		Localize("Profiles"), // TClient
+		"AClient", // AClient
 		Localize("Configs"), // TClient
 		Localize("Credits")};
 	static CButtonContainer s_aTabButtons[SETTINGS_LENGTH];
@@ -150,15 +150,15 @@ void CMenus::RenderSettings(CUIRect MainView)
 		GameClient()->m_MenuBackground.ChangePosition(CMenuBackground::POS_SETTINGS_LANGUAGE);
 		RenderSettingsTClient(MainView);
 	}
-	else if(g_Config.m_UiSettingsPage == SETTINGS_CLIENTX30) // Clientx30
-	{
-		GameClient()->m_MenuBackground.ChangePosition(CMenuBackground::POS_SETTINGS_GENERAL);
-		RenderSettingsClientx30(MainView);
-	}
 	else if(g_Config.m_UiSettingsPage == SETTINGS_PROFILES) // TClient
 	{
 		GameClient()->m_MenuBackground.ChangePosition(CMenuBackground::POS_SETTINGS_GENERAL);
 		RenderSettingsTClientProfiles(MainView);
+	}
+	else if(g_Config.m_UiSettingsPage == SETTINGS_ACLIENT) // AClient
+	{
+		GameClient()->m_MenuBackground.ChangePosition(CMenuBackground::POS_SETTINGS_GENERAL);
+		RenderSettingsAClient(MainView);
 	}
 	else if(g_Config.m_UiSettingsPage == SETTINGS_CONFIGS) // TClient
 	{
