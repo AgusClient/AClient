@@ -1,10 +1,10 @@
 # ⚡ AClient (Clientx30)
 
-[![Release](https://img.shields.io/github/v/release/agusx30/Clientx30?style=for-the-badge&color=orange)](https://github.com/agusx30/Clientx30/releases/latest)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20x64-blue?style=for-the-badge&logo=windows)](https://github.com/agusx30/Clientx30/releases/latest)
-[![Base DDNet](https://img.shields.io/badge/Base-DDNet-red?style=for-the-badge)](https://ddnet.org)
-[![Base TClient](https://img.shields.io/badge/Base-TClient-purple?style=for-the-badge)](https://github.com/TaterClient/TClient)
-[![License](https://img.shields.io/badge/License-Zlib-green?style=for-the-badge)](license.txt)
+[![Release](https://img.shields.io/github/v/release/agusx30/Clientx30?color=orange&logo=github)](https://github.com/agusx30/Clientx30/releases/latest)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20x64-blue?logo=windows)](https://github.com/agusx30/Clientx30/releases/latest)
+[![Base DDNet](https://img.shields.io/badge/Base-DDNet-red)](https://ddnet.org)
+[![Base TClient](https://img.shields.io/badge/Base-TClient-purple?logo=github)](https://github.com/TaterClient/TClient)
+[![License](https://img.shields.io/badge/License-Zlib-green)](license.txt)
 
 **AClient** es un cliente competitivo y de práctica avanzado para **DDraceNetwork (DDNet)** y **Teeworlds**, diseñado por **agusx30** sobre la sólida base de **TClient** y **DDNet**. Incorpora herramientas de análisis en tiempo real, múltiples algoritmos de respuesta rápida de entrada (Fast Input), animación dinámica de posiciones, personalización visual profunda y un sistema de configuración propio.
 
