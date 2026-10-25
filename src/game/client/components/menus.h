@@ -11,6 +11,8 @@
 #include <engine/console.h>
 #include <engine/demo.h>
 #include <engine/friends.h>
+#include <engine/graphics.h>
+#include <engine/image.h>
 #include <engine/serverbrowser.h>
 #include <engine/shared/config.h>
 #include <engine/textrender.h>
@@ -894,5 +896,125 @@ private:
 	void RenderFontIcon(CUIRect Rect, const char *pText, float Size, int Align);
 	int DoButtonNoRect_FontIcon(CButtonContainer *pButtonContainer, const char *pText, int Checked, const CUIRect *pRect, int Corners = IGraphics::CORNER_ALL);
 	int DoButtonLineSize_Menu(CButtonContainer *pButtonContainer, const char *pText, int Checked, const CUIRect *pRect, float ButtonLineSize, bool Fake = false, const char *pImageName = nullptr, int Corners = IGraphics::CORNER_ALL, float Rounding = 5.0f, float FontFactor = 0.0f, ColorRGBA Color = ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f));
+	// AClient: game assets editor, found in tclient/aclient_assets_editor.cpp
+public:
+	enum
+	{
+		ASSETS_EDITOR_CAT_ENTITIES = 0,
+		ASSETS_EDITOR_CAT_GAME,
+		ASSETS_EDITOR_CAT_EMOTICONS,
+		ASSETS_EDITOR_CAT_PARTICLES,
+		ASSETS_EDITOR_CAT_HUD,
+		ASSETS_EDITOR_CAT_EXTRAS,
+		ASSETS_EDITOR_CAT_COUNT,
+	};
+
+	enum
+	{
+		ASSETS_EDITOR_SIDE_LEFT = 0,
+		ASSETS_EDITOR_SIDE_RIGHT,
+	};
+
+	enum
+	{
+		ASSETS_EDITOR_COLOR_BLEND_TEELIKE = 0,
+		ASSETS_EDITOR_COLOR_BLEND_SCREEN,
+		ASSETS_EDITOR_COLOR_BLEND_MULTIPLY,
+		ASSETS_EDITOR_COLOR_BLEND_OVERLAY,
+		ASSETS_EDITOR_COLOR_BLEND_COUNT,
+	};
+
+	struct SAssetsEditorImage
+	{
+		int m_Category = ASSETS_EDITOR_CAT_GAME;
+		char m_aName[64] = {};
+		char m_aPath[IO_MAX_PATH_LENGTH] = {};
+		IGraphics::CTextureHandle m_Texture;
+		CImageInfo m_Image;
+		int m_Width = 0;
+		int m_Height = 0;
+	};
+
+	struct SAssetsEditorPartSlot
+	{
+		int m_SpriteId = -1;
+		int m_DstX = 0;
+		int m_DstY = 0;
+		int m_DstW = 0;
+		int m_DstH = 0;
+		int m_SrcX = 0;
+		int m_SrcY = 0;
+		int m_SrcW = 0;
+		int m_SrcH = 0;
+		char m_aFamilyKey[64] = {};
+		bool m_FromDonor = false;
+		bool m_UseCustomColor = false;
+		unsigned m_CustomColor = 65408;
+		int m_ColorBlendMode = ASSETS_EDITOR_COLOR_BLEND_TEELIKE;
+		int m_ColorOpacity = 100;
+	};
+
+	struct SAssetsEditorHoverCycle
+	{
+		int m_PositionX = -1;
+		int m_PositionY = -1;
+		int m_Cursor = 0;
+		std::vector<int> m_vCandidates;
+	};
+
+	struct SAssetsEditorState
+	{
+		bool m_Open = false;
+		bool m_Initialized = false;
+		int m_ExploreSide = -1;
+		bool m_DragActive = false;
+		int m_DraggedDonorSlot = -1;
+		bool m_DirtyPreview = true;
+		bool m_HasUnsavedChanges = false;
+		bool m_ShowExitConfirm = false;
+		char m_aExportName[64] = {};
+		char m_aStatusMessage[256] = {};
+		bool m_StatusIsError = false;
+		IGraphics::CTextureHandle m_PreviewTexture;
+		int m_PreviewWidth = 0;
+		int m_PreviewHeight = 0;
+		int m_ColorEditSlot = -1;
+		bool m_HasLastColor = false;
+		unsigned m_LastCustomColor = 65408;
+		int m_LastColorBlendMode = ASSETS_EDITOR_COLOR_BLEND_TEELIKE;
+		int m_LastColorOpacity = 100;
+		SAssetsEditorImage m_Left;
+		SAssetsEditorImage m_Right;
+		std::vector<SAssetsEditorPartSlot> m_vDonorSlots;
+		std::vector<SAssetsEditorPartSlot> m_vTargetSlots;
+		SAssetsEditorHoverCycle m_DonorHover;
+		SAssetsEditorHoverCycle m_TargetHover;
+	};
+
+	SAssetsEditorState m_AssetsEditorState;
+
+private:
+	void RenderAssetsEditorScreen(CUIRect MainView);
+	bool AssetsEditorAssignPickedAsset(int Side, int Category, const char *pName);
+	bool AssetsEditorResolvePath(int Category, const char *pName, char *pOut, int OutSize) const;
+	bool AssetsEditorLoadImage(int Category, const char *pName, SAssetsEditorImage &Out);
+	void AssetsEditorRebuildSlots(int Side);
+	bool AssetsEditorComposeImage(CImageInfo &OutputImage);
+	bool AssetsEditorExport();
+	void AssetsEditorUpdatePreview();
+	void AssetsEditorRenderCanvas(const CUIRect &Rect, IGraphics::CTextureHandle Texture, int Width, int Height, int Category, const std::vector<SAssetsEditorPartSlot> &vSlots, int HighlightSlot, bool DropHighlight);
+	void AssetsEditorCollectHovered(const CUIRect &Rect, int Category, const std::vector<SAssetsEditorPartSlot> &vSlots, vec2 Mouse, std::vector<int> &vOut) const;
+	int AssetsEditorResolveHovered(const CUIRect &Rect, int Category, const std::vector<SAssetsEditorPartSlot> &vSlots, vec2 Mouse, bool ClickedLmb, SAssetsEditorHoverCycle &Cycle, const SAssetsEditorPartSlot *pPreferred);
+	void AssetsEditorCancelDrag();
+	void AssetsEditorRequestClose();
+	void AssetsEditorCloseNow();
+	void AssetsEditorRenderExitConfirm(const CUIRect &Rect);
+	void AssetsEditorApplyDrop(int TargetSlotIndex, int DonorSlotIndex);
+	void AssetsEditorResetSlot(int SlotIndex);
+	bool AssetsEditorCopyScaled(CImageInfo &Dst, const CImageInfo &Src, int DstX, int DstY, int DstW, int DstH, int SrcX, int SrcY, int SrcW, int SrcH) const;
+	void AssetsEditorColorize(CImageInfo &Image, int X, int Y, int W, int H, const SAssetsEditorPartSlot &Slot) const;
+	void AssetsEditorOpenColorPopup(int SlotIndex, float X, float Y);
+	void AssetsEditorClearSlotColor(int SlotIndex);
+	static CUi::EPopupMenuFunctionResult AssetsEditorPopupColorEditor(void *pContext, CUIRect View, bool Active);
 };
 #endif

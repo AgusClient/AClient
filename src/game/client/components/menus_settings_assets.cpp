@@ -567,7 +567,15 @@ void CMenus::RenderSettingsAssets(CUIRect MainView)
 	}
 
 	const int NewSelected = s_ListBox.DoEnd();
-	if(OldSelected != NewSelected)
+	// AClient: while the assets editor is picking a side, selecting an item assigns it to the editor
+	const bool EditorPick = m_AssetsEditorState.m_Open && m_AssetsEditorState.m_ExploreSide >= 0;
+	if(EditorPick && s_ListBox.WasItemSelected() && NewSelected >= 0)
+	{
+		const SCustomItem *pPicked = GetCustomItem(s_CurCustomTab, NewSelected);
+		if(pPicked != nullptr && pPicked->m_aName[0] != '\0')
+			AssetsEditorAssignPickedAsset(m_AssetsEditorState.m_ExploreSide, s_CurCustomTab, pPicked->m_aName);
+	}
+	else if(!EditorPick && OldSelected != NewSelected)
 	{
 		if(GetCustomItem(s_CurCustomTab, NewSelected)->m_aName[0] != '\0')
 		{
@@ -614,9 +622,27 @@ void CMenus::RenderSettingsAssets(CUIRect MainView)
 	}
 
 	DirectoryButton.HSplitTop(5.0f, nullptr, &DirectoryButton);
-	DirectoryButton.VSplitRight(175.0f, nullptr, &DirectoryButton);
+	// AClient: assets editor button next to the directory button
+	CUIRect AssetsEditorButton;
+	DirectoryButton.VSplitRight(25.0f + 10.0f + 175.0f, nullptr, &DirectoryButton);
+	DirectoryButton.VSplitLeft(25.0f, &AssetsEditorButton, &DirectoryButton);
+	DirectoryButton.VSplitLeft(10.0f, nullptr, &DirectoryButton);
 	DirectoryButton.VSplitRight(25.0f, &DirectoryButton, &ReloadButton);
 	DirectoryButton.VSplitRight(10.0f, &DirectoryButton, nullptr);
+	{
+		TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+		TextRender()->SetRenderFlags(ETextRenderFlags::TEXT_RENDER_FLAG_ONLY_ADVANCE_WIDTH | ETextRenderFlags::TEXT_RENDER_FLAG_NO_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_Y_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT | ETextRenderFlags::TEXT_RENDER_FLAG_NO_OVERSIZE);
+		static CButtonContainer s_AssetsEditorButton;
+		const bool EditorPicking = m_AssetsEditorState.m_Open && m_AssetsEditorState.m_ExploreSide >= 0;
+		if(DoButton_Menu(&s_AssetsEditorButton, EditorPicking ? FontIcon::CHEVRON_LEFT : FontIcon::PEN_TO_SQUARE, 0, &AssetsEditorButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, -0.2f))
+		{
+			m_AssetsEditorState.m_Open = true;
+			m_AssetsEditorState.m_ExploreSide = -1;
+		}
+		TextRender()->SetRenderFlags(0);
+		TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+		GameClient()->m_Tooltips.DoToolTip(&s_AssetsEditorButton, &AssetsEditorButton, EditorPicking ? Localize("Back to the assets editor") : Localize("AClient assets editor"));
+	}
 	static CButtonContainer s_AssetsDirId;
 	if(DoButton_Menu(&s_AssetsDirId, Localize("Assets directory"), 0, &DirectoryButton))
 	{

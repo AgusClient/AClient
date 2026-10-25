@@ -24,6 +24,15 @@ void CMenus::SetNeedSendInfo()
 
 void CMenus::RenderSettings(CUIRect MainView)
 {
+	// AClient: assets editor takes over the whole screen while open
+	if(m_AssetsEditorState.m_Open && m_AssetsEditorState.m_ExploreSide >= 0 && !Ui()->IsPopupOpen() && Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE))
+		m_AssetsEditorState.m_ExploreSide = -1;
+	if(m_AssetsEditorState.m_Open && m_AssetsEditorState.m_ExploreSide < 0 && g_Config.m_UiSettingsPage == SETTINGS_ASSETS)
+	{
+		RenderAssetsEditorScreen(*Ui()->Screen());
+		return;
+	}
+
 	// render background
 	CUIRect Button, TabBar, RestartBar;
 	MainView.VSplitRight(120.0f, &MainView, &TabBar);
@@ -65,6 +74,10 @@ void CMenus::RenderSettings(CUIRect MainView)
 		if(DoButton_MenuTab(&s_aTabButtons[i], apTabs[i], g_Config.m_UiSettingsPage == i, &Button, IGraphics::CORNER_R, &m_aAnimatorsSettingsTab[i]))
 			g_Config.m_UiSettingsPage = i;
 	}
+
+	// AClient: leaving the assets page while picking an asset returns to the editor
+	if(m_AssetsEditorState.m_Open && m_AssetsEditorState.m_ExploreSide >= 0 && g_Config.m_UiSettingsPage != SETTINGS_ASSETS)
+		m_AssetsEditorState.m_ExploreSide = -1;
 
 	if(g_Config.m_UiSettingsPage == SETTINGS_LANGUAGE)
 	{

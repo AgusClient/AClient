@@ -2868,6 +2868,7 @@ if(CLIENT)
     components/spectator.h
     components/statboard.cpp
     components/statboard.h
+    components/tclient/aclient_assets_editor.cpp
     components/tclient/aclient_inputs.cpp
     components/tclient/aclient_inputs.h
     components/tclient/bg_draw.cpp

@@ -48,6 +48,12 @@
 ### 🎮 Pestaña de Comandos en el Juego
 * Navega por todos los comandos y variables `ac_` directamente desde el cliente con interfaz de tarjetas explicativas, atajos y barra de desplazamiento integrada.
 
+### 🎨 Editor Integrado de Game Assets
+* **Edición y Composición en Vivo:** Combina 2 assets distintos (`Entities`, `Game`, `HUD`, `Particles`, `Emoticons`, `Extras`) directamente desde la interfaz del juego sin necesidad de programas de diseño externos.
+* **Lienzo Dual Donante / Resultado:** Explora tus assets instalados y arrastra componentes (armas, tiles, iconos, partículas) de izquierda a derecha con reescalado bilineal automático para resoluciones mixtas (HD y estándar).
+* **Paleta de Colorización y Modos de Fusión:** Modifica el color de cualquier sprite individual con barras HSLA, slider de opacidad y 4 modos de mezcla (`TeeLike`, `Screen`, `Multiply`, `Overlay`).
+* **Exportación Inmediata a PNG:** Guarda tus creaciones directamente en `%appdata%\DDNet\assets\...` (`ac_asset`), quedando listas para equipar y jugar de inmediato sin reiniciar.
+
 ### 🎯 Herramienta de Práctica Rápida (Fast Practice)
 * Alterna el modo de práctica instantáneamente con un solo bind (`ac_fast_practice_toggle`).
 
