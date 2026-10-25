@@ -83,6 +83,8 @@ public:
 		IGraphics::CTextureHandle m_RenderTexture;
 
 		char m_aName[50];
+		bool m_Deletable = false;
+		CButtonContainer m_DeleteButtonId;
 
 		bool operator<(const SCustomItem &Other) const { return str_comp(m_aName, Other.m_aName) < 0; }
 	};
@@ -1016,5 +1018,15 @@ private:
 	void AssetsEditorOpenColorPopup(int SlotIndex, float X, float Y);
 	void AssetsEditorClearSlotColor(int SlotIndex);
 	static CUi::EPopupMenuFunctionResult AssetsEditorPopupColorEditor(void *pContext, CUIRect View, bool Active);
+
+	// AClient: custom assets deletion
+	bool CanDeleteCustomAsset(int Tab, const char *pName) const;
+	bool DeleteCustomAsset(int Tab, const char *pName);
+	void RemoveCustomAssetFromList(int Tab, const char *pName);
+	void MarkCustomAssetsDeletable(int Tab);
+	void PopupConfirmDeleteAsset();
+
+	char m_aDeleteAssetName[128] = {};
+	int m_DeleteAssetTab = -1;
 };
 #endif
