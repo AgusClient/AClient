@@ -165,9 +165,12 @@ public:
 	bool m_Active;
 	IGraphics::CTextureHandle m_aTextures[NUM_ICONS];
 	SRowAnimState m_aRowAnim[MAX_CLIENTS];
+	bool m_HistoryNeedsSave = false;
+	int m_LastStatsTick = -1;
 
 	void OnInit() override;
 	void OnReset() override;
+	void OnShutdown() override;
 	void OnRender() override;
 	void OnMessage(int MsgType, void *pRawMsg) override;
 	void OnConsoleInit() override;

@@ -84,8 +84,23 @@ void CRaceStats::OnConsoleInit()
 	Console()->Register("tc_clear_racestats_history", "", CFGFLAG_CLIENT, ConClearRaceStatsHistory, this, "Clear saved RaceStats history (alias)");
 }
 
+void CRaceStats::OnShutdown()
+{
+	if(m_HistoryNeedsSave)
+	{
+		SaveHistoryToFile();
+		m_HistoryNeedsSave = false;
+	}
+}
+
 void CRaceStats::OnReset()
 {
+	if(m_HistoryNeedsSave)
+	{
+		SaveHistoryToFile();
+		m_HistoryNeedsSave = false;
+	}
+
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
 		m_aPlayerStats[i].Reset();
@@ -95,6 +110,7 @@ void CRaceStats::OnReset()
 	m_LastLocalTeam = -1;
 	m_RunStartTick = 0;
 	m_Active = false;
+	m_LastStatsTick = -1;
 }
 
 bool CRaceStats::HasCurrentTeamActivity() const
@@ -226,13 +242,18 @@ bool CRaceStats::SaveCurrentStats(const char *pReason, bool RequireActivity, boo
 	if(m_vSavedEntries.size() > 100)
 		m_vSavedEntries.resize(100);
 
-	SaveHistoryToFile();
-
 	if(NotifyChat)
 	{
+		SaveHistoryToFile();
+		m_HistoryNeedsSave = false;
+
 		char aMsg[128];
 		str_format(aMsg, sizeof(aMsg), "RaceStats guardadas! (%s - Run: %s)", Entry.m_aMapName, Entry.m_aRunTime);
 		GameClient()->m_Chat.Echo(aMsg);
+	}
+	else
+	{
+		m_HistoryNeedsSave = true;
 	}
 
 	return true;
@@ -244,12 +265,14 @@ void CRaceStats::DeleteSavedEntry(int Index)
 		return;
 	m_vSavedEntries.erase(m_vSavedEntries.begin() + Index);
 	SaveHistoryToFile();
+	m_HistoryNeedsSave = false;
 }
 
 void CRaceStats::ClearSavedHistory()
 {
 	m_vSavedEntries.clear();
 	SaveHistoryToFile();
+	m_HistoryNeedsSave = false;
 }
 
 void CRaceStats::SaveHistoryToFile()
@@ -489,155 +512,161 @@ void CRaceStats::OnRender()
 	}
 	m_LastLocalTeam = CurrentTeam;
 
-	// Detección de Freezes y Saves
-	int TeamActivePlayers = 0;
-	int TeamUnfrozenPlayers = 0;
-	int LastUnfrozenCID = -1;
-
-	// FASE 1: Registro global de ataques de martillo (con soporte para predicción local)
-	for(int i = 0; i < MAX_CLIENTS; i++)
+	// Detección sincronizada por tick de juego (evita sobrecarga y deriva de FPS)
+	const bool IsNewTick = (CurrentTick != m_LastStatsTick);
+	if(IsNewTick)
 	{
-		if(!GameClient()->m_Snap.m_apPlayerInfos[i] || !GameClient()->m_Snap.m_aCharacters[i].m_Active)
-			continue;
+		const int ElapsedTicks = (m_LastStatsTick > 0 && CurrentTick > m_LastStatsTick) ? std::min(CurrentTick - m_LastStatsTick, 25) : 1;
+		m_LastStatsTick = CurrentTick;
 
-		const auto &Char = GameClient()->m_Snap.m_aCharacters[i];
-		bool IsLocal = (i == LocalClientId);
+		int TeamActivePlayers = 0;
+		int TeamUnfrozenPlayers = 0;
+		int LastUnfrozenCID = -1;
 
-		bool IsHammer = (Char.m_Cur.m_Weapon == WEAPON_HAMMER);
-		int CurAttackTick = Char.m_Cur.m_AttackTick;
-
-		if(IsLocal)
+		// FASE 1: Registro global de ataques de martillo (con soporte para predicción local del atacante)
+		for(int i = 0; i < MAX_CLIENTS; i++)
 		{
-			if(GameClient()->m_aClients[i].m_Predicted.m_ActiveWeapon == WEAPON_HAMMER ||
-			   GameClient()->m_aClients[i].m_RenderCur.m_Weapon == WEAPON_HAMMER)
+			if(!GameClient()->m_Snap.m_apPlayerInfos[i] || !GameClient()->m_Snap.m_aCharacters[i].m_Active)
+				continue;
+
+			const auto &Char = GameClient()->m_Snap.m_aCharacters[i];
+			bool IsLocal = (i == LocalClientId);
+
+			bool IsHammer = (Char.m_Cur.m_Weapon == WEAPON_HAMMER);
+			int CurAttackTick = Char.m_Cur.m_AttackTick;
+
+			if(IsLocal)
 			{
-				IsHammer = true;
-			}
-			if(GameClient()->m_aClients[i].m_RenderCur.m_AttackTick > CurAttackTick)
-			{
-				CurAttackTick = GameClient()->m_aClients[i].m_RenderCur.m_AttackTick;
-			}
-		}
-
-		if(IsHammer && (CurAttackTick != m_aPlayerStats[i].m_LastAttackTick))
-		{
-			m_aPlayerStats[i].m_LastAttackTick = CurAttackTick;
-			m_aPlayerStats[i].m_LastHammerTick = CurrentTick;
-			m_aPlayerStats[i].m_LastHammerPos = IsLocal ? GameClient()->m_LocalCharacterPos : vec2(Char.m_Cur.m_X, Char.m_Cur.m_Y);
-		}
-	}
-
-	// FASE 2: Métricas por jugador y resolución de Saves por descongelación
-	for(int i = 0; i < MAX_CLIENTS; i++)
-	{
-		if(!GameClient()->m_Snap.m_apPlayerInfos[i] || !GameClient()->m_Snap.m_aCharacters[i].m_Active)
-		{
-			m_aPlayerStats[i].m_WasFrozen = false;
-			continue;
-		}
-
-		const auto &ClientData = GameClient()->m_aClients[i];
-		const auto &Char = GameClient()->m_Snap.m_aCharacters[i];
-		bool IsLocal = (i == LocalClientId);
-
-		bool IsFrozen = (ClientData.m_FreezeEnd != 0 || ClientData.m_DeepFrozen || ClientData.m_LiveFrozen);
-		if(IsLocal)
-			IsFrozen = IsFrozen || (ClientData.m_Predicted.m_FreezeEnd != 0 || ClientData.m_Predicted.m_LiveFrozen);
-
-		if(GameClient()->m_Teams.Team(i) == CurrentTeam)
-		{
-			TeamActivePlayers++;
-			if(!IsFrozen)
-			{
-				TeamUnfrozenPlayers++;
-				LastUnfrozenCID = i;
-			}
-		}
-
-		// Seguimiento de tiempo congelado
-		if(IsFrozen)
-		{
-			m_aPlayerStats[i].m_FrozenTicks++;
-		}
-
-		// Seguimiento de hook accuracy
-		int CurHookState = Char.m_Cur.m_HookState;
-		if(CurHookState == HOOK_FLYING && m_aPlayerStats[i].m_LastHookState != HOOK_FLYING && m_aPlayerStats[i].m_LastHookState != HOOK_GRABBED)
-		{
-			m_aPlayerStats[i].m_HooksThrown++;
-		}
-		if(CurHookState == HOOK_GRABBED && Char.m_Cur.m_HookedPlayer >= 0 && Char.m_Cur.m_HookedPlayer < MAX_CLIENTS && m_aPlayerStats[i].m_LastHookState != HOOK_GRABBED)
-		{
-			m_aPlayerStats[i].m_HooksHit++;
-		}
-		m_aPlayerStats[i].m_LastHookState = CurHookState;
-
-		// Transición: Entró en congelación
-		if(IsFrozen && !m_aPlayerStats[i].m_WasFrozen)
-		{
-			m_aPlayerStats[i].m_Freezes++;
-			m_aPlayerStats[i].m_LastFreezeTick = CurrentTick;
-		}
-
-		// Transición: Se descongeló -> Comprobar si un compañero lo salvó con martillo
-		if(!IsFrozen && m_aPlayerStats[i].m_WasFrozen)
-		{
-			vec2 VictimPos = IsLocal ? GameClient()->m_LocalCharacterPos : vec2(Char.m_Cur.m_X, Char.m_Cur.m_Y);
-			int Team = GameClient()->m_Teams.Team(i);
-
-			int SaverCID = -1;
-			float BestDist = HAMMER_MAX_DIST;
-
-			for(int j = 0; j < MAX_CLIENTS; j++)
-			{
-				if(j == i || !GameClient()->m_Snap.m_apPlayerInfos[j] || !GameClient()->m_Snap.m_aCharacters[j].m_Active)
-					continue;
-
-				if(GameClient()->m_Teams.Team(j) != Team)
-					continue;
-
-				int TickDiff = std::abs(CurrentTick - m_aPlayerStats[j].m_LastHammerTick);
-				if(TickDiff <= 25)
+				if(GameClient()->m_aClients[i].m_Predicted.m_ActiveWeapon == WEAPON_HAMMER ||
+				   GameClient()->m_aClients[i].m_RenderCur.m_Weapon == WEAPON_HAMMER)
 				{
-					vec2 AttackerPos = (j == LocalClientId) ? GameClient()->m_LocalCharacterPos : vec2(GameClient()->m_Snap.m_aCharacters[j].m_Cur.m_X, GameClient()->m_Snap.m_aCharacters[j].m_Cur.m_Y);
-					float DistCurrent = distance(VictimPos, AttackerPos);
-					float DistAtHit = distance(VictimPos, m_aPlayerStats[j].m_LastHammerPos);
-					float Dist = std::min(DistCurrent, DistAtHit);
-					if(Dist <= BestDist)
-					{
-						BestDist = Dist;
-						SaverCID = j;
-					}
+					IsHammer = true;
+				}
+				if(GameClient()->m_aClients[i].m_RenderCur.m_AttackTick > CurAttackTick)
+				{
+					CurAttackTick = GameClient()->m_aClients[i].m_RenderCur.m_AttackTick;
 				}
 			}
 
-			if(SaverCID != -1)
+			if(IsHammer && (CurAttackTick != m_aPlayerStats[i].m_LastAttackTick))
 			{
-				m_aPlayerStats[SaverCID].m_Saves++;
+				m_aPlayerStats[i].m_LastAttackTick = CurAttackTick;
+				m_aPlayerStats[i].m_LastHammerTick = CurrentTick;
+				m_aPlayerStats[i].m_LastHammerPos = IsLocal ? GameClient()->m_LocalCharacterPos : vec2(Char.m_Cur.m_X, Char.m_Cur.m_Y);
 			}
 		}
 
-		m_aPlayerStats[i].m_WasFrozen = IsFrozen;
-	}
-
-	// Detección estabilizada de Lasts (requiere al menos 15 ticks continuos como único descongelado)
-	if(TeamActivePlayers >= 2 && TeamUnfrozenPlayers == 1 && LastUnfrozenCID != -1)
-	{
-		m_aPlayerStats[LastUnfrozenCID].m_SoleSurvivorTicks++;
-		if(m_aPlayerStats[LastUnfrozenCID].m_SoleSurvivorTicks >= 15 && !m_aPlayerStats[LastUnfrozenCID].m_WasSoleSurvivor)
-		{
-			m_aPlayerStats[LastUnfrozenCID].m_Lasts++;
-			m_aPlayerStats[LastUnfrozenCID].m_WasSoleSurvivor = true;
-		}
-	}
-	else
-	{
+		// FASE 2: Métricas por jugador y resolución de Saves por descongelación
 		for(int i = 0; i < MAX_CLIENTS; i++)
 		{
+			if(!GameClient()->m_Snap.m_apPlayerInfos[i] || !GameClient()->m_Snap.m_aCharacters[i].m_Active)
+			{
+				m_aPlayerStats[i].m_WasFrozen = false;
+				continue;
+			}
+
+			const auto &ClientData = GameClient()->m_aClients[i];
+			const auto &Char = GameClient()->m_Snap.m_aCharacters[i];
+			bool IsLocal = (i == LocalClientId);
+
+			// Usar el estado real confirmado para evitar parpadeos y desincronizaciones de predicción
+			bool IsFrozen = (ClientData.m_FreezeEnd != 0 || ClientData.m_DeepFrozen || ClientData.m_LiveFrozen);
+
 			if(GameClient()->m_Teams.Team(i) == CurrentTeam)
 			{
-				m_aPlayerStats[i].m_SoleSurvivorTicks = 0;
-				m_aPlayerStats[i].m_WasSoleSurvivor = false;
+				TeamActivePlayers++;
+				if(!IsFrozen)
+				{
+					TeamUnfrozenPlayers++;
+					LastUnfrozenCID = i;
+				}
+			}
+
+			// Seguimiento exacto de tiempo congelado por ticks de juego
+			if(IsFrozen)
+			{
+				m_aPlayerStats[i].m_FrozenTicks += ElapsedTicks;
+			}
+
+			// Seguimiento de hook accuracy
+			int CurHookState = Char.m_Cur.m_HookState;
+			if(CurHookState == HOOK_FLYING && m_aPlayerStats[i].m_LastHookState != HOOK_FLYING && m_aPlayerStats[i].m_LastHookState != HOOK_GRABBED)
+			{
+				m_aPlayerStats[i].m_HooksThrown++;
+			}
+			if(CurHookState == HOOK_GRABBED && Char.m_Cur.m_HookedPlayer >= 0 && Char.m_Cur.m_HookedPlayer < MAX_CLIENTS && m_aPlayerStats[i].m_LastHookState != HOOK_GRABBED)
+			{
+				m_aPlayerStats[i].m_HooksHit++;
+			}
+			m_aPlayerStats[i].m_LastHookState = CurHookState;
+
+			// Transición: Entró en congelación
+			if(IsFrozen && !m_aPlayerStats[i].m_WasFrozen)
+			{
+				m_aPlayerStats[i].m_Freezes++;
+				m_aPlayerStats[i].m_LastFreezeTick = CurrentTick;
+			}
+
+			// Transición: Se descongeló -> Comprobar si un compañero lo salvó con martillo
+			if(!IsFrozen && m_aPlayerStats[i].m_WasFrozen)
+			{
+				vec2 VictimPos = IsLocal ? GameClient()->m_LocalCharacterPos : vec2(Char.m_Cur.m_X, Char.m_Cur.m_Y);
+				int Team = GameClient()->m_Teams.Team(i);
+
+				int SaverCID = -1;
+				float BestDist = HAMMER_MAX_DIST;
+
+				for(int j = 0; j < MAX_CLIENTS; j++)
+				{
+					if(j == i || !GameClient()->m_Snap.m_apPlayerInfos[j] || !GameClient()->m_Snap.m_aCharacters[j].m_Active)
+						continue;
+
+					if(GameClient()->m_Teams.Team(j) != Team)
+						continue;
+
+					int TickDiff = std::abs(CurrentTick - m_aPlayerStats[j].m_LastHammerTick);
+					if(TickDiff <= 25)
+					{
+						vec2 AttackerPos = (j == LocalClientId) ? GameClient()->m_LocalCharacterPos : vec2(GameClient()->m_Snap.m_aCharacters[j].m_Cur.m_X, GameClient()->m_Snap.m_aCharacters[j].m_Cur.m_Y);
+						float DistCurrent = distance(VictimPos, AttackerPos);
+						float DistAtHit = distance(VictimPos, m_aPlayerStats[j].m_LastHammerPos);
+						float Dist = std::min(DistCurrent, DistAtHit);
+						if(Dist <= BestDist)
+						{
+							BestDist = Dist;
+							SaverCID = j;
+						}
+					}
+				}
+
+				if(SaverCID != -1)
+				{
+					m_aPlayerStats[SaverCID].m_Saves++;
+				}
+			}
+
+			m_aPlayerStats[i].m_WasFrozen = IsFrozen;
+		}
+
+		// Detección estabilizada de Lasts (requiere al menos 15 ticks reales como único descongelado)
+		if(TeamActivePlayers >= 2 && TeamUnfrozenPlayers == 1 && LastUnfrozenCID != -1)
+		{
+			m_aPlayerStats[LastUnfrozenCID].m_SoleSurvivorTicks += ElapsedTicks;
+			if(m_aPlayerStats[LastUnfrozenCID].m_SoleSurvivorTicks >= 15 && !m_aPlayerStats[LastUnfrozenCID].m_WasSoleSurvivor)
+			{
+				m_aPlayerStats[LastUnfrozenCID].m_Lasts++;
+				m_aPlayerStats[LastUnfrozenCID].m_WasSoleSurvivor = true;
+			}
+		}
+		else
+		{
+			for(int i = 0; i < MAX_CLIENTS; i++)
+			{
+				if(GameClient()->m_Teams.Team(i) == CurrentTeam)
+				{
+					m_aPlayerStats[i].m_SoleSurvivorTicks = 0;
+					m_aPlayerStats[i].m_WasSoleSurvivor = false;
+				}
 			}
 		}
 	}
@@ -693,10 +722,11 @@ void CRaceStats::RenderMiniStatboard()
 		int m_ClientId;
 		bool m_IsLocal;
 	};
-	std::vector<SPlayerEntry> vPlayers;
+	SPlayerEntry aPlayers[MAX_CLIENTS];
+	int NumPlayers = 0;
 
 	if(GameClient()->m_Snap.m_apPlayerInfos[LocalClientId])
-		vPlayers.push_back({LocalClientId, true});
+		aPlayers[NumPlayers++] = {LocalClientId, true};
 
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
@@ -704,14 +734,14 @@ void CRaceStats::RenderMiniStatboard()
 			continue;
 		if(LocalTeam > 0 && GameClient()->m_Teams.Team(i) != LocalTeam)
 			continue;
-		vPlayers.push_back({i, false});
+		aPlayers[NumPlayers++] = {i, false};
 	}
 
-	if(vPlayers.empty())
+	if(NumPlayers == 0)
 		return;
 
 	// Ordenamiento en tiempo real por estadística seleccionada (ac_mini_statboard_sort)
-	std::sort(vPlayers.begin(), vPlayers.end(), [&](const SPlayerEntry &a, const SPlayerEntry &b) {
+	std::sort(aPlayers, aPlayers + NumPlayers, [&](const SPlayerEntry &a, const SPlayerEntry &b) {
 		int CidA = a.m_ClientId;
 		int CidB = b.m_ClientId;
 		const auto &StatA = m_aPlayerStats[CidA];
@@ -770,7 +800,7 @@ void CRaceStats::RenderMiniStatboard()
 		return CidA < CidB;
 	});
 
-	int TotalTeamPlayers = (int)vPlayers.size();
+	int TotalTeamPlayers = NumPlayers;
 	int MaxPlayers = std::clamp((int)g_Config.m_AcMiniStatboardMaxPlayers, 0, (int)MAX_CLIENTS);
 	int DisplayCount = std::min(TotalTeamPlayers, MaxPlayers);
 	bool HasMore = TotalTeamPlayers > DisplayCount;
@@ -779,7 +809,7 @@ void CRaceStats::RenderMiniStatboard()
 	float MaxFoundNameW = 25.0f * Scale;
 	for(int idx = 0; idx < DisplayCount; idx++)
 	{
-		int CID = vPlayers[idx].m_ClientId;
+		int CID = aPlayers[idx].m_ClientId;
 		float NameW = TextRender()->TextWidth(FontSize, GameClient()->m_aClients[CID].m_aName, -1, -1.0f);
 		if(NameW > MaxFoundNameW)
 			MaxFoundNameW = NameW;
@@ -898,7 +928,7 @@ void CRaceStats::RenderMiniStatboard()
 	// Actualizar interpolación de movimiento de cada jugador hacia su puesto objetivo
 	for(int idx = 0; idx < DisplayCount; idx++)
 	{
-		int CID = vPlayers[idx].m_ClientId;
+		int CID = aPlayers[idx].m_ClientId;
 		SRowAnimState &Anim = m_aRowAnim[CID];
 		float TargetY = BaseRowY + (float)idx * RowHeight;
 
@@ -946,8 +976,8 @@ void CRaceStats::RenderMiniStatboard()
 
 	for(int idx = 0; idx < DisplayCount; idx++)
 	{
-		int CID = vPlayers[idx].m_ClientId;
-		bool IsMe = vPlayers[idx].m_IsLocal;
+		int CID = aPlayers[idx].m_ClientId;
+		bool IsMe = aPlayers[idx].m_IsLocal;
 		SRowAnimState &Anim = m_aRowAnim[CID];
 		float CurrentRowY = (Anim.m_VisualY >= 0.0f) ? Anim.m_VisualY : (BaseRowY + (float)idx * RowHeight);
 

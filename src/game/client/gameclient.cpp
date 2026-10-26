@@ -2825,8 +2825,15 @@ void CGameClient::OnPredict()
 	if(m_FastPractice.Enabled() && m_FastPractice.OverridePredict())
 		return;
 	vec2 aBeforeRender[MAX_CLIENTS];
-	for(int i = 0; i < MAX_CLIENTS; i++)
-		aBeforeRender[i] = GetSmoothPos(i);
+	const bool NeedBeforeRender = g_Config.m_ClAntiPingSmooth && Predict() && AntiPingPlayers();
+	if(NeedBeforeRender)
+	{
+		for(int i = 0; i < MAX_CLIENTS; i++)
+		{
+			if(m_Snap.m_aCharacters[i].m_Active && i != m_Snap.m_LocalClientId && m_aLastActive[i])
+				aBeforeRender[i] = GetSmoothPos(i);
+		}
+	}
 
 	// init
 	bool Dummy = g_Config.m_ClDummy ^ m_IsDummySwapping;
@@ -4526,6 +4533,14 @@ void CGameClient::UpdateSpectatorCursor()
 
 void CGameClient::UpdateRenderedCharacters()
 {
+	const float FastInputOffsetTicks = AcInputs::EffectiveOffsetTicks(false);
+	const int FastInputTicks = AcInputs::PredictionTicks(FastInputOffsetTicks);
+	const bool FastInputOthers = AcInputs::AnyOthers();
+	const float FastInputOffsetTicksOthers = FastInputOthers ? AcInputs::EffectiveOffsetTicks(true) : 0.0f;
+	const int FastInputTicksOthers = FastInputOthers ? AcInputs::PredictionTicksOthers(FastInputOffsetTicksOthers) : 0;
+	const bool HasFastInput = FastInputTicks > 0;
+	const bool HasFastInputOthers = FastInputTicksOthers > 0;
+
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
 		if(!m_Snap.m_aCharacters[i].m_Active)
@@ -4559,14 +4574,6 @@ void CGameClient::UpdateRenderedCharacters()
 				vec2(m_aClients[i].m_RenderPrev.m_X, m_aClients[i].m_RenderPrev.m_Y),
 				vec2(m_aClients[i].m_RenderCur.m_X, m_aClients[i].m_RenderCur.m_Y),
 				m_aClients[i].m_IsPredicted ? Client()->PredIntraGameTick(g_Config.m_ClDummy) : Client()->IntraGameTick(g_Config.m_ClDummy));
-
-			const float FastInputOffsetTicks = AcInputs::EffectiveOffsetTicks(false);
-			const int FastInputTicks = AcInputs::PredictionTicks(FastInputOffsetTicks);
-			const bool FastInputOthers = AcInputs::AnyOthers();
-			const float FastInputOffsetTicksOthers = FastInputOthers ? AcInputs::EffectiveOffsetTicks(true) : 0.0f;
-			const int FastInputTicksOthers = FastInputOthers ? AcInputs::PredictionTicksOthers(FastInputOffsetTicksOthers) : 0;
-			const bool HasFastInput = FastInputTicks > 0;
-			const bool HasFastInputOthers = FastInputTicksOthers > 0;
 
 			if(g_Config.m_TcRemoveAnti)
 				Pos = GetFreezePos(i);
@@ -4750,6 +4757,9 @@ void CGameClient::DetectStrongHook()
 
 vec2 CGameClient::GetSmoothPos(int ClientId)
 {
+	if(ClientId < 0 || ClientId >= MAX_CLIENTS)
+		return vec2(0.0f, 0.0f);
+
 	const bool IsLocal = ClientId == m_Snap.m_LocalClientId || (PredictDummy() && ClientId == m_aLocalIds[!g_Config.m_ClDummy]) || (m_FastPractice.Enabled() && m_FastPractice.IsPracticeParticipant(ClientId));
 	const float FastInputOffsetTicks = AcInputs::EffectiveOffsetTicks(!IsLocal);
 	const int FastInputTicks = IsLocal ? AcInputs::PredictionTicks(FastInputOffsetTicks) : AcInputs::PredictionTicksOthers(FastInputOffsetTicks);
@@ -4787,6 +4797,9 @@ vec2 CGameClient::GetSmoothPos(int ClientId)
 }
 vec2 CGameClient::GetFastInputPos(int ClientId)
 {
+	if(ClientId < 0 || ClientId >= MAX_CLIENTS)
+		return vec2(0.0f, 0.0f);
+
 	float PredIntraTick = Client()->PredIntraGameTick(g_Config.m_ClDummy);
 	int PredTick = Client()->PredGameTick(g_Config.m_ClDummy);
 
@@ -4810,6 +4823,9 @@ vec2 CGameClient::GetFastInputPos(int ClientId)
 }
 vec2 CGameClient::GetFreezePos(int ClientId)
 {
+	if(ClientId < 0 || ClientId >= MAX_CLIENTS)
+		return vec2(0.0f, 0.0f);
+
 	vec2 Pos = mix(m_aClients[ClientId].m_PrevPredicted.m_Pos, m_aClients[ClientId].m_Predicted.m_Pos, Client()->PredIntraGameTick(g_Config.m_ClDummy));
 	// int64_t Now = time_get();
 	CCharacter *pChar = m_PredictedWorld.GetCharacterById(m_Snap.m_LocalClientId);
