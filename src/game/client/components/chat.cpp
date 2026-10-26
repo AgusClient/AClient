@@ -774,6 +774,21 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 	if(ClientId == CLIENT_MSG && !g_Config.m_AcShowChatClient)
 		return;
 
+	// AClient: Filter start line messages
+	if(g_Config.m_AcHideStartMessages && ClientId == SERVER_MSG)
+	{
+		if((str_find(pLine, "Your team has fewer than") && str_find(pLine, "team rank won't count")) ||
+			(str_find(pLine, "Team ") && str_find(pLine, "started with")) ||
+			str_find(pLine, "You have to be in a team with other tees to start") ||
+			str_find(pLine, "Please join a team before you start") ||
+			str_find(pLine, "You can't start while loading/saving of team is in progress") ||
+			str_find(pLine, "has finished and didn't go through start yet") ||
+			str_find(pLine, "wants to start a new round, kill or walk to start"))
+		{
+			return;
+		}
+	}
+
 	// TClient
 	if(([&]() {
 		   if(ClientId == CLIENT_MSG || ClientId == SERVER_MSG)

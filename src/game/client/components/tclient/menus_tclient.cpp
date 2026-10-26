@@ -4250,6 +4250,8 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 
 	DoCheckboxWithHelp(&g_Config.m_AcHideOthersChatBubbles, TCLocalize("Hide typing bubbles of other players"), TCLocalize("Hides the 3-dots typing bubble of other players on your screen when they are typing."), &g_Config.m_AcHideOthersChatBubbles, &Column, LineSize);
 
+	DoCheckboxWithHelp(&g_Config.m_AcHideStartMessages, TCLocalize("Hide start line messages in chat"), TCLocalize("Hides team start warnings and team started notifications when touching the start line."), &g_Config.m_AcHideStartMessages, &Column, LineSize);
+
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	Column.HSplitTop(LineSize + 4.0f, &Button, &Column);
 	static CButtonContainer s_BtnTestEchoNow;
