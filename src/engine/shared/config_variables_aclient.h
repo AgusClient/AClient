@@ -12,6 +12,7 @@ MACRO_CONFIG_INT(AcShowChatClient, ac_show_chat_client, 1, 0, 1, CFGFLAG_CLIENT 
 MACRO_CONFIG_INT(AcSilentTyping, ac_silent_typing, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hide your own typing chat bubble (Silent Typing)")
 MACRO_CONFIG_INT(AcHideChatBubbles, ac_hide_chat_bubbles, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hide your own typing chat bubble (alias for ac_silent_typing)")
 MACRO_CONFIG_INT(AcHideOthersChatBubbles, ac_hide_others_chat_bubbles, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hide typing chat bubbles of other players on your screen")
+MACRO_CONFIG_INT(AcHideStartMessages, ac_hide_start_messages, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hide start line and team start warning messages in chat")
 
 // RaceStats (Mini Statboard)
 MACRO_CONFIG_INT(AcMiniStatboard, ac_mini_statboard, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show compact team stats in HUD")
