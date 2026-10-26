@@ -71,7 +71,7 @@ public:
 		DiscordCreateParamsSetDefault(&Params);
 
 		// Params.client_id = 752165779117441075; // DDNet
-		Params.client_id = 1325361453988970527; // TClient
+		Params.client_id = 1564295946521673828LL; // AClient
 		Params.flags = EDiscordCreateFlags::DiscordCreateFlags_NoRequireDiscord;
 		Params.event_data = this;
 		Params.activity_events = &m_ActivityEvents;
@@ -122,8 +122,8 @@ public:
 	{
 		mem_zero(&m_Activity, sizeof(DiscordActivity));
 
-		str_copy(m_Activity.assets.large_image, "tclient_logo");
-		str_copy(m_Activity.assets.large_text, "TClient logo");
+		str_copy(m_Activity.assets.large_image, "aclient_logo");
+		str_copy(m_Activity.assets.large_text, "AClient");
 		m_Activity.timestamps.start = time_timestamp();
 		str_copy(m_Activity.details, "Offline");
 		m_Activity.instance = false;
@@ -135,8 +135,8 @@ public:
 	{
 		mem_zero(&m_Activity, sizeof(DiscordActivity));
 
-		str_copy(m_Activity.assets.large_image, "tclient_logo");
-		str_copy(m_Activity.assets.large_text, "TClient logo");
+		str_copy(m_Activity.assets.large_image, "aclient_logo");
+		str_copy(m_Activity.assets.large_text, "AClient");
 		m_Activity.timestamps.start = time_timestamp();
 		str_copy(m_Activity.name, "Online");
 		m_Activity.instance = true;
