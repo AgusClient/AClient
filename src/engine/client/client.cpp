@@ -3041,6 +3041,8 @@ void CClient::Update()
 					(g_Config.m_AcInputs == AC_INPUTS_DELTA && g_Config.m_AcDeltaInputAmount > 0) ||
 					(g_Config.m_AcInputs == AC_INPUTS_F && g_Config.m_AcFInputAmount > 0) ||
 					(g_Config.m_AcInputs == AC_INPUTS_CLOUD && g_Config.m_AcCloudInputAmount > 0) ||
+					(g_Config.m_AcInputs == AC_INPUTS_ACLIENT && g_Config.m_AcAClientInputAmount > 0) ||
+					(g_Config.m_AcInputs == AC_INPUTS_AX30 && g_Config.m_AcAX30InputAmount > 0) ||
 					(g_Config.m_TcFastInput && g_Config.m_TcFastInputAmount > 0);
 				if(HasFastInput && GameClient()->CheckNewInput())
 				{

@@ -3679,8 +3679,13 @@ void CMenus::RenderSettingsAClientCommands(CUIRect MainView)
 	Ui()->DoLabel(&Label, TCLocalize("Fast Input & Prediction"), HeadlineFontSize, TEXTALIGN_ML);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
-	DrawCommandCard(Column, "ac_inputs [0-6]", TCLocalize("Prediction mode: 0=Off, 1=Fast, 2=Best, 3=Saiko, 4=Delta, 5=F, 6=Cloud."));
+	DrawCommandCard(Column, "ac_inputs [0-8]", TCLocalize("Prediction mode: 0=Off, 1=Fast, 2=Best, 3=Saiko, 4=Delta, 5=F, 6=Cloud, 7=AClient, 8=aX30."));
 	DrawCommandCard(Column, "cl_prediction_margin [-50 to 50]", TCLocalize("Prediction margin in ms (Anti-lag tool)."));
+	DrawCommandCard(Column, "ac_ax30_input_amount / others", TCLocalize("Prediction offset in 0.01 ticks for aX30 mode."));
+	DrawCommandCard(Column, "ac_ax30_adaptive_jitter [0|1]", TCLocalize("Real-time ping jitter tracking & dynamic ping compensation for aX30."));
+	DrawCommandCard(Column, "ac_ax30_collision_clamp [0|1]", TCLocalize("Collision & freeze boundary clamping to prevent rubberband snap."));
+	DrawCommandCard(Column, "ac_aclient_input_amount / others", TCLocalize("Prediction offset in 0.01 ticks for AClient mode."));
+	DrawCommandCard(Column, "ac_aclient_input_latency_comp [0-50]", TCLocalize("Latency compensation percentage for AClient mode."));
 	DrawCommandCard(Column, "ac_fast_input_amount / others", TCLocalize("Prediction offset in ms for Fast mode (self and others)."));
 	DrawCommandCard(Column, "ac_best_input_amount / others", TCLocalize("Prediction offset in 0.01 ticks for Best mode."));
 	DrawCommandCard(Column, "ac_best_input_smoothing [0-100]", TCLocalize("Input smoothing amount percentage for Best mode."));
@@ -3690,6 +3695,7 @@ void CMenus::RenderSettingsAClientCommands(CUIRect MainView)
 	DrawCommandCard(Column, "ac_f_input_amount / others", TCLocalize("Prediction offset in 0.001 ticks for F mode."));
 	DrawCommandCard(Column, "ac_cloud_input_amount / others", TCLocalize("Prediction offset in 0.01 ticks for Cloud mode."));
 	DrawCommandCard(Column, "ac_fast_input_repredict_hook [0|1]", TCLocalize("Repredict hook trajectory when direction changes."));
+	DrawCommandCard(Column, "ac_fast_input_others_only_frozen [0|1]", TCLocalize("Only apply fast input to other tees when they are frozen."));
 	s_SectionBoxesCmds.back().h = Column.y - s_SectionBoxesCmds.back().y;
 
 	// 4. Background Alerts (AFK)
@@ -3993,17 +3999,17 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	Column.HSplitTop(LineSize, &Button, &Column);
 	{
-		static CButtonContainer s_aInputButtons[7];
-		static const char *s_apInputNames[] = {"Off", "Fast", "Best", "Saiko", "Delta", "F", "Cloud"};
-		static const int s_aInputValues[] = {AC_INPUTS_OFF, AC_INPUTS_FAST, AC_INPUTS_BEST, AC_INPUTS_SAIKO, AC_INPUTS_DELTA, AC_INPUTS_F, AC_INPUTS_CLOUD};
+		static CButtonContainer s_aInputButtons[9];
+		static const char *s_apInputNames[] = {"Off", "AClient", "aX30", "Fast", "Best", "Saiko", "Delta", "F", "Cloud"};
+		static const int s_aInputValues[] = {AC_INPUTS_OFF, AC_INPUTS_ACLIENT, AC_INPUTS_AX30, AC_INPUTS_FAST, AC_INPUTS_BEST, AC_INPUTS_SAIKO, AC_INPUTS_DELTA, AC_INPUTS_F, AC_INPUTS_CLOUD};
 
 		CUIRect ButtonsRect = Button;
 		const float Spacing = 2.0f;
-		const float ModeButtonWidth = (ButtonsRect.w - Spacing * 6.0f) / 7.0f;
-		for(int i = 0; i < 7; ++i)
+		const float ModeButtonWidth = (ButtonsRect.w - Spacing * 8.0f) / 9.0f;
+		for(int i = 0; i < 9; ++i)
 		{
 			CUIRect ModeButton;
-			if(i < 6)
+			if(i < 8)
 			{
 				ButtonsRect.VSplitLeft(ModeButtonWidth, &ModeButton, &ButtonsRect);
 				ButtonsRect.VSplitLeft(Spacing, nullptr, &ButtonsRect);
@@ -4011,7 +4017,7 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 			else
 				ModeButton = ButtonsRect;
 
-			int Corners = (i == 0) ? IGraphics::CORNER_L : ((i == 6) ? IGraphics::CORNER_R : IGraphics::CORNER_NONE);
+			int Corners = (i == 0) ? IGraphics::CORNER_L : ((i == 8) ? IGraphics::CORNER_R : IGraphics::CORNER_NONE);
 
 			if(DoButton_Menu(&s_aInputButtons[i], TCLocalize(s_apInputNames[i]), g_Config.m_AcInputs == s_aInputValues[i], &ModeButton, BUTTONFLAG_LEFT, nullptr, Corners))
 			{
@@ -4021,7 +4027,109 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		}
 	}
 
-	if(g_Config.m_AcInputs == AC_INPUTS_FAST)
+	if(g_Config.m_AcInputs == AC_INPUTS_AX30)
+	{
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		DoTickAmountSlider(&g_Config.m_AcAX30InputAmount, &Button, TCLocalize("Prediction offset"), 0, 1000);
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcAX30AdaptiveJitter, TCLocalize("Adaptive ping jitter tracking (Auto anti-lag)"), &g_Config.m_AcAX30AdaptiveJitter, &Column, LineSize);
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcAX30CollisionClamp, TCLocalize("Collision & freeze boundary clamping (Anti-snap)"), &g_Config.m_AcAX30CollisionClamp, &Column, LineSize);
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Label, &Column);
+		Ui()->DoLabel(&Label, TCLocalize("Interpolation"), Label.h * CUi::ms_FontmodHeight * 0.8f, TEXTALIGN_ML);
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		{
+			static CButtonContainer s_aAX30InterpolationButtons[3];
+			static const char *s_apInterpolationNames[] = {"HE", "Linear (1:1)", "Cubic"};
+			static const int s_aInterpolationValues[] = {1, 2, 3};
+
+			CUIRect ButtonsRect = Button;
+			const float Spacing = 2.0f;
+			const float InterpWidth = (ButtonsRect.w - Spacing * 2.0f) / 3.0f;
+			for(int i = 0; i < 3; ++i)
+			{
+				CUIRect InterpButton;
+				if(i < 2)
+				{
+					ButtonsRect.VSplitLeft(InterpWidth, &InterpButton, &ButtonsRect);
+					ButtonsRect.VSplitLeft(Spacing, nullptr, &ButtonsRect);
+				}
+				else
+					InterpButton = ButtonsRect;
+
+				int Corners = (i == 0) ? IGraphics::CORNER_L : ((i == 2) ? IGraphics::CORNER_R : IGraphics::CORNER_NONE);
+				if(DoButton_Menu(&s_aAX30InterpolationButtons[i], TCLocalize(s_apInterpolationNames[i]), g_Config.m_AcAX30Interpolation == s_aInterpolationValues[i], &InterpButton, BUTTONFLAG_LEFT, nullptr, Corners))
+					g_Config.m_AcAX30Interpolation = s_aInterpolationValues[i];
+			}
+		}
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcAX30Others, TCLocalize("aX30 input others"), &g_Config.m_AcAX30Others, &Column, LineSize);
+		if(g_Config.m_AcAX30Others)
+		{
+			Column.HSplitTop(LineSize, &Button, &Column);
+			DoTickAmountSlider(&g_Config.m_AcAX30OthersAmount, &Button, TCLocalize("Others offset"), 0, 1000);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcFastInputOthersOnlyFrozen, TCLocalize("Only when frozen"), &g_Config.m_AcFastInputOthersOnlyFrozen, &Column, LineSize);
+		}
+	}
+	else if(g_Config.m_AcInputs == AC_INPUTS_ACLIENT)
+	{
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		DoTickAmountSlider(&g_Config.m_AcAClientInputAmount, &Button, TCLocalize("Prediction offset"), 0, 1000);
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		Ui()->DoScrollbarOption(&g_Config.m_AcAClientInputLatencyComp, &g_Config.m_AcAClientInputLatencyComp, &Button, TCLocalize("Latency compensation"), 0, 50, &CUi::ms_LinearScrollbarScale, 0, "%");
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Label, &Column);
+		Ui()->DoLabel(&Label, TCLocalize("Interpolation"), Label.h * CUi::ms_FontmodHeight * 0.8f, TEXTALIGN_ML);
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		{
+			static CButtonContainer s_aAClientInterpolationButtons[3];
+			static const char *s_apInterpolationNames[] = {"Linear", "Cubic", "Smooth"};
+			static const int s_aInterpolationValues[] = {1, 2, 3};
+
+			CUIRect ButtonsRect = Button;
+			const float Spacing = 2.0f;
+			const float InterpWidth = (ButtonsRect.w - Spacing * 2.0f) / 3.0f;
+			for(int i = 0; i < 3; ++i)
+			{
+				CUIRect InterpButton;
+				if(i < 2)
+				{
+					ButtonsRect.VSplitLeft(InterpWidth, &InterpButton, &ButtonsRect);
+					ButtonsRect.VSplitLeft(Spacing, nullptr, &ButtonsRect);
+				}
+				else
+					InterpButton = ButtonsRect;
+
+				int Corners = (i == 0) ? IGraphics::CORNER_L : ((i == 2) ? IGraphics::CORNER_R : IGraphics::CORNER_NONE);
+				if(DoButton_Menu(&s_aAClientInterpolationButtons[i], TCLocalize(s_apInterpolationNames[i]), g_Config.m_AcAClientInputInterpolation == s_aInterpolationValues[i], &InterpButton, BUTTONFLAG_LEFT, nullptr, Corners))
+					g_Config.m_AcAClientInputInterpolation = s_aInterpolationValues[i];
+			}
+		}
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcAClientInputOthers, TCLocalize("AClient input others"), &g_Config.m_AcAClientInputOthers, &Column, LineSize);
+		if(g_Config.m_AcAClientInputOthers)
+		{
+			Column.HSplitTop(LineSize, &Button, &Column);
+			DoTickAmountSlider(&g_Config.m_AcAClientInputOthersAmount, &Button, TCLocalize("Others offset"), 0, 1000);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcFastInputOthersOnlyFrozen, TCLocalize("Only when frozen"), &g_Config.m_AcFastInputOthersOnlyFrozen, &Column, LineSize);
+		}
+	}
+	else if(g_Config.m_AcInputs == AC_INPUTS_FAST)
 	{
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		Column.HSplitTop(LineSize, &Button, &Column);
@@ -4036,6 +4144,7 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 			Column.HSplitTop(LineSize, &Button, &Column);
 			DoSliderWithScaledValue(&g_Config.m_AcFastInputOthersAmount, &g_Config.m_AcFastInputOthersAmount, &Button, TCLocalize("Others offset"), 1, 40, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "ms");
 			g_Config.m_TcFastInputOthersAmount = g_Config.m_AcFastInputOthersAmount;
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcFastInputOthersOnlyFrozen, TCLocalize("Only when frozen"), &g_Config.m_AcFastInputOthersOnlyFrozen, &Column, LineSize);
 		}
 	}
 	else if(g_Config.m_AcInputs == AC_INPUTS_BEST)
@@ -4089,6 +4198,7 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		{
 			Column.HSplitTop(LineSize, &Button, &Column);
 			DoTickAmountSlider(&g_Config.m_AcBestInputOthersAmount, &Button, TCLocalize("Others offset"), 0, 1000);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcFastInputOthersOnlyFrozen, TCLocalize("Only when frozen"), &g_Config.m_AcFastInputOthersOnlyFrozen, &Column, LineSize);
 		}
 	}
 	else if(g_Config.m_AcInputs == AC_INPUTS_SAIKO)
@@ -4103,6 +4213,7 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		{
 			Column.HSplitTop(LineSize, &Button, &Column);
 			DoTickAmountSlider(&g_Config.m_AcSaikoInputOthersAmount, &Button, TCLocalize("Others offset"), 0, 500);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcFastInputOthersOnlyFrozen, TCLocalize("Only when frozen"), &g_Config.m_AcFastInputOthersOnlyFrozen, &Column, LineSize);
 		}
 	}
 	else if(g_Config.m_AcInputs == AC_INPUTS_DELTA)
@@ -4117,6 +4228,7 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		{
 			Column.HSplitTop(LineSize, &Button, &Column);
 			DoTickAmountSlider(&g_Config.m_AcDeltaInputOthersAmount, &Button, TCLocalize("Others offset"), 0, 500);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcFastInputOthersOnlyFrozen, TCLocalize("Only when frozen"), &g_Config.m_AcFastInputOthersOnlyFrozen, &Column, LineSize);
 		}
 	}
 	else if(g_Config.m_AcInputs == AC_INPUTS_F)
@@ -4131,6 +4243,7 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		{
 			Column.HSplitTop(LineSize, &Button, &Column);
 			DoTickAmountSlider(&g_Config.m_AcFInputOthersAmount, &Button, TCLocalize("Others offset"), 0, 5000, 1000);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcFastInputOthersOnlyFrozen, TCLocalize("Only when frozen"), &g_Config.m_AcFastInputOthersOnlyFrozen, &Column, LineSize);
 		}
 	}
 	else if(g_Config.m_AcInputs == AC_INPUTS_CLOUD)
@@ -4145,6 +4258,7 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		{
 			Column.HSplitTop(LineSize, &Button, &Column);
 			DoTickAmountSlider(&g_Config.m_AcCloudInputOthersAmount, &Button, TCLocalize("Others offset"), 0, 500);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcFastInputOthersOnlyFrozen, TCLocalize("Only when frozen"), &g_Config.m_AcFastInputOthersOnlyFrozen, &Column, LineSize);
 		}
 	}
 

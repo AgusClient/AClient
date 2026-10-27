@@ -46,7 +46,22 @@ MACRO_CONFIG_INT(AcNotifyFlash, ac_notify_flash, 1, 0, 1, CFGFLAG_CLIENT | CFGFL
 MACRO_CONFIG_INT(AcNotifyDesktop, ac_notify_desktop, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show desktop notification banner on background notification")
 
 // Fast Input Prediction Modes & Amounts
-MACRO_CONFIG_INT(AcInputs, ac_inputs, 0, 0, 6, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Input prediction mode (0 = off, 1 = fast, 2 = best, 3 = saiko, 4 = delta, 5 = f, 6 = cloud)")
+MACRO_CONFIG_INT(AcInputs, ac_inputs, 0, 0, 8, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Input prediction mode (0 = off, 1 = fast, 2 = best, 3 = saiko, 4 = delta, 5 = f, 6 = cloud, 7 = aclient, 8 = ax30)")
+
+// aX30 Mode (Advanced Hybrid: Dynamic Trajectory, Adaptive Jitter Comp, Collision Clamping)
+MACRO_CONFIG_INT(AcAX30InputAmount, ac_ax30_input_amount, 100, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aX30 input prediction amount in 0.01 ticks")
+MACRO_CONFIG_INT(AcAX30AdaptiveJitter, ac_ax30_adaptive_jitter, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aX30 real-time ping jitter tracking and dynamic latency compensation")
+MACRO_CONFIG_INT(AcAX30CollisionClamp, ac_ax30_collision_clamp, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aX30 collision and freeze boundary clamping to prevent rubberband snap")
+MACRO_CONFIG_INT(AcAX30Interpolation, ac_ax30_interpolation, 1, 1, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aX30 interpolation mode (1 = HE continuous, 2 = linear, 3 = cubic)")
+MACRO_CONFIG_INT(AcAX30Others, ac_ax30_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply aX30 input to other tees")
+MACRO_CONFIG_INT(AcAX30OthersAmount, ac_ax30_others_amount, 100, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aX30 input prediction amount for other tees in 0.01 ticks")
+
+// AClient Mode (Ultimate Fast Input: Best architecture without smoothing, sub-tick interpolation, latency comp)
+MACRO_CONFIG_INT(AcAClientInputAmount, ac_aclient_input_amount, 100, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "AClient input prediction amount in 0.01 ticks")
+MACRO_CONFIG_INT(AcAClientInputLatencyComp, ac_aclient_input_latency_comp, 0, 0, 50, CFGFLAG_CLIENT | CFGFLAG_SAVE, "AClient input latency compensation (0-50%)")
+MACRO_CONFIG_INT(AcAClientInputInterpolation, ac_aclient_input_interpolation, 1, 1, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "AClient input interpolation mode (1 = linear, 2 = cubic, 3 = smooth)")
+MACRO_CONFIG_INT(AcAClientInputOthers, ac_aclient_input_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply AClient input to other tees")
+MACRO_CONFIG_INT(AcAClientInputOthersAmount, ac_aclient_input_others_amount, 100, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "AClient input prediction amount for other tees in 0.01 ticks")
 
 // Fast Mode
 MACRO_CONFIG_INT(AcFastInputAmount, ac_fast_input_amount, 20, 1, 40, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Fast input prediction offset in ms")
@@ -83,3 +98,6 @@ MACRO_CONFIG_INT(AcCloudInputOthersAmount, ac_cloud_input_others_amount, 100, 0,
 
 // Repredict Hook
 MACRO_CONFIG_INT(AcFastInputRepredictHook, ac_fast_input_repredict_hook, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Repredict fast input hook when direction changes")
+
+// Fast Input Others Filter
+MACRO_CONFIG_INT(AcFastInputOthersOnlyFrozen, ac_fast_input_others_only_frozen, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Only apply fast input prediction to other tees when they are frozen")
