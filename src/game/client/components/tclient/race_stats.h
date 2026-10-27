@@ -2,6 +2,7 @@
 #define GAME_CLIENT_COMPONENTS_TCLIENT_RACE_STATS_H
 
 #include <game/client/component.h>
+#include <game/client/render.h>
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
 #include <generated/protocol.h>
@@ -164,9 +165,11 @@ public:
 	int m_RunStartTick;
 	bool m_Active;
 	IGraphics::CTextureHandle m_aTextures[NUM_ICONS];
+	IGraphics::CTextureHandle m_IconAtlasTexture;
 	SRowAnimState m_aRowAnim[MAX_CLIENTS];
 	bool m_HistoryNeedsSave = false;
 	int m_LastStatsTick = -1;
+	bool m_StatsDirty = true;
 
 	struct SCachedStatCol
 	{
@@ -174,6 +177,7 @@ public:
 		char m_aText[16];
 		float m_ColWidth;
 		float m_TextWidth;
+		float m_TextXOffset;
 		ColorRGBA m_Color;
 	};
 
@@ -185,6 +189,8 @@ public:
 		float m_NameWidth;
 		int m_NumCols;
 		SCachedStatCol m_aCols[NUM_ICONS];
+		CTeeRenderInfo m_TeeInfo;
+		bool m_HasTee = false;
 	};
 
 	std::vector<SCachedPlayerRow> m_vCachedRows;
