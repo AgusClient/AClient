@@ -1000,6 +1000,7 @@ public:
 	vec2 GetSmoothPos(int ClientId);
 	vec2 GetFreezePos(int ClientId);
 	vec2 GetFastInputPos(int ClientId);
+	bool IsPlayerFrozen(int ClientId) const;
 
 	int m_MultiViewTeam;
 	float m_MultiViewPersonalZoom;
