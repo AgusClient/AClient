@@ -103,6 +103,7 @@ void CMenusSettingsControls::OnInterfacesInit(CGameClient *pClient)
 		{EBindOptionGroup::MISCELLANEOUS, Localizable("Screenshot"), "screenshot"},
 		{EBindOptionGroup::MISCELLANEOUS, Localizable("Scoreboard"), "+scoreboard"},
 		{EBindOptionGroup::MISCELLANEOUS, Localizable("Scoreboard cursor"), "toggle_scoreboard_cursor"},
+		{EBindOptionGroup::MISCELLANEOUS, Localizable("Toggle Anti-Ping"), "toggle_antiping"},
 		{EBindOptionGroup::MISCELLANEOUS, Localizable("Statboard"), "+statboard"},
 		{EBindOptionGroup::MISCELLANEOUS, Localizable("Lock team"), "say /lock"},
 		{EBindOptionGroup::MISCELLANEOUS, Localizable("Show entities"), "toggle cl_overlay_entities 0 100"},

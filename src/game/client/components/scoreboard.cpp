@@ -1198,6 +1198,35 @@ const char *CScoreboard::GetTeamName(int Team) const
 		return nullptr;
 }
 
+void CScoreboard::SaveModReplay(const char *pAction, const char *pTargetName)
+{
+	char aCleanName[MAX_NAME_LENGTH];
+	str_copy(aCleanName, pTargetName, sizeof(aCleanName));
+	for(char &ch : aCleanName)
+	{
+		if(ch == '/' || ch == '\\' || ch == ':' || ch == '*' || ch == '?' || ch == '"' || ch == '<' || ch == '>' || ch == '|')
+			ch = '_';
+	}
+
+	char aTimestamp[32];
+	str_timestamp_format(aTimestamp, sizeof(aTimestamp), "%Y-%m-%d_%H-%M-%S");
+
+	char aReplayName[128];
+	str_format(aReplayName, sizeof(aReplayName), "mod_%s_%s_%s", pAction, aCleanName, aTimestamp);
+
+	if(!g_Config.m_ClReplays)
+	{
+		g_Config.m_ClReplays = 1;
+		Client()->DemoRecorder_UpdateReplayRecorder();
+	}
+
+	Client()->SaveReplay(180, aReplayName);
+
+	char aMsg[160];
+	str_format(aMsg, sizeof(aMsg), "Demo de moderación guardada (3 min): demos/replays/%s.demo", aReplayName);
+	GameClient()->m_Chat.Echo(aMsg);
+}
+
 void CScoreboard::CScoreboardPopupContext::Reset(int ClientId, bool IsSpectating, bool IsLocal)
 {
 	m_ClientId = ClientId;
@@ -1588,6 +1617,8 @@ CUi::EPopupMenuFunctionResult CScoreboard::CScoreboardPopupContext::Render(void 
 			else
 				str_format(aCmd, sizeof(aCmd), "kick %d", pPopupContext->m_ClientId);
 			pScoreboard->Client()->Rcon(aCmd);
+			if(g_Config.m_ClModRecordOnPunish)
+				pScoreboard->SaveModReplay("kick", Client.m_aName);
 			if(!pScoreboard->m_Active)
 				pScoreboard->LockMouse();
 			return CUi::POPUP_CLOSE_CURRENT;
@@ -1724,6 +1755,8 @@ CUi::EPopupMenuFunctionResult CScoreboard::CScoreboardPopupContext::Render(void 
 			else
 				str_format(aCmd, sizeof(aCmd), "ban %d %d", pPopupContext->m_ClientId, Mins);
 			pScoreboard->Client()->Rcon(aCmd);
+			if(g_Config.m_ClModRecordOnPunish)
+				pScoreboard->SaveModReplay("ban", Client.m_aName);
 			if(!pScoreboard->m_Active)
 				pScoreboard->LockMouse();
 			return CUi::POPUP_CLOSE_CURRENT;

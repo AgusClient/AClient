@@ -217,6 +217,8 @@ void CGameClient::OnConsoleInit()
 	// add basic console commands
 	Console()->Register("team", "i[team-id]", CFGFLAG_CLIENT, ConTeam, this, "Switch team");
 	Console()->Register("kill", "", CFGFLAG_CLIENT, ConKill, this, "Kill yourself to restart");
+	Console()->Register("toggle_antiping", "", CFGFLAG_CLIENT, ConToggleAntiPing, this, "Toggle antiping with on-screen notification");
+	Console()->Register("tc_toggle_antiping", "", CFGFLAG_CLIENT, ConToggleAntiPing, this, "Toggle antiping with on-screen notification (alias)");
 	Console()->Register("ready_change", "", CFGFLAG_CLIENT, ConReadyChange7, this, "Change ready state (0.7 only)");
 	Console()->Register("steal_skin", "?s[player]", CFGFLAG_CLIENT, ConStealSkin, this, "Copy skin and colors from another player");
 
@@ -3874,6 +3876,15 @@ void CGameClient::ConTeam(IConsole::IResult *pResult, void *pUserData)
 void CGameClient::ConKill(IConsole::IResult *pResult, void *pUserData)
 {
 	((CGameClient *)pUserData)->SendKill();
+}
+
+void CGameClient::ConToggleAntiPing(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameClient *pSelf = static_cast<CGameClient *>(pUserData);
+	g_Config.m_ClAntiPing ^= 1;
+	char aBuf[64];
+	str_format(aBuf, sizeof(aBuf), "Anti-Ping: %s", g_Config.m_ClAntiPing ? "ON" : "OFF");
+	pSelf->m_Chat.Echo(aBuf);
 }
 
 void CGameClient::ConReadyChange7(IConsole::IResult *pResult, void *pUserData)
