@@ -284,4 +284,7 @@ MACRO_CONFIG_INT(TcShowhudDummyPosition, tc_showhud_dummy_position, 0, 0, 1, CFG
 MACRO_CONFIG_INT(TcShowhudDummySpeed, tc_showhud_dummy_speed, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show ingame HUD (Dummy Speed)")
 MACRO_CONFIG_INT(TcShowhudDummyAngle, tc_showhud_dummy_angle, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show ingame HUD (Dummy Aim Angle)")
 
+// Moderation
+MACRO_CONFIG_INT(ClModRecordOnPunish, cl_mod_record_on_punish, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Automatically save a 3-minute replay when kicking or banning a player")
+
 

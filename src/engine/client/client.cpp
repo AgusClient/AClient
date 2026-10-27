@@ -4340,6 +4340,11 @@ void CClient::DemoRecorder_HandleAutoStart()
 		}
 	}
 
+	if(g_Config.m_ClModRecordOnPunish && !g_Config.m_ClReplays)
+	{
+		g_Config.m_ClReplays = 1;
+	}
+
 	DemoRecorder_UpdateReplayRecorder();
 }
 

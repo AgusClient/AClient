@@ -303,6 +303,7 @@ private:
 	char m_aDDNetVersionStr[64];
 	static void ConTeam(IConsole::IResult *pResult, void *pUserData);
 	static void ConKill(IConsole::IResult *pResult, void *pUserData);
+	static void ConToggleAntiPing(IConsole::IResult *pResult, void *pUserData);
 	static void ConReadyChange7(IConsole::IResult *pResult, void *pUserData);
 	static void ConStealSkin(IConsole::IResult *pResult, void *pUserData);
 

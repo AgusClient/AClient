@@ -139,6 +139,8 @@ class CScoreboard : public CComponent
 	void ResetTexts();
 
 public:
+	void SaveModReplay(const char *pAction, const char *pTargetName);
+
 	CScoreboard();
 	int Sizeof() const override { return sizeof(*this); }
 	void OnConsoleInit() override;
