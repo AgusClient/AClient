@@ -60,7 +60,10 @@ void CScoreboard::ConKeyScoreboard(IConsole::IResult *pResult, void *pUserData)
 
 	if(!pSelf->IsActive() && pSelf->m_MouseUnlocked)
 	{
-		pSelf->LockMouse();
+		if(!pSelf->Ui()->IsPopupOpen(&pSelf->m_ScoreboardPopupContext))
+		{
+			pSelf->LockMouse();
+		}
 	}
 }
 
@@ -150,7 +153,7 @@ void CScoreboard::OnRelease()
 {
 	m_Active = false;
 
-	if(m_MouseUnlocked)
+	if(m_MouseUnlocked && !Ui()->IsPopupOpen(&m_ScoreboardPopupContext))
 	{
 		LockMouse();
 	}
@@ -169,13 +172,30 @@ bool CScoreboard::OnCursorMove(float x, float y, IInput::ECursorType CursorType)
 
 bool CScoreboard::OnInput(const IInput::CEvent &Event)
 {
-	if(m_MouseUnlocked && Event.m_Key == KEY_ESCAPE && (Event.m_Flags & IInput::FLAG_PRESS))
+	if(m_MouseUnlocked)
 	{
-		LockMouse();
-		return true;
+		if(Event.m_Key == KEY_ESCAPE && (Event.m_Flags & IInput::FLAG_PRESS))
+		{
+			if(Ui()->IsPopupOpen(&m_ScoreboardPopupContext))
+			{
+				Ui()->ClosePopupMenu(&m_ScoreboardPopupContext);
+				if(!m_Active)
+					LockMouse();
+			}
+			else
+			{
+				LockMouse();
+			}
+			return true;
+		}
+
+		if(Ui()->OnInput(Event))
+			return true;
+
+		return IsActive();
 	}
 
-	return IsActive() && m_MouseUnlocked;
+	return false;
 }
 
 void CScoreboard::RenderTitle(CUIRect TitleLabel, int Team, const char *pTitle, float TitleFontSize)
@@ -439,13 +459,16 @@ void CScoreboard::RenderSpectators(CUIRect Spectators)
 			if(ButtonResult != 0)
 			{
 				m_ScoreboardPopupContext.m_pScoreboard = this;
-				m_ScoreboardPopupContext.m_ClientId = pInfo->m_ClientId;
-				m_ScoreboardPopupContext.m_IsLocal = GameClient()->m_aLocalIds[0] == pInfo->m_ClientId ||
-								     (Client()->DummyConnected() && GameClient()->m_aLocalIds[1] == pInfo->m_ClientId);
-				m_ScoreboardPopupContext.m_IsSpectating = true;
+				m_ScoreboardPopupContext.Reset(pInfo->m_ClientId, true,
+					GameClient()->m_aLocalIds[0] == pInfo->m_ClientId ||
+						(Client()->DummyConnected() && GameClient()->m_aLocalIds[1] == pInfo->m_ClientId));
 
-				Ui()->DoPopupMenu(&m_ScoreboardPopupContext, Ui()->MouseX(), Ui()->MouseY(), 115.0f,
-					m_ScoreboardPopupContext.m_IsLocal ? 30.0f : 81.5f, &m_ScoreboardPopupContext, CScoreboardPopupContext::Render);
+				const bool CanMod = Client()->RconAuthed() && !m_ScoreboardPopupContext.m_IsLocal;
+				const float Width = CanMod ? 160.0f : 115.0f;
+				const float Height = CanMod ? 195.0f : (m_ScoreboardPopupContext.m_IsLocal ? 30.0f : 81.5f);
+
+				Ui()->DoPopupMenu(&m_ScoreboardPopupContext, Ui()->MouseX(), Ui()->MouseY(), Width,
+					Height, &m_ScoreboardPopupContext, CScoreboardPopupContext::Render);
 			}
 
 			if(Ui()->HotItem() == &m_aPlayers[pInfo->m_ClientId].m_PlayerButtonId ||
@@ -704,13 +727,16 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 				if(ButtonResult != 0)
 				{
 					m_ScoreboardPopupContext.m_pScoreboard = this;
-					m_ScoreboardPopupContext.m_ClientId = pInfo->m_ClientId;
-					m_ScoreboardPopupContext.m_IsLocal = GameClient()->m_aLocalIds[0] == pInfo->m_ClientId ||
-									     (Client()->DummyConnected() && GameClient()->m_aLocalIds[1] == pInfo->m_ClientId);
-					m_ScoreboardPopupContext.m_IsSpectating = false;
+					m_ScoreboardPopupContext.Reset(pInfo->m_ClientId, false,
+						GameClient()->m_aLocalIds[0] == pInfo->m_ClientId ||
+							(Client()->DummyConnected() && GameClient()->m_aLocalIds[1] == pInfo->m_ClientId));
 
-					Ui()->DoPopupMenu(&m_ScoreboardPopupContext, Ui()->MouseX(), Ui()->MouseY(), 115.0f,
-						m_ScoreboardPopupContext.m_IsLocal ? 58.5f : 109.0f, &m_ScoreboardPopupContext, CScoreboardPopupContext::Render);
+					const bool CanMod = Client()->RconAuthed() && !m_ScoreboardPopupContext.m_IsLocal;
+					const float Width = CanMod ? 160.0f : 115.0f;
+					const float Height = CanMod ? 195.0f : (m_ScoreboardPopupContext.m_IsLocal ? 58.5f : 109.0f);
+
+					Ui()->DoPopupMenu(&m_ScoreboardPopupContext, Ui()->MouseX(), Ui()->MouseY(), Width,
+						Height, &m_ScoreboardPopupContext, CScoreboardPopupContext::Render);
 				}
 
 				if(Ui()->HotItem() == &Player.m_PlayerButtonId ||
@@ -1119,6 +1145,9 @@ bool CScoreboard::IsActive() const
 	if(GameClient()->m_Statboard.IsActive())
 		return false;
 
+	if(m_MouseUnlocked && Ui()->IsPopupOpen(&m_ScoreboardPopupContext))
+		return true;
+
 	if(m_Active)
 		return true;
 
@@ -1169,11 +1198,25 @@ const char *CScoreboard::GetTeamName(int Team) const
 		return nullptr;
 }
 
+void CScoreboard::CScoreboardPopupContext::Reset(int ClientId, bool IsSpectating, bool IsLocal)
+{
+	m_ClientId = ClientId;
+	m_IsSpectating = IsSpectating;
+	m_IsLocal = IsLocal;
+	m_SubMenu = SUBMENU_MAIN;
+	m_SecondsInput.SetInteger(3600);
+	m_MinutesInput.SetInteger(60);
+	m_ReasonInput.Clear();
+}
+
 CUi::EPopupMenuFunctionResult CScoreboard::CScoreboardPopupContext::Render(void *pContext, CUIRect View, bool Active)
 {
 	CScoreboardPopupContext *pPopupContext = static_cast<CScoreboardPopupContext *>(pContext);
 	CScoreboard *pScoreboard = pPopupContext->m_pScoreboard;
 	CUi *pUi = pPopupContext->m_pScoreboard->Ui();
+
+	if(pPopupContext->m_ClientId < 0 || pPopupContext->m_ClientId >= MAX_CLIENTS)
+		return CUi::POPUP_CLOSE_CURRENT;
 
 	CGameClient::CClientData &Client = pScoreboard->GameClient()->m_aClients[pPopupContext->m_ClientId];
 
@@ -1186,103 +1229,503 @@ CUi::EPopupMenuFunctionResult CScoreboard::CScoreboardPopupContext::Render(void 
 	CUIRect Label, Container, Action;
 	const float ItemSpacing = 2.0f;
 	const float FontSize = 12.0f;
-
-	View.HSplitTop(FontSize, &Label, &View);
-	pUi->DoLabel(&Label, Client.m_aName, FontSize, TEXTALIGN_ML);
-
-	if(!pPopupContext->m_IsLocal)
-	{
-		const int ActionsNum = 3;
-		const float ActionSize = 25.0f;
-		const float ActionSpacing = (View.w - (ActionsNum * ActionSize)) / 2;
-		int ActionCorners = IGraphics::CORNER_ALL;
-
-		View.HSplitTop(ItemSpacing * 2, nullptr, &View);
-		View.HSplitTop(ActionSize, &Container, &View);
-
-		Container.VSplitLeft(ActionSize, &Action, &Container);
-
-		ColorRGBA FriendActionColor = Client.m_Friend ? ColorRGBA(0.95f, 0.3f, 0.3f, 0.85f * pUi->ButtonColorMul(&pPopupContext->m_FriendAction)) :
-								ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f * pUi->ButtonColorMul(&pPopupContext->m_FriendAction));
-		const char *pFriendActionIcon = pUi->HotItem() == &pPopupContext->m_FriendAction && Client.m_Friend ? FontIcon::HEART_CRACK : FontIcon::HEART;
-		if(pUi->DoButton_FontIcon(&pPopupContext->m_FriendAction, pFriendActionIcon, Client.m_Friend, &Action, BUTTONFLAG_LEFT, ActionCorners, true, FriendActionColor))
-		{
-			if(Client.m_Friend)
-			{
-				pScoreboard->GameClient()->Friends()->RemoveFriend(Client.m_aName, Client.m_aClan);
-			}
-			else
-			{
-				pScoreboard->GameClient()->Friends()->AddFriend(Client.m_aName, Client.m_aClan);
-			}
-		}
-
-		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_FriendAction, &Action, Client.m_Friend ? Localize("Remove friend") : Localize("Add friend"));
-
-		Container.VSplitLeft(ActionSpacing, nullptr, &Container);
-		Container.VSplitLeft(ActionSize, &Action, &Container);
-
-		if(pUi->DoButton_FontIcon(&pPopupContext->m_MuteAction, FontIcon::BAN, Client.m_ChatIgnore, &Action, BUTTONFLAG_LEFT, ActionCorners))
-		{
-			Client.m_ChatIgnore ^= 1;
-		}
-		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_MuteAction, &Action, Client.m_ChatIgnore ? Localize("Unmute") : Localize("Mute"));
-
-		Container.VSplitLeft(ActionSpacing, nullptr, &Container);
-		Container.VSplitLeft(ActionSize, &Action, &Container);
-
-		const char *EmoticonActionIcon = Client.m_EmoticonIgnore ? FontIcon::COMMENT_SLASH : FontIcon::COMMENT;
-		if(pUi->DoButton_FontIcon(&pPopupContext->m_EmoticonAction, EmoticonActionIcon, Client.m_EmoticonIgnore, &Action, BUTTONFLAG_LEFT, ActionCorners))
-		{
-			Client.m_EmoticonIgnore ^= 1;
-		}
-		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_EmoticonAction, &Action, Client.m_EmoticonIgnore ? Localize("Unmute emoticons") : Localize("Mute emoticons"));
-	}
-
 	const float ButtonSize = 17.5f;
-	View.HSplitTop(ItemSpacing * 2, nullptr, &View);
-	View.HSplitTop(ButtonSize, &Container, &View);
 
-	bool IsSpectating = pScoreboard->GameClient()->m_Snap.m_SpecInfo.m_Active && pScoreboard->GameClient()->m_Snap.m_SpecInfo.m_SpectatorId == pPopupContext->m_ClientId;
-	ColorRGBA SpectateButtonColor = ColorRGBA(1.0f, 1.0f, 1.0f, (IsSpectating ? 0.25f : 0.5f) * pUi->ButtonColorMul(&pPopupContext->m_SpectateButton));
-	if(!pPopupContext->m_IsSpectating)
+	if(pPopupContext->m_SubMenu == SUBMENU_MAIN)
 	{
-		if(pUi->DoButton_PopupMenu(&pPopupContext->m_SpectateButton, Localize("Spectate"), &Container, FontSize, TEXTALIGN_MC, 0.0f, false, true, SpectateButtonColor))
+		char aHeader[128];
+		if(pScoreboard->Client()->RconAuthed() && !pPopupContext->m_IsLocal)
+			str_format(aHeader, sizeof(aHeader), "%s (ID: %d)", Client.m_aName, pPopupContext->m_ClientId);
+		else
+			str_copy(aHeader, Client.m_aName);
+
+		View.HSplitTop(FontSize, &Label, &View);
+		pUi->DoLabel(&Label, aHeader, FontSize, TEXTALIGN_ML);
+
+		if(!pPopupContext->m_IsLocal)
 		{
-			if(IsSpectating)
+			const int ActionsNum = 3;
+			const float ActionSize = 25.0f;
+			const float ActionSpacing = (View.w - (ActionsNum * ActionSize)) / 2;
+			int ActionCorners = IGraphics::CORNER_ALL;
+
+			View.HSplitTop(ItemSpacing * 2, nullptr, &View);
+			View.HSplitTop(ActionSize, &Container, &View);
+
+			Container.VSplitLeft(ActionSize, &Action, &Container);
+
+			ColorRGBA FriendActionColor = Client.m_Friend ? ColorRGBA(0.95f, 0.3f, 0.3f, 0.85f * pUi->ButtonColorMul(&pPopupContext->m_FriendAction)) :
+									ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f * pUi->ButtonColorMul(&pPopupContext->m_FriendAction));
+			const char *pFriendActionIcon = pUi->HotItem() == &pPopupContext->m_FriendAction && Client.m_Friend ? FontIcon::HEART_CRACK : FontIcon::HEART;
+			if(pUi->DoButton_FontIcon(&pPopupContext->m_FriendAction, pFriendActionIcon, Client.m_Friend, &Action, BUTTONFLAG_LEFT, ActionCorners, true, FriendActionColor))
 			{
-				pScoreboard->GameClient()->m_Spectator.Spectate(SPEC_FREEVIEW);
-				pScoreboard->Console()->ExecuteLine("say /spec", IConsole::CLIENT_ID_UNSPECIFIED);
-			}
-			else
-			{
-				if(pScoreboard->GameClient()->m_Snap.m_SpecInfo.m_Active)
+				if(Client.m_Friend)
 				{
-					pScoreboard->GameClient()->m_Spectator.Spectate(pPopupContext->m_ClientId);
+					pScoreboard->GameClient()->Friends()->RemoveFriend(Client.m_aName, Client.m_aClan);
 				}
 				else
 				{
-					// escape the name
-					char aEscapedCommand[2 * MAX_NAME_LENGTH + 32];
-					str_copy(aEscapedCommand, "say /spec \"");
-					char *pDst = aEscapedCommand + str_length(aEscapedCommand);
-					str_escape(&pDst, Client.m_aName, aEscapedCommand + sizeof(aEscapedCommand));
-					str_append(aEscapedCommand, "\"");
+					pScoreboard->GameClient()->Friends()->AddFriend(Client.m_aName, Client.m_aClan);
+				}
+			}
 
-					pScoreboard->Console()->ExecuteLine(aEscapedCommand, IConsole::CLIENT_ID_UNSPECIFIED);
+			pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_FriendAction, &Action, Client.m_Friend ? Localize("Remove friend") : Localize("Add friend"));
+
+			Container.VSplitLeft(ActionSpacing, nullptr, &Container);
+			Container.VSplitLeft(ActionSize, &Action, &Container);
+
+			if(pUi->DoButton_FontIcon(&pPopupContext->m_MuteAction, FontIcon::BAN, Client.m_ChatIgnore, &Action, BUTTONFLAG_LEFT, ActionCorners))
+			{
+				Client.m_ChatIgnore ^= 1;
+			}
+			pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_MuteAction, &Action, Client.m_ChatIgnore ? Localize("Unmute") : Localize("Mute"));
+
+			Container.VSplitLeft(ActionSpacing, nullptr, &Container);
+			Container.VSplitLeft(ActionSize, &Action, &Container);
+
+			const char *EmoticonActionIcon = Client.m_EmoticonIgnore ? FontIcon::COMMENT_SLASH : FontIcon::COMMENT;
+			if(pUi->DoButton_FontIcon(&pPopupContext->m_EmoticonAction, EmoticonActionIcon, Client.m_EmoticonIgnore, &Action, BUTTONFLAG_LEFT, ActionCorners))
+			{
+				Client.m_EmoticonIgnore ^= 1;
+			}
+			pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_EmoticonAction, &Action, Client.m_EmoticonIgnore ? Localize("Unmute emoticons") : Localize("Mute emoticons"));
+		}
+
+		View.HSplitTop(ItemSpacing * 2, nullptr, &View);
+		View.HSplitTop(ButtonSize, &Container, &View);
+
+		bool IsSpectating = pScoreboard->GameClient()->m_Snap.m_SpecInfo.m_Active && pScoreboard->GameClient()->m_Snap.m_SpecInfo.m_SpectatorId == pPopupContext->m_ClientId;
+		ColorRGBA SpectateButtonColor = ColorRGBA(1.0f, 1.0f, 1.0f, (IsSpectating ? 0.25f : 0.5f) * pUi->ButtonColorMul(&pPopupContext->m_SpectateButton));
+		if(!pPopupContext->m_IsSpectating)
+		{
+			if(pUi->DoButton_PopupMenu(&pPopupContext->m_SpectateButton, Localize("Spectate"), &Container, FontSize, TEXTALIGN_MC, 0.0f, false, true, SpectateButtonColor))
+			{
+				if(IsSpectating)
+				{
+					pScoreboard->GameClient()->m_Spectator.Spectate(SPEC_FREEVIEW);
+					pScoreboard->Console()->ExecuteLine("say /spec", IConsole::CLIENT_ID_UNSPECIFIED);
+				}
+				else
+				{
+					if(pScoreboard->GameClient()->m_Snap.m_SpecInfo.m_Active)
+					{
+						pScoreboard->GameClient()->m_Spectator.Spectate(pPopupContext->m_ClientId);
+					}
+					else
+					{
+						// escape the name
+						char aEscapedCommand[2 * MAX_NAME_LENGTH + 32];
+						str_copy(aEscapedCommand, "say /spec \"");
+						char *pDst = aEscapedCommand + str_length(aEscapedCommand);
+						str_escape(&pDst, Client.m_aName, aEscapedCommand + sizeof(aEscapedCommand));
+						str_append(aEscapedCommand, "\"");
+
+						pScoreboard->Console()->ExecuteLine(aEscapedCommand, IConsole::CLIENT_ID_UNSPECIFIED);
+					}
 				}
 			}
 		}
-	}
 
-	if(!pPopupContext->m_IsLocal)
-	{
-		View.HSplitTop(ItemSpacing * 2, nullptr, &View);
-		View.HSplitTop(ButtonSize, &Container, &View);
-		ColorRGBA StealButtonColor = ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f * pUi->ButtonColorMul(&pPopupContext->m_StealSkinButton));
-		if(pUi->DoButton_PopupMenu(&pPopupContext->m_StealSkinButton, TCLocalize("Steal Skin"), &Container, FontSize, TEXTALIGN_MC, 0.0f, false, true, StealButtonColor))
+		if(!pPopupContext->m_IsLocal)
 		{
-			pScoreboard->GameClient()->StealSkin(pPopupContext->m_ClientId);
+			View.HSplitTop(ItemSpacing * 2, nullptr, &View);
+			View.HSplitTop(ButtonSize, &Container, &View);
+			ColorRGBA StealButtonColor = ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f * pUi->ButtonColorMul(&pPopupContext->m_StealSkinButton));
+			if(pUi->DoButton_PopupMenu(&pPopupContext->m_StealSkinButton, TCLocalize("Steal Skin"), &Container, FontSize, TEXTALIGN_MC, 0.0f, false, true, StealButtonColor))
+			{
+				pScoreboard->GameClient()->StealSkin(pPopupContext->m_ClientId);
+				if(!pScoreboard->m_Active)
+					pScoreboard->LockMouse();
+				return CUi::POPUP_CLOSE_CURRENT;
+			}
+		}
+
+		// Moderation Section (RCON authed only)
+		if(pScoreboard->Client()->RconAuthed() && !pPopupContext->m_IsLocal)
+		{
+			View.HSplitTop(ItemSpacing * 2.5f, nullptr, &View);
+			View.HSplitTop(FontSize + 1.0f, &Label, &View);
+			Label.Draw(ColorRGBA(1.0f, 1.0f, 1.0f, 0.08f), IGraphics::CORNER_ALL, 3.0f);
+			pUi->DoLabel(&Label, TCLocalize("--- Moderación ---"), FontSize - 2.0f, TEXTALIGN_MC);
+
+			// Mute button
+			View.HSplitTop(ItemSpacing, nullptr, &View);
+			View.HSplitTop(ButtonSize, &Container, &View);
+			ColorRGBA MuteBtnColor = ColorRGBA(1.0f, 0.7f, 0.2f, 0.6f * pUi->ButtonColorMul(&pPopupContext->m_ModMuteButton));
+			if(pUi->DoButton_PopupMenu(&pPopupContext->m_ModMuteButton, TCLocalize("Mutear ID..."), &Container, FontSize, TEXTALIGN_MC, 0.0f, false, true, MuteBtnColor))
+			{
+				pPopupContext->m_SubMenu = SUBMENU_MUTE;
+			}
+
+			// Kick button
+			View.HSplitTop(ItemSpacing, nullptr, &View);
+			View.HSplitTop(ButtonSize, &Container, &View);
+			ColorRGBA KickBtnColor = ColorRGBA(0.95f, 0.45f, 0.2f, 0.6f * pUi->ButtonColorMul(&pPopupContext->m_ModKickButton));
+			if(pUi->DoButton_PopupMenu(&pPopupContext->m_ModKickButton, TCLocalize("Kickear..."), &Container, FontSize, TEXTALIGN_MC, 0.0f, false, true, KickBtnColor))
+			{
+				pPopupContext->m_SubMenu = SUBMENU_KICK;
+			}
+
+			// Ban button
+			View.HSplitTop(ItemSpacing, nullptr, &View);
+			View.HSplitTop(ButtonSize, &Container, &View);
+			ColorRGBA BanBtnColor = ColorRGBA(0.95f, 0.25f, 0.25f, 0.6f * pUi->ButtonColorMul(&pPopupContext->m_ModBanButton));
+			if(pUi->DoButton_PopupMenu(&pPopupContext->m_ModBanButton, TCLocalize("Banear..."), &Container, FontSize, TEXTALIGN_MC, 0.0f, false, true, BanBtnColor))
+			{
+				pPopupContext->m_SubMenu = SUBMENU_BAN;
+			}
+		}
+	}
+	else if(pPopupContext->m_SubMenu == SUBMENU_MUTE)
+	{
+		char aHeader[128];
+		str_format(aHeader, sizeof(aHeader), "%s: %s (ID: %d)", TCLocalize("Mute"), Client.m_aName, pPopupContext->m_ClientId);
+		View.HSplitTop(FontSize + 2.0f, &Label, &View);
+		pUi->DoLabel(&Label, aHeader, FontSize - 1.0f, TEXTALIGN_ML);
+
+		View.HSplitTop(ItemSpacing, nullptr, &View);
+
+		// Presets Row 1: 60s, 300s, 900s
+		View.HSplitTop(ButtonSize - 1.0f, &Container, &View);
+		const float W3 = (Container.w - ItemSpacing * 2.0f) / 3.0f;
+		CUIRect Btn;
+
+		Container.VSplitLeft(W3, &Btn, &Container);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aSecondsPreset[0], "60s", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_SecondsInput.SetInteger(60);
+		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_aSecondsPreset[0], &Btn, "1 min");
+
+		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
+		Container.VSplitLeft(W3, &Btn, &Container);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aSecondsPreset[1], "300s", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_SecondsInput.SetInteger(300);
+		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_aSecondsPreset[1], &Btn, "5 min");
+
+		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aSecondsPreset[2], "900s", &Container, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_SecondsInput.SetInteger(900);
+		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_aSecondsPreset[2], &Container, "15 min");
+
+		// Presets Row 2: 3600s, 14400s, 86400s
+		View.HSplitTop(ItemSpacing, nullptr, &View);
+		View.HSplitTop(ButtonSize - 1.0f, &Container, &View);
+
+		Container.VSplitLeft(W3, &Btn, &Container);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aSecondsPreset[3], "3600s", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_SecondsInput.SetInteger(3600);
+		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_aSecondsPreset[3], &Btn, "1 hour");
+
+		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
+		Container.VSplitLeft(W3, &Btn, &Container);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aSecondsPreset[4], "14400s", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_SecondsInput.SetInteger(14400);
+		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_aSecondsPreset[4], &Btn, "4 hours");
+
+		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aSecondsPreset[5], "86400s", &Container, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_SecondsInput.SetInteger(86400);
+		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_aSecondsPreset[5], &Container, "1 day");
+
+		// Seconds Input Box
+		View.HSplitTop(ItemSpacing * 2.0f, nullptr, &View);
+		View.HSplitTop(ButtonSize, &Container, &View);
+		CUIRect InputLabel, InputBox;
+		Container.VSplitLeft(38.0f, &InputLabel, &InputBox);
+		pUi->DoLabel(&InputLabel, TCLocalize("Seg:"), FontSize - 1.0f, TEXTALIGN_ML);
+		pUi->DoEditBox(&pPopupContext->m_SecondsInput, &InputBox, FontSize - 1.0f);
+
+		// Reason Presets
+		View.HSplitTop(ItemSpacing, nullptr, &View);
+		View.HSplitTop(ButtonSize - 1.0f, &Container, &View);
+		Container.VSplitLeft(W3, &Btn, &Container);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[0], "Spam", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_ReasonInput.Set("Spam");
+		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
+		Container.VSplitLeft(W3, &Btn, &Container);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[1], "Insultos", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_ReasonInput.Set("Insultos");
+		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[2], "Bloqueo", &Container, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_ReasonInput.Set("Bloqueo");
+
+		// Reason Input Box
+		View.HSplitTop(ItemSpacing, nullptr, &View);
+		View.HSplitTop(ButtonSize, &Container, &View);
+		Container.VSplitLeft(38.0f, &InputLabel, &InputBox);
+		pUi->DoLabel(&InputLabel, TCLocalize("Razón:"), FontSize - 1.0f, TEXTALIGN_ML);
+		pUi->DoEditBox(&pPopupContext->m_ReasonInput, &InputBox, FontSize - 1.0f);
+
+		// Action Buttons: [Atrás] [Unmute] [Mutear]
+		View.HSplitTop(ItemSpacing * 2.5f, nullptr, &View);
+		View.HSplitTop(ButtonSize + 1.0f, &Container, &View);
+		CUIRect BackBtn, UnmuteBtn, ConfirmBtn;
+		Container.VSplitLeft(38.0f, &BackBtn, &Container);
+		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
+		Container.VSplitLeft(52.0f, &UnmuteBtn, &ConfirmBtn);
+		ConfirmBtn.VSplitLeft(ItemSpacing, nullptr, &ConfirmBtn);
+
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_ModBack, TCLocalize("Atrás"), &BackBtn, FontSize - 2.0f, TEXTALIGN_MC))
+		{
+			pPopupContext->m_SubMenu = SUBMENU_MAIN;
+		}
+
+		ColorRGBA UnmuteColor = ColorRGBA(0.4f, 0.7f, 1.0f, 0.6f * pUi->ButtonColorMul(&pPopupContext->m_ModUnmute));
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_ModUnmute, TCLocalize("Unmute"), &UnmuteBtn, FontSize - 2.0f, TEXTALIGN_MC, 0.0f, false, true, UnmuteColor))
+		{
+			char aCmd[64];
+			str_format(aCmd, sizeof(aCmd), "unmuteid %d", pPopupContext->m_ClientId);
+			pScoreboard->Client()->Rcon(aCmd);
+			if(!pScoreboard->m_Active)
+				pScoreboard->LockMouse();
+			return CUi::POPUP_CLOSE_CURRENT;
+		}
+
+		ColorRGBA ConfirmColor = ColorRGBA(1.0f, 0.6f, 0.2f, 0.7f * pUi->ButtonColorMul(&pPopupContext->m_ModConfirm));
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_ModConfirm, TCLocalize("Mutear"), &ConfirmBtn, FontSize - 1.0f, TEXTALIGN_MC, 0.0f, false, true, ConfirmColor))
+		{
+			int Secs = pPopupContext->m_SecondsInput.GetInteger();
+			if(Secs <= 0)
+				Secs = 3600;
+			const char *pReason = pPopupContext->m_ReasonInput.GetString();
+			char aCmd[256];
+			if(pReason[0] != '\0')
+				str_format(aCmd, sizeof(aCmd), "muteid %d %d %s", pPopupContext->m_ClientId, Secs, pReason);
+			else
+				str_format(aCmd, sizeof(aCmd), "muteid %d %d", pPopupContext->m_ClientId, Secs);
+			pScoreboard->Client()->Rcon(aCmd);
+			if(!pScoreboard->m_Active)
+				pScoreboard->LockMouse();
+			return CUi::POPUP_CLOSE_CURRENT;
+		}
+	}
+	else if(pPopupContext->m_SubMenu == SUBMENU_KICK)
+	{
+		char aHeader[128];
+		str_format(aHeader, sizeof(aHeader), "%s: %s (ID: %d)", TCLocalize("Kick"), Client.m_aName, pPopupContext->m_ClientId);
+		View.HSplitTop(FontSize + 2.0f, &Label, &View);
+		pUi->DoLabel(&Label, aHeader, FontSize - 1.0f, TEXTALIGN_ML);
+
+		View.HSplitTop(ItemSpacing * 2.0f, nullptr, &View);
+
+		// Reason Presets
+		View.HSplitTop(ButtonSize - 1.0f, &Container, &View);
+		const float W3 = (Container.w - ItemSpacing * 2.0f) / 3.0f;
+		CUIRect Btn;
+		Container.VSplitLeft(W3, &Btn, &Container);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[0], "AFK", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_ReasonInput.Set("AFK");
+		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
+		Container.VSplitLeft(W3, &Btn, &Container);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[1], "Troll", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_ReasonInput.Set("Troll");
+		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[2], "Reglas", &Container, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_ReasonInput.Set("Reglas");
+
+		// Reason Input Box
+		View.HSplitTop(ItemSpacing * 2.0f, nullptr, &View);
+		View.HSplitTop(ButtonSize, &Container, &View);
+		CUIRect InputLabel, InputBox;
+		Container.VSplitLeft(38.0f, &InputLabel, &InputBox);
+		pUi->DoLabel(&InputLabel, TCLocalize("Razón:"), FontSize - 1.0f, TEXTALIGN_ML);
+		pUi->DoEditBox(&pPopupContext->m_ReasonInput, &InputBox, FontSize - 1.0f);
+
+		// Action buttons: [Atrás] [Continuar]
+		View.HSplitTop(ItemSpacing * 3.0f, nullptr, &View);
+		View.HSplitTop(ButtonSize + 2.0f, &Container, &View);
+		CUIRect BackBtn, NextBtn;
+		Container.VSplitLeft(50.0f, &BackBtn, &Container);
+		Container.VSplitLeft(ItemSpacing * 2.0f, nullptr, &NextBtn);
+
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_ModBack, TCLocalize("Atrás"), &BackBtn, FontSize - 1.0f, TEXTALIGN_MC))
+		{
+			pPopupContext->m_SubMenu = SUBMENU_MAIN;
+		}
+
+		ColorRGBA NextColor = ColorRGBA(0.95f, 0.45f, 0.2f, 0.7f * pUi->ButtonColorMul(&pPopupContext->m_ModConfirm));
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_ModConfirm, TCLocalize("Continuar"), &NextBtn, FontSize - 1.0f, TEXTALIGN_MC, 0.0f, false, true, NextColor))
+		{
+			pPopupContext->m_SubMenu = SUBMENU_CONFIRM_KICK;
+		}
+	}
+	else if(pPopupContext->m_SubMenu == SUBMENU_CONFIRM_KICK)
+	{
+		View.HSplitTop(FontSize + 4.0f, &Label, &View);
+		pScoreboard->TextRender()->TextColor(ColorRGBA(1.0f, 0.35f, 0.35f, 1.0f));
+		pUi->DoLabel(&Label, TCLocalize("¿Seguro de kickear?"), FontSize, TEXTALIGN_MC);
+		pScoreboard->TextRender()->TextColor(pScoreboard->TextRender()->DefaultTextColor());
+
+		View.HSplitTop(ItemSpacing * 2.0f, nullptr, &View);
+
+		char aTarget[128];
+		str_format(aTarget, sizeof(aTarget), "%s (ID: %d)", Client.m_aName, pPopupContext->m_ClientId);
+		View.HSplitTop(FontSize + 2.0f, &Label, &View);
+		pUi->DoLabel(&Label, aTarget, FontSize - 1.0f, TEXTALIGN_MC);
+
+		const char *pReason = pPopupContext->m_ReasonInput.GetString();
+		char aReasonStr[128];
+		str_format(aReasonStr, sizeof(aReasonStr), "%s: %s", TCLocalize("Razón"), pReason[0] != '\0' ? pReason : "(ninguna)");
+		View.HSplitTop(FontSize + 4.0f, &Label, &View);
+		pUi->DoLabel(&Label, aReasonStr, FontSize - 2.0f, TEXTALIGN_MC);
+
+		View.HSplitTop(ItemSpacing * 3.0f, nullptr, &View);
+
+		View.HSplitTop(ButtonSize + 4.0f, &Container, &View);
+		CUIRect CancelBtn, KickBtn;
+		Container.VSplitMid(&CancelBtn, &KickBtn, ItemSpacing * 2.0f);
+
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_ModKickConfirmNo, TCLocalize("Cancelar"), &CancelBtn, FontSize - 1.0f, TEXTALIGN_MC))
+		{
+			pPopupContext->m_SubMenu = SUBMENU_KICK;
+		}
+
+		ColorRGBA KickColor = ColorRGBA(0.95f, 0.25f, 0.25f, 0.8f * pUi->ButtonColorMul(&pPopupContext->m_ModKickConfirmYes));
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_ModKickConfirmYes, TCLocalize("Sí, Kickear"), &KickBtn, FontSize - 1.0f, TEXTALIGN_MC, 0.0f, false, true, KickColor))
+		{
+			char aCmd[256];
+			if(pReason[0] != '\0')
+				str_format(aCmd, sizeof(aCmd), "kick %d %s", pPopupContext->m_ClientId, pReason);
+			else
+				str_format(aCmd, sizeof(aCmd), "kick %d", pPopupContext->m_ClientId);
+			pScoreboard->Client()->Rcon(aCmd);
+			if(!pScoreboard->m_Active)
+				pScoreboard->LockMouse();
+			return CUi::POPUP_CLOSE_CURRENT;
+		}
+	}
+	else if(pPopupContext->m_SubMenu == SUBMENU_BAN)
+	{
+		char aHeader[128];
+		str_format(aHeader, sizeof(aHeader), "%s: %s (ID: %d)", TCLocalize("Ban"), Client.m_aName, pPopupContext->m_ClientId);
+		View.HSplitTop(FontSize + 2.0f, &Label, &View);
+		pUi->DoLabel(&Label, aHeader, FontSize - 1.0f, TEXTALIGN_ML);
+
+		View.HSplitTop(ItemSpacing * 2.0f, nullptr, &View);
+
+		// Minutes Presets: 5m, 60m, 1440m (1d), 10080m (7d)
+		View.HSplitTop(ButtonSize - 1.0f, &Container, &View);
+		const float W4 = (Container.w - ItemSpacing * 3.0f) / 4.0f;
+		CUIRect Btn;
+		Container.VSplitLeft(W4, &Btn, &Container);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aMinutesPreset[0], "5m", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_MinutesInput.SetInteger(5);
+		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_aMinutesPreset[0], &Btn, "5 min");
+
+		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
+		Container.VSplitLeft(W4, &Btn, &Container);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aMinutesPreset[1], "60m", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_MinutesInput.SetInteger(60);
+		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_aMinutesPreset[1], &Btn, "1 hour");
+
+		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
+		Container.VSplitLeft(W4, &Btn, &Container);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aMinutesPreset[2], "1d", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_MinutesInput.SetInteger(1440);
+		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_aMinutesPreset[2], &Btn, "1 day (1440m)");
+
+		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aMinutesPreset[3], "7d", &Container, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_MinutesInput.SetInteger(10080);
+		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_aMinutesPreset[3], &Container, "7 days (10080m)");
+
+		// Minutes Input Box
+		View.HSplitTop(ItemSpacing, nullptr, &View);
+		View.HSplitTop(ButtonSize, &Container, &View);
+		CUIRect InputLabel, InputBox;
+		Container.VSplitLeft(38.0f, &InputLabel, &InputBox);
+		pUi->DoLabel(&InputLabel, TCLocalize("Min:"), FontSize - 1.0f, TEXTALIGN_ML);
+		pUi->DoEditBox(&pPopupContext->m_MinutesInput, &InputBox, FontSize - 1.0f);
+
+		// Reason Presets
+		View.HSplitTop(ItemSpacing, nullptr, &View);
+		View.HSplitTop(ButtonSize - 1.0f, &Container, &View);
+		const float W3 = (Container.w - ItemSpacing * 2.0f) / 3.0f;
+		Container.VSplitLeft(W3, &Btn, &Container);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[0], "Cheats", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_ReasonInput.Set("Cheats");
+		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
+		Container.VSplitLeft(W3, &Btn, &Container);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[1], "Insultos", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_ReasonInput.Set("Insultos");
+		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[2], "Griefing", &Container, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_ReasonInput.Set("Griefing");
+
+		// Reason Input Box
+		View.HSplitTop(ItemSpacing, nullptr, &View);
+		View.HSplitTop(ButtonSize, &Container, &View);
+		Container.VSplitLeft(38.0f, &InputLabel, &InputBox);
+		pUi->DoLabel(&InputLabel, TCLocalize("Razón:"), FontSize - 1.0f, TEXTALIGN_ML);
+		pUi->DoEditBox(&pPopupContext->m_ReasonInput, &InputBox, FontSize - 1.0f);
+
+		// Action buttons: [Atrás] [Continuar]
+		View.HSplitTop(ItemSpacing * 2.5f, nullptr, &View);
+		View.HSplitTop(ButtonSize + 2.0f, &Container, &View);
+		CUIRect BackBtn, NextBtn;
+		Container.VSplitLeft(50.0f, &BackBtn, &Container);
+		Container.VSplitLeft(ItemSpacing * 2.0f, nullptr, &NextBtn);
+
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_ModBack, TCLocalize("Atrás"), &BackBtn, FontSize - 1.0f, TEXTALIGN_MC))
+		{
+			pPopupContext->m_SubMenu = SUBMENU_MAIN;
+		}
+
+		ColorRGBA NextColor = ColorRGBA(0.95f, 0.25f, 0.25f, 0.7f * pUi->ButtonColorMul(&pPopupContext->m_ModConfirm));
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_ModConfirm, TCLocalize("Continuar"), &NextBtn, FontSize - 1.0f, TEXTALIGN_MC, 0.0f, false, true, NextColor))
+		{
+			pPopupContext->m_SubMenu = SUBMENU_CONFIRM_BAN;
+		}
+	}
+	else if(pPopupContext->m_SubMenu == SUBMENU_CONFIRM_BAN)
+	{
+		View.HSplitTop(FontSize + 4.0f, &Label, &View);
+		pScoreboard->TextRender()->TextColor(ColorRGBA(1.0f, 0.25f, 0.25f, 1.0f));
+		pUi->DoLabel(&Label, TCLocalize("¿Seguro de banear?"), FontSize, TEXTALIGN_MC);
+		pScoreboard->TextRender()->TextColor(pScoreboard->TextRender()->DefaultTextColor());
+
+		View.HSplitTop(ItemSpacing * 2.0f, nullptr, &View);
+
+		char aTarget[128];
+		str_format(aTarget, sizeof(aTarget), "%s (ID: %d)", Client.m_aName, pPopupContext->m_ClientId);
+		View.HSplitTop(FontSize + 2.0f, &Label, &View);
+		pUi->DoLabel(&Label, aTarget, FontSize - 1.0f, TEXTALIGN_MC);
+
+		int Mins = pPopupContext->m_MinutesInput.GetInteger();
+		if(Mins <= 0)
+			Mins = 60;
+		char aMinsStr[64];
+		str_format(aMinsStr, sizeof(aMinsStr), "%s: %d min", TCLocalize("Tiempo"), Mins);
+		View.HSplitTop(FontSize + 2.0f, &Label, &View);
+		pUi->DoLabel(&Label, aMinsStr, FontSize - 2.0f, TEXTALIGN_MC);
+
+		const char *pReason = pPopupContext->m_ReasonInput.GetString();
+		char aReasonStr[128];
+		str_format(aReasonStr, sizeof(aReasonStr), "%s: %s", TCLocalize("Razón"), pReason[0] != '\0' ? pReason : "(ninguna)");
+		View.HSplitTop(FontSize + 4.0f, &Label, &View);
+		pUi->DoLabel(&Label, aReasonStr, FontSize - 2.0f, TEXTALIGN_MC);
+
+		View.HSplitTop(ItemSpacing * 3.0f, nullptr, &View);
+
+		View.HSplitTop(ButtonSize + 4.0f, &Container, &View);
+		CUIRect CancelBtn, BanBtn;
+		Container.VSplitMid(&CancelBtn, &BanBtn, ItemSpacing * 2.0f);
+
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_ModBanConfirmNo, TCLocalize("Cancelar"), &CancelBtn, FontSize - 1.0f, TEXTALIGN_MC))
+		{
+			pPopupContext->m_SubMenu = SUBMENU_BAN;
+		}
+
+		ColorRGBA BanColor = ColorRGBA(0.95f, 0.15f, 0.15f, 0.85f * pUi->ButtonColorMul(&pPopupContext->m_ModBanConfirmYes));
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_ModBanConfirmYes, TCLocalize("Sí, Banear"), &BanBtn, FontSize - 1.0f, TEXTALIGN_MC, 0.0f, false, true, BanColor))
+		{
+			char aCmd[256];
+			if(pReason[0] != '\0')
+				str_format(aCmd, sizeof(aCmd), "ban %d %d %s", pPopupContext->m_ClientId, Mins, pReason);
+			else
+				str_format(aCmd, sizeof(aCmd), "ban %d %d", pPopupContext->m_ClientId, Mins);
+			pScoreboard->Client()->Rcon(aCmd);
+			if(!pScoreboard->m_Active)
+				pScoreboard->LockMouse();
 			return CUi::POPUP_CLOSE_CURRENT;
 		}
 	}
