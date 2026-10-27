@@ -168,6 +168,50 @@ public:
 	bool m_HistoryNeedsSave = false;
 	int m_LastStatsTick = -1;
 
+	struct SCachedStatCol
+	{
+		int m_ColType;
+		char m_aText[16];
+		float m_ColWidth;
+		float m_TextWidth;
+		ColorRGBA m_Color;
+	};
+
+	struct SCachedPlayerRow
+	{
+		int m_ClientId;
+		bool m_IsLocal;
+		char m_aName[MAX_NAME_LENGTH];
+		float m_NameWidth;
+		int m_NumCols;
+		SCachedStatCol m_aCols[NUM_ICONS];
+	};
+
+	std::vector<SCachedPlayerRow> m_vCachedRows;
+	float m_CachedColWidthName = 0.0f;
+	float m_CachedStatsWidth = 0.0f;
+	float m_CachedTotalWidth = 0.0f;
+	float m_CachedHeaderHeight = 0.0f;
+	float m_CachedRowsHeight = 0.0f;
+	float m_CachedTotalHeight = 0.0f;
+	int m_CachedTotalTeamPlayers = 0;
+	int m_CachedDisplayCount = 0;
+	bool m_CachedHasMore = false;
+	char m_aCachedMoreText[32];
+	float m_CachedMoreTextWidth = 0.0f;
+
+	int m_LastCacheTick = -1;
+	int m_LastCacheColumns = -1;
+	int m_LastCacheSort = -1;
+	int m_LastCacheScale = -1;
+	int m_LastCacheMaxPlayers = -1;
+	int m_LastCacheShowTees = -1;
+	int m_LastCacheTeam = -1;
+	int m_LastCacheLocalClientId = -1;
+	bool m_CacheValid = false;
+
+	void UpdateMiniStatboardCache();
+
 	void OnInit() override;
 	void OnReset() override;
 	void OnShutdown() override;

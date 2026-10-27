@@ -111,6 +111,11 @@ void CRaceStats::OnReset()
 	m_RunStartTick = 0;
 	m_Active = false;
 	m_LastStatsTick = -1;
+	m_CacheValid = false;
+	m_LastCacheTick = -1;
+	m_vCachedRows.clear();
+	m_CachedDisplayCount = 0;
+	m_CachedTotalTeamPlayers = 0;
 }
 
 bool CRaceStats::HasCurrentTeamActivity() const
@@ -154,6 +159,11 @@ void CRaceStats::ResetTeamStats()
 		m_aRowAnim[i].Reset();
 	}
 	m_RoundDeaths = 0;
+	m_CacheValid = false;
+	m_LastCacheTick = -1;
+	m_vCachedRows.clear();
+	m_CachedDisplayCount = 0;
+	m_CachedTotalTeamPlayers = 0;
 	if(Client()->State() == IClient::STATE_ONLINE || Client()->State() == IClient::STATE_DEMOPLAYBACK)
 		m_RunStartTick = Client()->GameTick(g_Config.m_ClDummy);
 	else
@@ -699,23 +709,35 @@ ColorRGBA CRaceStats::GetEfficiencyColor(int Percent)
 	return ColorRGBA(R, G, B, 0.95f);
 }
 
-void CRaceStats::RenderMiniStatboard()
+void CRaceStats::UpdateMiniStatboardCache()
 {
-	float Width = 300.0f * Graphics()->ScreenAspect();
-	float Height = 300.0f;
-	Graphics()->MapScreenToSize(Width, Height);
-
-	float Scale = (float)g_Config.m_AcMiniStatboardScale / 100.0f;
-	if(Scale <= 0.05f)
-		Scale = 0.70f;
-
-	float FontSize = 6.2f * Scale;
-	float IconSize = 7.0f * Scale;
-	float RowHeight = 9.5f * Scale;
-	float Padding = 3.5f * Scale;
-
 	int LocalClientId = GameClient()->m_Snap.m_LocalClientId;
+	if(LocalClientId < 0 || LocalClientId >= MAX_CLIENTS)
+	{
+		m_vCachedRows.clear();
+		m_CachedDisplayCount = 0;
+		m_CacheValid = false;
+		return;
+	}
+
 	int LocalTeam = GameClient()->m_Teams.Team(LocalClientId);
+
+	m_CacheValid = true;
+	m_LastCacheTick = Client()->GameTick(g_Config.m_ClDummy);
+	m_LastCacheColumns = g_Config.m_AcMiniStatboardColumns;
+	m_LastCacheSort = g_Config.m_AcMiniStatboardSort;
+	m_LastCacheScale = g_Config.m_AcMiniStatboardScale;
+	m_LastCacheMaxPlayers = g_Config.m_AcMiniStatboardMaxPlayers;
+	m_LastCacheShowTees = g_Config.m_AcMiniStatboardShowTees;
+	m_LastCacheTeam = LocalTeam;
+	m_LastCacheLocalClientId = LocalClientId;
+
+	m_vCachedRows.clear();
+	m_CachedDisplayCount = 0;
+	m_CachedTotalTeamPlayers = 0;
+	m_CachedHasMore = false;
+	m_aCachedMoreText[0] = '\0';
+	m_CachedMoreTextWidth = 0.0f;
 
 	struct SPlayerEntry
 	{
@@ -740,7 +762,7 @@ void CRaceStats::RenderMiniStatboard()
 	if(NumPlayers == 0)
 		return;
 
-	// Ordenamiento en tiempo real por estadística seleccionada (ac_mini_statboard_sort)
+	// Ordenamiento por estadistica seleccionada (ac_mini_statboard_sort)
 	std::sort(aPlayers, aPlayers + NumPlayers, [&](const SPlayerEntry &a, const SPlayerEntry &b) {
 		int CidA = a.m_ClientId;
 		int CidB = b.m_ClientId;
@@ -800,12 +822,20 @@ void CRaceStats::RenderMiniStatboard()
 		return CidA < CidB;
 	});
 
+	float Scale = (float)g_Config.m_AcMiniStatboardScale / 100.0f;
+	if(Scale <= 0.05f)
+		Scale = 0.70f;
+
+	float FontSize = 6.2f * Scale;
+	float RowHeight = 9.5f * Scale;
+	float Padding = 3.5f * Scale;
+
 	int TotalTeamPlayers = NumPlayers;
 	int MaxPlayers = std::clamp((int)g_Config.m_AcMiniStatboardMaxPlayers, 0, (int)MAX_CLIENTS);
 	int DisplayCount = std::min(TotalTeamPlayers, MaxPlayers);
 	bool HasMore = TotalTeamPlayers > DisplayCount;
 
-	float TeeSize = FontSize * 1.35f;
+	float TeeSize = g_Config.m_AcMiniStatboardShowTees ? (FontSize * 1.35f) : 0.0f;
 	float MaxFoundNameW = 25.0f * Scale;
 	for(int idx = 0; idx < DisplayCount; idx++)
 	{
@@ -814,7 +844,7 @@ void CRaceStats::RenderMiniStatboard()
 		if(NameW > MaxFoundNameW)
 			MaxFoundNameW = NameW;
 	}
-	float ColWidthName = MaxFoundNameW + TeeSize + 8.0f * Scale;
+	float ColWidthName = MaxFoundNameW + (g_Config.m_AcMiniStatboardShowTees ? TeeSize : 0.0f) + 8.0f * Scale;
 
 	bool ShowFreeze = (g_Config.m_AcMiniStatboardColumns & 1) != 0;
 	bool ShowSave   = (g_Config.m_AcMiniStatboardColumns & 2) != 0;
@@ -844,13 +874,171 @@ void CRaceStats::RenderMiniStatboard()
 	if(ShowLast)   StatsWidth += GetColWidth(ICON_LAST);
 
 	float TotalWidth = ColWidthName + StatsWidth + Padding * 2.0f;
-
 	float HeaderHeight = RowHeight + 1.0f * Scale;
 	float RowsHeight = (float)DisplayCount * RowHeight;
 	float MoreHeight = HasMore ? (RowHeight * 0.85f) : 0.0f;
 	float TotalHeight = HeaderHeight + RowsHeight + MoreHeight + Padding * 2.0f;
 
-	// Posicionamiento porcentual X e Y (0% = izquierda/arriba, 100% = derecha/abajo)
+	m_CachedColWidthName = ColWidthName;
+	m_CachedStatsWidth = StatsWidth;
+	m_CachedTotalWidth = TotalWidth;
+	m_CachedHeaderHeight = HeaderHeight;
+	m_CachedRowsHeight = RowsHeight;
+	m_CachedTotalHeight = TotalHeight;
+	m_CachedTotalTeamPlayers = TotalTeamPlayers;
+	m_CachedDisplayCount = DisplayCount;
+	m_CachedHasMore = HasMore;
+
+	if(HasMore)
+	{
+		str_format(m_aCachedMoreText, sizeof(m_aCachedMoreText), "+%d more players", TotalTeamPlayers - DisplayCount);
+		m_CachedMoreTextWidth = TextRender()->TextWidth(FontSize * 0.85f, m_aCachedMoreText, -1, -1.0f);
+	}
+
+	m_vCachedRows.reserve(DisplayCount);
+	for(int idx = 0; idx < DisplayCount; idx++)
+	{
+		int CID = aPlayers[idx].m_ClientId;
+		SCachedPlayerRow Row;
+		Row.m_ClientId = CID;
+		Row.m_IsLocal = aPlayers[idx].m_IsLocal;
+		str_copy(Row.m_aName, GameClient()->m_aClients[CID].m_aName, sizeof(Row.m_aName));
+		Row.m_NameWidth = TextRender()->TextWidth(FontSize, Row.m_aName, -1, -1.0f);
+		Row.m_NumCols = 0;
+
+		auto AddCol = [&](int ColType, const char *pText, ColorRGBA col) {
+			if(Row.m_NumCols >= (int)NUM_ICONS)
+				return;
+			SCachedStatCol &Col = Row.m_aCols[Row.m_NumCols++];
+			Col.m_ColType = ColType;
+			str_copy(Col.m_aText, pText, sizeof(Col.m_aText));
+			Col.m_ColWidth = GetColWidth(ColType);
+			Col.m_TextWidth = TextRender()->TextWidth(FontSize, pText, -1, -1.0f);
+			Col.m_Color = col;
+		};
+
+		char aBuf[32];
+		if(ShowFreeze)
+		{
+			str_format(aBuf, sizeof(aBuf), "%d", m_aPlayerStats[CID].m_Freezes);
+			AddCol(ICON_FREEZE, aBuf, ColorRGBA(0.7f, 0.9f, 1.0f, 0.95f));
+		}
+		if(ShowSave)
+		{
+			str_format(aBuf, sizeof(aBuf), "%d", m_aPlayerStats[CID].m_Saves);
+			AddCol(ICON_SAVE, aBuf, ColorRGBA(0.45f, 1.0f, 0.55f, 0.95f));
+		}
+		if(ShowDeath)
+		{
+			str_format(aBuf, sizeof(aBuf), "%d", m_aPlayerStats[CID].m_Deaths);
+			AddCol(ICON_SKULL, aBuf, ColorRGBA(1.0f, 0.45f, 0.45f, 0.95f));
+		}
+		if(ShowEff)
+		{
+			int EffPct = m_aPlayerStats[CID].GetEfficiencyPercent();
+			if(EffPct < 0)
+				str_copy(aBuf, "-", sizeof(aBuf));
+			else
+				str_format(aBuf, sizeof(aBuf), "%d%%", EffPct);
+			AddCol(ICON_EFF, aBuf, GetEfficiencyColor(EffPct));
+		}
+		if(ShowNet)
+		{
+			int Net = m_aPlayerStats[CID].GetNetBalance();
+			ColorRGBA NetColor;
+			if(Net > 0)
+			{
+				str_format(aBuf, sizeof(aBuf), "+%d", Net);
+				NetColor = ColorRGBA(0.35f, 1.0f, 0.45f, 0.95f);
+			}
+			else if(Net == 0)
+			{
+				str_copy(aBuf, "0", sizeof(aBuf));
+				NetColor = ColorRGBA(0.80f, 0.80f, 0.85f, 0.90f);
+			}
+			else
+			{
+				str_format(aBuf, sizeof(aBuf), "%d", Net);
+				NetColor = ColorRGBA(1.0f, 0.35f, 0.35f, 0.95f);
+			}
+			AddCol(ICON_NET, aBuf, NetColor);
+		}
+		if(ShowTime)
+		{
+			int Sec = m_aPlayerStats[CID].GetFrozenSeconds(Client()->GameTickSpeed());
+			if(Sec < 60)
+				str_format(aBuf, sizeof(aBuf), "%ds", Sec);
+			else
+				str_format(aBuf, sizeof(aBuf), "%dm %02ds", Sec / 60, Sec % 60);
+			AddCol(ICON_TIME, aBuf, ColorRGBA(0.5f, 0.85f, 1.0f, 0.95f));
+		}
+		if(ShowHook)
+		{
+			int HookPct = m_aPlayerStats[CID].GetHookAccuracyPercent();
+			if(HookPct < 0)
+				str_copy(aBuf, "-", sizeof(aBuf));
+			else
+				str_format(aBuf, sizeof(aBuf), "%d%%", HookPct);
+			AddCol(ICON_HOOK, aBuf, ColorRGBA(1.0f, 0.85f, 0.35f, 0.95f));
+		}
+		if(ShowLast)
+		{
+			str_format(aBuf, sizeof(aBuf), "%d", m_aPlayerStats[CID].m_Lasts);
+			AddCol(ICON_LAST, aBuf, ColorRGBA(1.0f, 0.85f, 0.4f, 0.95f));
+		}
+
+		m_vCachedRows.push_back(Row);
+	}
+	m_CachedDisplayCount = (int)m_vCachedRows.size();
+}
+
+void CRaceStats::RenderMiniStatboard()
+{
+	int LocalClientId = GameClient()->m_Snap.m_LocalClientId;
+	if(LocalClientId < 0 || LocalClientId >= MAX_CLIENTS)
+		return;
+
+	float Width = 300.0f * Graphics()->ScreenAspect();
+	float Height = 300.0f;
+	Graphics()->MapScreenToSize(Width, Height);
+
+	int CurrentTick = Client()->GameTick(g_Config.m_ClDummy);
+	int LocalTeam = GameClient()->m_Teams.Team(LocalClientId);
+
+	bool NeedUpdate = !m_CacheValid ||
+	                  (CurrentTick != m_LastCacheTick) ||
+	                  (g_Config.m_AcMiniStatboardColumns != m_LastCacheColumns) ||
+	                  (g_Config.m_AcMiniStatboardSort != m_LastCacheSort) ||
+	                  (g_Config.m_AcMiniStatboardScale != m_LastCacheScale) ||
+	                  (g_Config.m_AcMiniStatboardMaxPlayers != m_LastCacheMaxPlayers) ||
+	                  (g_Config.m_AcMiniStatboardShowTees != m_LastCacheShowTees) ||
+	                  (LocalTeam != m_LastCacheTeam) ||
+	                  (LocalClientId != m_LastCacheLocalClientId);
+
+	if(NeedUpdate)
+	{
+		UpdateMiniStatboardCache();
+	}
+
+	int DisplayCount = std::min((int)m_vCachedRows.size(), m_CachedDisplayCount);
+	if(DisplayCount <= 0 || m_vCachedRows.empty())
+		return;
+
+	float Scale = (float)g_Config.m_AcMiniStatboardScale / 100.0f;
+	if(Scale <= 0.05f)
+		Scale = 0.70f;
+
+	float FontSize = 6.2f * Scale;
+	float IconSize = 7.0f * Scale;
+	float RowHeight = 9.5f * Scale;
+	float Padding = 3.5f * Scale;
+
+	float ColWidthName = m_CachedColWidthName;
+	float TotalWidth = m_CachedTotalWidth;
+	float HeaderHeight = m_CachedHeaderHeight;
+	float TotalHeight = m_CachedTotalHeight;
+
+	// Posicionamiento porcentual X e Y
 	float PosXPercent = 0.95f;
 	float PosYPercent = 0.50f;
 
@@ -877,9 +1065,7 @@ void CRaceStats::RenderMiniStatboard()
 	float Alpha = (float)g_Config.m_AcMiniStatboardOpacity / 100.0f;
 	if(Alpha > 0.0f)
 	{
-		// Panel principal oscuro
 		Graphics()->DrawRect(BaseX, BaseY, TotalWidth, TotalHeight, ColorRGBA(0.04f, 0.04f, 0.06f, Alpha * 0.70f), IGraphics::CORNER_ALL, 4.0f * Scale);
-		// Cabecera destacada
 		Graphics()->DrawRect(BaseX, BaseY, TotalWidth, HeaderHeight + Padding, ColorRGBA(0.12f, 0.12f, 0.18f, Alpha * 0.50f), IGraphics::CORNER_T, 4.0f * Scale);
 	}
 
@@ -894,11 +1080,27 @@ void CRaceStats::RenderMiniStatboard()
 		Graphics()->QuadsEnd();
 	};
 
+	auto GetColWidth = [&](int ColType) -> float {
+		if(ColType == ICON_TIME)
+			return 19.0f * Scale;
+		if(ColType == ICON_EFF)
+			return 16.5f * Scale;
+		return 14.0f * Scale;
+	};
+
+	bool ShowFreeze = (g_Config.m_AcMiniStatboardColumns & 1) != 0;
+	bool ShowSave   = (g_Config.m_AcMiniStatboardColumns & 2) != 0;
+	bool ShowLast   = (g_Config.m_AcMiniStatboardColumns & 4) != 0;
+	bool ShowEff    = (g_Config.m_AcMiniStatboardColumns & 8) != 0;
+	bool ShowDeath  = (g_Config.m_AcMiniStatboardColumns & 16) != 0;
+	bool ShowNet    = (g_Config.m_AcMiniStatboardColumns & 32) != 0;
+	bool ShowTime   = (g_Config.m_AcMiniStatboardColumns & 64) != 0;
+	bool ShowHook   = (g_Config.m_AcMiniStatboardColumns & 128) != 0;
+
 	// Dibujar Iconos de Cabecera
 	float CurrX = BaseX + Padding;
 	float HeaderY = BaseY + Padding + (HeaderHeight - IconSize) / 2.0f;
 
-	// Icono Jugador
 	DrawIcon(m_aTextures[ICON_USER], CurrX + 2.0f * Scale, HeaderY, IconSize, ColorRGBA(1.0f, 1.0f, 1.0f, 0.9f));
 	CurrX += ColWidthName;
 
@@ -917,7 +1119,7 @@ void CRaceStats::RenderMiniStatboard()
 	if(ShowHook)   DrawHeaderCol(m_aTextures[ICON_HOOK], ICON_HOOK, ColorRGBA(1.0f, 0.85f, 0.35f, 1.0f));
 	if(ShowLast)   DrawHeaderCol(m_aTextures[ICON_LAST], ICON_LAST, ColorRGBA(1.0f, 0.75f, 0.3f, 1.0f));
 
-	// Filas de Jugadores con Animación Fluida Estilo F1
+	// Filas de Jugadores con Animacion Fluida Estilo F1
 	float BaseRowY = BaseY + Padding + HeaderHeight;
 	float RowY = BaseRowY;
 	float DeltaTime = Client()->RenderFrameTime();
@@ -925,10 +1127,14 @@ void CRaceStats::RenderMiniStatboard()
 	if(AnimSpeed <= 0.0f)
 		AnimSpeed = 10.0f;
 
-	// Actualizar interpolación de movimiento de cada jugador hacia su puesto objetivo
+	// Actualizar interpolacion de movimiento de cada jugador hacia su puesto objetivo
 	for(int idx = 0; idx < DisplayCount; idx++)
 	{
-		int CID = aPlayers[idx].m_ClientId;
+		if(idx >= (int)m_vCachedRows.size())
+			break;
+		int CID = m_vCachedRows[idx].m_ClientId;
+		if(CID < 0 || CID >= MAX_CLIENTS)
+			continue;
 		SRowAnimState &Anim = m_aRowAnim[CID];
 		float TargetY = BaseRowY + (float)idx * RowHeight;
 
@@ -945,13 +1151,11 @@ void CRaceStats::RenderMiniStatboard()
 			{
 				if(idx < Anim.m_PrevRank)
 				{
-					// ¡Subió de posición (adelantamiento)! Flash verde F1
 					Anim.m_RankChangeDir = 1;
 					Anim.m_RankChangeTimer = 0.45f;
 				}
 				else
 				{
-					// Bajó de posición
 					Anim.m_RankChangeDir = -1;
 					Anim.m_RankChangeTimer = 0.35f;
 				}
@@ -974,10 +1178,17 @@ void CRaceStats::RenderMiniStatboard()
 		}
 	}
 
+	float TeeSize = g_Config.m_AcMiniStatboardShowTees ? (FontSize * 1.35f) : 0.0f;
+
 	for(int idx = 0; idx < DisplayCount; idx++)
 	{
-		int CID = aPlayers[idx].m_ClientId;
-		bool IsMe = aPlayers[idx].m_IsLocal;
+		if(idx >= (int)m_vCachedRows.size())
+			break;
+		const SCachedPlayerRow &Row = m_vCachedRows[idx];
+		int CID = Row.m_ClientId;
+		if(CID < 0 || CID >= MAX_CLIENTS)
+			continue;
+		bool IsMe = Row.m_IsLocal;
 		SRowAnimState &Anim = m_aRowAnim[CID];
 		float CurrentRowY = (Anim.m_VisualY >= 0.0f) ? Anim.m_VisualY : (BaseRowY + (float)idx * RowHeight);
 
@@ -992,7 +1203,7 @@ void CRaceStats::RenderMiniStatboard()
 			Graphics()->DrawRect(BaseX + 1.0f * Scale, CurrentRowY, TotalWidth - 2.0f * Scale, RowHeight, ColorRGBA(1.0f, 0.85f, 0.2f, 0.14f), IGraphics::CORNER_ALL, 2.0f * Scale);
 		}
 
-		// Efecto F1 de cambio de posición (adelantamiento)
+		// Efecto F1 de cambio de posicion (adelantamiento)
 		if(Anim.m_RankChangeTimer > 0.0f)
 		{
 			if(Anim.m_RankChangeDir == 1)
@@ -1010,114 +1221,48 @@ void CRaceStats::RenderMiniStatboard()
 		CurrX = BaseX + Padding;
 		float TextY = CurrentRowY + (RowHeight - FontSize) / 2.0f;
 
-		// Mini Tee
-		CTeeRenderInfo TeeInfo = GameClient()->m_aClients[CID].m_RenderInfo;
-		TeeInfo.m_Size = FontSize * 1.35f;
-		const vec2 TeePos = vec2(CurrX + TeeInfo.m_Size * 0.5f, CurrentRowY + RowHeight * 0.5f);
-		RenderTools()->RenderTee(CAnimState::GetIdle(), &TeeInfo, EMOTE_NORMAL, vec2(1.0f, 0.0f), TeePos);
+		// Mini Tee (si esta habilitado, default: 1)
+		if(g_Config.m_AcMiniStatboardShowTees)
+		{
+			if(GameClient()->m_Snap.m_apPlayerInfos[CID] && GameClient()->m_aClients[CID].m_Active)
+			{
+				CTeeRenderInfo TeeInfo = GameClient()->m_aClients[CID].m_RenderInfo;
+				TeeInfo.m_Size = TeeSize;
+				const vec2 TeePos = vec2(CurrX + TeeInfo.m_Size * 0.5f, CurrentRowY + RowHeight * 0.5f);
+				RenderTools()->RenderTee(CAnimState::GetIdle(), &TeeInfo, EMOTE_NORMAL, vec2(1.0f, 0.0f), TeePos);
+			}
+			CurrX += TeeSize;
+		}
 
-		float NameX = CurrX + TeeInfo.m_Size + 2.0f * Scale;
+		float NameX = CurrX + 2.0f * Scale;
 
-		// Nombre de Jugador completo en 1 sola línea
+		// Nombre de Jugador completo en 1 sola linea
 		if(IsMe)
 			TextRender()->TextColor(1.0f, 0.9f, 0.3f, 1.0f);
 		else
 			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 0.95f);
 
-		TextRender()->Text(NameX, TextY, FontSize, GameClient()->m_aClients[CID].m_aName, -1.0f);
-		CurrX += ColWidthName;
+		TextRender()->Text(NameX, TextY, FontSize, Row.m_aName, -1.0f);
+		CurrX = BaseX + Padding + ColWidthName;
 
-		// Dibujado de valores de columna
-		auto DrawStatValue = [&](const char *pText, int ColType, ColorRGBA col) {
-			float W = GetColWidth(ColType);
-			float TextW = TextRender()->TextWidth(FontSize, pText, -1, -1.0f);
-			float StatX = CurrX + (W - TextW) / 2.0f;
-			TextRender()->TextColor(col);
-			TextRender()->Text(StatX, TextY, FontSize, pText, -1.0f);
-			CurrX += W;
-		};
-
-		char aBuf[32];
-		if(ShowFreeze)
+		// Dibujado directo de columnas cacheadas
+		for(int c = 0; c < Row.m_NumCols; c++)
 		{
-			str_format(aBuf, sizeof(aBuf), "%d", m_aPlayerStats[CID].m_Freezes);
-			DrawStatValue(aBuf, ICON_FREEZE, ColorRGBA(0.7f, 0.9f, 1.0f, 0.95f));
-		}
-		if(ShowSave)
-		{
-			str_format(aBuf, sizeof(aBuf), "%d", m_aPlayerStats[CID].m_Saves);
-			DrawStatValue(aBuf, ICON_SAVE, ColorRGBA(0.45f, 1.0f, 0.55f, 0.95f));
-		}
-		if(ShowDeath)
-		{
-			str_format(aBuf, sizeof(aBuf), "%d", m_aPlayerStats[CID].m_Deaths);
-			DrawStatValue(aBuf, ICON_SKULL, ColorRGBA(1.0f, 0.45f, 0.45f, 0.95f));
-		}
-		if(ShowEff)
-		{
-			int EffPct = m_aPlayerStats[CID].GetEfficiencyPercent();
-			if(EffPct < 0)
-				str_copy(aBuf, "-", sizeof(aBuf));
-			else
-				str_format(aBuf, sizeof(aBuf), "%d%%", EffPct);
-			DrawStatValue(aBuf, ICON_EFF, GetEfficiencyColor(EffPct));
-		}
-		if(ShowNet)
-		{
-			int Net = m_aPlayerStats[CID].GetNetBalance();
-			ColorRGBA NetColor;
-			if(Net > 0)
-			{
-				str_format(aBuf, sizeof(aBuf), "+%d", Net);
-				NetColor = ColorRGBA(0.35f, 1.0f, 0.45f, 0.95f);
-			}
-			else if(Net == 0)
-			{
-				str_copy(aBuf, "0", sizeof(aBuf));
-				NetColor = ColorRGBA(0.80f, 0.80f, 0.85f, 0.90f);
-			}
-			else
-			{
-				str_format(aBuf, sizeof(aBuf), "%d", Net);
-				NetColor = ColorRGBA(1.0f, 0.35f, 0.35f, 0.95f);
-			}
-			DrawStatValue(aBuf, ICON_NET, NetColor);
-		}
-		if(ShowTime)
-		{
-			int Sec = m_aPlayerStats[CID].GetFrozenSeconds(Client()->GameTickSpeed());
-			if(Sec < 60)
-				str_format(aBuf, sizeof(aBuf), "%ds", Sec);
-			else
-				str_format(aBuf, sizeof(aBuf), "%dm %02ds", Sec / 60, Sec % 60);
-			DrawStatValue(aBuf, ICON_TIME, ColorRGBA(0.5f, 0.85f, 1.0f, 0.95f));
-		}
-		if(ShowHook)
-		{
-			int HookPct = m_aPlayerStats[CID].GetHookAccuracyPercent();
-			if(HookPct < 0)
-				str_copy(aBuf, "-", sizeof(aBuf));
-			else
-				str_format(aBuf, sizeof(aBuf), "%d%%", HookPct);
-			DrawStatValue(aBuf, ICON_HOOK, ColorRGBA(1.0f, 0.85f, 0.35f, 0.95f));
-		}
-		if(ShowLast)
-		{
-			str_format(aBuf, sizeof(aBuf), "%d", m_aPlayerStats[CID].m_Lasts);
-			DrawStatValue(aBuf, ICON_LAST, ColorRGBA(1.0f, 0.85f, 0.4f, 0.95f));
+			const SCachedStatCol &Col = Row.m_aCols[c];
+			float StatX = CurrX + (Col.m_ColWidth - Col.m_TextWidth) * 0.5f;
+			TextRender()->TextColor(Col.m_Color);
+			TextRender()->Text(StatX, TextY, FontSize, Col.m_aText, -1.0f);
+			CurrX += Col.m_ColWidth;
 		}
 
 		RowY += RowHeight;
 	}
 
-	// +N more players
-	if(HasMore)
+	// +N more players (cacheados)
+	if(m_CachedHasMore)
 	{
-		char aMore[32];
-		str_format(aMore, sizeof(aMore), "+%d more players", TotalTeamPlayers - DisplayCount);
 		TextRender()->TextColor(0.7f, 0.7f, 0.7f, 0.7f);
-		float MoreW = TextRender()->TextWidth(FontSize * 0.85f, aMore, -1, -1.0f);
-		TextRender()->Text(BaseX + (TotalWidth - MoreW) / 2.0f, RowY + 1.0f * Scale, FontSize * 0.85f, aMore, -1.0f);
+		TextRender()->Text(BaseX + (TotalWidth - m_CachedMoreTextWidth) / 2.0f, RowY + 1.0f * Scale, FontSize * 0.85f, m_aCachedMoreText, -1.0f);
 	}
 
 	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);

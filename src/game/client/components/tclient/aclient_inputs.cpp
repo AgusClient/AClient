@@ -99,6 +99,9 @@ namespace
 		if(g_Config.m_AcAX30AdaptiveJitter)
 			Offset += AcInputs::GetAdaptiveJitterTicks();
 
+		if(std::isnan(Offset) || std::isinf(Offset) || Offset <= 0.0f)
+			return 0.0f;
+
 		return Offset;
 	}
 } // namespace
@@ -137,7 +140,7 @@ int AcInputs::PredictionTicksOthers(float OffsetTicks)
 
 void AcInputs::ApplyOffset(float OffsetTicks, int &Tick, float &Intra)
 {
-	if(OffsetTicks <= 0.0f)
+	if(OffsetTicks <= 0.0f || std::isnan(OffsetTicks) || std::isinf(OffsetTicks) || std::isnan(Intra) || std::isinf(Intra))
 		return;
 
 	const int WholeTicks = (int)OffsetTicks;
@@ -233,6 +236,13 @@ bool AcInputs::ImmediateOthers()
 
 vec2 AcInputs::HermiteCatmullRom(vec2 P_prev, vec2 P0, vec2 P1, vec2 P_next, float Fraction)
 {
+	if(std::isnan(Fraction) || std::isinf(Fraction))
+		return P0;
+	if(std::isnan(P0.x) || std::isnan(P0.y) || std::isnan(P1.x) || std::isnan(P1.y))
+		return P0;
+	if(distance(P0, P1) > 256.0f || distance(P_prev, P0) > 256.0f || distance(P1, P_next) > 256.0f)
+		return mix(P0, P1, std::clamp(Fraction, 0.0f, 1.0f));
+
 	const float t = std::clamp(Fraction, 0.0f, 1.0f);
 	const float t2 = t * t;
 	const float t3 = t2 * t;
@@ -250,7 +260,7 @@ vec2 AcInputs::HermiteCatmullRom(vec2 P_prev, vec2 P0, vec2 P1, vec2 P_next, flo
 
 void AcInputs::UpdatePingSample(int PingMs)
 {
-	if(PingMs <= 0)
+	if(PingMs <= 0 || PingMs > 2000)
 		return;
 	s_aPingHistory[s_PingHistoryIndex] = PingMs;
 	s_PingHistoryIndex = (s_PingHistoryIndex + 1) % 16;
@@ -275,7 +285,9 @@ float AcInputs::GetAdaptiveJitterTicks()
 		Variance += Diff * Diff;
 	}
 	Variance /= (float)s_PingHistoryCount;
-	float StdDevMs = std::sqrt(Variance);
+	float StdDevMs = std::sqrt(std::max(0.0f, Variance));
+	if(std::isnan(StdDevMs) || std::isinf(StdDevMs))
+		return 0.0f;
 
 	// Convert jitter in ms to ticks (20ms = 1 tick), capped safely at +0.35 ticks
 	return std::clamp(StdDevMs / 20.0f, 0.0f, 0.35f);
@@ -284,6 +296,18 @@ float AcInputs::GetAdaptiveJitterTicks()
 vec2 AcInputs::ClampCollision(vec2 P0, vec2 TargetPos, const ::CCollision *pCollision)
 {
 	if(!pCollision)
+		return TargetPos;
+
+	if(std::isnan(P0.x) || std::isnan(P0.y) || std::isnan(TargetPos.x) || std::isnan(TargetPos.y) ||
+	   std::isinf(P0.x) || std::isinf(P0.y) || std::isinf(TargetPos.x) || std::isinf(TargetPos.y))
+		return P0;
+
+	const float Dist = distance(P0, TargetPos);
+	if(Dist < 1.0f)
+		return TargetPos;
+
+	// Bypass raycasting if teleported or respawned across map
+	if(Dist > 300.0f)
 		return TargetPos;
 
 	// 1. Raycast line collision against solid walls

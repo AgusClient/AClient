@@ -3659,6 +3659,7 @@ void CMenus::RenderSettingsAClientCommands(CUIRect MainView)
 	DrawCommandCard(Column, "ac_mini_statboard_sort [0-8]", TCLocalize("Sort stat: 0=Default, 1=Saves, 2=Deaths, 3=Freezes, 4=Eff, 5=Net, 6=Time, 7=Hook, 8=Lasts."));
 	DrawCommandCard(Column, "ac_mini_statboard_anim [0|1]", TCLocalize("Toggle smooth F1-style ladder animation when ranks change."));
 	DrawCommandCard(Column, "ac_mini_statboard_anim_speed [3-30]", TCLocalize("Speed of F1 ladder rank transitions (default: 10)."));
+	DrawCommandCard(Column, "ac_mini_statboard_show_tees [0|1]", TCLocalize("Show mini Tee skins next to names in overlay (default: 1)."));
 	DrawCommandCard(Column, "ac_statboard_keep_on_death [0|1]", TCLocalize("Keep accumulated stats on death/kill (do not reset)."));
 	DrawCommandCard(Column, "ac_statboard_reset_on_team_kill [0|1]", TCLocalize("Reset stats when all team dies or you switch team."));
 	DrawCommandCard(Column, "ac_statboard_auto_save [0|1]", TCLocalize("Auto-save stats before resetting on kill or team switch."));
@@ -3903,6 +3904,9 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		Column.HSplitTop(LineSize, &Button, &Column);
 		Ui()->DoScrollbarOption(&g_Config.m_AcMiniStatboardAnimSpeed, &g_Config.m_AcMiniStatboardAnimSpeed, &Button, TCLocalize("Animation speed"), 3, 30, &CUi::ms_LinearScrollbarScale, 0);
 	}
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	DoCheckboxWithHelp(&g_Config.m_AcMiniStatboardShowTees, TCLocalize("Show player skins (Mini Tees)"), TCLocalize("Shows mini tees next to each player name in the stats overlay."), &g_Config.m_AcMiniStatboardShowTees, &Column, LineSize);
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	{
