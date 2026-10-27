@@ -7,6 +7,7 @@
 #include <engine/graphics.h>
 
 #include <game/client/component.h>
+#include <game/client/lineinput.h>
 #include <game/client/ui.h>
 #include <game/client/ui_rect.h>
 
@@ -48,6 +49,16 @@ class CScoreboard : public CComponent
 	class CScoreboardPopupContext : public SPopupMenuId
 	{
 	public:
+		enum ESubMenu
+		{
+			SUBMENU_MAIN = 0,
+			SUBMENU_MUTE,
+			SUBMENU_KICK,
+			SUBMENU_CONFIRM_KICK,
+			SUBMENU_BAN,
+			SUBMENU_CONFIRM_BAN,
+		};
+
 		CScoreboard *m_pScoreboard = nullptr;
 		CButtonContainer m_FriendAction;
 		CButtonContainer m_MuteAction;
@@ -59,6 +70,34 @@ class CScoreboard : public CComponent
 		int m_ClientId;
 		bool m_IsLocal;
 		bool m_IsSpectating;
+
+		int m_SubMenu = SUBMENU_MAIN;
+
+		// Moderation buttons
+		CButtonContainer m_ModMuteButton;
+		CButtonContainer m_ModKickButton;
+		CButtonContainer m_ModBanButton;
+
+		CButtonContainer m_ModBack;
+		CButtonContainer m_ModConfirm;
+		CButtonContainer m_ModUnmute;
+
+		CButtonContainer m_ModKickConfirmYes;
+		CButtonContainer m_ModKickConfirmNo;
+		CButtonContainer m_ModBanConfirmYes;
+		CButtonContainer m_ModBanConfirmNo;
+
+		// Presets
+		CButtonContainer m_aSecondsPreset[6];
+		CButtonContainer m_aMinutesPreset[4];
+		CButtonContainer m_aReasonPreset[3];
+
+		// Inputs
+		CLineInputNumber m_SecondsInput;
+		CLineInputNumber m_MinutesInput;
+		CLineInputBuffered<128> m_ReasonInput;
+
+		void Reset(int ClientId, bool IsSpectating, bool IsLocal);
 
 		static CUi::EPopupMenuFunctionResult Render(void *pContext, CUIRect View, bool Active);
 	} m_ScoreboardPopupContext;
