@@ -51,6 +51,7 @@ void CRaceStats::OnInit()
 	m_aTextures[ICON_NET]    = LoadEmbeddedIcon(gs_aRaceStatIcon_NET, sizeof(gs_aRaceStatIcon_NET), "racestat_net");
 	m_aTextures[ICON_TIME]   = LoadEmbeddedIcon(gs_aRaceStatIcon_TIME, sizeof(gs_aRaceStatIcon_TIME), "racestat_time");
 	m_aTextures[ICON_HOOK]   = LoadEmbeddedIcon(gs_aRaceStatIcon_HOOK, sizeof(gs_aRaceStatIcon_HOOK), "racestat_hook");
+	m_IconAtlasTexture = LoadEmbeddedIcon(gs_aRaceStatIconAtlas, sizeof(gs_aRaceStatIconAtlas), "racestat_atlas");
 
 	LoadHistoryFromFile();
 }
@@ -116,6 +117,7 @@ void CRaceStats::OnReset()
 	m_vCachedRows.clear();
 	m_CachedDisplayCount = 0;
 	m_CachedTotalTeamPlayers = 0;
+	m_StatsDirty = true;
 }
 
 bool CRaceStats::HasCurrentTeamActivity() const
@@ -164,6 +166,7 @@ void CRaceStats::ResetTeamStats()
 	m_vCachedRows.clear();
 	m_CachedDisplayCount = 0;
 	m_CachedTotalTeamPlayers = 0;
+	m_StatsDirty = true;
 	if(Client()->State() == IClient::STATE_ONLINE || Client()->State() == IClient::STATE_DEMOPLAYBACK)
 		m_RunStartTick = Client()->GameTick(g_Config.m_ClDummy);
 	else
@@ -448,6 +451,7 @@ void CRaceStats::OnMessage(int MsgType, void *pRawMsg)
 		if(pMsg->m_Victim >= 0 && pMsg->m_Victim < MAX_CLIENTS)
 		{
 			m_aPlayerStats[pMsg->m_Victim].m_Deaths++;
+			m_StatsDirty = true;
 			if(pMsg->m_Victim == LocalClientId)
 			{
 				m_RoundDeaths++;
@@ -475,6 +479,7 @@ void CRaceStats::OnMessage(int MsgType, void *pRawMsg)
 				if(GameClient()->m_Teams.Team(i) == pMsg->m_Team)
 				{
 					m_aPlayerStats[i].m_Deaths++;
+					m_StatsDirty = true;
 					if(i == LocalClientId)
 					{
 						m_RoundDeaths++;
@@ -615,6 +620,7 @@ void CRaceStats::OnRender()
 			{
 				m_aPlayerStats[i].m_Freezes++;
 				m_aPlayerStats[i].m_LastFreezeTick = CurrentTick;
+				m_StatsDirty = true;
 			}
 
 			// Transición: Se descongeló -> Comprobar si un compañero lo salvó con martillo
@@ -652,6 +658,7 @@ void CRaceStats::OnRender()
 				if(SaverCID != -1)
 				{
 					m_aPlayerStats[SaverCID].m_Saves++;
+					m_StatsDirty = true;
 				}
 			}
 
@@ -666,6 +673,7 @@ void CRaceStats::OnRender()
 			{
 				m_aPlayerStats[LastUnfrozenCID].m_Lasts++;
 				m_aPlayerStats[LastUnfrozenCID].m_WasSoleSurvivor = true;
+				m_StatsDirty = true;
 			}
 		}
 		else
@@ -738,17 +746,19 @@ void CRaceStats::UpdateMiniStatboardCache()
 	m_CachedHasMore = false;
 	m_aCachedMoreText[0] = '\0';
 	m_CachedMoreTextWidth = 0.0f;
+	m_StatsDirty = false;
 
 	struct SPlayerEntry
 	{
 		int m_ClientId;
 		bool m_IsLocal;
+		int m_SortKey;
 	};
 	SPlayerEntry aPlayers[MAX_CLIENTS];
 	int NumPlayers = 0;
 
 	if(GameClient()->m_Snap.m_apPlayerInfos[LocalClientId])
-		aPlayers[NumPlayers++] = {LocalClientId, true};
+		aPlayers[NumPlayers++] = {LocalClientId, true, 0};
 
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
@@ -756,70 +766,40 @@ void CRaceStats::UpdateMiniStatboardCache()
 			continue;
 		if(LocalTeam > 0 && GameClient()->m_Teams.Team(i) != LocalTeam)
 			continue;
-		aPlayers[NumPlayers++] = {i, false};
+		aPlayers[NumPlayers++] = {i, false, 0};
 	}
 
 	if(NumPlayers == 0)
 		return;
 
-	// Ordenamiento por estadistica seleccionada (ac_mini_statboard_sort)
-	std::sort(aPlayers, aPlayers + NumPlayers, [&](const SPlayerEntry &a, const SPlayerEntry &b) {
-		int CidA = a.m_ClientId;
-		int CidB = b.m_ClientId;
-		const auto &StatA = m_aPlayerStats[CidA];
-		const auto &StatB = m_aPlayerStats[CidB];
-
-		int ValA = 0;
-		int ValB = 0;
-
+	// Precomputar la metrica de ordenamiento O(N) una sola vez por jugador para evitar evaluar formulas durante el sort
+	for(int i = 0; i < NumPlayers; i++)
+	{
+		int Cid = aPlayers[i].m_ClientId;
+		const auto &Stat = m_aPlayerStats[Cid];
 		switch(g_Config.m_AcMiniStatboardSort)
 		{
-		case STATBOARD_SORT_SAVES:
-			ValA = StatA.m_Saves;
-			ValB = StatB.m_Saves;
-			break;
-		case STATBOARD_SORT_DEATHS:
-			ValA = StatA.m_Deaths;
-			ValB = StatB.m_Deaths;
-			break;
-		case STATBOARD_SORT_FREEZES:
-			ValA = StatA.m_Freezes;
-			ValB = StatB.m_Freezes;
-			break;
-		case STATBOARD_SORT_EFFICIENCY:
-			ValA = StatA.GetEfficiencyPercent();
-			ValB = StatB.GetEfficiencyPercent();
-			break;
-		case STATBOARD_SORT_NET:
-			ValA = StatA.GetNetBalance();
-			ValB = StatB.GetNetBalance();
-			break;
-		case STATBOARD_SORT_TIME:
-			ValA = StatA.GetFrozenSeconds(Client()->GameTickSpeed());
-			ValB = StatB.GetFrozenSeconds(Client()->GameTickSpeed());
-			break;
-		case STATBOARD_SORT_HOOK:
-			ValA = StatA.GetHookAccuracyPercent();
-			ValB = StatB.GetHookAccuracyPercent();
-			break;
-		case STATBOARD_SORT_LASTS:
-			ValA = StatA.m_Lasts;
-			ValB = StatB.m_Lasts;
-			break;
+		case STATBOARD_SORT_SAVES: aPlayers[i].m_SortKey = Stat.m_Saves; break;
+		case STATBOARD_SORT_DEATHS: aPlayers[i].m_SortKey = Stat.m_Deaths; break;
+		case STATBOARD_SORT_FREEZES: aPlayers[i].m_SortKey = Stat.m_Freezes; break;
+		case STATBOARD_SORT_EFFICIENCY: aPlayers[i].m_SortKey = Stat.GetEfficiencyPercent(); break;
+		case STATBOARD_SORT_NET: aPlayers[i].m_SortKey = Stat.GetNetBalance(); break;
+		case STATBOARD_SORT_TIME: aPlayers[i].m_SortKey = Stat.GetFrozenSeconds(Client()->GameTickSpeed()); break;
+		case STATBOARD_SORT_HOOK: aPlayers[i].m_SortKey = Stat.GetHookAccuracyPercent(); break;
+		case STATBOARD_SORT_LASTS: aPlayers[i].m_SortKey = Stat.m_Lasts; break;
 		case STATBOARD_SORT_DEFAULT:
 		default:
-			if(a.m_IsLocal != b.m_IsLocal)
-				return a.m_IsLocal;
-			return CidA < CidB;
+			aPlayers[i].m_SortKey = 0;
+			break;
 		}
+	}
 
-		if(ValA != ValB)
-			return ValA > ValB;
-
-		// Desempate estable
+	std::sort(aPlayers, aPlayers + NumPlayers, [](const SPlayerEntry &a, const SPlayerEntry &b) {
+		if(g_Config.m_AcMiniStatboardSort != STATBOARD_SORT_DEFAULT && a.m_SortKey != b.m_SortKey)
+			return a.m_SortKey > b.m_SortKey;
 		if(a.m_IsLocal != b.m_IsLocal)
 			return a.m_IsLocal;
-		return CidA < CidB;
+		return a.m_ClientId < b.m_ClientId;
 	});
 
 	float Scale = (float)g_Config.m_AcMiniStatboardScale / 100.0f;
@@ -906,6 +886,17 @@ void CRaceStats::UpdateMiniStatboardCache()
 		Row.m_NameWidth = TextRender()->TextWidth(FontSize, Row.m_aName, -1, -1.0f);
 		Row.m_NumCols = 0;
 
+		if(g_Config.m_AcMiniStatboardShowTees && GameClient()->m_Snap.m_apPlayerInfos[CID] && GameClient()->m_aClients[CID].m_Active)
+		{
+			Row.m_HasTee = true;
+			Row.m_TeeInfo = GameClient()->m_aClients[CID].m_RenderInfo;
+			Row.m_TeeInfo.m_Size = TeeSize;
+		}
+		else
+		{
+			Row.m_HasTee = false;
+		}
+
 		auto AddCol = [&](int ColType, const char *pText, ColorRGBA col) {
 			if(Row.m_NumCols >= (int)NUM_ICONS)
 				return;
@@ -914,6 +905,7 @@ void CRaceStats::UpdateMiniStatboardCache()
 			str_copy(Col.m_aText, pText, sizeof(Col.m_aText));
 			Col.m_ColWidth = GetColWidth(ColType);
 			Col.m_TextWidth = TextRender()->TextWidth(FontSize, pText, -1, -1.0f);
+			Col.m_TextXOffset = (Col.m_ColWidth - Col.m_TextWidth) * 0.5f;
 			Col.m_Color = col;
 		};
 
@@ -1006,7 +998,8 @@ void CRaceStats::RenderMiniStatboard()
 	int LocalTeam = GameClient()->m_Teams.Team(LocalClientId);
 
 	bool NeedUpdate = !m_CacheValid ||
-	                  (CurrentTick != m_LastCacheTick) ||
+	                  m_StatsDirty ||
+	                  (CurrentTick - m_LastCacheTick >= 50) ||
 	                  (g_Config.m_AcMiniStatboardColumns != m_LastCacheColumns) ||
 	                  (g_Config.m_AcMiniStatboardSort != m_LastCacheSort) ||
 	                  (g_Config.m_AcMiniStatboardScale != m_LastCacheScale) ||
@@ -1069,17 +1062,6 @@ void CRaceStats::RenderMiniStatboard()
 		Graphics()->DrawRect(BaseX, BaseY, TotalWidth, HeaderHeight + Padding, ColorRGBA(0.12f, 0.12f, 0.18f, Alpha * 0.50f), IGraphics::CORNER_T, 4.0f * Scale);
 	}
 
-	auto DrawIcon = [&](IGraphics::CTextureHandle Tex, float x, float y, float size, ColorRGBA col) {
-		if(!Tex.IsValid())
-			return;
-		Graphics()->TextureSet(Tex);
-		Graphics()->QuadsBegin();
-		Graphics()->SetColor(col);
-		IGraphics::CQuadItem Quad(x, y, size, size);
-		Graphics()->QuadsDrawTL(&Quad, 1);
-		Graphics()->QuadsEnd();
-	};
-
 	auto GetColWidth = [&](int ColType) -> float {
 		if(ColType == ICON_TIME)
 			return 19.0f * Scale;
@@ -1097,27 +1079,80 @@ void CRaceStats::RenderMiniStatboard()
 	bool ShowTime   = (g_Config.m_AcMiniStatboardColumns & 64) != 0;
 	bool ShowHook   = (g_Config.m_AcMiniStatboardColumns & 128) != 0;
 
-	// Dibujar Iconos de Cabecera
+	// Dibujado de Iconos de Cabecera agrupados (Single Draw Call con Texture Atlas)
 	float CurrX = BaseX + Padding;
 	float HeaderY = BaseY + Padding + (HeaderHeight - IconSize) / 2.0f;
 
-	DrawIcon(m_aTextures[ICON_USER], CurrX + 2.0f * Scale, HeaderY, IconSize, ColorRGBA(1.0f, 1.0f, 1.0f, 0.9f));
-	CurrX += ColWidthName;
+	if(m_IconAtlasTexture.IsValid())
+	{
+		Graphics()->TextureSet(m_IconAtlasTexture);
+		Graphics()->QuadsBegin();
 
-	auto DrawHeaderCol = [&](IGraphics::CTextureHandle Tex, int ColType, ColorRGBA col) {
-		float W = GetColWidth(ColType);
-		DrawIcon(Tex, CurrX + (W - IconSize) / 2.0f, HeaderY, IconSize, col);
-		CurrX += W;
-	};
+		auto DrawAtlasIcon = [&](int ColType, float x, float y, float size, ColorRGBA col) {
+			int c = ColType % 3;
+			int r = ColType / 3;
+			float U0 = (float)c / 3.0f;
+			float V0 = (float)r / 3.0f;
+			float U1 = (float)(c + 1) / 3.0f;
+			float V1 = (float)(r + 1) / 3.0f;
 
-	if(ShowFreeze) DrawHeaderCol(m_aTextures[ICON_FREEZE], ICON_FREEZE, ColorRGBA(0.5f, 0.85f, 1.0f, 1.0f));
-	if(ShowSave)   DrawHeaderCol(m_aTextures[ICON_SAVE], ICON_SAVE, ColorRGBA(0.4f, 1.0f, 0.5f, 1.0f));
-	if(ShowDeath)  DrawHeaderCol(m_aTextures[ICON_SKULL], ICON_SKULL, ColorRGBA(0.95f, 0.35f, 0.35f, 1.0f));
-	if(ShowEff)    DrawHeaderCol(m_aTextures[ICON_EFF], ICON_EFF, ColorRGBA(0.95f, 0.75f, 0.3f, 1.0f));
-	if(ShowNet)    DrawHeaderCol(m_aTextures[ICON_NET], ICON_NET, ColorRGBA(0.45f, 0.90f, 0.95f, 1.0f));
-	if(ShowTime)   DrawHeaderCol(m_aTextures[ICON_TIME], ICON_TIME, ColorRGBA(0.55f, 0.80f, 1.0f, 1.0f));
-	if(ShowHook)   DrawHeaderCol(m_aTextures[ICON_HOOK], ICON_HOOK, ColorRGBA(1.0f, 0.85f, 0.35f, 1.0f));
-	if(ShowLast)   DrawHeaderCol(m_aTextures[ICON_LAST], ICON_LAST, ColorRGBA(1.0f, 0.75f, 0.3f, 1.0f));
+			Graphics()->SetColor(col);
+			Graphics()->QuadsSetSubset(U0, V0, U1, V1);
+			IGraphics::CQuadItem Quad(x, y, size, size);
+			Graphics()->QuadsDrawTL(&Quad, 1);
+		};
+
+		DrawAtlasIcon(ICON_USER, CurrX + 2.0f * Scale, HeaderY, IconSize, ColorRGBA(1.0f, 1.0f, 1.0f, 0.9f));
+		float HeaderCurrX = BaseX + Padding + ColWidthName;
+
+		auto DrawHeaderCol = [&](int ColType, ColorRGBA col) {
+			float W = GetColWidth(ColType);
+			DrawAtlasIcon(ColType, HeaderCurrX + (W - IconSize) / 2.0f, HeaderY, IconSize, col);
+			HeaderCurrX += W;
+		};
+
+		if(ShowFreeze) DrawHeaderCol(ICON_FREEZE, ColorRGBA(0.5f, 0.85f, 1.0f, 1.0f));
+		if(ShowSave)   DrawHeaderCol(ICON_SAVE, ColorRGBA(0.4f, 1.0f, 0.5f, 1.0f));
+		if(ShowDeath)  DrawHeaderCol(ICON_SKULL, ColorRGBA(0.95f, 0.35f, 0.35f, 1.0f));
+		if(ShowEff)    DrawHeaderCol(ICON_EFF, ColorRGBA(0.95f, 0.75f, 0.3f, 1.0f));
+		if(ShowNet)    DrawHeaderCol(ICON_NET, ColorRGBA(0.45f, 0.90f, 0.95f, 1.0f));
+		if(ShowTime)   DrawHeaderCol(ICON_TIME, ColorRGBA(0.55f, 0.80f, 1.0f, 1.0f));
+		if(ShowHook)   DrawHeaderCol(ICON_HOOK, ColorRGBA(1.0f, 0.85f, 0.35f, 1.0f));
+		if(ShowLast)   DrawHeaderCol(ICON_LAST, ColorRGBA(1.0f, 0.75f, 0.3f, 1.0f));
+
+		Graphics()->QuadsEnd();
+		Graphics()->QuadsSetSubset(0, 0, 1, 1);
+	}
+	else
+	{
+		auto DrawIcon = [&](IGraphics::CTextureHandle Tex, float x, float y, float size, ColorRGBA col) {
+			if(!Tex.IsValid())
+				return;
+			Graphics()->TextureSet(Tex);
+			Graphics()->QuadsBegin();
+			Graphics()->SetColor(col);
+			IGraphics::CQuadItem Quad(x, y, size, size);
+			Graphics()->QuadsDrawTL(&Quad, 1);
+			Graphics()->QuadsEnd();
+		};
+
+		DrawIcon(m_aTextures[ICON_USER], CurrX + 2.0f * Scale, HeaderY, IconSize, ColorRGBA(1.0f, 1.0f, 1.0f, 0.9f));
+		float HeaderCurrX = BaseX + Padding + ColWidthName;
+		auto DrawHeaderCol = [&](IGraphics::CTextureHandle Tex, int ColType, ColorRGBA col) {
+			float W = GetColWidth(ColType);
+			DrawIcon(Tex, HeaderCurrX + (W - IconSize) / 2.0f, HeaderY, IconSize, col);
+			HeaderCurrX += W;
+		};
+
+		if(ShowFreeze) DrawHeaderCol(m_aTextures[ICON_FREEZE], ICON_FREEZE, ColorRGBA(0.5f, 0.85f, 1.0f, 1.0f));
+		if(ShowSave)   DrawHeaderCol(m_aTextures[ICON_SAVE], ICON_SAVE, ColorRGBA(0.4f, 1.0f, 0.5f, 1.0f));
+		if(ShowDeath)  DrawHeaderCol(m_aTextures[ICON_SKULL], ICON_SKULL, ColorRGBA(0.95f, 0.35f, 0.35f, 1.0f));
+		if(ShowEff)    DrawHeaderCol(m_aTextures[ICON_EFF], ICON_EFF, ColorRGBA(0.95f, 0.75f, 0.3f, 1.0f));
+		if(ShowNet)    DrawHeaderCol(m_aTextures[ICON_NET], ICON_NET, ColorRGBA(0.45f, 0.90f, 0.95f, 1.0f));
+		if(ShowTime)   DrawHeaderCol(m_aTextures[ICON_TIME], ICON_TIME, ColorRGBA(0.55f, 0.80f, 1.0f, 1.0f));
+		if(ShowHook)   DrawHeaderCol(m_aTextures[ICON_HOOK], ICON_HOOK, ColorRGBA(1.0f, 0.85f, 0.35f, 1.0f));
+		if(ShowLast)   DrawHeaderCol(m_aTextures[ICON_LAST], ICON_LAST, ColorRGBA(1.0f, 0.75f, 0.3f, 1.0f));
+	}
 
 	// Filas de Jugadores con Animacion Fluida Estilo F1
 	float BaseRowY = BaseY + Padding + HeaderHeight;
@@ -1180,6 +1215,29 @@ void CRaceStats::RenderMiniStatboard()
 
 	float TeeSize = g_Config.m_AcMiniStatboardShowTees ? (FontSize * 1.35f) : 0.0f;
 
+	// Batching de lineas cebra en una unica llamada de dibujo GPU (Single Draw Call)
+	IGraphics::CQuadItem aZebraQuads[MAX_CLIENTS];
+	int NumZebraQuads = 0;
+	for(int idx = 1; idx < DisplayCount; idx += 2)
+	{
+		if(idx >= (int)m_vCachedRows.size())
+			break;
+		int CID = m_vCachedRows[idx].m_ClientId;
+		if(CID < 0 || CID >= MAX_CLIENTS)
+			continue;
+		SRowAnimState &Anim = m_aRowAnim[CID];
+		float CurrentRowY = (Anim.m_VisualY >= 0.0f) ? Anim.m_VisualY : (BaseRowY + (float)idx * RowHeight);
+		aZebraQuads[NumZebraQuads++] = IGraphics::CQuadItem(BaseX + 1.0f * Scale, CurrentRowY, TotalWidth - 2.0f * Scale, RowHeight);
+	}
+	if(NumZebraQuads > 0)
+	{
+		Graphics()->TextureClear();
+		Graphics()->QuadsBegin();
+		Graphics()->SetColor(ColorRGBA(1.0f, 1.0f, 1.0f, 0.04f));
+		Graphics()->QuadsDrawTL(aZebraQuads, NumZebraQuads);
+		Graphics()->QuadsEnd();
+	}
+
 	for(int idx = 0; idx < DisplayCount; idx++)
 	{
 		if(idx >= (int)m_vCachedRows.size())
@@ -1192,11 +1250,6 @@ void CRaceStats::RenderMiniStatboard()
 		SRowAnimState &Anim = m_aRowAnim[CID];
 		float CurrentRowY = (Anim.m_VisualY >= 0.0f) ? Anim.m_VisualY : (BaseRowY + (float)idx * RowHeight);
 
-		// Efecto cebra suave
-		if(idx % 2 == 1)
-		{
-			Graphics()->DrawRect(BaseX + 1.0f * Scale, CurrentRowY, TotalWidth - 2.0f * Scale, RowHeight, ColorRGBA(1.0f, 1.0f, 1.0f, 0.04f), IGraphics::CORNER_NONE, 0.0f);
-		}
 		// Resaltar al jugador local
 		if(IsMe)
 		{
@@ -1221,15 +1274,13 @@ void CRaceStats::RenderMiniStatboard()
 		CurrX = BaseX + Padding;
 		float TextY = CurrentRowY + (RowHeight - FontSize) / 2.0f;
 
-		// Mini Tee (si esta habilitado, default: 1)
+		// Mini Tee cacheado (cero pointer chasing en render loop)
 		if(g_Config.m_AcMiniStatboardShowTees)
 		{
-			if(GameClient()->m_Snap.m_apPlayerInfos[CID] && GameClient()->m_aClients[CID].m_Active)
+			if(Row.m_HasTee)
 			{
-				CTeeRenderInfo TeeInfo = GameClient()->m_aClients[CID].m_RenderInfo;
-				TeeInfo.m_Size = TeeSize;
-				const vec2 TeePos = vec2(CurrX + TeeInfo.m_Size * 0.5f, CurrentRowY + RowHeight * 0.5f);
-				RenderTools()->RenderTee(CAnimState::GetIdle(), &TeeInfo, EMOTE_NORMAL, vec2(1.0f, 0.0f), TeePos);
+				const vec2 TeePos = vec2(CurrX + TeeSize * 0.5f, CurrentRowY + RowHeight * 0.5f);
+				RenderTools()->RenderTee(CAnimState::GetIdle(), &Row.m_TeeInfo, EMOTE_NORMAL, vec2(1.0f, 0.0f), TeePos);
 			}
 			CurrX += TeeSize;
 		}
@@ -1245,13 +1296,12 @@ void CRaceStats::RenderMiniStatboard()
 		TextRender()->Text(NameX, TextY, FontSize, Row.m_aName, -1.0f);
 		CurrX = BaseX + Padding + ColWidthName;
 
-		// Dibujado directo de columnas cacheadas
+		// Dibujado directo de columnas con offset X precalculado en cache
 		for(int c = 0; c < Row.m_NumCols; c++)
 		{
 			const SCachedStatCol &Col = Row.m_aCols[c];
-			float StatX = CurrX + (Col.m_ColWidth - Col.m_TextWidth) * 0.5f;
 			TextRender()->TextColor(Col.m_Color);
-			TextRender()->Text(StatX, TextY, FontSize, Col.m_aText, -1.0f);
+			TextRender()->Text(CurrX + Col.m_TextXOffset, TextY, FontSize, Col.m_aText, -1.0f);
 			CurrX += Col.m_ColWidth;
 		}
 
