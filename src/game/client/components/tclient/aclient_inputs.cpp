@@ -99,6 +99,9 @@ namespace
 		if(g_Config.m_AcAX30AdaptiveJitter)
 			Offset += AcInputs::GetAdaptiveJitterTicks();
 
+		if(std::isnan(Offset) || std::isinf(Offset) || Offset <= 0.0f)
+			return 0.0f;
+
 		return Offset;
 	}
 } // namespace
@@ -137,7 +140,7 @@ int AcInputs::PredictionTicksOthers(float OffsetTicks)
 
 void AcInputs::ApplyOffset(float OffsetTicks, int &Tick, float &Intra)
 {
-	if(OffsetTicks <= 0.0f)
+	if(OffsetTicks <= 0.0f || std::isnan(OffsetTicks) || std::isinf(OffsetTicks) || std::isnan(Intra) || std::isinf(Intra))
 		return;
 
 	const int WholeTicks = (int)OffsetTicks;
@@ -238,7 +241,7 @@ vec2 AcInputs::AX30_EvaluateTrajectory(vec2 P_prev, vec2 P0, vec2 P1, vec2 P_nex
 
 void AcInputs::UpdatePingSample(int PingMs)
 {
-	if(PingMs <= 0)
+	if(PingMs <= 0 || PingMs > 2000)
 		return;
 	s_aPingHistory[s_PingHistoryIndex] = PingMs;
 	s_PingHistoryIndex = (s_PingHistoryIndex + 1) % 16;
@@ -254,6 +257,18 @@ float AcInputs::GetAdaptiveJitterTicks()
 vec2 AcInputs::ClampCollision(vec2 P0, vec2 TargetPos, const ::CCollision *pCollision)
 {
 	if(!pCollision)
+		return TargetPos;
+
+	if(std::isnan(P0.x) || std::isnan(P0.y) || std::isnan(TargetPos.x) || std::isnan(TargetPos.y) ||
+	   std::isinf(P0.x) || std::isinf(P0.y) || std::isinf(TargetPos.x) || std::isinf(TargetPos.y))
+		return P0;
+
+	const float Dist = distance(P0, TargetPos);
+	if(Dist < 1.0f)
+		return TargetPos;
+
+	// Bypass raycasting if teleported or respawned across map
+	if(Dist > 300.0f)
 		return TargetPos;
 
 	// 1. Raycast line collision against solid walls

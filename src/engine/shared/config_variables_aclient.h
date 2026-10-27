@@ -20,6 +20,7 @@ MACRO_CONFIG_INT(AcMiniStatboardColumns, ac_mini_statboard_columns, 255, 0, 255,
 MACRO_CONFIG_INT(AcMiniStatboardSort, ac_mini_statboard_sort, 0, 0, 8, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Sort mini statboard by stat (0=Default, 1=Saves, 2=Deaths, 3=Freezes, 4=Efficiency, 5=Net, 6=Time, 7=Hook, 8=Lasts)")
 MACRO_CONFIG_INT(AcMiniStatboardAnim, ac_mini_statboard_anim, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable smooth F1-style ladder animation when ranks change in mini statboard")
 MACRO_CONFIG_INT(AcMiniStatboardAnimSpeed, ac_mini_statboard_anim_speed, 10, 3, 30, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Animation speed for F1-style rank transitions (3=slow, 10=default, 30=fast)")
+MACRO_CONFIG_INT(AcMiniStatboardShowTees, ac_mini_statboard_show_tees, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show mini Tee skins in stats overlay (default: 1)")
 MACRO_CONFIG_INT(AcStatboardKeepOnDeath, ac_statboard_keep_on_death, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Keep overlay stats on /kill (do not reset on death)")
 MACRO_CONFIG_INT(AcStatboardResetOnTeamKill, ac_statboard_reset_on_team_kill, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Reset live stats on /kill or team change")
 MACRO_CONFIG_INT(AcStatboardAutoSave, ac_statboard_auto_save, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Auto-save race stats to history before resetting on /kill or /team")
