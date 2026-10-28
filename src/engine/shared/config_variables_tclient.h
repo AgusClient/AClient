@@ -286,5 +286,39 @@ MACRO_CONFIG_INT(TcShowhudDummyAngle, tc_showhud_dummy_angle, 0, 0, 1, CFGFLAG_C
 
 // Moderation
 MACRO_CONFIG_INT(ClModRecordOnPunish, cl_mod_record_on_punish, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Automatically save a 3-minute replay when kicking or banning a player")
+MACRO_CONFIG_INT(ClModAllowTargetDummy, cl_mod_allow_target_dummy, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Allow moderating local dummy for testing purposes")
+
+// Mute Presets (Seconds)
+MACRO_CONFIG_INT(ClModMuteSec1, cl_mod_mute_sec1, 60, 1, 31536000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mute preset 1 duration in seconds")
+MACRO_CONFIG_INT(ClModMuteSec2, cl_mod_mute_sec2, 300, 1, 31536000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mute preset 2 duration in seconds")
+MACRO_CONFIG_INT(ClModMuteSec3, cl_mod_mute_sec3, 900, 1, 31536000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mute preset 3 duration in seconds")
+MACRO_CONFIG_INT(ClModMuteSec4, cl_mod_mute_sec4, 3600, 1, 31536000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mute preset 4 duration in seconds")
+MACRO_CONFIG_INT(ClModMuteSec5, cl_mod_mute_sec5, 14400, 1, 31536000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mute preset 5 duration in seconds")
+MACRO_CONFIG_INT(ClModMuteSec6, cl_mod_mute_sec6, 86400, 1, 31536000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mute preset 6 duration in seconds")
+
+// Mute Reasons
+MACRO_CONFIG_STR(ClModMuteReason1, cl_mod_mute_reason1, 64, "Spam", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mute reason preset 1")
+MACRO_CONFIG_STR(ClModMuteReason2, cl_mod_mute_reason2, 64, "Insultos", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mute reason preset 2")
+MACRO_CONFIG_STR(ClModMuteReason3, cl_mod_mute_reason3, 64, "Bloqueo", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mute reason preset 3")
+
+// Kick Reasons
+MACRO_CONFIG_STR(ClModKickReason1, cl_mod_kick_reason1, 64, "AFK", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Kick reason preset 1")
+MACRO_CONFIG_STR(ClModKickReason2, cl_mod_kick_reason2, 64, "Troll", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Kick reason preset 2")
+MACRO_CONFIG_STR(ClModKickReason3, cl_mod_kick_reason3, 64, "Reglas", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Kick reason preset 3")
+
+// Ban Presets (Minutes)
+MACRO_CONFIG_INT(ClModBanMin1, cl_mod_ban_min1, 5, 1, 525600, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Ban preset 1 duration in minutes")
+MACRO_CONFIG_INT(ClModBanMin2, cl_mod_ban_min2, 60, 1, 525600, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Ban preset 2 duration in minutes")
+MACRO_CONFIG_INT(ClModBanMin3, cl_mod_ban_min3, 1440, 1, 525600, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Ban preset 3 duration in minutes")
+MACRO_CONFIG_INT(ClModBanMin4, cl_mod_ban_min4, 10080, 1, 525600, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Ban preset 4 duration in minutes")
+
+// Ban Reasons
+MACRO_CONFIG_STR(ClModBanReason1, cl_mod_ban_reason1, 64, "Cheats", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Ban reason preset 1")
+MACRO_CONFIG_STR(ClModBanReason2, cl_mod_ban_reason2, 64, "Insultos", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Ban reason preset 2")
+MACRO_CONFIG_STR(ClModBanReason3, cl_mod_ban_reason3, 64, "Griefing", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Ban reason preset 3")
+
+// Anti-Ping Echo
+MACRO_CONFIG_INT(ClAntiPingEcho, cl_antiping_echo, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show chat echo notification when toggling anti-ping")
+
 
 

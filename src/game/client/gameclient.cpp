@@ -3882,9 +3882,12 @@ void CGameClient::ConToggleAntiPing(IConsole::IResult *pResult, void *pUserData)
 {
 	CGameClient *pSelf = static_cast<CGameClient *>(pUserData);
 	g_Config.m_ClAntiPing ^= 1;
-	char aBuf[64];
-	str_format(aBuf, sizeof(aBuf), "Anti-Ping: %s", g_Config.m_ClAntiPing ? "ON" : "OFF");
-	pSelf->m_Chat.Echo(aBuf);
+	if(g_Config.m_ClAntiPingEcho)
+	{
+		char aBuf[64];
+		str_format(aBuf, sizeof(aBuf), "Anti-Ping: %s", g_Config.m_ClAntiPing ? "ON" : "OFF");
+		pSelf->m_Chat.Echo(aBuf);
+	}
 }
 
 void CGameClient::ConReadyChange7(IConsole::IResult *pResult, void *pUserData)

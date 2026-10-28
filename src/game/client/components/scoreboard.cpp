@@ -459,9 +459,10 @@ void CScoreboard::RenderSpectators(CUIRect Spectators)
 			if(ButtonResult != 0)
 			{
 				m_ScoreboardPopupContext.m_pScoreboard = this;
-				m_ScoreboardPopupContext.Reset(pInfo->m_ClientId, true,
-					GameClient()->m_aLocalIds[0] == pInfo->m_ClientId ||
-						(Client()->DummyConnected() && GameClient()->m_aLocalIds[1] == pInfo->m_ClientId));
+				bool IsLocalTarget = GameClient()->m_aLocalIds[0] == pInfo->m_ClientId;
+				if(!g_Config.m_ClModAllowTargetDummy)
+					IsLocalTarget |= (Client()->DummyConnected() && GameClient()->m_aLocalIds[1] == pInfo->m_ClientId);
+				m_ScoreboardPopupContext.Reset(pInfo->m_ClientId, true, IsLocalTarget);
 
 				const bool CanMod = Client()->RconAuthed() && !m_ScoreboardPopupContext.m_IsLocal;
 				const float Width = CanMod ? 160.0f : 115.0f;
@@ -727,9 +728,10 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 				if(ButtonResult != 0)
 				{
 					m_ScoreboardPopupContext.m_pScoreboard = this;
-					m_ScoreboardPopupContext.Reset(pInfo->m_ClientId, false,
-						GameClient()->m_aLocalIds[0] == pInfo->m_ClientId ||
-							(Client()->DummyConnected() && GameClient()->m_aLocalIds[1] == pInfo->m_ClientId));
+					bool IsLocalTarget = GameClient()->m_aLocalIds[0] == pInfo->m_ClientId;
+					if(!g_Config.m_ClModAllowTargetDummy)
+						IsLocalTarget |= (Client()->DummyConnected() && GameClient()->m_aLocalIds[1] == pInfo->m_ClientId);
+					m_ScoreboardPopupContext.Reset(pInfo->m_ClientId, false, IsLocalTarget);
 
 					const bool CanMod = Client()->RconAuthed() && !m_ScoreboardPopupContext.m_IsLocal;
 					const float Width = CanMod ? 160.0f : 115.0f;
@@ -1227,14 +1229,38 @@ void CScoreboard::SaveModReplay(const char *pAction, const char *pTargetName)
 	GameClient()->m_Chat.Echo(aMsg);
 }
 
+static void FormatDurationSeconds(char *pBuf, int Size, int Secs)
+{
+	if(Secs >= 86400 && Secs % 86400 == 0)
+		str_format(pBuf, Size, "%dd", Secs / 86400);
+	else if(Secs >= 3600 && Secs % 3600 == 0)
+		str_format(pBuf, Size, "%dh", Secs / 3600);
+	else if(Secs >= 60 && Secs % 60 == 0)
+		str_format(pBuf, Size, "%dm", Secs / 60);
+	else
+		str_format(pBuf, Size, "%ds", Secs);
+}
+
+static void FormatDurationMinutes(char *pBuf, int Size, int Mins)
+{
+	if(Mins >= 10080 && Mins % 10080 == 0)
+		str_format(pBuf, Size, "%dw", Mins / 10080);
+	else if(Mins >= 1440 && Mins % 1440 == 0)
+		str_format(pBuf, Size, "%dd", Mins / 1440);
+	else if(Mins >= 60 && Mins % 60 == 0)
+		str_format(pBuf, Size, "%dh", Mins / 60);
+	else
+		str_format(pBuf, Size, "%dm", Mins);
+}
+
 void CScoreboard::CScoreboardPopupContext::Reset(int ClientId, bool IsSpectating, bool IsLocal)
 {
 	m_ClientId = ClientId;
 	m_IsSpectating = IsSpectating;
 	m_IsLocal = IsLocal;
 	m_SubMenu = SUBMENU_MAIN;
-	m_SecondsInput.SetInteger(3600);
-	m_MinutesInput.SetInteger(60);
+	m_SecondsInput.SetInteger(g_Config.m_ClModMuteSec4);
+	m_MinutesInput.SetInteger(g_Config.m_ClModBanMin2);
 	m_ReasonInput.Clear();
 }
 
@@ -1414,46 +1440,47 @@ CUi::EPopupMenuFunctionResult CScoreboard::CScoreboardPopupContext::Render(void 
 
 		View.HSplitTop(ItemSpacing, nullptr, &View);
 
-		// Presets Row 1: 60s, 300s, 900s
+		// Presets Row 1 (configured)
 		View.HSplitTop(ButtonSize - 1.0f, &Container, &View);
 		const float W3 = (Container.w - ItemSpacing * 2.0f) / 3.0f;
 		CUIRect Btn;
+		char aSecBuf[32];
 
 		Container.VSplitLeft(W3, &Btn, &Container);
-		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aSecondsPreset[0], "60s", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
-			pPopupContext->m_SecondsInput.SetInteger(60);
-		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_aSecondsPreset[0], &Btn, "1 min");
+		FormatDurationSeconds(aSecBuf, sizeof(aSecBuf), g_Config.m_ClModMuteSec1);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aSecondsPreset[0], aSecBuf, &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_SecondsInput.SetInteger(g_Config.m_ClModMuteSec1);
 
 		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
 		Container.VSplitLeft(W3, &Btn, &Container);
-		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aSecondsPreset[1], "300s", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
-			pPopupContext->m_SecondsInput.SetInteger(300);
-		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_aSecondsPreset[1], &Btn, "5 min");
+		FormatDurationSeconds(aSecBuf, sizeof(aSecBuf), g_Config.m_ClModMuteSec2);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aSecondsPreset[1], aSecBuf, &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_SecondsInput.SetInteger(g_Config.m_ClModMuteSec2);
 
 		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
-		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aSecondsPreset[2], "900s", &Container, FontSize - 2.0f, TEXTALIGN_MC))
-			pPopupContext->m_SecondsInput.SetInteger(900);
-		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_aSecondsPreset[2], &Container, "15 min");
+		FormatDurationSeconds(aSecBuf, sizeof(aSecBuf), g_Config.m_ClModMuteSec3);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aSecondsPreset[2], aSecBuf, &Container, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_SecondsInput.SetInteger(g_Config.m_ClModMuteSec3);
 
-		// Presets Row 2: 3600s, 14400s, 86400s
+		// Presets Row 2 (configured)
 		View.HSplitTop(ItemSpacing, nullptr, &View);
 		View.HSplitTop(ButtonSize - 1.0f, &Container, &View);
 
 		Container.VSplitLeft(W3, &Btn, &Container);
-		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aSecondsPreset[3], "3600s", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
-			pPopupContext->m_SecondsInput.SetInteger(3600);
-		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_aSecondsPreset[3], &Btn, "1 hour");
+		FormatDurationSeconds(aSecBuf, sizeof(aSecBuf), g_Config.m_ClModMuteSec4);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aSecondsPreset[3], aSecBuf, &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_SecondsInput.SetInteger(g_Config.m_ClModMuteSec4);
 
 		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
 		Container.VSplitLeft(W3, &Btn, &Container);
-		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aSecondsPreset[4], "14400s", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
-			pPopupContext->m_SecondsInput.SetInteger(14400);
-		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_aSecondsPreset[4], &Btn, "4 hours");
+		FormatDurationSeconds(aSecBuf, sizeof(aSecBuf), g_Config.m_ClModMuteSec5);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aSecondsPreset[4], aSecBuf, &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_SecondsInput.SetInteger(g_Config.m_ClModMuteSec5);
 
 		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
-		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aSecondsPreset[5], "86400s", &Container, FontSize - 2.0f, TEXTALIGN_MC))
-			pPopupContext->m_SecondsInput.SetInteger(86400);
-		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_aSecondsPreset[5], &Container, "1 day");
+		FormatDurationSeconds(aSecBuf, sizeof(aSecBuf), g_Config.m_ClModMuteSec6);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aSecondsPreset[5], aSecBuf, &Container, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_SecondsInput.SetInteger(g_Config.m_ClModMuteSec6);
 
 		// Seconds Input Box
 		View.HSplitTop(ItemSpacing * 2.0f, nullptr, &View);
@@ -1463,19 +1490,19 @@ CUi::EPopupMenuFunctionResult CScoreboard::CScoreboardPopupContext::Render(void 
 		pUi->DoLabel(&InputLabel, TCLocalize("Seg:"), FontSize - 1.0f, TEXTALIGN_ML);
 		pUi->DoEditBox(&pPopupContext->m_SecondsInput, &InputBox, FontSize - 1.0f);
 
-		// Reason Presets
+		// Reason Presets (configured)
 		View.HSplitTop(ItemSpacing, nullptr, &View);
 		View.HSplitTop(ButtonSize - 1.0f, &Container, &View);
 		Container.VSplitLeft(W3, &Btn, &Container);
-		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[0], "Spam", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
-			pPopupContext->m_ReasonInput.Set("Spam");
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[0], g_Config.m_ClModMuteReason1, &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_ReasonInput.Set(g_Config.m_ClModMuteReason1);
 		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
 		Container.VSplitLeft(W3, &Btn, &Container);
-		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[1], "Insultos", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
-			pPopupContext->m_ReasonInput.Set("Insultos");
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[1], g_Config.m_ClModMuteReason2, &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_ReasonInput.Set(g_Config.m_ClModMuteReason2);
 		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
-		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[2], "Bloqueo", &Container, FontSize - 2.0f, TEXTALIGN_MC))
-			pPopupContext->m_ReasonInput.Set("Bloqueo");
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[2], g_Config.m_ClModMuteReason3, &Container, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_ReasonInput.Set(g_Config.m_ClModMuteReason3);
 
 		// Reason Input Box
 		View.HSplitTop(ItemSpacing, nullptr, &View);
@@ -1536,20 +1563,20 @@ CUi::EPopupMenuFunctionResult CScoreboard::CScoreboardPopupContext::Render(void 
 
 		View.HSplitTop(ItemSpacing * 2.0f, nullptr, &View);
 
-		// Reason Presets
+		// Reason Presets (configured)
 		View.HSplitTop(ButtonSize - 1.0f, &Container, &View);
 		const float W3 = (Container.w - ItemSpacing * 2.0f) / 3.0f;
 		CUIRect Btn;
 		Container.VSplitLeft(W3, &Btn, &Container);
-		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[0], "AFK", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
-			pPopupContext->m_ReasonInput.Set("AFK");
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[0], g_Config.m_ClModKickReason1, &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_ReasonInput.Set(g_Config.m_ClModKickReason1);
 		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
 		Container.VSplitLeft(W3, &Btn, &Container);
-		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[1], "Troll", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
-			pPopupContext->m_ReasonInput.Set("Troll");
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[1], g_Config.m_ClModKickReason2, &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_ReasonInput.Set(g_Config.m_ClModKickReason2);
 		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
-		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[2], "Reglas", &Container, FontSize - 2.0f, TEXTALIGN_MC))
-			pPopupContext->m_ReasonInput.Set("Reglas");
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[2], g_Config.m_ClModKickReason3, &Container, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_ReasonInput.Set(g_Config.m_ClModKickReason3);
 
 		// Reason Input Box
 		View.HSplitTop(ItemSpacing * 2.0f, nullptr, &View);
@@ -1633,31 +1660,33 @@ CUi::EPopupMenuFunctionResult CScoreboard::CScoreboardPopupContext::Render(void 
 
 		View.HSplitTop(ItemSpacing * 2.0f, nullptr, &View);
 
-		// Minutes Presets: 5m, 60m, 1440m (1d), 10080m (7d)
+		// Minutes Presets (configured)
 		View.HSplitTop(ButtonSize - 1.0f, &Container, &View);
 		const float W4 = (Container.w - ItemSpacing * 3.0f) / 4.0f;
 		CUIRect Btn;
+		char aMinBuf[32];
+
 		Container.VSplitLeft(W4, &Btn, &Container);
-		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aMinutesPreset[0], "5m", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
-			pPopupContext->m_MinutesInput.SetInteger(5);
-		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_aMinutesPreset[0], &Btn, "5 min");
+		FormatDurationMinutes(aMinBuf, sizeof(aMinBuf), g_Config.m_ClModBanMin1);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aMinutesPreset[0], aMinBuf, &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_MinutesInput.SetInteger(g_Config.m_ClModBanMin1);
 
 		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
 		Container.VSplitLeft(W4, &Btn, &Container);
-		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aMinutesPreset[1], "60m", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
-			pPopupContext->m_MinutesInput.SetInteger(60);
-		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_aMinutesPreset[1], &Btn, "1 hour");
+		FormatDurationMinutes(aMinBuf, sizeof(aMinBuf), g_Config.m_ClModBanMin2);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aMinutesPreset[1], aMinBuf, &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_MinutesInput.SetInteger(g_Config.m_ClModBanMin2);
 
 		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
 		Container.VSplitLeft(W4, &Btn, &Container);
-		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aMinutesPreset[2], "1d", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
-			pPopupContext->m_MinutesInput.SetInteger(1440);
-		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_aMinutesPreset[2], &Btn, "1 day (1440m)");
+		FormatDurationMinutes(aMinBuf, sizeof(aMinBuf), g_Config.m_ClModBanMin3);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aMinutesPreset[2], aMinBuf, &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_MinutesInput.SetInteger(g_Config.m_ClModBanMin3);
 
 		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
-		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aMinutesPreset[3], "7d", &Container, FontSize - 2.0f, TEXTALIGN_MC))
-			pPopupContext->m_MinutesInput.SetInteger(10080);
-		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_aMinutesPreset[3], &Container, "7 days (10080m)");
+		FormatDurationMinutes(aMinBuf, sizeof(aMinBuf), g_Config.m_ClModBanMin4);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aMinutesPreset[3], aMinBuf, &Container, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_MinutesInput.SetInteger(g_Config.m_ClModBanMin4);
 
 		// Minutes Input Box
 		View.HSplitTop(ItemSpacing, nullptr, &View);
@@ -1667,20 +1696,20 @@ CUi::EPopupMenuFunctionResult CScoreboard::CScoreboardPopupContext::Render(void 
 		pUi->DoLabel(&InputLabel, TCLocalize("Min:"), FontSize - 1.0f, TEXTALIGN_ML);
 		pUi->DoEditBox(&pPopupContext->m_MinutesInput, &InputBox, FontSize - 1.0f);
 
-		// Reason Presets
+		// Reason Presets (configured)
 		View.HSplitTop(ItemSpacing, nullptr, &View);
 		View.HSplitTop(ButtonSize - 1.0f, &Container, &View);
 		const float W3 = (Container.w - ItemSpacing * 2.0f) / 3.0f;
 		Container.VSplitLeft(W3, &Btn, &Container);
-		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[0], "Cheats", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
-			pPopupContext->m_ReasonInput.Set("Cheats");
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[0], g_Config.m_ClModBanReason1, &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_ReasonInput.Set(g_Config.m_ClModBanReason1);
 		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
 		Container.VSplitLeft(W3, &Btn, &Container);
-		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[1], "Insultos", &Btn, FontSize - 2.0f, TEXTALIGN_MC))
-			pPopupContext->m_ReasonInput.Set("Insultos");
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[1], g_Config.m_ClModBanReason2, &Btn, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_ReasonInput.Set(g_Config.m_ClModBanReason2);
 		Container.VSplitLeft(ItemSpacing, nullptr, &Container);
-		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[2], "Griefing", &Container, FontSize - 2.0f, TEXTALIGN_MC))
-			pPopupContext->m_ReasonInput.Set("Griefing");
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_aReasonPreset[2], g_Config.m_ClModBanReason3, &Container, FontSize - 2.0f, TEXTALIGN_MC))
+			pPopupContext->m_ReasonInput.Set(g_Config.m_ClModBanReason3);
 
 		// Reason Input Box
 		View.HSplitTop(ItemSpacing, nullptr, &View);

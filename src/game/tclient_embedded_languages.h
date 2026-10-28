@@ -135,6 +135,18 @@ static const SEmbeddedTranslationEntry s_aEmbeddedTranslations[] = {
 	{"Smooth", "Suave", "Плавная", "Suave", "平滑自适应", "Lisse"},
 	{"ticks", "ticks", "тиков", "ticks", "刻 (ticks)", "ticks"},
 	{"Off", "Desactivado", "Выкл", "Desativado", "关闭", "Désactivé"},
+	{"Network & Anti-Ping", "Red & Anti-Ping", "Сеть и Анти-Пинг", "Rede & Anti-Ping", "网络与抗延迟", "Réseau & Anti-Ping"},
+	{"Enable Anti-Ping", "Activar Anti-Ping", "Включить Анти-Пинг", "Ativar Anti-Ping", "启用抗延迟", "Activer Anti-Ping"},
+	{"Anti-Ping Echo in chat (ON / OFF)", "Echo de Anti-Ping en chat (ON / OFF)", "Эхо Анти-Пинга в чате", "Echo de Anti-Ping no chat", "聊天栏抗延迟开关提示", "Écho Anti-Ping dans le chat"},
+	{"Toggle Anti-Ping key", "Tecla para alternar Anti-Ping", "Клавиша переключения Анти-Пинга", "Tecla alternar Anti-Ping", "抗延迟快捷键", "Touche Anti-Ping"},
+	{"Toggle Anti-Ping Now", "Alternar Anti-Ping Ahora", "Переключить Анти-Пинг сейчас", "Alternar Anti-Ping agora", "立即切换抗延迟", "Basculer Anti-Ping maintenant"},
+	{"Mod", "Mod", "Мод", "Mod", "管理", "Mod"},
+	{"Moderation Suite", "Panel de Moderación", "Панель модерации", "Painel de Moderação", "管理面板", "Panneau de modération"},
+	{"Mute Presets (muteid)", "Presets de Mute (muteid)", "Пресеты мута", "Predefinições de Mute", "禁言预设", "Préréglages de mute"},
+	{"Kick Presets (kick)", "Presets de Kick (kick)", "Пресеты кика", "Predefinições de Kick", "踢出预设", "Préréglages de kick"},
+	{"Ban Presets (ban)", "Presets de Ban (ban)", "Пресеты бана", "Predefinições de Ban", "封禁预设", "Préréglages de ban"},
+	{"Reset to Default Presets", "Restablecer valores por defecto", "Сбросить по умолчанию", "Redefinir padrões", "恢复默认预设", "Réinitialiser par défaut"},
+	{"Allow moderating local dummy (testing)", "Permitir moderar a mi Dummy (modo pruebas)", "Разрешить модерировать дамми (тест)", "Permitir moderar dummy (teste)", "允许管理本地虚拟玩家 (测试)", "Autoriser modération dummy (test)"},
 };
 
 static const char *TCLocalizeEmbedded(const char *pStr, const char *pLangFile)
