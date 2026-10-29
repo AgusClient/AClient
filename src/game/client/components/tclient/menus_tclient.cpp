@@ -4742,22 +4742,47 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 	MainView.HSplitTop(LineHeight, &TopBar, &Content);
 	Content.HSplitTop(Margin, nullptr, &Content);
 
-	// Search input box
-	static CLineInput s_ProfileSearchInput;
+	// Search input box with internal buffer
+	static CLineInputBuffered<128> s_ProfileSearchInput;
+	static char s_aLastSyncedReq[MAX_NAME_LENGTH] = "";
+	static bool s_InitialFetchDone = false;
+
+	if(!s_InitialFetchDone)
+	{
+		s_InitialFetchDone = true;
+		const char *pInitial = Profiles.RequestedName()[0] != '\0' ? Profiles.RequestedName() : Client()->PlayerName();
+		if(pInitial && pInitial[0] != '\0')
+		{
+			s_ProfileSearchInput.Set(pInitial);
+			str_copy(s_aLastSyncedReq, pInitial);
+			Profiles.FetchProfile(pInitial);
+		}
+	}
+	else if(Profiles.RequestedName()[0] != '\0' && str_comp(s_aLastSyncedReq, Profiles.RequestedName()) != 0)
+	{
+		str_copy(s_aLastSyncedReq, Profiles.RequestedName());
+		s_ProfileSearchInput.Set(Profiles.RequestedName());
+	}
+
 	TopBar.VSplitLeft(160.0f, &SearchBox, &TopBar);
 	s_ProfileSearchInput.SetEmptyText(TCLocalize("Buscar jugador..."));
 	Ui()->DoEditBox(&s_ProfileSearchInput, &SearchBox, FontSize);
+
+	const bool SearchTriggered = s_ProfileSearchInput.IsActive() && (Ui()->ConsumeHotkey(CUi::HOTKEY_ENTER) || Input()->KeyPress(KEY_RETURN) || Input()->KeyPress(KEY_KP_ENTER));
 
 	TopBar.VSplitLeft(Margin, nullptr, &TopBar);
 
 	// [ Buscar ]
 	static CButtonContainer s_BtnSearch;
 	TopBar.VSplitLeft(65.0f, &Button, &TopBar);
-	if(DoButton_Menu(&s_BtnSearch, TCLocalize("Buscar"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.2f, 0.6f, 0.9f, 0.5f)))
+	if(DoButton_Menu(&s_BtnSearch, TCLocalize("Buscar"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.2f, 0.6f, 0.9f, 0.5f)) || SearchTriggered)
 	{
 		const char *pSearch = s_ProfileSearchInput.GetString();
 		if(pSearch && pSearch[0] != '\0')
+		{
+			str_copy(s_aLastSyncedReq, pSearch);
 			Profiles.FetchProfile(pSearch);
+		}
 	}
 
 	TopBar.VSplitLeft(Margin, nullptr, &TopBar);
@@ -4767,8 +4792,13 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 	TopBar.VSplitLeft(80.0f, &Button, &TopBar);
 	if(DoButton_Menu(&s_BtnMyProfile, TCLocalize("Mi Perfil"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.3f, 0.7f, 0.3f, 0.5f)))
 	{
-		s_ProfileSearchInput.Set(Client()->PlayerName());
-		Profiles.FetchProfile(Client()->PlayerName());
+		const char *pMyName = Client()->PlayerName();
+		if(pMyName && pMyName[0] != '\0')
+		{
+			s_ProfileSearchInput.Set(pMyName);
+			str_copy(s_aLastSyncedReq, pMyName);
+			Profiles.FetchProfile(pMyName);
+		}
 	}
 
 	TopBar.VSplitLeft(Margin, nullptr, &TopBar);
@@ -4780,9 +4810,16 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 	{
 		const char *pSearch = s_ProfileSearchInput.GetString();
 		if(pSearch && pSearch[0] != '\0')
+		{
+			str_copy(s_aLastSyncedReq, pSearch);
 			Profiles.FetchProfile(pSearch, true);
+		}
 		else
-			Profiles.FetchProfile(Client()->PlayerName(), true);
+		{
+			const char *pMyName = Client()->PlayerName();
+			str_copy(s_aLastSyncedReq, pMyName);
+			Profiles.FetchProfile(pMyName, true);
+		}
 	}
 
 	// Web links on the right side of TopBar
@@ -4813,11 +4850,6 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 
 	if(State == EProfileState::IDLE)
 	{
-		if(s_ProfileSearchInput.GetString()[0] == '\0')
-		{
-		s_ProfileSearchInput.Set(Client()->PlayerName());
-		Profiles.FetchProfile(Client()->PlayerName());
-		}
 		CUIRect EmptyLabel;
 		Content.HSplitTop(60.0f, nullptr, &EmptyLabel);
 		TextRender()->TextColor(0.8f, 0.8f, 0.8f, 0.9f);
@@ -4928,47 +4960,54 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 	s_ScrollCategories.Begin(&CatList, &CatScrollParams);
 
 	const float ItemH = 24.0f;
-	CUIRect CatScrollArea;
-	CatScrollArea.x = CatList.x;
-	CatScrollArea.y = CatList.y;
-	CatScrollArea.w = CatList.w;
-	CatScrollArea.h = Prof.m_vCategories.size() * (ItemH + 2.0f);
-	s_ScrollCategories.AddRect(CatScrollArea);
-
-	for(size_t i = 0; i < Prof.m_vCategories.size(); ++i)
+	if(Prof.m_vCategories.empty())
 	{
-		const CDDNetCategoryStats &Cat = Prof.m_vCategories[i];
-		CUIRect ItemRect;
-		CatList.HSplitTop(ItemH, &ItemRect, &CatList);
-		CatList.HSplitTop(2.0f, nullptr, &CatList);
-
-		if(s_ScrollCategories.AddRect(ItemRect))
+		CUIRect EmptyLabel;
+		CatList.HSplitTop(30.0f, &EmptyLabel, &CatList);
+		if(s_ScrollCategories.AddRect(EmptyLabel))
 		{
-			ItemRect.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.2f), IGraphics::CORNER_ALL, 3.0f);
-			ItemRect.Margin(3.0f, &ItemRect);
-
-			CUIRect NameCol, StatsCol;
-			ItemRect.VSplitLeft(110.0f, &NameCol, &StatsCol);
-
-			ColorRGBA CatColor = ColorRGBA(0.9f, 0.9f, 0.9f, 1.0f);
-			if(str_comp_nocase(Cat.m_aName, "Novice") == 0) CatColor = ColorRGBA(0.4f, 0.9f, 0.4f, 1.0f);
-			else if(str_comp_nocase(Cat.m_aName, "Moderate") == 0) CatColor = ColorRGBA(0.9f, 0.9f, 0.3f, 1.0f);
-			else if(str_comp_nocase(Cat.m_aName, "Brutal") == 0) CatColor = ColorRGBA(0.95f, 0.4f, 0.2f, 1.0f);
-			else if(str_comp_nocase(Cat.m_aName, "Insane") == 0) CatColor = ColorRGBA(0.95f, 0.2f, 0.2f, 1.0f);
-			else if(str_comp_nocase(Cat.m_aName, "Solo") == 0) CatColor = ColorRGBA(0.4f, 0.7f, 1.0f, 1.0f);
-
-			TextRender()->TextColor(CatColor);
-			Ui()->DoLabel(&NameCol, Cat.m_aName, 11.0f, TEXTALIGN_ML);
-
-			char aCatStats[64];
-			if(Cat.m_Rank > 0)
-				str_format(aCatStats, sizeof(aCatStats), "%d / %d pts (#%d)", Cat.m_Points, Cat.m_TotalPoints, Cat.m_Rank);
-			else
-				str_format(aCatStats, sizeof(aCatStats), "%d / %d pts", Cat.m_Points, Cat.m_TotalPoints);
-
-			TextRender()->TextColor(0.85f, 0.85f, 0.85f, 1.0f);
-			Ui()->DoLabel(&StatsCol, aCatStats, 10.0f, TEXTALIGN_MR);
+			TextRender()->TextColor(0.6f, 0.6f, 0.6f, 0.8f);
+			Ui()->DoLabel(&EmptyLabel, TCLocalize("Sin categorias registradas"), 11.0f, TEXTALIGN_MC);
 			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+		}
+	}
+	else
+	{
+		for(size_t i = 0; i < Prof.m_vCategories.size(); ++i)
+		{
+			const CDDNetCategoryStats &Cat = Prof.m_vCategories[i];
+			CUIRect ItemRect;
+			CatList.HSplitTop(ItemH, &ItemRect, &CatList);
+			CatList.HSplitTop(2.0f, nullptr, &CatList);
+
+			if(s_ScrollCategories.AddRect(ItemRect))
+			{
+				ItemRect.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.2f), IGraphics::CORNER_ALL, 3.0f);
+				ItemRect.Margin(3.0f, &ItemRect);
+
+				CUIRect NameCol, StatsCol;
+				ItemRect.VSplitLeft(110.0f, &NameCol, &StatsCol);
+
+				ColorRGBA CatColor = ColorRGBA(0.9f, 0.9f, 0.9f, 1.0f);
+				if(str_comp_nocase(Cat.m_aName, "Novice") == 0) CatColor = ColorRGBA(0.4f, 0.9f, 0.4f, 1.0f);
+				else if(str_comp_nocase(Cat.m_aName, "Moderate") == 0) CatColor = ColorRGBA(0.9f, 0.9f, 0.3f, 1.0f);
+				else if(str_comp_nocase(Cat.m_aName, "Brutal") == 0) CatColor = ColorRGBA(0.95f, 0.4f, 0.2f, 1.0f);
+				else if(str_comp_nocase(Cat.m_aName, "Insane") == 0) CatColor = ColorRGBA(0.95f, 0.2f, 0.2f, 1.0f);
+				else if(str_comp_nocase(Cat.m_aName, "Solo") == 0) CatColor = ColorRGBA(0.4f, 0.7f, 1.0f, 1.0f);
+
+				TextRender()->TextColor(CatColor);
+				Ui()->DoLabel(&NameCol, Cat.m_aName, 11.0f, TEXTALIGN_ML);
+
+				char aCatStats[64];
+				if(Cat.m_Rank > 0)
+					str_format(aCatStats, sizeof(aCatStats), "%d / %d pts (#%d)", Cat.m_Points, Cat.m_TotalPoints, Cat.m_Rank);
+				else
+					str_format(aCatStats, sizeof(aCatStats), "%d / %d pts", Cat.m_Points, Cat.m_TotalPoints);
+
+				TextRender()->TextColor(0.85f, 0.85f, 0.85f, 1.0f);
+				Ui()->DoLabel(&StatsCol, aCatStats, 10.0f, TEXTALIGN_MR);
+				TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+			}
 		}
 	}
 	s_ScrollCategories.End();
@@ -4989,20 +5028,16 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 	FinScrollParams.m_ScrollbarMargin = 3.0f;
 	s_ScrollFinishes.Begin(&FinList, &FinScrollParams);
 
-	CUIRect FinScrollArea;
-	FinScrollArea.x = FinList.x;
-	FinScrollArea.y = FinList.y;
-	FinScrollArea.w = FinList.w;
-	FinScrollArea.h = (Prof.m_vLastFinishes.empty() ? 1 : Prof.m_vLastFinishes.size()) * (ItemH + 2.0f);
-	s_ScrollFinishes.AddRect(FinScrollArea);
-
 	if(Prof.m_vLastFinishes.empty())
 	{
 		CUIRect EmptyLabel;
 		FinList.HSplitTop(30.0f, &EmptyLabel, &FinList);
-		TextRender()->TextColor(0.6f, 0.6f, 0.6f, 0.8f);
-		Ui()->DoLabel(&EmptyLabel, TCLocalize("Sin records recientes"), 11.0f, TEXTALIGN_MC);
-		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+		if(s_ScrollFinishes.AddRect(EmptyLabel))
+		{
+			TextRender()->TextColor(0.6f, 0.6f, 0.6f, 0.8f);
+			Ui()->DoLabel(&EmptyLabel, TCLocalize("Sin records recientes"), 11.0f, TEXTALIGN_MC);
+			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+		}
 	}
 	else
 	{
@@ -5044,4 +5079,3 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 	}
 	s_ScrollFinishes.End();
 }
-
