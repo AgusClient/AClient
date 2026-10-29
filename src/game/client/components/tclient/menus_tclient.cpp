@@ -3564,33 +3564,34 @@ void CMenus::RenderSettingsTClientRaceStats(CUIRect MainView)
 
 void CMenus::RenderSettingsAClient(CUIRect MainView)
 {
-	static int s_CurAClientTab = 0;
-
 	CUIRect TabBar, Button;
 	MainView.HSplitTop(LineSize, &TabBar, &MainView);
-	const float TabWidth = TabBar.w / 4.0f;
-	static CButtonContainer s_aAClientTabs[4] = {};
-	const char *apTabNames[4] = {
+	const float TabWidth = TabBar.w / 5.0f;
+	static CButtonContainer s_aAClientTabs[5] = {};
+	const char *apTabNames[5] = {
 		TCLocalize("Settings"),
 		TCLocalize("Race Stats"),
+		TCLocalize("Perfiles"),
 		TCLocalize("Commands"),
 		TCLocalize("Mod")};
 
-	for(int Tab = 0; Tab < 4; ++Tab)
+	for(int Tab = 0; Tab < 5; ++Tab)
 	{
 		TabBar.VSplitLeft(TabWidth, &Button, &TabBar);
-		const int Corners = Tab == 0 ? IGraphics::CORNER_L : (Tab == 3 ? IGraphics::CORNER_R : IGraphics::CORNER_NONE);
-		if(DoButton_MenuTab(&s_aAClientTabs[Tab], apTabNames[Tab], s_CurAClientTab == Tab, &Button, Corners, nullptr, nullptr, nullptr, nullptr, 4.0f))
-			s_CurAClientTab = Tab;
+		const int Corners = Tab == 0 ? IGraphics::CORNER_L : (Tab == 4 ? IGraphics::CORNER_R : IGraphics::CORNER_NONE);
+		if(DoButton_MenuTab(&s_aAClientTabs[Tab], apTabNames[Tab], m_CurAClientTab == Tab, &Button, Corners, nullptr, nullptr, nullptr, nullptr, 4.0f))
+			m_CurAClientTab = Tab;
 	}
 
 	MainView.HSplitTop(Margin, nullptr, &MainView);
 
-	if(s_CurAClientTab == 0)
+	if(m_CurAClientTab == ACLIENT_TAB_SETTINGS)
 		RenderSettingsAClientSettings(MainView);
-	else if(s_CurAClientTab == 1)
+	else if(m_CurAClientTab == ACLIENT_TAB_RACESTATS)
 		RenderSettingsTClientRaceStats(MainView);
-	else if(s_CurAClientTab == 2)
+	else if(m_CurAClientTab == ACLIENT_TAB_PROFILES)
+		RenderSettingsAClientProfiles(MainView);
+	else if(m_CurAClientTab == ACLIENT_TAB_COMMANDS)
 		RenderSettingsAClientCommands(MainView);
 	else
 		RenderSettingsAClientMod(MainView);
@@ -4727,3 +4728,320 @@ void CMenus::RenderSettingsAClientMod(CUIRect MainView)
 	s_ScrollRegionMod.AddRect(ScrollRegion);
 	s_ScrollRegionMod.End();
 }
+
+void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
+{
+	CUIRect TopBar, SearchBox, Button, Content;
+	const float Margin = 5.0f;
+	const float LineHeight = 22.0f;
+	const float FontSize = 12.0f;
+
+	CPlayerProfiles &Profiles = GameClient()->m_PlayerProfiles;
+
+	// Search and control bar
+	MainView.HSplitTop(LineHeight, &TopBar, &Content);
+	Content.HSplitTop(Margin, nullptr, &Content);
+
+	// Search input box
+	static CLineInput s_ProfileSearchInput;
+	TopBar.VSplitLeft(160.0f, &SearchBox, &TopBar);
+	s_ProfileSearchInput.SetEmptyText(TCLocalize("Buscar jugador..."));
+	Ui()->DoEditBox(&s_ProfileSearchInput, &SearchBox, FontSize);
+
+	TopBar.VSplitLeft(Margin, nullptr, &TopBar);
+
+	// [ Buscar ]
+	static CButtonContainer s_BtnSearch;
+	TopBar.VSplitLeft(65.0f, &Button, &TopBar);
+	if(DoButton_Menu(&s_BtnSearch, TCLocalize("Buscar"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.2f, 0.6f, 0.9f, 0.5f)))
+	{
+		const char *pSearch = s_ProfileSearchInput.GetString();
+		if(pSearch && pSearch[0] != '\0')
+			Profiles.FetchProfile(pSearch);
+	}
+
+	TopBar.VSplitLeft(Margin, nullptr, &TopBar);
+
+	// [ Mi Perfil ]
+	static CButtonContainer s_BtnMyProfile;
+	TopBar.VSplitLeft(80.0f, &Button, &TopBar);
+	if(DoButton_Menu(&s_BtnMyProfile, TCLocalize("Mi Perfil"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.3f, 0.7f, 0.3f, 0.5f)))
+	{
+		s_ProfileSearchInput.Set(Client()->PlayerName());
+		Profiles.FetchProfile(Client()->PlayerName());
+	}
+
+	TopBar.VSplitLeft(Margin, nullptr, &TopBar);
+
+	// [ Recargar ]
+	static CButtonContainer s_BtnRefresh;
+	TopBar.VSplitLeft(75.0f, &Button, &TopBar);
+	if(DoButton_Menu(&s_BtnRefresh, TCLocalize("Recargar"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.6f, 0.6f, 0.6f, 0.5f)))
+	{
+		const char *pSearch = s_ProfileSearchInput.GetString();
+		if(pSearch && pSearch[0] != '\0')
+			Profiles.FetchProfile(pSearch, true);
+		else
+			Profiles.FetchProfile(Client()->PlayerName(), true);
+	}
+
+	// Web links on the right side of TopBar
+	static CButtonContainer s_BtnKoGWeb;
+	TopBar.VSplitRight(110.0f, &TopBar, &Button);
+	if(DoButton_Menu(&s_BtnKoGWeb, TCLocalize("Abrir KoG.tw"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.9f, 0.4f, 0.1f, 0.5f)))
+	{
+		const char *pTarget = Profiles.State() == EProfileState::READY ? Profiles.CurrentProfile().m_aName : s_ProfileSearchInput.GetString();
+		if(!pTarget || pTarget[0] == '\0')
+			pTarget = Client()->PlayerName();
+		Profiles.OpenKoGWeb(pTarget);
+	}
+
+	TopBar.VSplitRight(Margin, &TopBar, nullptr);
+
+	static CButtonContainer s_BtnDDNetWeb;
+	TopBar.VSplitRight(120.0f, &TopBar, &Button);
+	if(DoButton_Menu(&s_BtnDDNetWeb, TCLocalize("Abrir DDNet.org"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.2f, 0.5f, 0.85f, 0.5f)))
+	{
+		const char *pTarget = Profiles.State() == EProfileState::READY ? Profiles.CurrentProfile().m_aName : s_ProfileSearchInput.GetString();
+		if(!pTarget || pTarget[0] == '\0')
+			pTarget = Client()->PlayerName();
+		Profiles.OpenDDNetWeb(pTarget);
+	}
+
+	// Render Content based on state
+	EProfileState State = Profiles.State();
+
+	if(State == EProfileState::IDLE)
+	{
+		if(s_ProfileSearchInput.GetString()[0] == '\0')
+		{
+		s_ProfileSearchInput.Set(Client()->PlayerName());
+		Profiles.FetchProfile(Client()->PlayerName());
+		}
+		CUIRect EmptyLabel;
+		Content.HSplitTop(60.0f, nullptr, &EmptyLabel);
+		TextRender()->TextColor(0.8f, 0.8f, 0.8f, 0.9f);
+		Ui()->DoLabel(&EmptyLabel, TCLocalize("Ingresa un jugador y presiona 'Buscar' o consulta 'Mi Perfil'."), 14.0f, TEXTALIGN_MC);
+		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+		return;
+	}
+
+	if(State == EProfileState::FETCHING)
+	{
+		CUIRect LoadingBox;
+		Content.HSplitTop(80.0f, nullptr, &LoadingBox);
+		LoadingBox.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 5.0f);
+		TextRender()->TextColor(0.4f, 0.8f, 1.0f, 1.0f);
+		Ui()->DoLabel(&LoadingBox, Profiles.StatusMsg(), 14.0f, TEXTALIGN_MC);
+		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+		return;
+	}
+
+	if(State == EProfileState::NOT_FOUND || State == EProfileState::ERROR_NETWORK)
+	{
+		CUIRect ErrorBox;
+		Content.HSplitTop(80.0f, nullptr, &ErrorBox);
+		ErrorBox.Draw(ColorRGBA(0.3f, 0.1f, 0.1f, 0.35f), IGraphics::CORNER_ALL, 5.0f);
+		TextRender()->TextColor(1.0f, 0.4f, 0.4f, 1.0f);
+		Ui()->DoLabel(&ErrorBox, Profiles.StatusMsg(), 14.0f, TEXTALIGN_MC);
+		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+		return;
+	}
+
+	// State == READY: Render profile summary and split lists
+	const CDDNetPlayerProfile &Prof = Profiles.CurrentProfile();
+
+	// Summary Header Card
+	CUIRect HeaderCard, CardLeft, CardMid, CardRight, Label;
+	Content.HSplitTop(52.0f, &HeaderCard, &Content);
+	HeaderCard.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.35f), IGraphics::CORNER_ALL, 5.0f);
+	HeaderCard.Margin(5.0f, &HeaderCard);
+
+	// Left: Player Name and Server Flag
+	HeaderCard.VSplitLeft(180.0f, &CardLeft, &HeaderCard);
+	char aNameTitle[128];
+	if(Prof.m_aFavoriteServer[0] != '\0')
+		str_format(aNameTitle, sizeof(aNameTitle), "%s [%s]", Prof.m_aName, Prof.m_aFavoriteServer);
+	else
+		str_copy(aNameTitle, Prof.m_aName);
+
+	CardLeft.HSplitTop(22.0f, &Label, &CardLeft);
+	TextRender()->TextColor(1.0f, 0.95f, 0.4f, 1.0f);
+	Ui()->DoLabel(&Label, aNameTitle, 15.0f, TEXTALIGN_ML);
+	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+	// Mid: Points & Global Rank
+	HeaderCard.VSplitLeft(HeaderCard.w * 0.55f, &CardMid, &CardRight);
+
+	char aPointsStr[128];
+	float Ratio = Prof.m_TotalPoints > 0 ? ((float)Prof.m_Points / (float)Prof.m_TotalPoints) * 100.0f : 0.0f;
+	if(Prof.m_Rank > 0)
+		str_format(aPointsStr, sizeof(aPointsStr), "%s: %d / %d (%.1f%%)  |  %s: #%d", TCLocalize("Puntos"), Prof.m_Points, Prof.m_TotalPoints, Ratio, TCLocalize("Rank"), Prof.m_Rank);
+	else
+		str_format(aPointsStr, sizeof(aPointsStr), "%s: %d / %d (%.1f%%)", TCLocalize("Puntos"), Prof.m_Points, Prof.m_TotalPoints, Ratio);
+
+	CardMid.HSplitTop(18.0f, &Label, &CardMid);
+	TextRender()->TextColor(0.5f, 1.0f, 0.5f, 1.0f);
+	Ui()->DoLabel(&Label, aPointsStr, 11.5f, TEXTALIGN_ML);
+
+	// Progress bar for points
+	CUIRect BarBg, BarFill;
+	CardMid.HSplitTop(7.0f, &BarBg, &CardMid);
+	BarBg.Draw(ColorRGBA(0.1f, 0.1f, 0.1f, 0.7f), IGraphics::CORNER_ALL, 2.0f);
+	float FillW = std::clamp(Ratio / 100.0f, 0.0f, 1.0f) * BarBg.w;
+	BarBg.VSplitLeft(FillW, &BarFill, nullptr);
+	BarFill.Draw(ColorRGBA(0.2f, 0.75f, 0.3f, 0.85f), IGraphics::CORNER_ALL, 2.0f);
+	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+	// Right: Team Rank & Points
+	char aTeamStr[128];
+	if(Prof.m_TeamRank > 0)
+		str_format(aTeamStr, sizeof(aTeamStr), "%s: %d pts  |  %s: #%d", TCLocalize("Equipo"), Prof.m_TeamPoints, TCLocalize("Rank Eq"), Prof.m_TeamRank);
+	else
+		str_format(aTeamStr, sizeof(aTeamStr), "%s: %d pts", TCLocalize("Equipo"), Prof.m_TeamPoints);
+
+	CardRight.HSplitTop(18.0f, &Label, &CardRight);
+	TextRender()->TextColor(0.4f, 0.8f, 1.0f, 1.0f);
+	Ui()->DoLabel(&Label, aTeamStr, 11.5f, TEXTALIGN_ML);
+	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+	Content.HSplitTop(Margin, nullptr, &Content);
+
+	// Split View: Left = Categories, Right = Recent Finishes
+	CUIRect LeftCol, RightCol;
+	Content.VSplitMid(&LeftCol, &RightCol, Margin);
+
+	// --- Left Column: Categories ---
+	CUIRect CatHeader, CatList;
+	LeftCol.HSplitTop(20.0f, &CatHeader, &CatList);
+	CatHeader.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 3.0f);
+	TextRender()->TextColor(1.0f, 0.85f, 0.3f, 1.0f);
+	Ui()->DoLabel(&CatHeader, TCLocalize("Categorias y Dificultades"), 12.0f, TEXTALIGN_MC);
+	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+	CatList.Margin(2.0f, &CatList);
+	static CScrollRegion s_ScrollCategories;
+	CScrollRegionParams CatScrollParams;
+	CatScrollParams.m_ScrollUnit = 40.0f;
+	CatScrollParams.m_ForceShowScrollbar = false;
+	CatScrollParams.m_ScrollbarMargin = 3.0f;
+	s_ScrollCategories.Begin(&CatList, &CatScrollParams);
+
+	const float ItemH = 24.0f;
+	CUIRect CatScrollArea;
+	CatScrollArea.x = CatList.x;
+	CatScrollArea.y = CatList.y;
+	CatScrollArea.w = CatList.w;
+	CatScrollArea.h = Prof.m_vCategories.size() * (ItemH + 2.0f);
+	s_ScrollCategories.AddRect(CatScrollArea);
+
+	for(size_t i = 0; i < Prof.m_vCategories.size(); ++i)
+	{
+		const CDDNetCategoryStats &Cat = Prof.m_vCategories[i];
+		CUIRect ItemRect;
+		CatList.HSplitTop(ItemH, &ItemRect, &CatList);
+		CatList.HSplitTop(2.0f, nullptr, &CatList);
+
+		if(s_ScrollCategories.AddRect(ItemRect))
+		{
+			ItemRect.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.2f), IGraphics::CORNER_ALL, 3.0f);
+			ItemRect.Margin(3.0f, &ItemRect);
+
+			CUIRect NameCol, StatsCol;
+			ItemRect.VSplitLeft(110.0f, &NameCol, &StatsCol);
+
+			ColorRGBA CatColor = ColorRGBA(0.9f, 0.9f, 0.9f, 1.0f);
+			if(str_comp_nocase(Cat.m_aName, "Novice") == 0) CatColor = ColorRGBA(0.4f, 0.9f, 0.4f, 1.0f);
+			else if(str_comp_nocase(Cat.m_aName, "Moderate") == 0) CatColor = ColorRGBA(0.9f, 0.9f, 0.3f, 1.0f);
+			else if(str_comp_nocase(Cat.m_aName, "Brutal") == 0) CatColor = ColorRGBA(0.95f, 0.4f, 0.2f, 1.0f);
+			else if(str_comp_nocase(Cat.m_aName, "Insane") == 0) CatColor = ColorRGBA(0.95f, 0.2f, 0.2f, 1.0f);
+			else if(str_comp_nocase(Cat.m_aName, "Solo") == 0) CatColor = ColorRGBA(0.4f, 0.7f, 1.0f, 1.0f);
+
+			TextRender()->TextColor(CatColor);
+			Ui()->DoLabel(&NameCol, Cat.m_aName, 11.0f, TEXTALIGN_ML);
+
+			char aCatStats[64];
+			if(Cat.m_Rank > 0)
+				str_format(aCatStats, sizeof(aCatStats), "%d / %d pts (#%d)", Cat.m_Points, Cat.m_TotalPoints, Cat.m_Rank);
+			else
+				str_format(aCatStats, sizeof(aCatStats), "%d / %d pts", Cat.m_Points, Cat.m_TotalPoints);
+
+			TextRender()->TextColor(0.85f, 0.85f, 0.85f, 1.0f);
+			Ui()->DoLabel(&StatsCol, aCatStats, 10.0f, TEXTALIGN_MR);
+			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+		}
+	}
+	s_ScrollCategories.End();
+
+	// --- Right Column: Recent Finishes ---
+	CUIRect FinHeader, FinList;
+	RightCol.HSplitTop(20.0f, &FinHeader, &FinList);
+	FinHeader.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 3.0f);
+	TextRender()->TextColor(0.4f, 0.8f, 1.0f, 1.0f);
+	Ui()->DoLabel(&FinHeader, TCLocalize("Ultimos Finishes"), 12.0f, TEXTALIGN_MC);
+	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+	FinList.Margin(2.0f, &FinList);
+	static CScrollRegion s_ScrollFinishes;
+	CScrollRegionParams FinScrollParams;
+	FinScrollParams.m_ScrollUnit = 40.0f;
+	FinScrollParams.m_ForceShowScrollbar = false;
+	FinScrollParams.m_ScrollbarMargin = 3.0f;
+	s_ScrollFinishes.Begin(&FinList, &FinScrollParams);
+
+	CUIRect FinScrollArea;
+	FinScrollArea.x = FinList.x;
+	FinScrollArea.y = FinList.y;
+	FinScrollArea.w = FinList.w;
+	FinScrollArea.h = (Prof.m_vLastFinishes.empty() ? 1 : Prof.m_vLastFinishes.size()) * (ItemH + 2.0f);
+	s_ScrollFinishes.AddRect(FinScrollArea);
+
+	if(Prof.m_vLastFinishes.empty())
+	{
+		CUIRect EmptyLabel;
+		FinList.HSplitTop(30.0f, &EmptyLabel, &FinList);
+		TextRender()->TextColor(0.6f, 0.6f, 0.6f, 0.8f);
+		Ui()->DoLabel(&EmptyLabel, TCLocalize("Sin records recientes"), 11.0f, TEXTALIGN_MC);
+		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+	}
+	else
+	{
+		for(size_t i = 0; i < Prof.m_vLastFinishes.size(); ++i)
+		{
+			const CDDNetFinish &F = Prof.m_vLastFinishes[i];
+			CUIRect ItemRect;
+			FinList.HSplitTop(ItemH, &ItemRect, &FinList);
+			FinList.HSplitTop(2.0f, nullptr, &FinList);
+
+			if(s_ScrollFinishes.AddRect(ItemRect))
+			{
+				ItemRect.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.2f), IGraphics::CORNER_ALL, 3.0f);
+				ItemRect.Margin(3.0f, &ItemRect);
+
+				CUIRect MapNameCol, TypeCol, TimeCol;
+				ItemRect.VSplitLeft(ItemRect.w * 0.45f, &MapNameCol, &TypeCol);
+				TypeCol.VSplitLeft(ItemRect.w * 0.25f, &TypeCol, &TimeCol);
+
+				TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+				Ui()->DoLabel(&MapNameCol, F.m_aMap, 11.0f, TEXTALIGN_ML);
+
+				TextRender()->TextColor(0.7f, 0.7f, 0.9f, 0.9f);
+				Ui()->DoLabel(&TypeCol, F.m_aType, 10.0f, TEXTALIGN_MC);
+
+				char aTimeBuf[32];
+				int Minutes = (int)(F.m_Time / 60.0f);
+				float Seconds = F.m_Time - (Minutes * 60);
+				if(Minutes > 0)
+					str_format(aTimeBuf, sizeof(aTimeBuf), "%02d:%05.2f", Minutes, Seconds);
+				else
+					str_format(aTimeBuf, sizeof(aTimeBuf), "%05.2f", Seconds);
+
+				TextRender()->TextColor(0.4f, 1.0f, 0.4f, 1.0f);
+				Ui()->DoLabel(&TimeCol, aTimeBuf, 11.0f, TEXTALIGN_MR);
+				TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+			}
+		}
+	}
+	s_ScrollFinishes.End();
+}
+

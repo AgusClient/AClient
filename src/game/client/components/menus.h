@@ -679,6 +679,10 @@ public:
 	bool IsActive() const { return m_MenuActive; }
 	void SetActive(bool Active);
 
+	int m_CurAClientTab = ACLIENT_TAB_SETTINGS;
+	void SetAClientTab(int Tab) { m_CurAClientTab = Tab; }
+	int AClientTab() const { return m_CurAClientTab; }
+
 	void OnInterfacesInit(CGameClient *pClient) override;
 	void OnInit() override;
 
@@ -731,6 +735,16 @@ public:
 		SETTINGS_CONFIGS, // TClient
 		SETTINGS_CREDITS,
 		SETTINGS_LENGTH,
+	};
+
+	enum
+	{
+		ACLIENT_TAB_SETTINGS = 0,
+		ACLIENT_TAB_RACESTATS,
+		ACLIENT_TAB_PROFILES,
+		ACLIENT_TAB_COMMANDS,
+		ACLIENT_TAB_MOD,
+		NUM_ACLIENT_TABS
 	};
 
 	enum
@@ -888,6 +902,7 @@ private:
 	void RenderSettingsAClientSettings(CUIRect MainView);
 	void RenderSettingsAClientCommands(CUIRect MainView);
 	void RenderSettingsAClientMod(CUIRect MainView);
+	void RenderSettingsAClientProfiles(CUIRect MainView);
 	void RenderSettingsTClientProfiles(CUIRect MainView);
 	void RenderSettingsTClientConfigs(CUIRect MainView);
 	void RenderTeeCute(const CAnimState *pAnim, const CTeeRenderInfo *pInfo, int Emote, vec2 Dir, vec2 Pos, bool CuteEyes, float Alpha = 1.0f);

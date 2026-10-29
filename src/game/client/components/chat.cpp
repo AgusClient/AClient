@@ -1624,6 +1624,8 @@ void CChat::SendChat(int Team, const char *pLine)
 
 	if(TryHandleStealSkinCommand(pLine))
 		return;
+	if(TryHandleProfileCommand(pLine))
+		return;
 
 	m_LastChatSend = time();
 
@@ -1771,5 +1773,29 @@ bool CChat::TryHandleBulkInviteCommand(const char *pLine)
 		m_vPendingInviteCommands.erase(m_vPendingInviteCommands.begin());
 		SendChat(0, FirstCmd.c_str());
 	}
+	return true;
+}
+
+bool CChat::TryHandleProfileCommand(const char *pLine)
+{
+	if(!pLine)
+		return false;
+
+	const char *pTrimmed = str_utf8_skip_whitespaces(pLine);
+	const char *pRest = str_startswith_nocase(pTrimmed, "/profile");
+	if(!pRest)
+		return false;
+
+	if(*pRest != '\0' && *pRest != ' ')
+		return false;
+
+	const char *pArg = str_utf8_skip_whitespaces(pRest);
+	const char *pTargetName = (*pArg == '\0') ? Client()->PlayerName() : pArg;
+
+	GameClient()->m_PlayerProfiles.FetchProfile(pTargetName);
+	g_Config.m_UiPage = CMenus::PAGE_SETTINGS;
+	g_Config.m_UiSettingsPage = CMenus::SETTINGS_ACLIENT;
+	GameClient()->m_Menus.SetAClientTab(CMenus::ACLIENT_TAB_PROFILES);
+	GameClient()->m_Menus.SetActive(true);
 	return true;
 }

@@ -157,6 +157,7 @@ class CChat : public CComponent
 	std::vector<std::string> m_vPendingInviteCommands;
 	bool TryHandleBulkInviteCommand(const char *pLine);
 	bool TryHandleStealSkinCommand(const char *pLine);
+	bool TryHandleProfileCommand(const char *pLine);
 
 	static void ConSay(IConsole::IResult *pResult, void *pUserData);
 	static void ConSayTeam(IConsole::IResult *pResult, void *pUserData);
