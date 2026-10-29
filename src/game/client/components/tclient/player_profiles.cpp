@@ -241,7 +241,7 @@ void CPlayerProfiles::OpenKoGWeb(const char *pPlayerName)
 	char aEscaped[256];
 	EscapeUrl(aEscaped, pPlayerName);
 	char aUrl[512];
-	str_format(aUrl, sizeof(aUrl), "https://kog.tw/#p=player&player=%s", aEscaped);
+	str_format(aUrl, sizeof(aUrl), "https://kog.tw/#p=players&player=%s", aEscaped);
 	Client()->ViewLink(aUrl);
 }
 
