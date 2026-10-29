@@ -465,8 +465,8 @@ void CScoreboard::RenderSpectators(CUIRect Spectators)
 				m_ScoreboardPopupContext.Reset(pInfo->m_ClientId, true, IsLocalTarget);
 
 				const bool CanMod = Client()->RconAuthed() && !m_ScoreboardPopupContext.m_IsLocal;
-				const float Width = CanMod ? 160.0f : 115.0f;
-				const float Height = CanMod ? 195.0f : (m_ScoreboardPopupContext.m_IsLocal ? 30.0f : 81.5f);
+				const float Width = CanMod ? 160.0f : 125.0f;
+				const float Height = CanMod ? 238.0f : (m_ScoreboardPopupContext.m_IsLocal ? 73.0f : 124.5f);
 
 				Ui()->DoPopupMenu(&m_ScoreboardPopupContext, Ui()->MouseX(), Ui()->MouseY(), Width,
 					Height, &m_ScoreboardPopupContext, CScoreboardPopupContext::Render);
@@ -734,8 +734,8 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 					m_ScoreboardPopupContext.Reset(pInfo->m_ClientId, false, IsLocalTarget);
 
 					const bool CanMod = Client()->RconAuthed() && !m_ScoreboardPopupContext.m_IsLocal;
-					const float Width = CanMod ? 160.0f : 115.0f;
-					const float Height = CanMod ? 195.0f : (m_ScoreboardPopupContext.m_IsLocal ? 58.5f : 109.0f);
+					const float Width = CanMod ? 160.0f : 125.0f;
+					const float Height = CanMod ? 238.0f : (m_ScoreboardPopupContext.m_IsLocal ? 101.5f : 152.0f);
 
 					Ui()->DoPopupMenu(&m_ScoreboardPopupContext, Ui()->MouseX(), Ui()->MouseY(), Width,
 						Height, &m_ScoreboardPopupContext, CScoreboardPopupContext::Render);
@@ -1393,6 +1393,40 @@ CUi::EPopupMenuFunctionResult CScoreboard::CScoreboardPopupContext::Render(void 
 					pScoreboard->LockMouse();
 				return CUi::POPUP_CLOSE_CURRENT;
 			}
+		}
+
+		// Profile buttons (available for both local and remote players)
+		View.HSplitTop(ItemSpacing * 2, nullptr, &View);
+		View.HSplitTop(ButtonSize, &Container, &View);
+		ColorRGBA ProfileBtnColor = ColorRGBA(0.3f, 0.7f, 1.0f, 0.6f * pUi->ButtonColorMul(&pPopupContext->m_ProfileButton));
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_ProfileButton, TCLocalize("Ver Perfil DDNet"), &Container, FontSize - 1.0f, TEXTALIGN_MC, 0.0f, false, true, ProfileBtnColor))
+		{
+			pScoreboard->GameClient()->m_PlayerProfiles.FetchProfile(Client.m_aName);
+			g_Config.m_UiPage = CMenus::PAGE_SETTINGS;
+			g_Config.m_UiSettingsPage = CMenus::SETTINGS_ACLIENT;
+			pScoreboard->GameClient()->m_Menus.SetAClientTab(CMenus::ACLIENT_TAB_PROFILES);
+			pScoreboard->GameClient()->m_Menus.SetActive(true);
+			return CUi::POPUP_CLOSE_CURRENT;
+		}
+
+		// Web links row (DDNet Web | KoG Web)
+		View.HSplitTop(ItemSpacing * 1.5f, nullptr, &View);
+		View.HSplitTop(ButtonSize, &Container, &View);
+		CUIRect WebDDNetBtn, WebKoGBtn;
+		Container.VSplitMid(&WebDDNetBtn, &WebKoGBtn, ItemSpacing);
+
+		ColorRGBA DDNetWebColor = ColorRGBA(0.4f, 0.8f, 0.4f, 0.6f * pUi->ButtonColorMul(&pPopupContext->m_ProfileWebDDNetButton));
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_ProfileWebDDNetButton, TCLocalize("DDNet Web"), &WebDDNetBtn, FontSize - 2.0f, TEXTALIGN_MC, 0.0f, false, true, DDNetWebColor))
+		{
+			pScoreboard->GameClient()->m_PlayerProfiles.OpenDDNetWeb(Client.m_aName);
+			return CUi::POPUP_CLOSE_CURRENT;
+		}
+
+		ColorRGBA KoGWebColor = ColorRGBA(1.0f, 0.6f, 0.2f, 0.6f * pUi->ButtonColorMul(&pPopupContext->m_ProfileWebKoGButton));
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_ProfileWebKoGButton, TCLocalize("KoG Web"), &WebKoGBtn, FontSize - 2.0f, TEXTALIGN_MC, 0.0f, false, true, KoGWebColor))
+		{
+			pScoreboard->GameClient()->m_PlayerProfiles.OpenKoGWeb(Client.m_aName);
+			return CUi::POPUP_CLOSE_CURRENT;
 		}
 
 		// Moderation Section (RCON authed only)

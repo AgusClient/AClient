@@ -76,6 +76,7 @@
 #include "components/tclient/outlines.h"
 #include "components/tclient/pet.h"
 #include "components/tclient/player_indicator.h"
+#include "components/tclient/player_profiles.h"
 #include "components/tclient/rainbow.h"
 #include "components/tclient/race_stats.h"
 #include "components/tclient/fast_practice.h"
@@ -230,6 +231,7 @@ public:
 	CSkinProfiles m_SkinProfiles;
 	CStatusBar m_StatusBar;
 	CRaceStats m_RaceStats;
+	CPlayerProfiles m_PlayerProfiles;
 	CFastPractice m_FastPractice;
 	CBindChat m_BindChat;
 	CBindWheel m_BindWheel;
