@@ -239,8 +239,11 @@ int CClient::SendMsgActive(CMsgPacker *pMsg, int Flags)
 
 void CClient::SendTClientInfo(int Conn)
 {
+	if(!g_Config.m_AcSendTClientUuid)
+		return;
+
 	CMsgPacker Msg(NETMSG_IAMTATER, true);
-	Msg.AddString(TCLIENT_VERSION " built on " __DATE__ ", " __TIME__);
+	Msg.AddString(CLIENT_NAME " " ACLIENT_VERSION " built on " __DATE__ ", " __TIME__);
 	SendMsg(Conn, &Msg, MSGFLAG_VITAL);
 }
 
