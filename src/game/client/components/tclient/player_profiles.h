@@ -54,9 +54,20 @@ struct CDDNetPlayerProfile
 
 	std::vector<CDDNetCategoryStats> m_vCategories;
 	std::vector<CDDNetFinish> m_vLastFinishes;
+	std::vector<std::string> m_vUnfinishedMaps;
 
 	int64_t m_CachedTime;
 	bool m_Valid;
+};
+
+// ==========================================
+// Team Unfinished Map Comparison
+// ==========================================
+struct CTeamUnfinishedMap
+{
+	char m_aMap[64];
+	char m_aCategory[32];
+	int m_Points;
 };
 
 // ==========================================
@@ -192,6 +203,28 @@ public:
 	// Web openers
 	void OpenDDNetWeb(const char *pPlayerName);
 	void OpenKoGWeb(const char *pPlayerName);
+
+	// Team unfinished maps operations
+	void AddTeamPlayer(const char *pName);
+	void RemoveTeamPlayer(const char *pName);
+	void ClearTeamPlayers();
+	void AutoDetectCurrentTeam();
+	void ComputeTeamCommonUnfinished();
+	bool IsPlayerProfileLoaded(const char *pName, bool IsKoG) const;
+	void QueueTeamProfileFetch(const char *pName, bool IsKoG);
+
+	const std::vector<std::string> &TeamPlayers() const { return m_vTeamPlayers; }
+	const std::vector<CTeamUnfinishedMap> &CommonUnfinishedMaps() const { return m_vCommonUnfinishedMaps; }
+	const char *TeamStatusMsg() const { return m_aTeamStatusMsg; }
+	bool TeamComparisonReady() const { return m_TeamComparisonReady; }
+
+private:
+	std::vector<std::string> m_vTeamPlayers;
+	std::vector<CTeamUnfinishedMap> m_vCommonUnfinishedMaps;
+	std::deque<std::string> m_qTeamPendingDDNet;
+	std::deque<std::string> m_qTeamPendingKoG;
+	bool m_TeamComparisonReady = false;
+	char m_aTeamStatusMsg[128] = "";
 };
 
 #endif
