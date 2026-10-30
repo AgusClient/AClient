@@ -4151,6 +4151,89 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
 
+	// ***** Keystrokes HUD ***** //
+	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	s_SectionBoxesAc.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("Keystrokes HUD"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcHudKeystrokes, TCLocalize("Enable Keystrokes overlay"), &g_Config.m_AcHudKeystrokes, &Column, LineSize);
+
+	if(g_Config.m_AcHudKeystrokes)
+	{
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Label, &Column);
+		Ui()->DoLabel(&Label, TCLocalize("Layout:"), Label.h * CUi::ms_FontmodHeight * 0.8f, TEXTALIGN_ML);
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		{
+			static CButtonContainer s_aLayoutButtons[2];
+			static const char *s_apLayoutNames[] = {"WASD + Mouse", "A/D + Hook/Fire/Jump"};
+			static const int s_aLayoutValues[] = {0, 1};
+
+			CUIRect ButtonsRect = Button;
+			const float Spacing = 2.0f;
+			const float LayoutWidth = (ButtonsRect.w - Spacing) / 2.0f;
+			for(int i = 0; i < 2; ++i)
+			{
+				CUIRect LayoutButton;
+				if(i == 0)
+				{
+					ButtonsRect.VSplitLeft(LayoutWidth, &LayoutButton, &ButtonsRect);
+					ButtonsRect.VSplitLeft(Spacing, nullptr, &ButtonsRect);
+				}
+				else
+					LayoutButton = ButtonsRect;
+
+				int Corners = (i == 0) ? IGraphics::CORNER_L : IGraphics::CORNER_R;
+				if(DoButton_Menu(&s_aLayoutButtons[i], TCLocalize(s_apLayoutNames[i]), g_Config.m_AcHudKeystrokesLayout == s_aLayoutValues[i], &LayoutButton, BUTTONFLAG_LEFT, nullptr, Corners))
+					g_Config.m_AcHudKeystrokesLayout = s_aLayoutValues[i];
+			}
+		}
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		Ui()->DoScrollbarOption(&g_Config.m_AcHudKeystrokesX, &g_Config.m_AcHudKeystrokesX, &Button, TCLocalize("Horizontal Position (X)"), 0, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
+
+		Column.HSplitTop(LineSize, &Button, &Column);
+		Ui()->DoScrollbarOption(&g_Config.m_AcHudKeystrokesY, &g_Config.m_AcHudKeystrokesY, &Button, TCLocalize("Vertical Position (Y)"), 0, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
+
+		Column.HSplitTop(LineSize, &Button, &Column);
+		Ui()->DoScrollbarOption(&g_Config.m_AcHudKeystrokesScale, &g_Config.m_AcHudKeystrokesScale, &Button, TCLocalize("HUD Scale (Size)"), 50, 200, &CUi::ms_LinearScrollbarScale, 0, "%");
+
+		Column.HSplitTop(LineSize, &Button, &Column);
+		Ui()->DoScrollbarOption(&g_Config.m_AcHudKeystrokesAlpha, &g_Config.m_AcHudKeystrokesAlpha, &Button, TCLocalize("HUD Opacity"), 20, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
+	}
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
+
+	// ***** Client Network Identity ***** //
+	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	s_SectionBoxesAc.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("Client Network Identity"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	char aIdentLabel[96];
+	str_format(aIdentLabel, sizeof(aIdentLabel), "%s: %s %s", TCLocalize("Reported client to server"), g_Config.m_AcClientVersionStr[0] ? g_Config.m_AcClientVersionStr : "AClient", ACLIENT_VERSION);
+	Column.HSplitTop(16.0f, &Label, &Column);
+	TextRender()->TextColor(0.4f, 0.95f, 0.4f, 1.0f);
+	Ui()->DoLabel(&Label, aIdentLabel, 12.0f, TEXTALIGN_ML);
+	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcSendTClientUuid, TCLocalize("Send legacy TClient UUID handshake"), &g_Config.m_AcSendTClientUuid, &Column, LineSize);
+	Column.HSplitTop(14.0f, &Label, &Column);
+	TextRender()->TextColor(0.6f, 0.6f, 0.6f, 0.85f);
+	Ui()->DoLabel(&Label, TCLocalize("Keep OFF so server moderators see you as AClient."), 10.5f, TEXTALIGN_ML);
+	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
+
 	// ***** Right Column: HUD, Social, Chat & Alerts ***** //
 	LeftView = Column;
 	Column = RightView;
