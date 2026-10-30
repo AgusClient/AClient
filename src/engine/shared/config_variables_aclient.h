@@ -121,3 +121,4 @@ MACRO_CONFIG_INT(AcHudSpeedometerAlpha, ac_hud_speedometer_alpha, 85, 20, 100, C
 
 // Profiles (0: DDNet, 1: KoG)
 MACRO_CONFIG_INT(AcProfileSource, ac_profile_source, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Profile data source (0: DDNet, 1: KoG)")
+MACRO_CONFIG_INT(AcProfileViewMode, ac_profile_view_mode, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Profile view mode (0: Individual, 1: Team)")

@@ -1,3 +1,4 @@
+#include <set>
 #include "player_profiles.h"
 #include <base/io.h>
 #include <base/log.h>
@@ -187,12 +188,33 @@ void CPlayerProfiles::OnRender()
 			m_CurrentProfile.m_Valid = false;
 		}
 		m_pHttpRequest = nullptr;
+
+		if(!m_vTeamPlayers.empty())
+			ComputeTeamCommonUnfinished();
 	}
 
 	// 2. Check KoG background fetch thread completion
 	if(m_KoGFetchRunning && m_KoGFetchDone)
 	{
 		ProcessKoGFetchCompletion();
+
+		if(!m_vTeamPlayers.empty())
+			ComputeTeamCommonUnfinished();
+	}
+
+	// 3. Process queued team background fetches
+	if(!m_pHttpRequest && !m_qTeamPendingDDNet.empty())
+	{
+		std::string Next = m_qTeamPendingDDNet.front();
+		m_qTeamPendingDDNet.pop_front();
+		FetchProfile(Next.c_str(), false);
+	}
+
+	if(!m_KoGFetchRunning && !m_qTeamPendingKoG.empty())
+	{
+		std::string Next = m_qTeamPendingKoG.front();
+		m_qTeamPendingKoG.pop_front();
+		FetchKoGProfile(Next.c_str(), false);
 	}
 }
 
@@ -272,6 +294,24 @@ void CPlayerProfiles::ProcessHttpResponse()
 			CatStats.m_TotalPoints = PtsObj["total"].type == json_integer ? (int)PtsObj["total"].u.integer : 0;
 			CatStats.m_Rank = PtsObj["rank"].type == json_integer ? (int)PtsObj["rank"].u.integer : 0;
 			Profile.m_vCategories.push_back(CatStats);
+
+			const json_value &CatMaps = CatObj["maps"];
+			if(CatMaps.type == json_object)
+			{
+				for(unsigned int m = 0; m < CatMaps.u.object.length; ++m)
+				{
+					const char *pMapName = CatMaps.u.object.values[m].name;
+					const json_value &MapInfo = *CatMaps.u.object.values[m].value;
+					if(MapInfo.type == json_object)
+					{
+						int Finishes = MapInfo["finishes"].type == json_integer ? (int)MapInfo["finishes"].u.integer : 0;
+						if(Finishes == 0 && pMapName && pMapName[0])
+						{
+							Profile.m_vUnfinishedMaps.push_back(pMapName);
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -1015,4 +1055,228 @@ void CPlayerProfiles::OnConsoleInit()
 	Console()->Register("profile", "?s[name]", CFGFLAG_CLIENT, ConProfile, this, "View player DDNet or KoG profile in AClient");
 	Console()->Register("profile_web_ddnet", "?s[name]", CFGFLAG_CLIENT, ConProfileWebDDNet, this, "Open player profile in DDNet website");
 	Console()->Register("profile_web_kog", "?s[name]", CFGFLAG_CLIENT, ConProfileWebKoG, this, "Open player profile in King of Gores website");
+}
+
+// ==========================================
+// Team Unfinished Maps Comparison Operations
+// ==========================================
+
+bool CPlayerProfiles::IsPlayerProfileLoaded(const char *pName, bool IsKoG) const
+{
+	if(!pName || pName[0] == '\0')
+		return false;
+
+	char aLower[MAX_NAME_LENGTH];
+	str_copy(aLower, pName);
+	for(char *p = aLower; *p; ++p)
+		*p = (char)tolower((unsigned char)*p);
+	std::string Key(aLower);
+
+	if(IsKoG)
+	{
+		if(m_mKoGProfilesCache.find(Key) != m_mKoGProfilesCache.end())
+			return true;
+		CKoGPlayerProfile DiskProf{};
+		if(const_cast<CPlayerProfiles *>(this)->LoadKoGFromDisk(pName, DiskProf))
+		{
+			const_cast<CPlayerProfiles *>(this)->AddToKoGCache(DiskProf);
+			return true;
+		}
+		return false;
+	}
+	else
+	{
+		return m_mProfilesCache.find(Key) != m_mProfilesCache.end();
+	}
+}
+
+void CPlayerProfiles::QueueTeamProfileFetch(const char *pName, bool IsKoG)
+{
+	if(!pName || pName[0] == '\0')
+		return;
+
+	if(IsPlayerProfileLoaded(pName, IsKoG))
+		return;
+
+	std::string NameStr(pName);
+	if(IsKoG)
+	{
+		if(str_comp(m_aKoGFetchThreadPlayer, pName) == 0 && m_KoGFetchRunning)
+			return;
+		for(const auto &Pending : m_qTeamPendingKoG)
+		{
+			if(str_comp(Pending.c_str(), pName) == 0)
+				return;
+		}
+		m_qTeamPendingKoG.push_back(NameStr);
+	}
+	else
+	{
+		if(str_comp(m_aRequestedName, pName) == 0 && m_pHttpRequest != nullptr)
+			return;
+		for(const auto &Pending : m_qTeamPendingDDNet)
+		{
+			if(str_comp(Pending.c_str(), pName) == 0)
+				return;
+		}
+		m_qTeamPendingDDNet.push_back(NameStr);
+	}
+}
+
+void CPlayerProfiles::AddTeamPlayer(const char *pName)
+{
+	if(!pName || pName[0] == '\0')
+		return;
+
+	for(const auto &Existing : m_vTeamPlayers)
+	{
+		if(str_comp(Existing.c_str(), pName) == 0)
+			return;
+	}
+
+	m_vTeamPlayers.push_back(pName);
+	QueueTeamProfileFetch(pName, g_Config.m_AcProfileSource == 1);
+	ComputeTeamCommonUnfinished();
+}
+
+void CPlayerProfiles::RemoveTeamPlayer(const char *pName)
+{
+	if(!pName || pName[0] == '\0')
+		return;
+
+	m_vTeamPlayers.erase(
+		std::remove_if(m_vTeamPlayers.begin(), m_vTeamPlayers.end(),
+			[&](const std::string &Item) { return str_comp(Item.c_str(), pName) == 0; }),
+		m_vTeamPlayers.end());
+
+	ComputeTeamCommonUnfinished();
+}
+
+void CPlayerProfiles::ClearTeamPlayers()
+{
+	m_vTeamPlayers.clear();
+	m_qTeamPendingDDNet.clear();
+	m_qTeamPendingKoG.clear();
+	m_vCommonUnfinishedMaps.clear();
+	m_TeamComparisonReady = false;
+	str_copy(m_aTeamStatusMsg, "");
+}
+
+void CPlayerProfiles::AutoDetectCurrentTeam()
+{
+	if(!GameClient() || !Client() || Client()->State() != IClient::STATE_ONLINE)
+		return;
+
+	int LocalId = GameClient()->m_Snap.m_LocalClientId;
+	if(LocalId < 0 || LocalId >= MAX_CLIENTS)
+		return;
+
+	int MyTeam = GameClient()->m_Teams.Team(LocalId);
+	if(MyTeam == 0)
+	{
+		const char *pMyName = Client()->PlayerName();
+		if(pMyName && pMyName[0] != '\0')
+			AddTeamPlayer(pMyName);
+		return;
+	}
+
+	ClearTeamPlayers();
+	for(int i = 0; i < MAX_CLIENTS; ++i)
+	{
+		if(GameClient()->m_aClients[i].m_Active && GameClient()->m_Teams.SameTeam(LocalId, i))
+		{
+			const char *pName = GameClient()->m_aClients[i].m_aName;
+			if(pName && pName[0] != '\0')
+				AddTeamPlayer(pName);
+		}
+	}
+
+	ComputeTeamCommonUnfinished();
+}
+
+void CPlayerProfiles::ComputeTeamCommonUnfinished()
+{
+	m_vCommonUnfinishedMaps.clear();
+	m_TeamComparisonReady = false;
+
+	if(m_vTeamPlayers.empty())
+	{
+		str_copy(m_aTeamStatusMsg, "Agrega jugadores al equipo para comparar mapas pendientes");
+		return;
+	}
+
+	const bool IsKoG = (g_Config.m_AcProfileSource == 1);
+
+	for(const auto &Name : m_vTeamPlayers)
+	{
+		QueueTeamProfileFetch(Name.c_str(), IsKoG);
+	}
+
+	bool AllLoaded = true;
+	std::string PendingName = "";
+	for(const auto &Name : m_vTeamPlayers)
+	{
+		if(!IsPlayerProfileLoaded(Name.c_str(), IsKoG))
+		{
+			AllLoaded = false;
+			PendingName = Name;
+			break;
+		}
+	}
+
+	if(!AllLoaded)
+	{
+		str_format(m_aTeamStatusMsg, sizeof(m_aTeamStatusMsg), "Cargando perfil de '%s'...", PendingName.c_str());
+		return;
+	}
+
+	std::map<std::string, int> MapCounts;
+
+	for(const auto &Name : m_vTeamPlayers)
+	{
+		std::vector<std::string> UnfinList;
+		if(IsKoG)
+		{
+			CKoGPlayerProfile Prof{};
+			if(GetFromKoGCache(Name.c_str(), Prof) || LoadKoGFromDisk(Name.c_str(), Prof))
+			{
+				UnfinList = Prof.m_vUnfinishedMaps;
+			}
+		}
+		else
+		{
+			CDDNetPlayerProfile Prof{};
+			if(GetFromCache(Name.c_str(), Prof))
+			{
+				UnfinList = Prof.m_vUnfinishedMaps;
+			}
+		}
+
+		std::set<std::string> UniqueUnfin(UnfinList.begin(), UnfinList.end());
+		for(const auto &MapName : UniqueUnfin)
+		{
+			MapCounts[MapName]++;
+		}
+	}
+
+	const int TeamSize = (int)m_vTeamPlayers.size();
+	for(const auto &Pair : MapCounts)
+	{
+		if(Pair.second == TeamSize)
+		{
+			CTeamUnfinishedMap M{};
+			str_copy(M.m_aMap, Pair.first.c_str());
+			str_copy(M.m_aCategory, "");
+			M.m_Points = 0;
+			m_vCommonUnfinishedMaps.push_back(M);
+		}
+	}
+
+	std::sort(m_vCommonUnfinishedMaps.begin(), m_vCommonUnfinishedMaps.end(),
+		[](const CTeamUnfinishedMap &a, const CTeamUnfinishedMap &b) {
+			return str_comp_nocase(a.m_aMap, b.m_aMap) < 0;
+		});
+
+	m_TeamComparisonReady = true;
+	str_format(m_aTeamStatusMsg, sizeof(m_aTeamStatusMsg), "%zu mapas incompletos en comun para el equipo", m_vCommonUnfinishedMaps.size());
 }

@@ -4942,6 +4942,31 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 		}
 	}
 
+	TopBar.VSplitLeft(Margin * 1.5f, nullptr, &TopBar);
+
+	// Mode Selector: [ Individual | Equipo ]
+	const bool IsTeamMode = (g_Config.m_AcProfileViewMode == 1);
+	static CButtonContainer s_BtnModeIndiv;
+	static CButtonContainer s_BtnModeTeam;
+
+	TopBar.VSplitLeft(70.0f, &Button, &TopBar);
+	ColorRGBA IndivCol = !IsTeamMode ? ColorRGBA(0.2f, 0.6f, 0.9f, 0.85f) : ColorRGBA(0.2f, 0.2f, 0.2f, 0.45f);
+	if(DoButton_Menu(&s_BtnModeIndiv, TCLocalize("Individual"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L, 3.0f, 0.0f, IndivCol))
+	{
+		g_Config.m_AcProfileViewMode = 0;
+	}
+
+	TopBar.VSplitLeft(60.0f, &Button, &TopBar);
+	ColorRGBA TeamCol = IsTeamMode ? ColorRGBA(0.9f, 0.5f, 0.1f, 0.85f) : ColorRGBA(0.2f, 0.2f, 0.2f, 0.45f);
+	if(DoButton_Menu(&s_BtnModeTeam, TCLocalize("Equipo"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R, 3.0f, 0.0f, TeamCol))
+	{
+		g_Config.m_AcProfileViewMode = 1;
+		if(Profiles.TeamPlayers().empty())
+			Profiles.AutoDetectCurrentTeam();
+		else
+			Profiles.ComputeTeamCommonUnfinished();
+	}
+
 	// Web links on right side of TopBar
 	static CButtonContainer s_BtnKoGWeb;
 	TopBar.VSplitRight(100.0f, &TopBar, &Button);
@@ -4964,6 +4989,286 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 		if(!pTarget || pTarget[0] == '\0')
 			pTarget = Client()->PlayerName();
 		Profiles.OpenDDNetWeb(pTarget);
+	}
+
+	// ==========================================
+	// Team Unfinished Maps Comparison View
+	// ==========================================
+	if(IsTeamMode)
+	{
+		CUIRect TeamControls;
+		Content.HSplitTop(LineHeight, &TeamControls, &Content);
+		Content.HSplitTop(Margin, nullptr, &Content);
+
+		// [ Detectar Equipo ]
+		static CButtonContainer s_BtnDetectTeam;
+		TeamControls.VSplitLeft(105.0f, &Button, &TeamControls);
+		if(DoButton_Menu(&s_BtnDetectTeam, TCLocalize("Detectar Equipo"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.2f, 0.7f, 0.4f, 0.6f)))
+		{
+			Profiles.AutoDetectCurrentTeam();
+		}
+
+		TeamControls.VSplitLeft(Margin, nullptr, &TeamControls);
+
+		// Input box to add custom player name
+		static CLineInputBuffered<64> s_AddPlayerInput;
+		CUIRect AddBox;
+		TeamControls.VSplitLeft(130.0f, &AddBox, &TeamControls);
+		s_AddPlayerInput.SetEmptyText(TCLocalize("Agregar jugador..."));
+		Ui()->DoEditBox(&s_AddPlayerInput, &AddBox, FontSize);
+
+		const bool AddTriggered = s_AddPlayerInput.IsActive() && (Ui()->ConsumeHotkey(CUi::HOTKEY_ENTER) || Input()->KeyPress(KEY_RETURN) || Input()->KeyPress(KEY_KP_ENTER));
+
+		TeamControls.VSplitLeft(Margin, nullptr, &TeamControls);
+
+		// [ + Agregar ]
+		static CButtonContainer s_BtnAddPlayer;
+		TeamControls.VSplitLeft(70.0f, &Button, &TeamControls);
+		if(DoButton_Menu(&s_BtnAddPlayer, TCLocalize("+ Agregar"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.3f, 0.6f, 0.9f, 0.6f)) || AddTriggered)
+		{
+			const char *pAdd = s_AddPlayerInput.GetString();
+			if(pAdd && pAdd[0] != '\0')
+			{
+				Profiles.AddTeamPlayer(pAdd);
+				s_AddPlayerInput.Clear();
+			}
+		}
+
+		TeamControls.VSplitLeft(Margin, nullptr, &TeamControls);
+
+		// [ Limpiar ]
+		static CButtonContainer s_BtnClearTeam;
+		TeamControls.VSplitLeft(60.0f, &Button, &TeamControls);
+		if(DoButton_Menu(&s_BtnClearTeam, TCLocalize("Limpiar"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.6f, 0.3f, 0.3f, 0.5f)))
+		{
+			Profiles.ClearTeamPlayers();
+		}
+
+		TeamControls.VSplitLeft(Margin, nullptr, &TeamControls);
+
+		// [ Recargar ]
+		static CButtonContainer s_BtnReloadTeam;
+		TeamControls.VSplitLeft(70.0f, &Button, &TeamControls);
+		if(DoButton_Menu(&s_BtnReloadTeam, TCLocalize("Recargar"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.5f, 0.5f, 0.5f, 0.5f)))
+		{
+			for(const auto &Name : Profiles.TeamPlayers())
+			{
+				if(IsKoG)
+					Profiles.FetchKoGProfile(Name.c_str(), true);
+				else
+					Profiles.FetchProfile(Name.c_str(), true);
+			}
+		}
+
+		// Status text on right side of controls
+		TeamControls.VSplitLeft(Margin * 2.0f, nullptr, &TeamControls);
+		TextRender()->TextColor(0.85f, 0.85f, 0.85f, 0.9f);
+		Ui()->DoLabel(&TeamControls, Profiles.TeamStatusMsg(), 11.0f, TEXTALIGN_ML);
+		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+		// Two-column layout
+		CUIRect LeftCol, RightCol;
+		Content.VSplitLeft(230.0f, &LeftCol, &RightCol);
+		RightCol.VSplitLeft(Margin * 2.0f, nullptr, &RightCol);
+
+		// ------------------------------------------
+		// Left: Team Members
+		// ------------------------------------------
+		CUIRect LeftHeader;
+		LeftCol.HSplitTop(26.0f, &LeftHeader, &LeftCol);
+		LeftHeader.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.35f), IGraphics::CORNER_T, 4.0f);
+
+		char aMembersTitle[64];
+		str_format(aMembersTitle, sizeof(aMembersTitle), "%s (%zu)", TCLocalize("Miembros del Equipo"), Profiles.TeamPlayers().size());
+		TextRender()->TextColor(1.0f, 0.85f, 0.4f, 1.0f);
+		Ui()->DoLabel(&LeftHeader, aMembersTitle, 11.5f, TEXTALIGN_MC);
+		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+		LeftCol.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.2f), IGraphics::CORNER_B, 4.0f);
+		LeftCol.Margin(4.0f, &LeftCol);
+
+		static CScrollRegion s_ScrollTeamMembers;
+		CScrollRegionParams MemParams;
+		MemParams.m_ScrollUnit = 30.0f;
+		MemParams.m_ForceShowScrollbar = false;
+		s_ScrollTeamMembers.Begin(&LeftCol, &MemParams);
+
+		if(Profiles.TeamPlayers().empty())
+		{
+			CUIRect EmptyLabel;
+			LeftCol.HSplitTop(60.0f, &EmptyLabel, &LeftCol);
+			if(s_ScrollTeamMembers.AddRect(EmptyLabel))
+			{
+				TextRender()->TextColor(0.6f, 0.6f, 0.6f, 0.8f);
+				Ui()->DoLabel(&EmptyLabel, TCLocalize("Ningun jugador en el equipo.\nUsa 'Detectar Equipo' o\nagrega nombres arriba."), 10.5f, TEXTALIGN_MC);
+				TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+			}
+		}
+		else
+		{
+			const float ItemH = 26.0f;
+			std::string RemoveTarget = "";
+
+			for(size_t i = 0; i < Profiles.TeamPlayers().size(); ++i)
+			{
+				const std::string &PlayerName = Profiles.TeamPlayers()[i];
+				CUIRect ItemRect;
+				LeftCol.HSplitTop(ItemH, &ItemRect, &LeftCol);
+				LeftCol.HSplitTop(2.0f, nullptr, &LeftCol);
+
+				if(s_ScrollTeamMembers.AddRect(ItemRect))
+				{
+					ItemRect.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 3.0f);
+					ItemRect.Margin(3.0f, &ItemRect);
+
+					CUIRect RemoveBtn, StatusCol, NameCol;
+					ItemRect.VSplitRight(22.0f, &StatusCol, &RemoveBtn);
+					StatusCol.VSplitRight(55.0f, &NameCol, &StatusCol);
+
+					// Player Name
+					TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+					Ui()->DoLabel(&NameCol, PlayerName.c_str(), 11.5f, TEXTALIGN_ML);
+
+					// Status badge
+					bool Loaded = Profiles.IsPlayerProfileLoaded(PlayerName.c_str(), IsKoG);
+					if(Loaded)
+					{
+						TextRender()->TextColor(0.4f, 1.0f, 0.4f, 1.0f);
+						Ui()->DoLabel(&StatusCol, TCLocalize("Listo"), 10.0f, TEXTALIGN_MC);
+					}
+					else
+					{
+						TextRender()->TextColor(1.0f, 0.7f, 0.2f, 1.0f);
+						Ui()->DoLabel(&StatusCol, TCLocalize("Cargando..."), 9.5f, TEXTALIGN_MC);
+					}
+					TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+					// Remove button
+					static CButtonContainer s_aBtnRemoveMember[64];
+					CButtonContainer *pRemBtn = (i < 64) ? &s_aBtnRemoveMember[i] : &s_aBtnRemoveMember[0];
+					if(DoButton_Menu(pRemBtn, "X", 0, &RemoveBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 2.0f, 0.0f, ColorRGBA(0.7f, 0.2f, 0.2f, 0.6f)))
+					{
+						RemoveTarget = PlayerName;
+					}
+				}
+			}
+
+			if(!RemoveTarget.empty())
+			{
+				Profiles.RemoveTeamPlayer(RemoveTarget.c_str());
+			}
+		}
+
+		s_ScrollTeamMembers.End();
+
+		// ------------------------------------------
+		// Right: Common Unfinished Maps
+		// ------------------------------------------
+		CUIRect RightHeader;
+		RightCol.HSplitTop(28.0f, &RightHeader, &RightCol);
+		RightHeader.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.35f), IGraphics::CORNER_T, 4.0f);
+
+		CUIRect MapFilterBox, RightTitle;
+		RightHeader.VSplitRight(150.0f, &RightTitle, &MapFilterBox);
+		RightHeader.Margin(3.0f, &RightHeader);
+
+		static CLineInputBuffered<64> s_TeamMapFilter;
+		s_TeamMapFilter.SetEmptyText(TCLocalize("Filtrar mapa..."));
+		Ui()->DoEditBox(&s_TeamMapFilter, &MapFilterBox, 11.0f);
+
+		char aTitleBuf[96];
+		str_format(aTitleBuf, sizeof(aTitleBuf), "%s: %zu", TCLocalize("Mapas en comun pendientes"), Profiles.CommonUnfinishedMaps().size());
+		TextRender()->TextColor(1.0f, 0.85f, 0.3f, 1.0f);
+		Ui()->DoLabel(&RightTitle, aTitleBuf, 11.5f, TEXTALIGN_ML);
+		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+		RightCol.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.2f), IGraphics::CORNER_B, 4.0f);
+		RightCol.Margin(4.0f, &RightCol);
+
+		static CScrollRegion s_ScrollTeamMaps;
+		CScrollRegionParams TeamMapScrollParams;
+		TeamMapScrollParams.m_ScrollUnit = 30.0f;
+		TeamMapScrollParams.m_ForceShowScrollbar = false;
+		s_ScrollTeamMaps.Begin(&RightCol, &TeamMapScrollParams);
+
+		const char *pFilter = s_TeamMapFilter.GetString();
+		char aFilterLower[64] = "";
+		if(pFilter && pFilter[0])
+		{
+			str_copy(aFilterLower, pFilter);
+			for(char *p = aFilterLower; *p; ++p) *p = (char)tolower((unsigned char)*p);
+		}
+
+		const float ItemH = 24.0f;
+		size_t Shown = 0;
+		const bool IsOnline = (Client()->State() == IClient::STATE_ONLINE);
+
+		for(size_t i = 0; i < Profiles.CommonUnfinishedMaps().size(); ++i)
+		{
+			const CTeamUnfinishedMap &M = Profiles.CommonUnfinishedMaps()[i];
+			if(aFilterLower[0] != '\0')
+			{
+				char aMapLower[64];
+				str_copy(aMapLower, M.m_aMap);
+				for(char *p = aMapLower; *p; ++p) *p = (char)tolower((unsigned char)*p);
+				if(str_find(aMapLower, aFilterLower) == nullptr)
+					continue;
+			}
+
+			Shown++;
+			CUIRect ItemRect;
+			RightCol.HSplitTop(ItemH, &ItemRect, &RightCol);
+			RightCol.HSplitTop(2.0f, nullptr, &RightCol);
+
+			if(s_ScrollTeamMaps.AddRect(ItemRect))
+			{
+				ItemRect.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 3.0f);
+				ItemRect.Margin(3.0f, &ItemRect);
+
+				CUIRect MapNameCol, ActionCol, StatusCol;
+				ItemRect.VSplitLeft(ItemRect.w * 0.55f, &MapNameCol, &StatusCol);
+
+				TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+				Ui()->DoLabel(&MapNameCol, M.m_aMap, 11.5f, TEXTALIGN_ML);
+
+				if(IsOnline)
+				{
+					StatusCol.VSplitRight(55.0f, &StatusCol, &ActionCol);
+					static CButtonContainer s_aBtnVoteMap[128];
+					CButtonContainer *pVoteBtn = (i < 128) ? &s_aBtnVoteMap[i] : &s_aBtnVoteMap[0];
+					if(DoButton_Menu(pVoteBtn, TCLocalize("Votar"), 0, &ActionCol, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 2.0f, 0.0f, ColorRGBA(0.2f, 0.5f, 0.85f, 0.65f)))
+					{
+						char aVoteCmd[128];
+						str_format(aVoteCmd, sizeof(aVoteCmd), "callvote map \"%s\"", M.m_aMap);
+						GameClient()->Console()->ExecuteLine(aVoteCmd, IConsole::CLIENT_ID_UNSPECIFIED);
+					}
+				}
+
+				TextRender()->TextColor(1.0f, 0.6f, 0.4f, 0.9f);
+				Ui()->DoLabel(&StatusCol, TCLocalize("Incompleto para todos"), 10.5f, TEXTALIGN_MC);
+				TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+			}
+		}
+
+		if(Shown == 0)
+		{
+			CUIRect EmptyLabel;
+			RightCol.HSplitTop(40.0f, &EmptyLabel, &RightCol);
+			if(s_ScrollTeamMaps.AddRect(EmptyLabel))
+			{
+				TextRender()->TextColor(0.6f, 0.6f, 0.6f, 0.8f);
+				if(Profiles.TeamPlayers().empty())
+					Ui()->DoLabel(&EmptyLabel, TCLocalize("Agrega jugadores para calcular mapas pendientes"), 11.0f, TEXTALIGN_MC);
+				else if(!Profiles.TeamComparisonReady())
+					Ui()->DoLabel(&EmptyLabel, TCLocalize("Cargando perfiles de los miembros del equipo..."), 11.0f, TEXTALIGN_MC);
+				else
+					Ui()->DoLabel(&EmptyLabel, TCLocalize("No se encontraron mapas pendientes en comun"), 11.0f, TEXTALIGN_MC);
+				TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+			}
+		}
+
+		s_ScrollTeamMaps.End();
+		return;
 	}
 
 	// ==========================================
