@@ -1,4 +1,4 @@
-/* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
+﻿/* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
 #ifndef GAME_CLIENT_COMPONENTS_MENUS_H
 #define GAME_CLIENT_COMPONENTS_MENUS_H
@@ -744,6 +744,7 @@ public:
 		ACLIENT_TAB_PROFILES,
 		ACLIENT_TAB_COMMANDS,
 		ACLIENT_TAB_MOD,
+		ACLIENT_TAB_HUD,
 		NUM_ACLIENT_TABS
 	};
 
@@ -903,6 +904,7 @@ private:
 	void RenderSettingsAClientCommands(CUIRect MainView);
 	void RenderSettingsAClientMod(CUIRect MainView);
 	void RenderSettingsAClientProfiles(CUIRect MainView);
+	void RenderSettingsAClientHud(CUIRect MainView);
 	void RenderSettingsTClientProfiles(CUIRect MainView);
 	void RenderSettingsTClientConfigs(CUIRect MainView);
 	void RenderTeeCute(const CAnimState *pAnim, const CTeeRenderInfo *pInfo, int Emote, vec2 Dir, vec2 Pos, bool CuteEyes, float Alpha = 1.0f);

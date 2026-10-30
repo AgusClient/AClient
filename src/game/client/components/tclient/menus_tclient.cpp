@@ -4815,6 +4815,9 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 	MainView.HSplitTop(LineHeight, &TopBar, &Content);
 	Content.HSplitTop(Margin, nullptr, &Content);
 
+	const bool IsKoG = (g_Config.m_AcProfileSource == 1);
+	const char *pReqName = IsKoG ? Profiles.KoGRequestedName() : Profiles.RequestedName();
+
 	// Search input box with internal buffer
 	static CLineInputBuffered<128> s_ProfileSearchInput;
 	static char s_aLastSyncedReq[MAX_NAME_LENGTH] = "";
@@ -4823,21 +4826,24 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 	if(!s_InitialFetchDone)
 	{
 		s_InitialFetchDone = true;
-		const char *pInitial = Profiles.RequestedName()[0] != '\0' ? Profiles.RequestedName() : Client()->PlayerName();
+		const char *pInitial = pReqName[0] != '\0' ? pReqName : Client()->PlayerName();
 		if(pInitial && pInitial[0] != '\0')
 		{
 			s_ProfileSearchInput.Set(pInitial);
 			str_copy(s_aLastSyncedReq, pInitial);
-			Profiles.FetchProfile(pInitial);
+			if(IsKoG)
+				Profiles.FetchKoGProfile(pInitial);
+			else
+				Profiles.FetchProfile(pInitial);
 		}
 	}
-	else if(Profiles.RequestedName()[0] != '\0' && str_comp(s_aLastSyncedReq, Profiles.RequestedName()) != 0)
+	else if(pReqName[0] != '\0' && str_comp(s_aLastSyncedReq, pReqName) != 0)
 	{
-		str_copy(s_aLastSyncedReq, Profiles.RequestedName());
-		s_ProfileSearchInput.Set(Profiles.RequestedName());
+		str_copy(s_aLastSyncedReq, pReqName);
+		s_ProfileSearchInput.Set(pReqName);
 	}
 
-	TopBar.VSplitLeft(160.0f, &SearchBox, &TopBar);
+	TopBar.VSplitLeft(140.0f, &SearchBox, &TopBar);
 	s_ProfileSearchInput.SetEmptyText(TCLocalize("Buscar jugador..."));
 	Ui()->DoEditBox(&s_ProfileSearchInput, &SearchBox, FontSize);
 
@@ -4847,14 +4853,17 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 
 	// [ Buscar ]
 	static CButtonContainer s_BtnSearch;
-	TopBar.VSplitLeft(65.0f, &Button, &TopBar);
+	TopBar.VSplitLeft(55.0f, &Button, &TopBar);
 	if(DoButton_Menu(&s_BtnSearch, TCLocalize("Buscar"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.2f, 0.6f, 0.9f, 0.5f)) || SearchTriggered)
 	{
 		const char *pSearch = s_ProfileSearchInput.GetString();
 		if(pSearch && pSearch[0] != '\0')
 		{
 			str_copy(s_aLastSyncedReq, pSearch);
-			Profiles.FetchProfile(pSearch);
+			if(IsKoG)
+				Profiles.FetchKoGProfile(pSearch);
+			else
+				Profiles.FetchProfile(pSearch);
 		}
 	}
 
@@ -4862,7 +4871,7 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 
 	// [ Mi Perfil ]
 	static CButtonContainer s_BtnMyProfile;
-	TopBar.VSplitLeft(80.0f, &Button, &TopBar);
+	TopBar.VSplitLeft(70.0f, &Button, &TopBar);
 	if(DoButton_Menu(&s_BtnMyProfile, TCLocalize("Mi Perfil"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.3f, 0.7f, 0.3f, 0.5f)))
 	{
 		const char *pMyName = Client()->PlayerName();
@@ -4870,7 +4879,10 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 		{
 			s_ProfileSearchInput.Set(pMyName);
 			str_copy(s_aLastSyncedReq, pMyName);
-			Profiles.FetchProfile(pMyName);
+			if(IsKoG)
+				Profiles.FetchKoGProfile(pMyName);
+			else
+				Profiles.FetchProfile(pMyName);
 		}
 	}
 
@@ -4878,29 +4890,65 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 
 	// [ Recargar ]
 	static CButtonContainer s_BtnRefresh;
-	TopBar.VSplitLeft(75.0f, &Button, &TopBar);
+	TopBar.VSplitLeft(65.0f, &Button, &TopBar);
 	if(DoButton_Menu(&s_BtnRefresh, TCLocalize("Recargar"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.6f, 0.6f, 0.6f, 0.5f)))
 	{
 		const char *pSearch = s_ProfileSearchInput.GetString();
-		if(pSearch && pSearch[0] != '\0')
+		const char *pTarget = (pSearch && pSearch[0] != '\0') ? pSearch : Client()->PlayerName();
+		if(pTarget && pTarget[0] != '\0')
 		{
-			str_copy(s_aLastSyncedReq, pSearch);
-			Profiles.FetchProfile(pSearch, true);
-		}
-		else
-		{
-			const char *pMyName = Client()->PlayerName();
-			str_copy(s_aLastSyncedReq, pMyName);
-			Profiles.FetchProfile(pMyName, true);
+			str_copy(s_aLastSyncedReq, pTarget);
+			if(IsKoG)
+				Profiles.FetchKoGProfile(pTarget, true);
+			else
+				Profiles.FetchProfile(pTarget, true);
 		}
 	}
 
-	// Web links on the right side of TopBar
+	TopBar.VSplitLeft(Margin * 1.5f, nullptr, &TopBar);
+
+	// Source Selector: [ DDNet | KoG ]
+	static CButtonContainer s_BtnSrcDDNet;
+	static CButtonContainer s_BtnSrcKoG;
+	TopBar.VSplitLeft(50.0f, &Button, &TopBar);
+	ColorRGBA DDNetColor = !IsKoG ? ColorRGBA(0.2f, 0.55f, 0.9f, 0.85f) : ColorRGBA(0.2f, 0.2f, 0.2f, 0.45f);
+	if(DoButton_Menu(&s_BtnSrcDDNet, "DDNet", 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L, 3.0f, 0.0f, DDNetColor))
+	{
+		if(g_Config.m_AcProfileSource != 0)
+		{
+			g_Config.m_AcProfileSource = 0;
+			const char *pSearch = s_ProfileSearchInput.GetString();
+			if(pSearch && pSearch[0] != '\0')
+			{
+				str_copy(s_aLastSyncedReq, pSearch);
+				Profiles.FetchProfile(pSearch);
+			}
+		}
+	}
+
+	TopBar.VSplitLeft(45.0f, &Button, &TopBar);
+	ColorRGBA KoGColor = IsKoG ? ColorRGBA(0.9f, 0.45f, 0.1f, 0.85f) : ColorRGBA(0.2f, 0.2f, 0.2f, 0.45f);
+	if(DoButton_Menu(&s_BtnSrcKoG, "KoG", 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R, 3.0f, 0.0f, KoGColor))
+	{
+		if(g_Config.m_AcProfileSource != 1)
+		{
+			g_Config.m_AcProfileSource = 1;
+			const char *pSearch = s_ProfileSearchInput.GetString();
+			if(pSearch && pSearch[0] != '\0')
+			{
+				str_copy(s_aLastSyncedReq, pSearch);
+				Profiles.FetchKoGProfile(pSearch);
+			}
+		}
+	}
+
+	// Web links on right side of TopBar
 	static CButtonContainer s_BtnKoGWeb;
-	TopBar.VSplitRight(110.0f, &TopBar, &Button);
+	TopBar.VSplitRight(100.0f, &TopBar, &Button);
 	if(DoButton_Menu(&s_BtnKoGWeb, TCLocalize("Abrir KoG.tw"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.9f, 0.4f, 0.1f, 0.5f)))
 	{
-		const char *pTarget = Profiles.State() == EProfileState::READY ? Profiles.CurrentProfile().m_aName : s_ProfileSearchInput.GetString();
+		const char *pTarget = IsKoG ? (Profiles.KoGState() == EProfileState::READY ? Profiles.CurrentKoGProfile().m_aName : s_ProfileSearchInput.GetString())
+		                            : (Profiles.State() == EProfileState::READY ? Profiles.CurrentProfile().m_aName : s_ProfileSearchInput.GetString());
 		if(!pTarget || pTarget[0] == '\0')
 			pTarget = Client()->PlayerName();
 		Profiles.OpenKoGWeb(pTarget);
@@ -4909,7 +4957,7 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 	TopBar.VSplitRight(Margin, &TopBar, nullptr);
 
 	static CButtonContainer s_BtnDDNetWeb;
-	TopBar.VSplitRight(120.0f, &TopBar, &Button);
+	TopBar.VSplitRight(115.0f, &TopBar, &Button);
 	if(DoButton_Menu(&s_BtnDDNetWeb, TCLocalize("Abrir DDNet.org"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.2f, 0.5f, 0.85f, 0.5f)))
 	{
 		const char *pTarget = Profiles.State() == EProfileState::READY ? Profiles.CurrentProfile().m_aName : s_ProfileSearchInput.GetString();
@@ -4918,7 +4966,434 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 		Profiles.OpenDDNetWeb(pTarget);
 	}
 
-	// Render Content based on state
+	// ==========================================
+	// KoG Profile View
+	// ==========================================
+	if(IsKoG)
+	{
+		EProfileState State = Profiles.KoGState();
+
+		if(State == EProfileState::IDLE)
+		{
+			CUIRect EmptyLabel;
+			Content.HSplitTop(60.0f, nullptr, &EmptyLabel);
+			TextRender()->TextColor(0.8f, 0.8f, 0.8f, 0.9f);
+			Ui()->DoLabel(&EmptyLabel, TCLocalize("Ingresa un jugador y presiona 'Buscar' o consulta 'Mi Perfil' para ver datos de KoG."), 14.0f, TEXTALIGN_MC);
+			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+			return;
+		}
+
+		if(State == EProfileState::FETCHING)
+		{
+			CUIRect LoadingBox;
+			Content.HSplitTop(80.0f, nullptr, &LoadingBox);
+			LoadingBox.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 5.0f);
+			TextRender()->TextColor(1.0f, 0.7f, 0.2f, 1.0f);
+			Ui()->DoLabel(&LoadingBox, Profiles.KoGStatusMsg(), 14.0f, TEXTALIGN_MC);
+			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+			return;
+		}
+
+		if(State == EProfileState::NOT_FOUND || State == EProfileState::ERROR_NETWORK)
+		{
+			CUIRect ErrorBox;
+			Content.HSplitTop(80.0f, nullptr, &ErrorBox);
+			ErrorBox.Draw(ColorRGBA(0.3f, 0.1f, 0.1f, 0.35f), IGraphics::CORNER_ALL, 5.0f);
+			TextRender()->TextColor(1.0f, 0.4f, 0.4f, 1.0f);
+			Ui()->DoLabel(&ErrorBox, Profiles.KoGStatusMsg(), 14.0f, TEXTALIGN_MC);
+			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+			return;
+		}
+
+		// State == READY
+		const CKoGPlayerProfile &Prof = Profiles.CurrentKoGProfile();
+
+		// Header Card
+		CUIRect HeaderCard, CardLeft, CardMid, CardRight, Label;
+		Content.HSplitTop(52.0f, &HeaderCard, &Content);
+		HeaderCard.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.35f), IGraphics::CORNER_ALL, 5.0f);
+		HeaderCard.Margin(5.0f, &HeaderCard);
+
+		// Left: Player Name & Skin
+		HeaderCard.VSplitLeft(200.0f, &CardLeft, &HeaderCard);
+		CardLeft.HSplitTop(20.0f, &Label, &CardLeft);
+		TextRender()->TextColor(1.0f, 0.75f, 0.2f, 1.0f);
+		Ui()->DoLabel(&Label, Prof.m_aName, 15.0f, TEXTALIGN_ML);
+
+		char aSkinInfo[128];
+		if(Prof.m_aSkinName[0] != '\0')
+			str_format(aSkinInfo, sizeof(aSkinInfo), "Skin: %s %s", Prof.m_aSkinName, Prof.m_FromDiskCache ? "(Cache local)" : "");
+		else
+			str_format(aSkinInfo, sizeof(aSkinInfo), "%s", Prof.m_FromDiskCache ? "(En cache local)" : "");
+
+		CardLeft.HSplitTop(16.0f, &Label, &CardLeft);
+		TextRender()->TextColor(0.6f, 0.85f, 0.95f, 0.85f);
+		Ui()->DoLabel(&Label, aSkinInfo, 10.5f, TEXTALIGN_ML);
+		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+		// Mid: Total Points, Rank, Season, PvP
+		HeaderCard.VSplitLeft(HeaderCard.w * 0.58f, &CardMid, &CardRight);
+
+		char aPointsStr[128];
+		if(Prof.m_Rank > 0)
+			str_format(aPointsStr, sizeof(aPointsStr), "Puntos KoG: %d pts  |  Rank: #%d", Prof.m_TotalPoints, Prof.m_Rank);
+		else
+			str_format(aPointsStr, sizeof(aPointsStr), "Puntos KoG: %d pts", Prof.m_TotalPoints);
+
+		CardMid.HSplitTop(18.0f, &Label, &CardMid);
+		TextRender()->TextColor(0.4f, 0.95f, 0.4f, 1.0f);
+		Ui()->DoLabel(&Label, aPointsStr, 12.0f, TEXTALIGN_ML);
+
+		char aSubPts[128];
+		str_format(aSubPts, sizeof(aSubPts), "Temporada: %d pts  |  PvP: %d pts", Prof.m_SeasonPoints, Prof.m_PvPPoints);
+		CardMid.HSplitTop(16.0f, &Label, &CardMid);
+		TextRender()->TextColor(0.85f, 0.85f, 0.6f, 0.9f);
+		Ui()->DoLabel(&Label, aSubPts, 10.5f, TEXTALIGN_ML);
+		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+		// Right: Time Wasted & Finishes Count
+		char aTimeStr[128];
+		if(Prof.m_TimeWasted > 0)
+		{
+			int Hours = (int)(Prof.m_TimeWasted / 3600);
+			int Mins = (int)((Prof.m_TimeWasted % 3600) / 60);
+			str_format(aTimeStr, sizeof(aTimeStr), "Tiempo: %dh %02dm", Hours, Mins);
+		}
+		else
+		{
+			str_copy(aTimeStr, "Tiempo: 0h");
+		}
+
+		CardRight.HSplitTop(18.0f, &Label, &CardRight);
+		TextRender()->TextColor(0.5f, 0.85f, 1.0f, 1.0f);
+		Ui()->DoLabel(&Label, aTimeStr, 11.5f, TEXTALIGN_ML);
+
+		char aFinCountStr[64];
+		str_format(aFinCountStr, sizeof(aFinCountStr), "Mapas terminados: %zu", Prof.m_vFinishes.size());
+		CardRight.HSplitTop(16.0f, &Label, &CardRight);
+		TextRender()->TextColor(0.8f, 0.8f, 0.8f, 0.85f);
+		Ui()->DoLabel(&Label, aFinCountStr, 10.5f, TEXTALIGN_ML);
+		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+		Content.HSplitTop(Margin, nullptr, &Content);
+
+		// Split View: Left = Categories & Teammates, Right = Map Finishes & Unfinished
+		CUIRect LeftCol, RightCol;
+		Content.VSplitMid(&LeftCol, &RightCol, Margin);
+
+		// --- Left Column ---
+		CUIRect LeftHeader, LeftList, TabBtn;
+		LeftCol.HSplitTop(22.0f, &LeftHeader, &LeftList);
+		LeftHeader.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 3.0f);
+
+		static int s_KoGLeftTab = 0; // 0: Categorias, 1: Companeros
+		static CButtonContainer s_BtnKoGCats;
+		static CButtonContainer s_BtnKoGTms;
+
+		LeftHeader.VSplitLeft(100.0f, &TabBtn, &LeftHeader);
+		ColorRGBA TabCatCol = (s_KoGLeftTab == 0) ? ColorRGBA(0.9f, 0.5f, 0.1f, 0.7f) : ColorRGBA(0.2f, 0.2f, 0.2f, 0.3f);
+		if(DoButton_Menu(&s_BtnKoGCats, TCLocalize("Categorias"), 0, &TabBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L, 3.0f, 0.0f, TabCatCol))
+			s_KoGLeftTab = 0;
+
+		char aTmTabStr[64];
+		str_format(aTmTabStr, sizeof(aTmTabStr), "%s (%zu)", TCLocalize("Companeros"), Prof.m_vTeammates.size());
+		ColorRGBA TabTmCol = (s_KoGLeftTab == 1) ? ColorRGBA(0.9f, 0.5f, 0.1f, 0.7f) : ColorRGBA(0.2f, 0.2f, 0.2f, 0.3f);
+		if(DoButton_Menu(&s_BtnKoGTms, aTmTabStr, 0, &LeftHeader, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R, 3.0f, 0.0f, TabTmCol))
+			s_KoGLeftTab = 1;
+
+		LeftList.Margin(2.0f, &LeftList);
+
+		if(s_KoGLeftTab == 0)
+		{
+			static CScrollRegion s_ScrollKoGCats;
+			CScrollRegionParams CatScrollParams;
+			CatScrollParams.m_ScrollUnit = 40.0f;
+			CatScrollParams.m_ForceShowScrollbar = false;
+			CatScrollParams.m_ScrollbarMargin = 3.0f;
+			s_ScrollKoGCats.Begin(&LeftList, &CatScrollParams);
+
+			const float ItemH = 26.0f;
+			for(size_t i = 0; i < Prof.m_vCategories.size(); ++i)
+			{
+				const CKoGCategoryStats &Cat = Prof.m_vCategories[i];
+				CUIRect ItemRect;
+				LeftList.HSplitTop(ItemH, &ItemRect, &LeftList);
+				LeftList.HSplitTop(2.0f, nullptr, &LeftList);
+
+				if(s_ScrollKoGCats.AddRect(ItemRect))
+				{
+					ItemRect.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.2f), IGraphics::CORNER_ALL, 3.0f);
+					ItemRect.Margin(3.0f, &ItemRect);
+
+					CUIRect NameCol, StatsCol, BarRect, BarFill;
+					ItemRect.HSplitTop(14.0f, &NameCol, &BarRect);
+					NameCol.VSplitLeft(100.0f, &NameCol, &StatsCol);
+
+					ColorRGBA CatColor = ColorRGBA(0.9f, 0.9f, 0.9f, 1.0f);
+					if(str_comp_nocase(Cat.m_aName, "Solo") == 0) CatColor = ColorRGBA(0.3f, 0.8f, 1.0f, 1.0f);
+					else if(str_comp_nocase(Cat.m_aName, "Easy") == 0) CatColor = ColorRGBA(0.4f, 0.95f, 0.4f, 1.0f);
+					else if(str_comp_nocase(Cat.m_aName, "Main") == 0) CatColor = ColorRGBA(0.95f, 0.95f, 0.3f, 1.0f);
+					else if(str_comp_nocase(Cat.m_aName, "Hard") == 0) CatColor = ColorRGBA(0.95f, 0.55f, 0.2f, 1.0f);
+					else if(str_comp_nocase(Cat.m_aName, "Insane") == 0) CatColor = ColorRGBA(0.95f, 0.25f, 0.25f, 1.0f);
+					else if(str_comp_nocase(Cat.m_aName, "Extreme") == 0) CatColor = ColorRGBA(0.85f, 0.3f, 0.95f, 1.0f);
+					else if(str_comp_nocase(Cat.m_aName, "Moderate") == 0) CatColor = ColorRGBA(0.9f, 0.75f, 0.3f, 1.0f);
+
+					TextRender()->TextColor(CatColor);
+					Ui()->DoLabel(&NameCol, Cat.m_aName, 11.0f, TEXTALIGN_ML);
+
+					float Pct = Cat.m_Total > 0 ? ((float)Cat.m_Finished / (float)Cat.m_Total) * 100.0f : 0.0f;
+					char aStatsStr[64];
+					str_format(aStatsStr, sizeof(aStatsStr), "%d / %d mapas (%.1f%%)", Cat.m_Finished, Cat.m_Total, Pct);
+					TextRender()->TextColor(0.85f, 0.85f, 0.85f, 1.0f);
+					Ui()->DoLabel(&StatsCol, aStatsStr, 10.0f, TEXTALIGN_MR);
+					TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+					// Mini progress bar
+					BarRect.Margin(1.0f, &BarRect);
+					BarRect.Draw(ColorRGBA(0.1f, 0.1f, 0.1f, 0.7f), IGraphics::CORNER_ALL, 1.5f);
+					float FillW = std::clamp(Pct / 100.0f, 0.0f, 1.0f) * BarRect.w;
+					BarRect.VSplitLeft(FillW, &BarFill, nullptr);
+					BarFill.Draw(CatColor, IGraphics::CORNER_ALL, 1.5f);
+				}
+			}
+			s_ScrollKoGCats.End();
+		}
+		else
+		{
+			// Teammates List
+			static CScrollRegion s_ScrollKoGTms;
+			CScrollRegionParams TmScrollParams;
+			TmScrollParams.m_ScrollUnit = 40.0f;
+			TmScrollParams.m_ForceShowScrollbar = false;
+			TmScrollParams.m_ScrollbarMargin = 3.0f;
+			s_ScrollKoGTms.Begin(&LeftList, &TmScrollParams);
+
+			const float ItemH = 22.0f;
+			if(Prof.m_vTeammates.empty())
+			{
+				CUIRect EmptyLabel;
+				LeftList.HSplitTop(30.0f, &EmptyLabel, &LeftList);
+				if(s_ScrollKoGTms.AddRect(EmptyLabel))
+				{
+					TextRender()->TextColor(0.6f, 0.6f, 0.6f, 0.8f);
+					Ui()->DoLabel(&EmptyLabel, TCLocalize("Sin companeros registrados"), 11.0f, TEXTALIGN_MC);
+					TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+				}
+			}
+			else
+			{
+				for(size_t i = 0; i < Prof.m_vTeammates.size(); ++i)
+				{
+					const CKoGTeammate &Tm = Prof.m_vTeammates[i];
+					CUIRect ItemRect;
+					LeftList.HSplitTop(ItemH, &ItemRect, &LeftList);
+					LeftList.HSplitTop(2.0f, nullptr, &LeftList);
+
+					if(s_ScrollKoGTms.AddRect(ItemRect))
+					{
+						ItemRect.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.2f), IGraphics::CORNER_ALL, 3.0f);
+						ItemRect.Margin(3.0f, &ItemRect);
+
+						CUIRect TmNameCol, TmFinCol;
+						ItemRect.VSplitLeft(ItemRect.w * 0.55f, &TmNameCol, &TmFinCol);
+
+						TextRender()->TextColor(1.0f, 0.9f, 0.4f, 1.0f);
+						Ui()->DoLabel(&TmNameCol, Tm.m_aName, 11.0f, TEXTALIGN_ML);
+
+						char aTmFinStr[64];
+						str_format(aTmFinStr, sizeof(aTmFinStr), "%d finishes juntos", Tm.m_Finishes);
+						TextRender()->TextColor(0.8f, 0.8f, 0.8f, 0.9f);
+						Ui()->DoLabel(&TmFinCol, aTmFinStr, 10.0f, TEXTALIGN_MR);
+						TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+					}
+				}
+			}
+			s_ScrollKoGTms.End();
+		}
+
+		// --- Right Column ---
+		CUIRect RightHeader, RightFilter, RightList;
+		RightCol.HSplitTop(22.0f, &RightHeader, &RightCol);
+		RightCol.HSplitTop(2.0f, nullptr, &RightCol);
+		RightCol.HSplitTop(20.0f, &RightFilter, &RightList);
+
+		RightHeader.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 3.0f);
+
+		static int s_KoGRightTab = 0; // 0: Finishes, 1: Pendientes
+		static CButtonContainer s_BtnKoGFins;
+		static CButtonContainer s_BtnKoGUnfin;
+
+		char aFinTabStr[64];
+		str_format(aFinTabStr, sizeof(aFinTabStr), "%s (%zu)", TCLocalize("Mapas Terminados"), Prof.m_vFinishes.size());
+		RightHeader.VSplitLeft(RightHeader.w * 0.5f, &TabBtn, &RightHeader);
+		ColorRGBA TabFinCol = (s_KoGRightTab == 0) ? ColorRGBA(0.2f, 0.6f, 0.9f, 0.7f) : ColorRGBA(0.2f, 0.2f, 0.2f, 0.3f);
+		if(DoButton_Menu(&s_BtnKoGFins, aFinTabStr, 0, &TabBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L, 3.0f, 0.0f, TabFinCol))
+			s_KoGRightTab = 0;
+
+		char aUnfinTabStr[64];
+		str_format(aUnfinTabStr, sizeof(aUnfinTabStr), "%s (%zu)", TCLocalize("Pendientes"), Prof.m_vUnfinishedMaps.size());
+		ColorRGBA TabUnfinCol = (s_KoGRightTab == 1) ? ColorRGBA(0.2f, 0.6f, 0.9f, 0.7f) : ColorRGBA(0.2f, 0.2f, 0.2f, 0.3f);
+		if(DoButton_Menu(&s_BtnKoGUnfin, aUnfinTabStr, 0, &RightHeader, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R, 3.0f, 0.0f, TabUnfinCol))
+			s_KoGRightTab = 1;
+
+		// Map search filter input
+		static CLineInputBuffered<64> s_KoGMapFilter;
+		s_KoGMapFilter.SetEmptyText(TCLocalize("Filtrar por nombre de mapa..."));
+		Ui()->DoEditBox(&s_KoGMapFilter, &RightFilter, 11.0f);
+
+		const char *pFilter = s_KoGMapFilter.GetString();
+		char aFilterLower[64] = "";
+		if(pFilter && pFilter[0] != '\0')
+		{
+			str_copy(aFilterLower, pFilter);
+			for(char *p = aFilterLower; *p; ++p) *p = (char)tolower((unsigned char)*p);
+		}
+
+		RightList.Margin(2.0f, &RightList);
+
+		if(s_KoGRightTab == 0)
+		{
+			// Finishes list
+			static CScrollRegion s_ScrollKoGFinishes;
+			CScrollRegionParams FinScrollParams;
+			FinScrollParams.m_ScrollUnit = 40.0f;
+			FinScrollParams.m_ForceShowScrollbar = false;
+			FinScrollParams.m_ScrollbarMargin = 3.0f;
+			s_ScrollKoGFinishes.Begin(&RightList, &FinScrollParams);
+
+			const float ItemH = 22.0f;
+			size_t Shown = 0;
+
+			for(size_t i = 0; i < Prof.m_vFinishes.size(); ++i)
+			{
+				const CKoGFinish &F = Prof.m_vFinishes[i];
+				if(aFilterLower[0] != '\0')
+				{
+					char aMapLower[64];
+					str_copy(aMapLower, F.m_aMap);
+					for(char *p = aMapLower; *p; ++p) *p = (char)tolower((unsigned char)*p);
+					if(str_find(aMapLower, aFilterLower) == nullptr)
+						continue;
+				}
+
+				Shown++;
+				CUIRect ItemRect;
+				RightList.HSplitTop(ItemH, &ItemRect, &RightList);
+				RightList.HSplitTop(2.0f, nullptr, &RightList);
+
+				if(s_ScrollKoGFinishes.AddRect(ItemRect))
+				{
+					ItemRect.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.2f), IGraphics::CORNER_ALL, 3.0f);
+					ItemRect.Margin(3.0f, &ItemRect);
+
+					CUIRect MapNameCol, CountCol, TimeCol;
+					ItemRect.VSplitLeft(ItemRect.w * 0.5f, &MapNameCol, &CountCol);
+					CountCol.VSplitLeft(ItemRect.w * 0.2f, &CountCol, &TimeCol);
+
+					TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+					Ui()->DoLabel(&MapNameCol, F.m_aMap, 11.0f, TEXTALIGN_ML);
+
+					char aCountBuf[32];
+					str_format(aCountBuf, sizeof(aCountBuf), "x%d", F.m_Count);
+					TextRender()->TextColor(1.0f, 0.75f, 0.3f, 0.9f);
+					Ui()->DoLabel(&CountCol, aCountBuf, 10.5f, TEXTALIGN_MC);
+
+					char aTimeBuf[32];
+					int Minutes = (int)(F.m_Time / 60.0f);
+					float Seconds = F.m_Time - (Minutes * 60);
+					if(Minutes > 0)
+						str_format(aTimeBuf, sizeof(aTimeBuf), "%02d:%05.2f", Minutes, Seconds);
+					else
+						str_format(aTimeBuf, sizeof(aTimeBuf), "%05.2f", Seconds);
+
+					TextRender()->TextColor(0.4f, 1.0f, 0.4f, 1.0f);
+					Ui()->DoLabel(&TimeCol, aTimeBuf, 11.0f, TEXTALIGN_MR);
+					TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+				}
+			}
+
+			if(Shown == 0)
+			{
+				CUIRect EmptyLabel;
+				RightList.HSplitTop(30.0f, &EmptyLabel, &RightList);
+				if(s_ScrollKoGFinishes.AddRect(EmptyLabel))
+				{
+					TextRender()->TextColor(0.6f, 0.6f, 0.6f, 0.8f);
+					Ui()->DoLabel(&EmptyLabel, TCLocalize("Ningun mapa coincide con la busqueda"), 11.0f, TEXTALIGN_MC);
+					TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+				}
+			}
+
+			s_ScrollKoGFinishes.End();
+		}
+		else
+		{
+			// Unfinished maps list
+			static CScrollRegion s_ScrollKoGUnfinished;
+			CScrollRegionParams UnfinScrollParams;
+			UnfinScrollParams.m_ScrollUnit = 40.0f;
+			UnfinScrollParams.m_ForceShowScrollbar = false;
+			UnfinScrollParams.m_ScrollbarMargin = 3.0f;
+			s_ScrollKoGUnfinished.Begin(&RightList, &UnfinScrollParams);
+
+			const float ItemH = 22.0f;
+			size_t Shown = 0;
+
+			for(size_t i = 0; i < Prof.m_vUnfinishedMaps.size(); ++i)
+			{
+				const std::string &MapName = Prof.m_vUnfinishedMaps[i];
+				if(aFilterLower[0] != '\0')
+				{
+					char aMapLower[64];
+					str_copy(aMapLower, MapName.c_str());
+					for(char *p = aMapLower; *p; ++p) *p = (char)tolower((unsigned char)*p);
+					if(str_find(aMapLower, aFilterLower) == nullptr)
+						continue;
+				}
+
+				Shown++;
+				CUIRect ItemRect;
+				RightList.HSplitTop(ItemH, &ItemRect, &RightList);
+				RightList.HSplitTop(2.0f, nullptr, &RightList);
+
+				if(s_ScrollKoGUnfinished.AddRect(ItemRect))
+				{
+					ItemRect.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.2f), IGraphics::CORNER_ALL, 3.0f);
+					ItemRect.Margin(3.0f, &ItemRect);
+
+					CUIRect MapNameCol, StatusCol;
+					ItemRect.VSplitLeft(ItemRect.w * 0.65f, &MapNameCol, &StatusCol);
+
+					TextRender()->TextColor(1.0f, 0.6f, 0.5f, 1.0f);
+					Ui()->DoLabel(&MapNameCol, MapName.c_str(), 11.0f, TEXTALIGN_ML);
+
+					TextRender()->TextColor(0.6f, 0.6f, 0.6f, 0.8f);
+					Ui()->DoLabel(&StatusCol, TCLocalize("Pendiente"), 10.0f, TEXTALIGN_MR);
+					TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+				}
+			}
+
+			if(Shown == 0)
+			{
+				CUIRect EmptyLabel;
+				RightList.HSplitTop(30.0f, &EmptyLabel, &RightList);
+				if(s_ScrollKoGUnfinished.AddRect(EmptyLabel))
+				{
+					TextRender()->TextColor(0.6f, 0.6f, 0.6f, 0.8f);
+					Ui()->DoLabel(&EmptyLabel, TCLocalize("Ningun mapa pendiente coincide con la busqueda"), 11.0f, TEXTALIGN_MC);
+					TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+				}
+			}
+
+			s_ScrollKoGUnfinished.End();
+		}
+
+		return;
+	}
+
+	// ==========================================
+	// DDNet Profile View
+	// ==========================================
 	EProfileState State = Profiles.State();
 
 	if(State == EProfileState::IDLE)
@@ -5152,3 +5627,4 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 	}
 	s_ScrollFinishes.End();
 }
+

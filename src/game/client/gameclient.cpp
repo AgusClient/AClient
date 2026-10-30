@@ -1,4 +1,4 @@
-/* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
+﻿/* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
 
 #include "gameclient.h"
@@ -173,6 +173,7 @@ void CGameClient::OnConsoleInit()
 					      &m_WarList, // TClient
 					      &m_StatusBar, // TClient
 					      &m_RaceStats, // TClient
+					      &m_AClientHud, // AClient
 					      &m_PlayerProfiles, // TClient
 					      &m_FastPractice, // TClient
 					      &m_InfoMessages,
