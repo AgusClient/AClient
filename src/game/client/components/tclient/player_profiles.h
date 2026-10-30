@@ -70,6 +70,12 @@ struct CTeamUnfinishedMap
 	int m_Points;
 };
 
+struct CMapMetadata
+{
+	char m_aCategory[32];
+	int m_Points;
+};
+
 // ==========================================
 // King of Gores (KoG) Profile Structures
 // ==========================================
@@ -212,6 +218,9 @@ public:
 	void ComputeTeamCommonUnfinished();
 	bool IsPlayerProfileLoaded(const char *pName, bool IsKoG) const;
 	void QueueTeamProfileFetch(const char *pName, bool IsKoG);
+	bool GetKoGMapMeta(const char *pMapName, CMapMetadata &OutMeta);
+	bool GetDDNetMapMeta(const char *pMapName, CMapMetadata &OutMeta);
+	void EnsureKoGMapsMetaLoaded();
 
 	const std::vector<std::string> &TeamPlayers() const { return m_vTeamPlayers; }
 	const std::vector<CTeamUnfinishedMap> &CommonUnfinishedMaps() const { return m_vCommonUnfinishedMaps; }
@@ -225,6 +234,9 @@ private:
 	std::deque<std::string> m_qTeamPendingKoG;
 	bool m_TeamComparisonReady = false;
 	char m_aTeamStatusMsg[128] = "";
+	std::map<std::string, CMapMetadata> m_mKoGMapsMeta;
+	std::map<std::string, CMapMetadata> m_mDDNetMapsMeta;
+	bool m_KoGMapsMetaLoaded = false;
 };
 
 #endif
