@@ -147,9 +147,22 @@ void CPlayerProfiles::FetchProfile(const char *pPlayerName, bool ForceRefresh)
 	if(!pPlayerName || pPlayerName[0] == '\0')
 		return;
 
-	str_copy(m_aRequestedName, pPlayerName);
+	char aClean[MAX_NAME_LENGTH];
+	str_copy(aClean, pPlayerName);
+	char *pStart = aClean;
+	while(*pStart && (unsigned char)*pStart <= ' ')
+		pStart++;
+	char *pEnd = pStart + str_length(pStart);
+	while(pEnd > pStart && (unsigned char)*(pEnd - 1) <= ' ')
+		pEnd--;
+	*pEnd = '\0';
 
-	if(!ForceRefresh && GetFromCache(pPlayerName, m_CurrentProfile))
+	if(pStart[0] == '\0')
+		return;
+
+	str_copy(m_aRequestedName, pStart);
+
+	if(!ForceRefresh && GetFromCache(pStart, m_CurrentProfile))
 	{
 		m_State = EProfileState::READY;
 		str_copy(m_aStatusMsg, "");
@@ -159,7 +172,7 @@ void CPlayerProfiles::FetchProfile(const char *pPlayerName, bool ForceRefresh)
 	AbortCurrentFetch();
 
 	char aEscaped[256];
-	EscapeUrl(aEscaped, pPlayerName);
+	EscapeUrl(aEscaped, pStart);
 	char aUrl[512];
 	str_format(aUrl, sizeof(aUrl), "https://ddnet.org/players/?json2=%s", aEscaped);
 
@@ -169,7 +182,7 @@ void CPlayerProfiles::FetchProfile(const char *pPlayerName, bool ForceRefresh)
 	Http()->Run(m_pHttpRequest);
 
 	m_State = EProfileState::FETCHING;
-	str_format(m_aStatusMsg, sizeof(m_aStatusMsg), "Cargando perfil de '%s'...", pPlayerName);
+	str_format(m_aStatusMsg, sizeof(m_aStatusMsg), "Cargando perfil de '%s'...", pStart);
 }
 
 void CPlayerProfiles::OnRender()
@@ -444,40 +457,42 @@ bool CPlayerProfiles::KoGFetchWorkerWindows()
 		return false;
 	}
 
-	// 2. Fetch CSRF token
-	std::string CsrfJson;
-	wchar_t aCmd2[2048];
-	swprintf_s(aCmd2, L"C:\\Windows\\System32\\curl.exe -s -b \"%hs\" -c \"%hs\" -A \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\" -H \"Referer: https://kog.tw/\" -H \"Origin: https://kog.tw\" -H \"Accept: application/json, text/javascript, */*; q=0.01\" -H \"X-Requested-With: XMLHttpRequest\" \"https://kog.tw/api.php?type=csrf-token\"", aCookieFile, aCookieFile);
-	if(!ExecuteProcessCaptureOutput(aCmd2, CsrfJson) || CsrfJson.empty())
-	{
-		DeleteFileA(aCookieFile);
-		return false;
-	}
+	// Helper lambda to fetch a fresh CSRF nonce using the existing session cookie
+	auto FetchFreshNonce = [&]() -> std::string {
+		std::string FreshCsrf;
+		wchar_t aCmdCsrf[2048];
+		swprintf_s(aCmdCsrf, L"C:\\Windows\\System32\\curl.exe -s -b \"%hs\" -c \"%hs\" -A \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\" -H \"Referer: https://kog.tw/\" -H \"Origin: https://kog.tw\" -H \"Accept: application/json, text/javascript, */*; q=0.01\" -H \"X-Requested-With: XMLHttpRequest\" \"https://kog.tw/api.php?type=csrf-token\"", aCookieFile, aCookieFile);
+		if(!ExecuteProcessCaptureOutput(aCmdCsrf, FreshCsrf) || FreshCsrf.empty())
+			return "";
 
-	std::string Nonce;
-	json_value *pCsrfJson = JsonParse(CsrfJson.c_str(), CsrfJson.size());
-	if(pCsrfJson)
-	{
-		if(pCsrfJson->type == json_object && (*pCsrfJson)["nonce"].type == json_string)
+		std::string FreshToken;
+		json_value *pCsrf = JsonParse(FreshCsrf.c_str(), FreshCsrf.size());
+		if(pCsrf)
 		{
-			Nonce = (const char *)(*pCsrfJson)["nonce"];
-		}
-		json_value_free(pCsrfJson);
-	}
-	if(Nonce.empty())
-	{
-		size_t Pos = CsrfJson.find("\"nonce\":\"");
-		if(Pos != std::string::npos)
-		{
-			Pos += 9;
-			size_t EndPos = CsrfJson.find("\"", Pos);
-			if(EndPos != std::string::npos)
+			if(pCsrf->type == json_object && (*pCsrf)["nonce"].type == json_string)
 			{
-				Nonce = CsrfJson.substr(Pos, EndPos - Pos);
+				FreshToken = (const char *)(*pCsrf)["nonce"];
+			}
+			json_value_free(pCsrf);
+		}
+		if(FreshToken.empty())
+		{
+			size_t Pos = FreshCsrf.find("\"nonce\":\"");
+			if(Pos != std::string::npos)
+			{
+				Pos += 9;
+				size_t EndPos = FreshCsrf.find('"', Pos);
+			if(EndPos != std::string::npos)
+				{
+					FreshToken = FreshCsrf.substr(Pos, EndPos - Pos);
+				}
 			}
 		}
-	}
+		return FreshToken;
+	};
 
+	// 2. Fetch CSRF token
+	std::string Nonce = FetchFreshNonce();
 	if(Nonce.empty())
 	{
 		DeleteFileA(aCookieFile);
@@ -502,6 +517,64 @@ bool CPlayerProfiles::KoGFetchWorkerWindows()
 
 	bool ExecOk = ExecuteProcessCaptureOutput(aCmd3, ResultJson);
 
+	// If player was not found, check alternative casing variants (e.g. "tae" -> "Tae", "Akisi" -> "akisi")
+	if(ExecOk && ResultJson.find("\"data\":[]") != std::string::npos)
+	{
+		std::string BaseName = m_aKoGFetchThreadPlayer;
+		std::vector<std::string> vVariants;
+
+		if(!BaseName.empty())
+		{
+			// Variant 1: Capitalized (first upper, rest lower)
+			std::string Cap = BaseName;
+			Cap[0] = (char)toupper((unsigned char)Cap[0]);
+			for(size_t i = 1; i < Cap.size(); ++i)
+				Cap[i] = (char)tolower((unsigned char)Cap[i]);
+			if(Cap != BaseName)
+				vVariants.push_back(Cap);
+
+			// Variant 2: All lowercase
+			std::string Low = BaseName;
+			for(size_t i = 0; i < Low.size(); ++i)
+				Low[i] = (char)tolower((unsigned char)Low[i]);
+			if(Low != BaseName && std::find(vVariants.begin(), vVariants.end(), Low) == vVariants.end())
+				vVariants.push_back(Low);
+
+			// Variant 3: All uppercase
+			std::string Up = BaseName;
+			for(size_t i = 0; i < Up.size(); ++i)
+				Up[i] = (char)toupper((unsigned char)Up[i]);
+			if(Up != BaseName && std::find(vVariants.begin(), vVariants.end(), Up) == vVariants.end())
+				vVariants.push_back(Up);
+		}
+
+		for(const auto &Variant : vVariants)
+		{
+			// Nonce is one-time use; fetch a fresh nonce for each variant query
+			std::string FreshNonce = FetchFreshNonce();
+			if(FreshNonce.empty())
+				break;
+
+			std::string PostDataVar = "{\"nonce\":\"" + FreshNonce + "\",\"type\":\"players\",\"player\":\"" + EscapeForJson(Variant.c_str()) + "\",\"tz\":\"UTC\"}";
+			FILE *pVarFile = fopen(aPostFile, "wb");
+			if(!pVarFile)
+				break;
+			fwrite(PostDataVar.data(), 1, PostDataVar.size(), pVarFile);
+			fclose(pVarFile);
+
+			std::string VarResult;
+			if(ExecuteProcessCaptureOutput(aCmd3, VarResult) && !VarResult.empty())
+			{
+				if(VarResult.find("\"data\":[]") == std::string::npos && VarResult.find("\"status\":200") != std::string::npos)
+				{
+					ResultJson = VarResult;
+					str_copy(m_aKoGFetchThreadPlayer, Variant.c_str());
+					str_copy(m_aKoGRequestedName, Variant.c_str());
+					break;
+				}
+			}
+		}
+	}
 	DeleteFileA(aCookieFile);
 	DeleteFileA(aPostFile);
 
@@ -724,8 +797,9 @@ void CPlayerProfiles::ProcessKoGFetchCompletion()
 	CKoGPlayerProfile NewProfile{};
 	if(!ParseKoGProfileJson(pInnerStr, NewProfile))
 	{
-		m_KoGState = EProfileState::NOT_FOUND;
-		str_format(m_aKoGStatusMsg, sizeof(m_aKoGStatusMsg), "Jugador '%s' no encontrado en KoG.tw", m_aKoGRequestedName);
+		m_KoGState = EProfileState::ERROR_NETWORK;
+		str_format(m_aKoGStatusMsg, sizeof(m_aKoGStatusMsg), "Error al procesar datos de '%s' en KoG", m_aKoGRequestedName);
+		log_error("kog", "ParseKoGProfileJson fallo para '%s'", m_aKoGRequestedName);
 		m_CurrentKoGProfile.m_Valid = false;
 		json_value_free(pOuter);
 		return;
@@ -969,10 +1043,23 @@ void CPlayerProfiles::FetchKoGProfile(const char *pPlayerName, bool ForceRefresh
 	if(!pPlayerName || pPlayerName[0] == '\0')
 		return;
 
-	str_copy(m_aKoGRequestedName, pPlayerName);
+	char aClean[MAX_NAME_LENGTH];
+	str_copy(aClean, pPlayerName);
+	char *pStart = aClean;
+	while(*pStart && (unsigned char)*pStart <= ' ')
+		pStart++;
+	char *pEnd = pStart + str_length(pStart);
+	while(pEnd > pStart && (unsigned char)*(pEnd - 1) <= ' ')
+		pEnd--;
+	*pEnd = '\0';
+
+	if(pStart[0] == '\0')
+		return;
+
+	str_copy(m_aKoGRequestedName, pStart);
 
 	// Check RAM cache first
-	if(!ForceRefresh && GetFromKoGCache(pPlayerName, m_CurrentKoGProfile))
+	if(!ForceRefresh && GetFromKoGCache(pStart, m_CurrentKoGProfile))
 	{
 		m_KoGState = EProfileState::READY;
 		str_copy(m_aKoGStatusMsg, "");
@@ -980,7 +1067,7 @@ void CPlayerProfiles::FetchKoGProfile(const char *pPlayerName, bool ForceRefresh
 	}
 
 	// Check disk cache
-	if(!ForceRefresh && LoadKoGFromDisk(pPlayerName, m_CurrentKoGProfile))
+	if(!ForceRefresh && LoadKoGFromDisk(pStart, m_CurrentKoGProfile))
 	{
 		AddToKoGCache(m_CurrentKoGProfile);
 		m_KoGState = EProfileState::READY;
@@ -991,7 +1078,7 @@ void CPlayerProfiles::FetchKoGProfile(const char *pPlayerName, bool ForceRefresh
 	// Network fetch in background thread
 	AbortKoGFetch();
 
-	str_copy(m_aKoGFetchThreadPlayer, pPlayerName);
+	str_copy(m_aKoGFetchThreadPlayer, pStart);
 	m_KoGFetchSuccess = false;
 	m_KoGFetchDone = false;
 	m_KoGFetchRunning = true;
@@ -999,7 +1086,7 @@ void CPlayerProfiles::FetchKoGProfile(const char *pPlayerName, bool ForceRefresh
 	m_KoGFetchErrorMsg.clear();
 
 	m_KoGState = EProfileState::FETCHING;
-	str_format(m_aKoGStatusMsg, sizeof(m_aKoGStatusMsg), "Consultando datos en KoG.tw para '%s'...", pPlayerName);
+	str_format(m_aKoGStatusMsg, sizeof(m_aKoGStatusMsg), "Consultando datos en KoG.tw para '%s'...", pStart);
 
 	m_pKoGThread = thread_init(KoGFetchWorker, this, "KoGFetch");
 }

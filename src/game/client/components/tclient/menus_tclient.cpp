@@ -4960,13 +4960,26 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 	if(DoButton_Menu(&s_BtnSearch, TCLocalize("Buscar"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.2f, 0.6f, 0.9f, 0.5f)) || SearchTriggered)
 	{
 		const char *pSearch = s_ProfileSearchInput.GetString();
-		if(pSearch && pSearch[0] != '\0')
+		char aTrimmed[128];
+		if(pSearch)
 		{
-			str_copy(s_aLastSyncedReq, pSearch);
-			if(IsKoG)
-				Profiles.FetchKoGProfile(pSearch);
-			else
-				Profiles.FetchProfile(pSearch);
+			str_copy(aTrimmed, pSearch);
+			char *pStart = aTrimmed;
+			while(*pStart && (unsigned char)*pStart <= ' ')
+				pStart++;
+			char *pEnd = pStart + str_length(pStart);
+			while(pEnd > pStart && (unsigned char)*(pEnd - 1) <= ' ')
+				pEnd--;
+			*pEnd = '\0';
+			if(pStart[0] != '\0')
+			{
+				str_copy(s_aLastSyncedReq, pStart);
+				s_ProfileSearchInput.Set(pStart);
+				if(IsKoG)
+					Profiles.FetchKoGProfile(pStart);
+				else
+					Profiles.FetchProfile(pStart);
+			}
 		}
 	}
 
@@ -5487,38 +5500,12 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 
 		if(State == EProfileState::NOT_FOUND || State == EProfileState::ERROR_NETWORK)
 		{
-			CUIRect ErrorBox, LabelRect, BtnRect;
-			Content.HSplitTop(State == EProfileState::NOT_FOUND ? 95.0f : 75.0f, nullptr, &ErrorBox);
+			CUIRect ErrorBox;
+			Content.HSplitTop(75.0f, nullptr, &ErrorBox);
 			ErrorBox.Draw(ColorRGBA(0.3f, 0.1f, 0.1f, 0.35f), IGraphics::CORNER_ALL, 5.0f);
-			if(State == EProfileState::NOT_FOUND)
-			{
-				ErrorBox.HSplitTop(52.0f, &LabelRect, &BtnRect);
-				TextRender()->TextColor(1.0f, 0.4f, 0.4f, 1.0f);
-				Ui()->DoLabel(&LabelRect, Profiles.KoGStatusMsg(), 14.0f, TEXTALIGN_MC);
-				TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
-
-				BtnRect.HMargin(4.0f, &BtnRect);
-				BtnRect.VMargin(BtnRect.w * 0.32f, &BtnRect);
-				static CButtonContainer s_BtnSearchOnDDNet;
-				if(DoButton_Menu(&s_BtnSearchOnDDNet, TCLocalize("Buscar en DDNet.org"), 0, &BtnRect, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, ColorRGBA(0.2f, 0.55f, 0.9f, 0.75f)))
-				{
-					g_Config.m_AcProfileSource = 0;
-					const char *pSearch = s_ProfileSearchInput.GetString();
-					const char *pTarget = (pSearch && pSearch[0] != '\0') ? pSearch : Profiles.KoGRequestedName();
-					if(pTarget && pTarget[0] != '\0')
-					{
-						str_copy(s_aLastSyncedReq, pTarget);
-						s_ProfileSearchInput.Set(pTarget);
-						Profiles.FetchProfile(pTarget);
-					}
-				}
-			}
-			else
-			{
-				TextRender()->TextColor(1.0f, 0.4f, 0.4f, 1.0f);
-				Ui()->DoLabel(&ErrorBox, Profiles.KoGStatusMsg(), 14.0f, TEXTALIGN_MC);
-				TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
-			}
+			TextRender()->TextColor(1.0f, 0.4f, 0.4f, 1.0f);
+			Ui()->DoLabel(&ErrorBox, Profiles.KoGStatusMsg(), 14.0f, TEXTALIGN_MC);
+			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 			return;
 		}
 
@@ -5962,38 +5949,12 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 
 	if(State == EProfileState::NOT_FOUND || State == EProfileState::ERROR_NETWORK)
 	{
-		CUIRect ErrorBox, LabelRect, BtnRect;
-		Content.HSplitTop(State == EProfileState::NOT_FOUND ? 95.0f : 75.0f, nullptr, &ErrorBox);
+		CUIRect ErrorBox;
+		Content.HSplitTop(75.0f, nullptr, &ErrorBox);
 		ErrorBox.Draw(ColorRGBA(0.3f, 0.1f, 0.1f, 0.35f), IGraphics::CORNER_ALL, 5.0f);
-		if(State == EProfileState::NOT_FOUND)
-		{
-			ErrorBox.HSplitTop(52.0f, &LabelRect, &BtnRect);
-			TextRender()->TextColor(1.0f, 0.4f, 0.4f, 1.0f);
-			Ui()->DoLabel(&LabelRect, Profiles.StatusMsg(), 14.0f, TEXTALIGN_MC);
-			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
-
-			BtnRect.HMargin(4.0f, &BtnRect);
-			BtnRect.VMargin(BtnRect.w * 0.32f, &BtnRect);
-			static CButtonContainer s_BtnSearchOnKoG;
-			if(DoButton_Menu(&s_BtnSearchOnKoG, TCLocalize("Buscar en KoG.tw"), 0, &BtnRect, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, ColorRGBA(0.9f, 0.45f, 0.1f, 0.75f)))
-			{
-				g_Config.m_AcProfileSource = 1;
-				const char *pSearch = s_ProfileSearchInput.GetString();
-				const char *pTarget = (pSearch && pSearch[0] != '\0') ? pSearch : Profiles.RequestedName();
-				if(pTarget && pTarget[0] != '\0')
-				{
-					str_copy(s_aLastSyncedReq, pTarget);
-					s_ProfileSearchInput.Set(pTarget);
-					Profiles.FetchKoGProfile(pTarget);
-				}
-			}
-		}
-		else
-		{
-			TextRender()->TextColor(1.0f, 0.4f, 0.4f, 1.0f);
-			Ui()->DoLabel(&ErrorBox, Profiles.StatusMsg(), 14.0f, TEXTALIGN_MC);
-			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
-		}
+		TextRender()->TextColor(1.0f, 0.4f, 0.4f, 1.0f);
+		Ui()->DoLabel(&ErrorBox, Profiles.StatusMsg(), 14.0f, TEXTALIGN_MC);
+		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 		return;
 	}
 
