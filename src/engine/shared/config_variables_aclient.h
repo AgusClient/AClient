@@ -123,6 +123,3 @@ MACRO_CONFIG_INT(AcHudSpeedometerAlpha, ac_hud_speedometer_alpha, 85, 20, 100, C
 MACRO_CONFIG_INT(AcProfileSource, ac_profile_source, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Profile data source (0: DDNet, 1: KoG)")
 MACRO_CONFIG_INT(AcProfileViewMode, ac_profile_view_mode, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Profile view mode (0: Individual, 1: Team)")
 
-// Client Network Identity
-MACRO_CONFIG_INT(AcSendTClientUuid, ac_send_tclient_uuid, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Send legacy TClient UUID handshake packet (NETMSG_IAMTATER)")
-MACRO_CONFIG_STR(AcClientVersionStr, ac_client_version_str, 64, "AClient", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Client name reported to servers in NETMSG_CLIENTVER")

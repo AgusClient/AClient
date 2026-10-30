@@ -4210,29 +4210,6 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
 
-	// ***** Client Network Identity ***** //
-	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
-	s_SectionBoxesAc.push_back(Column);
-	Column.HSplitTop(HeadlineHeight, &Label, &Column);
-	Ui()->DoLabel(&Label, TCLocalize("Client Network Identity"), HeadlineFontSize, TEXTALIGN_ML);
-	Column.HSplitTop(MarginSmall, nullptr, &Column);
-
-	char aIdentLabel[96];
-	str_format(aIdentLabel, sizeof(aIdentLabel), "%s: %s %s", TCLocalize("Reported client to server"), g_Config.m_AcClientVersionStr[0] ? g_Config.m_AcClientVersionStr : "AClient", ACLIENT_VERSION);
-	Column.HSplitTop(16.0f, &Label, &Column);
-	TextRender()->TextColor(0.4f, 0.95f, 0.4f, 1.0f);
-	Ui()->DoLabel(&Label, aIdentLabel, 12.0f, TEXTALIGN_ML);
-	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
-
-	Column.HSplitTop(MarginSmall, nullptr, &Column);
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcSendTClientUuid, TCLocalize("Send legacy TClient UUID handshake"), &g_Config.m_AcSendTClientUuid, &Column, LineSize);
-	Column.HSplitTop(14.0f, &Label, &Column);
-	TextRender()->TextColor(0.6f, 0.6f, 0.6f, 0.85f);
-	Ui()->DoLabel(&Label, TCLocalize("Keep OFF so server moderators see you as AClient."), 10.5f, TEXTALIGN_ML);
-	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
-
-	Column.HSplitTop(MarginSmall, nullptr, &Column);
-	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
 
 	// ***** Right Column: HUD, Social, Chat & Alerts ***** //
 	LeftView = Column;
@@ -5510,12 +5487,38 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 
 		if(State == EProfileState::NOT_FOUND || State == EProfileState::ERROR_NETWORK)
 		{
-			CUIRect ErrorBox;
-			Content.HSplitTop(80.0f, nullptr, &ErrorBox);
+			CUIRect ErrorBox, LabelRect, BtnRect;
+			Content.HSplitTop(State == EProfileState::NOT_FOUND ? 95.0f : 75.0f, nullptr, &ErrorBox);
 			ErrorBox.Draw(ColorRGBA(0.3f, 0.1f, 0.1f, 0.35f), IGraphics::CORNER_ALL, 5.0f);
-			TextRender()->TextColor(1.0f, 0.4f, 0.4f, 1.0f);
-			Ui()->DoLabel(&ErrorBox, Profiles.KoGStatusMsg(), 14.0f, TEXTALIGN_MC);
-			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+			if(State == EProfileState::NOT_FOUND)
+			{
+				ErrorBox.HSplitTop(52.0f, &LabelRect, &BtnRect);
+				TextRender()->TextColor(1.0f, 0.4f, 0.4f, 1.0f);
+				Ui()->DoLabel(&LabelRect, Profiles.KoGStatusMsg(), 14.0f, TEXTALIGN_MC);
+				TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+				BtnRect.HMargin(4.0f, &BtnRect);
+				BtnRect.VMargin(BtnRect.w * 0.32f, &BtnRect);
+				static CButtonContainer s_BtnSearchOnDDNet;
+				if(DoButton_Menu(&s_BtnSearchOnDDNet, TCLocalize("Buscar en DDNet.org"), 0, &BtnRect, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, ColorRGBA(0.2f, 0.55f, 0.9f, 0.75f)))
+				{
+					g_Config.m_AcProfileSource = 0;
+					const char *pSearch = s_ProfileSearchInput.GetString();
+					const char *pTarget = (pSearch && pSearch[0] != '\0') ? pSearch : Profiles.KoGRequestedName();
+					if(pTarget && pTarget[0] != '\0')
+					{
+						str_copy(s_aLastSyncedReq, pTarget);
+						s_ProfileSearchInput.Set(pTarget);
+						Profiles.FetchProfile(pTarget);
+					}
+				}
+			}
+			else
+			{
+				TextRender()->TextColor(1.0f, 0.4f, 0.4f, 1.0f);
+				Ui()->DoLabel(&ErrorBox, Profiles.KoGStatusMsg(), 14.0f, TEXTALIGN_MC);
+				TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+			}
 			return;
 		}
 
@@ -5959,12 +5962,38 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 
 	if(State == EProfileState::NOT_FOUND || State == EProfileState::ERROR_NETWORK)
 	{
-		CUIRect ErrorBox;
-		Content.HSplitTop(80.0f, nullptr, &ErrorBox);
+		CUIRect ErrorBox, LabelRect, BtnRect;
+		Content.HSplitTop(State == EProfileState::NOT_FOUND ? 95.0f : 75.0f, nullptr, &ErrorBox);
 		ErrorBox.Draw(ColorRGBA(0.3f, 0.1f, 0.1f, 0.35f), IGraphics::CORNER_ALL, 5.0f);
-		TextRender()->TextColor(1.0f, 0.4f, 0.4f, 1.0f);
-		Ui()->DoLabel(&ErrorBox, Profiles.StatusMsg(), 14.0f, TEXTALIGN_MC);
-		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+		if(State == EProfileState::NOT_FOUND)
+		{
+			ErrorBox.HSplitTop(52.0f, &LabelRect, &BtnRect);
+			TextRender()->TextColor(1.0f, 0.4f, 0.4f, 1.0f);
+			Ui()->DoLabel(&LabelRect, Profiles.StatusMsg(), 14.0f, TEXTALIGN_MC);
+			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+			BtnRect.HMargin(4.0f, &BtnRect);
+			BtnRect.VMargin(BtnRect.w * 0.32f, &BtnRect);
+			static CButtonContainer s_BtnSearchOnKoG;
+			if(DoButton_Menu(&s_BtnSearchOnKoG, TCLocalize("Buscar en KoG.tw"), 0, &BtnRect, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, ColorRGBA(0.9f, 0.45f, 0.1f, 0.75f)))
+			{
+				g_Config.m_AcProfileSource = 1;
+				const char *pSearch = s_ProfileSearchInput.GetString();
+				const char *pTarget = (pSearch && pSearch[0] != '\0') ? pSearch : Profiles.RequestedName();
+				if(pTarget && pTarget[0] != '\0')
+				{
+					str_copy(s_aLastSyncedReq, pTarget);
+					s_ProfileSearchInput.Set(pTarget);
+					Profiles.FetchKoGProfile(pTarget);
+				}
+			}
+		}
+		else
+		{
+			TextRender()->TextColor(1.0f, 0.4f, 0.4f, 1.0f);
+			Ui()->DoLabel(&ErrorBox, Profiles.StatusMsg(), 14.0f, TEXTALIGN_MC);
+			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+		}
 		return;
 	}
 
