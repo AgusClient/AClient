@@ -1216,16 +1216,19 @@ void CScoreboard::SaveModReplay(const char *pAction, const char *pTargetName)
 	char aReplayName[128];
 	str_format(aReplayName, sizeof(aReplayName), "mod_%s_%s_%s", pAction, aCleanName, aTimestamp);
 
+	char aFullReplayName[128];
+	str_format(aFullReplayName, sizeof(aFullReplayName), "mod_%s_%s_%s_full", pAction, aCleanName, aTimestamp);
+
 	if(!g_Config.m_ClReplays)
 	{
 		g_Config.m_ClReplays = 1;
 		Client()->DemoRecorder_UpdateReplayRecorder();
 	}
 
-	Client()->SaveReplay(180, aReplayName);
+	Client()->SaveReplay(180, aReplayName, aFullReplayName);
 
-	char aMsg[160];
-	str_format(aMsg, sizeof(aMsg), "Demo de moderación guardada (3 min): demos/replays/%s.demo", aReplayName);
+	char aMsg[256];
+	str_format(aMsg, sizeof(aMsg), "Demos guardadas: 3 min (%s.demo) y completa (%s.demo) en demos/replays/", aReplayName, aFullReplayName);
 	GameClient()->m_Chat.Echo(aMsg);
 }
 

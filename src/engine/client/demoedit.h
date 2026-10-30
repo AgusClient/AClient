@@ -17,12 +17,13 @@ class CDemoEdit : public IJob
 
 	char m_aDemo[256];
 	char m_aDst[256];
+	char m_aDstFull[256];
 	int m_StartTick;
 	int m_EndTick;
 	bool m_Success;
 
 public:
-	CDemoEdit(const char *pNetVersion, CSnapshotDelta *pSnapshotDelta, CSnapshotDelta *pSnapshotDeltaSixup, IStorage *pStorage, const char *pDemo, const char *pDst, int StartTick, int EndTick);
+	CDemoEdit(const char *pNetVersion, CSnapshotDelta *pSnapshotDelta, CSnapshotDelta *pSnapshotDeltaSixup, IStorage *pStorage, const char *pDemo, const char *pDst, int StartTick, int EndTick, const char *pDstFull = "");
 	void Run() override;
 	char *Destination() { return m_aDst; }
 	bool Success() const { return m_Success; }
