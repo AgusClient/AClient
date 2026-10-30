@@ -305,9 +305,21 @@ void CPlayerProfiles::ProcessHttpResponse()
 					if(MapInfo.type == json_object)
 					{
 						int Finishes = MapInfo["finishes"].type == json_integer ? (int)MapInfo["finishes"].u.integer : 0;
-						if(Finishes == 0 && pMapName && pMapName[0])
+						int Pts = MapInfo["points"].type == json_integer ? (int)MapInfo["points"].u.integer : 0;
+						if(pMapName && pMapName[0])
 						{
-							Profile.m_vUnfinishedMaps.push_back(pMapName);
+							char aLower[64];
+							str_copy(aLower, pMapName);
+							for(char *p = aLower; *p; ++p) *p = (char)tolower((unsigned char)*p);
+							CMapMetadata Meta{};
+							str_copy(Meta.m_aCategory, pCatName ? pCatName : "");
+							Meta.m_Points = Pts;
+							m_mDDNetMapsMeta[aLower] = Meta;
+
+							if(Finishes == 0)
+							{
+								Profile.m_vUnfinishedMaps.push_back(pMapName);
+							}
 						}
 					}
 				}
@@ -1259,6 +1271,8 @@ void CPlayerProfiles::ComputeTeamCommonUnfinished()
 		}
 	}
 
+	EnsureKoGMapsMetaLoaded();
+
 	const int TeamSize = (int)m_vTeamPlayers.size();
 	for(const auto &Pair : MapCounts)
 	{
@@ -1266,8 +1280,36 @@ void CPlayerProfiles::ComputeTeamCommonUnfinished()
 		{
 			CTeamUnfinishedMap M{};
 			str_copy(M.m_aMap, Pair.first.c_str());
-			str_copy(M.m_aCategory, "");
-			M.m_Points = 0;
+
+			if(IsKoG)
+			{
+				CMapMetadata Meta{};
+				if(GetKoGMapMeta(Pair.first.c_str(), Meta))
+				{
+					str_copy(M.m_aCategory, Meta.m_aCategory);
+					M.m_Points = Meta.m_Points;
+				}
+				else
+				{
+					str_copy(M.m_aCategory, "KoG");
+					M.m_Points = 0;
+				}
+			}
+			else
+			{
+				CMapMetadata Meta{};
+				if(GetDDNetMapMeta(Pair.first.c_str(), Meta))
+				{
+					str_copy(M.m_aCategory, Meta.m_aCategory);
+					M.m_Points = Meta.m_Points;
+				}
+				else
+				{
+					str_copy(M.m_aCategory, "DDNet");
+					M.m_Points = 0;
+				}
+			}
+
 			m_vCommonUnfinishedMaps.push_back(M);
 		}
 	}
@@ -1279,4 +1321,98 @@ void CPlayerProfiles::ComputeTeamCommonUnfinished()
 
 	m_TeamComparisonReady = true;
 	str_format(m_aTeamStatusMsg, sizeof(m_aTeamStatusMsg), "%zu mapas incompletos en comun para el equipo", m_vCommonUnfinishedMaps.size());
+}
+
+void CPlayerProfiles::EnsureKoGMapsMetaLoaded()
+{
+	if(m_KoGMapsMetaLoaded)
+		return;
+
+	IOHANDLE File = Storage()->OpenFile("kog_cache/maps.json", IOFLAG_READ, IStorage::TYPE_SAVE);
+	if(!File)
+	{
+		File = Storage()->OpenFile("data/tclient/kog_maps.json", IOFLAG_READ, IStorage::TYPE_ALL);
+	}
+
+	if(!File)
+		return;
+
+	int64_t FileSize = io_length(File);
+	if(FileSize <= 0 || FileSize > 10 * 1024 * 1024)
+	{
+		io_close(File);
+		return;
+	}
+
+	std::string Content;
+	Content.resize((size_t)FileSize);
+	io_read(File, &Content[0], (unsigned int)FileSize);
+	io_close(File);
+
+	json_value *pJson = JsonParse(Content.c_str(), Content.size());
+	if(!pJson)
+		return;
+
+	if(pJson->type == json_object)
+	{
+		for(unsigned int i = 0; i < pJson->u.object.length; ++i)
+		{
+			const char *pMapName = pJson->u.object.values[i].name;
+			const json_value &Val = *pJson->u.object.values[i].value;
+			if(Val.type == json_object && pMapName && pMapName[0])
+			{
+				CMapMetadata Meta{};
+				if(Val["cat"].type == json_string)
+					str_copy(Meta.m_aCategory, (const char *)Val["cat"]);
+				if(Val["pts"].type == json_integer)
+					Meta.m_Points = (int)Val["pts"].u.integer;
+
+				char aLower[64];
+				str_copy(aLower, pMapName);
+				for(char *p = aLower; *p; ++p) *p = (char)tolower((unsigned char)*p);
+				m_mKoGMapsMeta[aLower] = Meta;
+			}
+		}
+	}
+
+	json_value_free(pJson);
+	m_KoGMapsMetaLoaded = true;
+}
+
+bool CPlayerProfiles::GetKoGMapMeta(const char *pMapName, CMapMetadata &OutMeta)
+{
+	if(!pMapName || !pMapName[0])
+		return false;
+
+	EnsureKoGMapsMetaLoaded();
+
+	char aLower[64];
+	str_copy(aLower, pMapName);
+	for(char *p = aLower; *p; ++p) *p = (char)tolower((unsigned char)*p);
+
+	auto It = m_mKoGMapsMeta.find(aLower);
+	if(It != m_mKoGMapsMeta.end())
+	{
+		OutMeta = It->second;
+		return true;
+	}
+	return false;
+}
+
+bool CPlayerProfiles::GetDDNetMapMeta(const char *pMapName, CMapMetadata &OutMeta)
+{
+	if(!pMapName || !pMapName[0])
+		return false;
+
+	char aLower[64];
+	str_copy(aLower, pMapName);
+	for(char *p = aLower; *p; ++p) *p = (char)tolower((unsigned char)*p);
+
+	auto It = m_mDDNetMapsMeta.find(aLower);
+	if(It != m_mDDNetMapsMeta.end())
+	{
+		OutMeta = It->second;
+		return true;
+	}
+	return false;
 }

@@ -4802,6 +4802,49 @@ void CMenus::RenderSettingsAClientMod(CUIRect MainView)
 	s_ScrollRegionMod.End();
 }
 
+static ColorRGBA GetCategoryColor(const char *pCategory)
+{
+	if(!pCategory || !pCategory[0])
+		return ColorRGBA(0.7f, 0.7f, 0.7f, 1.0f);
+	if(str_comp_nocase(pCategory, "Easy") == 0 || str_comp_nocase(pCategory, "Novice") == 0)
+		return ColorRGBA(0.3f, 0.85f, 0.4f, 1.0f);
+	if(str_comp_nocase(pCategory, "Main") == 0 || str_comp_nocase(pCategory, "Moderate") == 0)
+		return ColorRGBA(0.3f, 0.75f, 0.95f, 1.0f);
+	if(str_comp_nocase(pCategory, "Hard") == 0 || str_comp_nocase(pCategory, "Brutal") == 0)
+		return ColorRGBA(0.95f, 0.55f, 0.15f, 1.0f);
+	if(str_comp_nocase(pCategory, "Insane") == 0)
+		return ColorRGBA(0.95f, 0.25f, 0.25f, 1.0f);
+	if(str_comp_nocase(pCategory, "Extreme") == 0)
+		return ColorRGBA(0.9f, 0.3f, 0.9f, 1.0f);
+	if(str_find_nocase(pCategory, "Mod") != nullptr)
+		return ColorRGBA(0.4f, 0.8f, 0.7f, 1.0f);
+	if(str_comp_nocase(pCategory, "Solo") == 0 || str_comp_nocase(pCategory, "Dummy") == 0)
+		return ColorRGBA(0.7f, 0.5f, 0.9f, 1.0f);
+	if(str_find_nocase(pCategory, "DDMaX") != nullptr)
+		return ColorRGBA(0.95f, 0.8f, 0.25f, 1.0f);
+	return ColorRGBA(0.6f, 0.7f, 0.8f, 1.0f);
+}
+
+static bool MatchesCategoryFilter(const char *pMapCategory, const char *pFilter)
+{
+	if(!pFilter || pFilter[0] == '\0' || str_comp_nocase(pFilter, "Todos") == 0)
+		return true;
+
+	if(!pMapCategory || pMapCategory[0] == '\0')
+		return str_comp_nocase(pFilter, "Otros") == 0;
+
+	if(str_comp_nocase(pFilter, "DDMaX") == 0)
+		return (str_find_nocase(pMapCategory, "DDMaX") != nullptr);
+
+	if(str_comp_nocase(pFilter, "Mod") == 0)
+		return (str_find_nocase(pMapCategory, "Mod") != nullptr);
+
+	if(str_comp_nocase(pFilter, "Otros") == 0)
+		return (str_comp_nocase(pMapCategory, "KoG") == 0 || str_comp_nocase(pMapCategory, "Unknown") == 0 || str_comp_nocase(pMapCategory, "DDNet") == 0);
+
+	return (str_comp_nocase(pMapCategory, pFilter) == 0);
+}
+
 void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 {
 	CUIRect TopBar, SearchBox, Button, Content;
@@ -5176,11 +5219,59 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 		s_TeamMapFilter.SetEmptyText(TCLocalize("Filtrar mapa..."));
 		Ui()->DoEditBox(&s_TeamMapFilter, &MapFilterBox, 11.0f);
 
-		char aTitleBuf[96];
-		str_format(aTitleBuf, sizeof(aTitleBuf), "%s: %zu", TCLocalize("Mapas en comun pendientes"), Profiles.CommonUnfinishedMaps().size());
-		TextRender()->TextColor(1.0f, 0.85f, 0.3f, 1.0f);
-		Ui()->DoLabel(&RightTitle, aTitleBuf, 11.5f, TEXTALIGN_ML);
-		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+		// Category Filter Buttons Row
+		CUIRect CatFilterRow;
+		RightCol.HSplitTop(22.0f, &CatFilterRow, &RightCol);
+		RightCol.HSplitTop(3.0f, nullptr, &RightCol);
+
+		static char s_aSelectedCategory[32] = "";
+		static int s_LastSourceForCat = -1;
+		if(s_LastSourceForCat != g_Config.m_AcProfileSource)
+		{
+			s_aSelectedCategory[0] = '\0';
+			s_LastSourceForCat = g_Config.m_AcProfileSource;
+		}
+
+		const char *apCatsKoG[] = { "Todos", "Easy", "Main", "Hard", "Insane", "Extreme", "Mod" };
+		const char *apCatsDDNet[] = { "Todos", "Novice", "Moderate", "Brutal", "Insane", "Dummy", "DDMaX", "Solo" };
+
+		const char **apCats = IsKoG ? apCatsKoG : apCatsDDNet;
+		const int NumCats = IsKoG ? (int)(sizeof(apCatsKoG) / sizeof(apCatsKoG[0])) : (int)(sizeof(apCatsDDNet) / sizeof(apCatsDDNet[0]));
+
+		static CButtonContainer s_aBtnCatFilter[16];
+
+		const float CatBtnW = CatFilterRow.w / (float)NumCats;
+		for(int c = 0; c < NumCats; ++c)
+		{
+			CUIRect CatBtnRect;
+			CatFilterRow.VSplitLeft(CatBtnW, &CatBtnRect, &CatFilterRow);
+
+			const bool IsAll = (c == 0);
+			const bool IsActive = (IsAll && s_aSelectedCategory[0] == '\0') ||
+				(!IsAll && str_comp_nocase(s_aSelectedCategory, apCats[c]) == 0);
+
+			int Corners = IGraphics::CORNER_NONE;
+			if(c == 0) Corners = IGraphics::CORNER_L;
+			else if(c == NumCats - 1) Corners = IGraphics::CORNER_R;
+
+			ColorRGBA BtnCol;
+			if(IsActive)
+			{
+				BtnCol = IsKoG ? ColorRGBA(0.95f, 0.5f, 0.15f, 0.85f) : ColorRGBA(0.2f, 0.6f, 0.9f, 0.85f);
+			}
+			else
+			{
+				BtnCol = ColorRGBA(0.12f, 0.12f, 0.12f, 0.45f);
+			}
+
+			if(DoButton_Menu(&s_aBtnCatFilter[c], TCLocalize(apCats[c]), 0, &CatBtnRect, BUTTONFLAG_LEFT, nullptr, Corners, 3.0f, 0.0f, BtnCol))
+			{
+				if(IsAll || IsActive)
+					s_aSelectedCategory[0] = '\0';
+				else
+					str_copy(s_aSelectedCategory, apCats[c]);
+			}
+		}
 
 		RightCol.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.2f), IGraphics::CORNER_B, 4.0f);
 		RightCol.Margin(4.0f, &RightCol);
@@ -5206,6 +5297,10 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 		for(size_t i = 0; i < Profiles.CommonUnfinishedMaps().size(); ++i)
 		{
 			const CTeamUnfinishedMap &M = Profiles.CommonUnfinishedMaps()[i];
+
+			if(!MatchesCategoryFilter(M.m_aCategory, s_aSelectedCategory))
+				continue;
+
 			if(aFilterLower[0] != '\0')
 			{
 				char aMapLower[64];
@@ -5225,8 +5320,30 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 				ItemRect.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 3.0f);
 				ItemRect.Margin(3.0f, &ItemRect);
 
+				// Category Badge
+				CUIRect CatBadge;
+				ItemRect.VSplitLeft(56.0f, &CatBadge, &ItemRect);
+				ItemRect.VSplitLeft(3.0f, nullptr, &ItemRect);
+				ColorRGBA CatCol = GetCategoryColor(M.m_aCategory);
+				ColorRGBA CatBgCol = ColorRGBA(CatCol.r * 0.35f, CatCol.g * 0.35f, CatCol.b * 0.35f, 0.6f);
+				CatBadge.Draw(CatBgCol, IGraphics::CORNER_ALL, 2.0f);
+				TextRender()->TextColor(CatCol.r, CatCol.g, CatCol.b, 1.0f);
+				Ui()->DoLabel(&CatBadge, M.m_aCategory[0] ? M.m_aCategory : "-", 10.0f, TEXTALIGN_MC);
+
+				// Points Badge
+				if(M.m_Points > 0)
+				{
+					CUIRect PtsBadge;
+					ItemRect.VSplitLeft(42.0f, &PtsBadge, &ItemRect);
+					ItemRect.VSplitLeft(3.0f, nullptr, &ItemRect);
+					char aPtsBuf[16];
+					str_format(aPtsBuf, sizeof(aPtsBuf), "%d pts", M.m_Points);
+					TextRender()->TextColor(1.0f, 0.85f, 0.3f, 0.9f);
+					Ui()->DoLabel(&PtsBadge, aPtsBuf, 10.0f, TEXTALIGN_MC);
+				}
+
 				CUIRect MapNameCol, ActionCol, StatusCol;
-				ItemRect.VSplitLeft(ItemRect.w * 0.55f, &MapNameCol, &StatusCol);
+				ItemRect.VSplitLeft(ItemRect.w * 0.58f, &MapNameCol, &StatusCol);
 
 				TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 				Ui()->DoLabel(&MapNameCol, M.m_aMap, 11.5f, TEXTALIGN_ML);
@@ -5234,8 +5351,8 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 				if(IsOnline)
 				{
 					StatusCol.VSplitRight(55.0f, &StatusCol, &ActionCol);
-					static CButtonContainer s_aBtnVoteMap[128];
-					CButtonContainer *pVoteBtn = (i < 128) ? &s_aBtnVoteMap[i] : &s_aBtnVoteMap[0];
+					static CButtonContainer s_aBtnVoteMap[256];
+					CButtonContainer *pVoteBtn = (i < 256) ? &s_aBtnVoteMap[i] : &s_aBtnVoteMap[0];
 					if(DoButton_Menu(pVoteBtn, TCLocalize("Votar"), 0, &ActionCol, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 2.0f, 0.0f, ColorRGBA(0.2f, 0.5f, 0.85f, 0.65f)))
 					{
 						char aVoteCmd[128];
@@ -5245,10 +5362,19 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 				}
 
 				TextRender()->TextColor(1.0f, 0.6f, 0.4f, 0.9f);
-				Ui()->DoLabel(&StatusCol, TCLocalize("Incompleto para todos"), 10.5f, TEXTALIGN_MC);
+				Ui()->DoLabel(&StatusCol, TCLocalize("Incompleto"), 10.5f, TEXTALIGN_MC);
 				TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 			}
 		}
+
+		char aTitleBuf[96];
+		if(s_aSelectedCategory[0] != '\0' || aFilterLower[0] != '\0')
+			str_format(aTitleBuf, sizeof(aTitleBuf), "%s: %zu / %zu", TCLocalize("Mapas en comun"), Shown, Profiles.CommonUnfinishedMaps().size());
+		else
+			str_format(aTitleBuf, sizeof(aTitleBuf), "%s: %zu", TCLocalize("Mapas en comun pendientes"), Profiles.CommonUnfinishedMaps().size());
+		TextRender()->TextColor(1.0f, 0.85f, 0.3f, 1.0f);
+		Ui()->DoLabel(&RightTitle, aTitleBuf, 11.5f, TEXTALIGN_ML);
+		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 
 		if(Shown == 0)
 		{
@@ -5665,6 +5791,32 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 				{
 					ItemRect.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.2f), IGraphics::CORNER_ALL, 3.0f);
 					ItemRect.Margin(3.0f, &ItemRect);
+
+					CMapMetadata Meta{};
+					bool HasMeta = Profiles.GetKoGMapMeta(MapName.c_str(), Meta);
+
+					if(HasMeta && Meta.m_aCategory[0])
+					{
+						CUIRect CatBadge;
+						ItemRect.VSplitLeft(56.0f, &CatBadge, &ItemRect);
+						ItemRect.VSplitLeft(3.0f, nullptr, &ItemRect);
+						ColorRGBA CatCol = GetCategoryColor(Meta.m_aCategory);
+						ColorRGBA CatBgCol = ColorRGBA(CatCol.r * 0.35f, CatCol.g * 0.35f, CatCol.b * 0.35f, 0.6f);
+						CatBadge.Draw(CatBgCol, IGraphics::CORNER_ALL, 2.0f);
+						TextRender()->TextColor(CatCol.r, CatCol.g, CatCol.b, 1.0f);
+						Ui()->DoLabel(&CatBadge, Meta.m_aCategory, 10.0f, TEXTALIGN_MC);
+					}
+
+					if(HasMeta && Meta.m_Points > 0)
+					{
+						CUIRect PtsBadge;
+						ItemRect.VSplitLeft(42.0f, &PtsBadge, &ItemRect);
+						ItemRect.VSplitLeft(3.0f, nullptr, &ItemRect);
+						char aPtsBuf[16];
+						str_format(aPtsBuf, sizeof(aPtsBuf), "%d pts", Meta.m_Points);
+						TextRender()->TextColor(1.0f, 0.85f, 0.3f, 0.9f);
+						Ui()->DoLabel(&PtsBadge, aPtsBuf, 10.0f, TEXTALIGN_MC);
+					}
 
 					CUIRect MapNameCol, StatusCol;
 					ItemRect.VSplitLeft(ItemRect.w * 0.65f, &MapNameCol, &StatusCol);
