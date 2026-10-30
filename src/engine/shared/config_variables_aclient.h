@@ -102,3 +102,22 @@ MACRO_CONFIG_INT(AcFastInputRepredictHook, ac_fast_input_repredict_hook, 0, 0, 1
 
 // Fast Input Others Filter
 MACRO_CONFIG_INT(AcFastInputOthersOnlyFrozen, ac_fast_input_others_only_frozen, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Only apply fast input prediction to other tees when they are frozen")
+
+// ==========================================
+// AClient Modular HUD (Beta)
+// ==========================================
+MACRO_CONFIG_INT(AcHudKeystrokes, ac_hud_keystrokes, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show on-screen Keystrokes overlay (Beta)")
+MACRO_CONFIG_INT(AcHudKeystrokesX, ac_hud_keystrokes_x, 3, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Keystrokes HUD horizontal position percent")
+MACRO_CONFIG_INT(AcHudKeystrokesY, ac_hud_keystrokes_y, 72, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Keystrokes HUD vertical position percent")
+MACRO_CONFIG_INT(AcHudKeystrokesScale, ac_hud_keystrokes_scale, 100, 50, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Keystrokes HUD scale percent")
+MACRO_CONFIG_INT(AcHudKeystrokesAlpha, ac_hud_keystrokes_alpha, 85, 20, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Keystrokes HUD opacity percent")
+MACRO_CONFIG_INT(AcHudKeystrokesLayout, ac_hud_keystrokes_layout, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Keystrokes layout: 0=WASD + LMB/RMB/Space, 1=A/D + Hook/Fire/Jump")
+
+MACRO_CONFIG_INT(AcHudSpeedometer, ac_hud_speedometer, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show digital Speedometer / Movement Info HUD (Beta)")
+MACRO_CONFIG_INT(AcHudSpeedometerX, ac_hud_speedometer_x, 50, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Speedometer HUD horizontal position percent")
+MACRO_CONFIG_INT(AcHudSpeedometerY, ac_hud_speedometer_y, 82, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Speedometer HUD vertical position percent")
+MACRO_CONFIG_INT(AcHudSpeedometerScale, ac_hud_speedometer_scale, 100, 50, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Speedometer HUD scale percent")
+MACRO_CONFIG_INT(AcHudSpeedometerAlpha, ac_hud_speedometer_alpha, 85, 20, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Speedometer HUD opacity percent")
+
+// Profiles (0: DDNet, 1: KoG)
+MACRO_CONFIG_INT(AcProfileSource, ac_profile_source, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Profile data source (0: DDNet, 1: KoG)")

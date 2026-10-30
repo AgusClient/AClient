@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12...3.27.4)
+﻿cmake_minimum_required(VERSION 3.12...3.27.4)
 
 # In-source builds writes into src/generated, causing out-of-date files to be reused in later builds
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
@@ -2869,6 +2869,8 @@ if(CLIENT)
     components/statboard.cpp
     components/statboard.h
     components/tclient/aclient_assets_editor.cpp
+    components/tclient/aclient_hud.cpp
+    components/tclient/aclient_hud.h
     components/tclient/aclient_inputs.cpp
     components/tclient/aclient_inputs.h
     components/tclient/bg_draw.cpp
