@@ -2,6 +2,7 @@
 
 #include "data_version.h"
 
+#include <base/io.h>
 #include <base/log.h>
 
 #include <engine/client.h>
@@ -22,7 +23,7 @@
 #include <game/localization.h>
 #include <game/version.h>
 
-static constexpr const char *TCLIENT_INFO_URL = "https://update.tclient.app/info.json";
+static constexpr const char *ACLIENT_LATEST_RELEASE_URL = "https://api.github.com/repos/agusx30/AClient/releases/latest";
 
 CTClient::CTClient()
 {
@@ -102,6 +103,10 @@ void CTClient::OnInit()
 {
 	TextRender()->SetCustomFace(g_Config.m_TcCustomFont);
 	m_pGraphics = Kernel()->RequestInterface<IEngineGraphics>();
+
+	// Cleanup old binary if left over from previous in-game update
+	Storage()->RemoveBinaryFile("DDNet.old");
+
 	FetchTClientInfo();
 
 	char aError[512] = "";
@@ -555,6 +560,37 @@ void CTClient::OnRender()
 			FinishTClientInfo();
 			ResetTClientInfoTask();
 		}
+		else if(m_pTClientInfoTask->State() == EHttpState::ERROR || m_pTClientInfoTask->State() == EHttpState::ABORTED)
+		{
+			m_UpdateState = UPDATE_STATE_FAIL;
+			str_copy(m_aUpdateStatus, "Fallo al consultar GitHub", sizeof(m_aUpdateStatus));
+			ResetTClientInfoTask();
+		}
+	}
+
+	if(m_pDownloadTask)
+	{
+		m_UpdatePercent = m_pDownloadTask->Progress();
+		if(m_pDownloadTask->State() == EHttpState::DONE)
+		{
+			if(ReplaceExecutable())
+			{
+				m_UpdateState = UPDATE_STATE_NEED_RESTART;
+				str_copy(m_aUpdateStatus, "Actualizacion completada. Reinicie el juego.", sizeof(m_aUpdateStatus));
+			}
+			else
+			{
+				m_UpdateState = UPDATE_STATE_FAIL;
+				str_copy(m_aUpdateStatus, "Fallo al reemplazar ejecutable.", sizeof(m_aUpdateStatus));
+			}
+			m_pDownloadTask = nullptr;
+		}
+		else if(m_pDownloadTask->State() == EHttpState::ERROR || m_pDownloadTask->State() == EHttpState::ABORTED)
+		{
+			m_UpdateState = UPDATE_STATE_FAIL;
+			str_copy(m_aUpdateStatus, "Fallo al descargar actualizacion.", sizeof(m_aUpdateStatus));
+			m_pDownloadTask = nullptr;
+		}
 	}
 
 	DoFinishCheck();
@@ -562,7 +598,9 @@ void CTClient::OnRender()
 
 bool CTClient::NeedUpdate()
 {
-	return str_comp(m_aVersionStr, "0") != 0;
+	return m_UpdateState == UPDATE_STATE_AVAILABLE ||
+	       m_UpdateState == UPDATE_STATE_DOWNLOADING ||
+	       m_UpdateState == UPDATE_STATE_NEED_RESTART;
 }
 
 void CTClient::ResetTClientInfoTask()
@@ -574,68 +612,203 @@ void CTClient::ResetTClientInfoTask()
 	}
 }
 
-void CTClient::FetchTClientInfo()
+void CTClient::FetchTClientInfo(bool Force)
 {
-	if(m_pTClientInfoTask && !m_pTClientInfoTask->Done())
+	if(!Force && m_UpdateState != UPDATE_STATE_IDLE && m_UpdateState != UPDATE_STATE_FAIL)
 		return;
+
+	if(m_pTClientInfoTask && !m_pTClientInfoTask->Done())
+	{
+		if(Force)
+			m_pTClientInfoTask->Abort();
+		else
+			return;
+	}
+
 	char aUrl[256];
-	str_copy(aUrl, TCLIENT_INFO_URL);
+	str_copy(aUrl, ACLIENT_LATEST_RELEASE_URL, sizeof(aUrl));
 	m_pTClientInfoTask = HttpGet(aUrl);
 	m_pTClientInfoTask->Timeout(CTimeout{10000, 0, 500, 10});
 	m_pTClientInfoTask->IpResolve(IPRESOLVE::V4);
+	m_pTClientInfoTask->Header("User-Agent: AClient");
 	Http()->Run(m_pTClientInfoTask);
+
+	m_UpdateState = UPDATE_STATE_CHECKING;
+	str_copy(m_aUpdateStatus, "Buscando actualizacion...", sizeof(m_aUpdateStatus));
 }
 
 typedef std::tuple<int, int, int> TVersion;
 static const TVersion gs_InvalidTCVersion = std::make_tuple(-1, -1, -1);
 
-static TVersion ToTCVersion(char *pStr)
+static TVersion ParseSemVer(const char *pStr)
 {
-	int aVersion[3] = {0, 0, 0};
-	const char *p = strtok(pStr, ".");
-
-	for(int i = 0; i < 3 && p; ++i)
-	{
-		if(!str_isallnum(p))
-			return gs_InvalidTCVersion;
-
-		aVersion[i] = str_toint(p);
-		p = strtok(nullptr, ".");
-	}
-
-	if(p)
+	if(!pStr || !*pStr)
 		return gs_InvalidTCVersion;
 
+	if(*pStr == 'v' || *pStr == 'V')
+		pStr++;
+
+	int aVersion[3] = {0, 0, 0};
+	char aBuf[64];
+	str_copy(aBuf, pStr, sizeof(aBuf));
+
+	char *p = aBuf;
+	char *pToken = strtok(p, ".");
+	for(int i = 0; i < 3 && pToken; ++i)
+	{
+		if(!str_isallnum(pToken))
+			return gs_InvalidTCVersion;
+		aVersion[i] = str_toint(pToken);
+		pToken = strtok(nullptr, ".");
+	}
 	return std::make_tuple(aVersion[0], aVersion[1], aVersion[2]);
 }
 
 void CTClient::FinishTClientInfo()
 {
-	json_value *pJson = m_pTClientInfoTask->ResultJson();
+	json_value *pJson = m_pTClientInfoTask ? m_pTClientInfoTask->ResultJson() : nullptr;
 	if(!pJson)
-		return;
-	const json_value &Json = *pJson;
-	const json_value &CurrentVersion = Json["version"];
-
-	if(CurrentVersion.type == json_string)
 	{
-		char aNewVersionStr[64];
-		str_copy(aNewVersionStr, CurrentVersion);
-		char aCurVersionStr[64];
-		str_copy(aCurVersionStr, TCLIENT_VERSION);
-		if(ToTCVersion(aNewVersionStr) > ToTCVersion(aCurVersionStr))
+		m_UpdateState = UPDATE_STATE_FAIL;
+		str_copy(m_aUpdateStatus, "Error de conexion con GitHub", sizeof(m_aUpdateStatus));
+		return;
+	}
+
+	const json_value &Json = *pJson;
+	if(Json.type != json_object)
+	{
+		json_value_free(pJson);
+		m_UpdateState = UPDATE_STATE_FAIL;
+		str_copy(m_aUpdateStatus, "Respuesta invalida de GitHub", sizeof(m_aUpdateStatus));
+		return;
+	}
+
+	const json_value &TagName = Json["tag_name"];
+	if(TagName.type == json_string)
+	{
+		char aRemoteVersion[64];
+		str_copy(aRemoteVersion, (const char *)TagName, sizeof(aRemoteVersion));
+
+		TVersion RemoteVer = ParseSemVer(aRemoteVersion);
+		TVersion LocalVer = ParseSemVer(ACLIENT_VERSION);
+
+		if(RemoteVer != gs_InvalidTCVersion && RemoteVer > LocalVer)
 		{
-			str_copy(m_aVersionStr, CurrentVersion);
+			// Search for DDNet.exe asset in assets array
+			const json_value &Assets = Json["assets"];
+			bool FoundAsset = false;
+			if(Assets.type == json_array)
+			{
+				for(unsigned int i = 0; i < Assets.u.array.length; ++i)
+				{
+					const json_value &Asset = *Assets.u.array.values[i];
+					const json_value &AssetName = Asset["name"];
+					const json_value &DownloadUrl = Asset["browser_download_url"];
+
+					if(AssetName.type == json_string && DownloadUrl.type == json_string)
+					{
+						if(str_comp_nocase((const char *)AssetName, "DDNet.exe") == 0)
+						{
+							str_copy(m_aDownloadUrl, (const char *)DownloadUrl, sizeof(m_aDownloadUrl));
+							FoundAsset = true;
+							break;
+						}
+					}
+				}
+			}
+
+			if(FoundAsset)
+			{
+				str_copy(m_aLatestVersion, aRemoteVersion, sizeof(m_aLatestVersion));
+				str_copy(m_aVersionStr, aRemoteVersion, sizeof(m_aVersionStr));
+				m_UpdateState = UPDATE_STATE_AVAILABLE;
+				str_format(m_aUpdateStatus, sizeof(m_aUpdateStatus), "Nueva version disponible: %s", aRemoteVersion);
+			}
+			else
+			{
+				m_UpdateState = UPDATE_STATE_FAIL;
+				str_copy(m_aUpdateStatus, "Asset DDNet.exe no encontrado en release", sizeof(m_aUpdateStatus));
+			}
 		}
 		else
 		{
 			m_aVersionStr[0] = '0';
 			m_aVersionStr[1] = '\0';
+			str_copy(m_aLatestVersion, ACLIENT_VERSION, sizeof(m_aLatestVersion));
+			m_UpdateState = UPDATE_STATE_IDLE;
+			str_copy(m_aUpdateStatus, "Cliente al dia", sizeof(m_aUpdateStatus));
 		}
 		m_FetchedTClientInfo = true;
 	}
+	else
+	{
+		m_UpdateState = UPDATE_STATE_FAIL;
+		str_copy(m_aUpdateStatus, "Release sin tag valido", sizeof(m_aUpdateStatus));
+	}
 
 	json_value_free(pJson);
+}
+
+void CTClient::InitiateUpdate()
+{
+	if(m_aDownloadUrl[0] == '\0')
+		return;
+
+	if(m_pDownloadTask && !m_pDownloadTask->Done())
+		return;
+
+	m_pDownloadTask = HttpGet(m_aDownloadUrl);
+	m_pDownloadTask->Timeout(CTimeout{60000, 0, 500, 20});
+	m_pDownloadTask->IpResolve(IPRESOLVE::V4);
+	m_pDownloadTask->Header("User-Agent: AClient");
+	m_pDownloadTask->WriteToFile(Storage(), "update/DDNet_new.exe", -2);
+	Http()->Run(m_pDownloadTask);
+
+	m_UpdateState = UPDATE_STATE_DOWNLOADING;
+	m_UpdatePercent = 0;
+	str_copy(m_aUpdateStatus, "Descargando actualizacion...", sizeof(m_aUpdateStatus));
+}
+
+bool CTClient::ReplaceExecutable()
+{
+	IOHANDLE CheckFile = Storage()->OpenFile("update/DDNet_new.exe", IOFLAG_READ, -2);
+	if(!CheckFile)
+	{
+		log_error("updater", "Downloaded file not found at update/DDNet_new.exe");
+		return false;
+	}
+	const int64_t FileSize = io_length(CheckFile);
+	io_close(CheckFile);
+
+	if(FileSize < 1024 * 1024)
+	{
+		log_error("updater", "Downloaded file is too small (%ld bytes)", FileSize);
+		return false;
+	}
+
+	bool Success = true;
+	// 1. Remove previous backup if exists
+	Storage()->RemoveBinaryFile("DDNet.old");
+
+	// 2. Rename currently running DDNet.exe to DDNet.old
+	Success &= Storage()->RenameBinaryFile("DDNet.exe", "DDNet.old");
+	if(!Success)
+	{
+		log_error("updater", "Failed to rename running executable DDNet.exe to DDNet.old");
+		return false;
+	}
+
+	// 3. Rename update/DDNet_new.exe to DDNet.exe
+	Success &= Storage()->RenameBinaryFile("update/DDNet_new.exe", "DDNet.exe");
+	if(!Success)
+	{
+		log_error("updater", "Failed to rename update/DDNet_new.exe to DDNet.exe, restoring old binary");
+		Storage()->RenameBinaryFile("DDNet.old", "DDNet.exe");
+		return false;
+	}
+
+	log_info("updater", "Executable successfully updated to version %s", m_aLatestVersion);
+	return true;
 }
 
 void CTClient::SetForcedAspect()
