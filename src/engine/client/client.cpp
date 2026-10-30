@@ -4100,7 +4100,7 @@ void CClient::Con_SaveReplay(IConsole::IResult *pResult, void *pUserData)
 	}
 }
 
-void CClient::SaveReplay(const int Length, const char *pFilename)
+void CClient::SaveReplay(const int Length, const char *pFilename, const char *pFullFilename)
 {
 	if(!g_Config.m_ClReplays)
 	{
@@ -4139,6 +4139,18 @@ void CClient::SaveReplay(const int Length, const char *pFilename)
 			m_pStorage->RemoveFile(aFilename, IStorage::TYPE_SAVE);
 		}
 
+		char aFullFilename[IO_MAX_PATH_LENGTH] = "";
+		if(pFullFilename && pFullFilename[0] != '\0')
+		{
+			str_format(aFullFilename, sizeof(aFullFilename), "demos/replays/%s.demo", pFullFilename);
+			IOHANDLE Handle = m_pStorage->OpenFile(aFullFilename, IOFLAG_WRITE, IStorage::TYPE_SAVE);
+			if(Handle)
+			{
+				io_close(Handle);
+				m_pStorage->RemoveFile(aFullFilename, IStorage::TYPE_SAVE);
+			}
+		}
+
 		// Stop the recorder to correctly slice the demo after
 		DemoRecorder(RECORDER_REPLAYS)->Stop(IDemoRecorder::EStopMode::KEEP_FILE);
 
@@ -4150,7 +4162,7 @@ void CClient::SaveReplay(const int Length, const char *pFilename)
 		m_pConsole->Print(IConsole::OUTPUT_LEVEL_STANDARD, "replay", "Saving replay...");
 
 		// Create a job to do this slicing in background because it can be a bit long depending on the file size
-		std::shared_ptr<CDemoEdit> pDemoEditTask = std::make_shared<CDemoEdit>(GameClient()->NetVersion(), &m_SnapshotDelta, &m_SnapshotDeltaSixup, m_pStorage, pSrc, aFilename, StartTick, EndTick);
+		std::shared_ptr<CDemoEdit> pDemoEditTask = std::make_shared<CDemoEdit>(GameClient()->NetVersion(), &m_SnapshotDelta, &m_SnapshotDeltaSixup, m_pStorage, pSrc, aFilename, StartTick, EndTick, aFullFilename);
 		Engine()->AddJob(pDemoEditTask);
 		m_EditJobs.push_back(pDemoEditTask);
 

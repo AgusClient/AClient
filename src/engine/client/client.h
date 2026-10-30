@@ -530,7 +530,7 @@ public:
 	void DemoSliceBegin() override;
 	void DemoSliceEnd() override;
 	void DemoSlice(const char *pDstPath, CLIENTFUNC_FILTER pfnFilter, void *pUser) override;
-	void SaveReplay(int Length, const char *pFilename = "") override;
+	void SaveReplay(int Length, const char *pFilename = "", const char *pFullFilename = nullptr) override;
 
 	bool EditorHasUnsavedData() const override { return m_pEditor->HasUnsavedData(); }
 
