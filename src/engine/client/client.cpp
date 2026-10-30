@@ -239,18 +239,12 @@ int CClient::SendMsgActive(CMsgPacker *pMsg, int Flags)
 
 void CClient::SendTClientInfo(int Conn)
 {
-	if(!g_Config.m_AcSendTClientUuid)
-		return;
-
-	CMsgPacker Msg(NETMSG_IAMTATER, true);
-	Msg.AddString(CLIENT_NAME " " ACLIENT_VERSION " built on " __DATE__ ", " __TIME__);
-	SendMsg(Conn, &Msg, MSGFLAG_VITAL);
+	// Legacy TClient UUID handshake disabled permanently; client unconditionally identifies as AClient
 }
 
 void CClient::SendInfo(int Conn)
 {
-	SendTClientInfo(Conn);
-
+	// Client identifies exclusively as AClient via NETMSG_CLIENTVER
 	CMsgPacker MsgVer(NETMSG_CLIENTVER, true);
 	MsgVer.AddRaw(&m_ConnectionId, sizeof(m_ConnectionId));
 	MsgVer.AddInt(GameClient()->DDNetVersion());
@@ -2011,32 +2005,8 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket, int Conn, bool Dummy)
 		}
 		else if(Msg == NETMSG_TATER_CHECKSUM_REQUEST)
 		{
-#ifndef TCLIENT_CHECKSUM_SALT
-// salt@sjrc6.github.io: 26e65800-d8d9-3e8f-8d53-acdd1461f0a9
-#define TCLIENT_CHECKSUM_SALT \
-	{ \
-		{ \
-			0x26, 0xe6, 0x58, 0x00, 0xd8, 0xd9, 0x3e, 0x8f, \
-				0x8d, 0x53, 0xac, 0xdd, 0x14, 0x61, 0xf0, 0xa9, \
-		} \
-	}
-#endif
-			CUuid *pUuid = (CUuid *)Unpacker.GetRaw(sizeof(*pUuid));
-			if(Unpacker.Error())
-			{
-				return;
-			}
-			SHA256_CTX Sha256Ctxt;
-			sha256_init(&Sha256Ctxt);
-			CUuid Salt = TCLIENT_CHECKSUM_SALT;
-			sha256_update(&Sha256Ctxt, &Salt, sizeof(Salt));
-			sha256_update(&Sha256Ctxt, pUuid, sizeof(*pUuid));
-			SHA256_DIGEST Sha256 = sha256_finish(&Sha256Ctxt);
-
-			CMsgPacker CSMsg(NETMSG_TATER_CHECKSUM_RESPONSE, true);
-			CSMsg.AddRaw(pUuid, sizeof(*pUuid));
-			CSMsg.AddRaw(&Sha256, sizeof(Sha256));
-			SendMsg(Conn, &CSMsg, MSGFLAG_VITAL);
+			// Do not respond to TClient verification requests; identify purely as AClient
+			return;
 		}
 		else if(Msg == NETMSG_RECONNECT)
 		{
