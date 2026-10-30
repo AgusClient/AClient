@@ -162,19 +162,22 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 	char aTBuf[64];
 	str_format(aTBuf, sizeof(aTBuf), CLIENT_NAME " %s", CLIENT_RELEASE_VERSION);
 	Ui()->DoLabel(&TClientVersion, aTBuf, 14.0f, TEXTALIGN_MR);
-#if defined(CONF_AUTOUPDATE)
 	CUIRect UpdateToDateText;
 	MainView.HSplitTop(15.0f, &UpdateToDateText, nullptr);
 	UpdateToDateText.VSplitRight(40.0f, &UpdateToDateText, nullptr);
-	if(!GameClient()->m_TClient.NeedUpdate() && GameClient()->m_TClient.m_FetchedTClientInfo)
+	const auto UpState = GameClient()->m_TClient.GetUpdateState();
+	if(UpState == CTClient::UPDATE_STATE_CHECKING)
 	{
-		Ui()->DoLabel(&UpdateToDateText, TCLocalize("(On Latest)"), 14.0f, TEXTALIGN_MR);
+		Ui()->DoLabel(&UpdateToDateText, TCLocalize("(Buscando actualizacion...)"), 14.0f, TEXTALIGN_MR);
 	}
-	else
+	else if(UpState == CTClient::UPDATE_STATE_AVAILABLE || GameClient()->m_TClient.NeedUpdate())
 	{
-		Ui()->DoLabel(&UpdateToDateText, TCLocalize("(Fetching Update Info)"), 14.0f, TEXTALIGN_MR);
+		Ui()->DoLabel(&UpdateToDateText, TCLocalize("(Actualizacion disponible)"), 14.0f, TEXTALIGN_MR);
 	}
-#endif
+	else if(GameClient()->m_TClient.m_FetchedTClientInfo)
+	{
+		Ui()->DoLabel(&UpdateToDateText, TCLocalize("(Ultima version)"), 14.0f, TEXTALIGN_MR);
+	}
 	static CButtonContainer s_ConsoleButton;
 	TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
 	TextRender()->SetRenderFlags(ETextRenderFlags::TEXT_RENDER_FLAG_ONLY_ADVANCE_WIDTH | ETextRenderFlags::TEXT_RENDER_FLAG_NO_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_Y_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT | ETextRenderFlags::TEXT_RENDER_FLAG_NO_OVERSIZE);
@@ -188,83 +191,57 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 	CUIRect VersionUpdate;
 	MainView.HSplitBottom(20.0f, nullptr, &VersionUpdate);
 	VersionUpdate.VMargin(VMargin, &VersionUpdate);
-#if defined(CONF_AUTOUPDATE)
 	CUIRect UpdateButton;
-	VersionUpdate.VSplitRight(100.0f, &VersionUpdate, &UpdateButton);
+	VersionUpdate.VSplitRight(120.0f, &VersionUpdate, &UpdateButton);
 	VersionUpdate.VSplitRight(10.0f, &VersionUpdate, nullptr);
 
-	char aBuf[128];
-	const IUpdater::EUpdaterState State = Updater()->GetCurrentState();
-	const bool NeedUpdate = GameClient()->m_TClient.NeedUpdate();
+	char aBuf[128] = "";
+	const auto State = GameClient()->m_TClient.GetUpdateState();
+	const char *pLatestVersion = GameClient()->m_TClient.GetLatestVersion();
 
-	if(State == IUpdater::CLEAN && NeedUpdate)
+	if(State == CTClient::UPDATE_STATE_AVAILABLE)
 	{
 		static CButtonContainer s_VersionUpdate;
-		if(GameClient()->m_Menus.DoButton_Menu(&s_VersionUpdate, Localize("Update now"), 0, &UpdateButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
+		if(GameClient()->m_Menus.DoButton_Menu(&s_VersionUpdate, Localize("Actualizar"), 0, &UpdateButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.45f, 0.85f, 0.6f)))
 		{
-			Updater()->InitiateUpdate();
+			GameClient()->m_TClient.InitiateUpdate();
 		}
+		str_format(aBuf, sizeof(aBuf), Localize("AClient %s disponible!"), pLatestVersion);
+		TextRender()->TextColor(0.4f, 0.95f, 0.4f, 1.0f);
 	}
-	else if(State == IUpdater::NEED_RESTART)
+	else if(State == CTClient::UPDATE_STATE_DOWNLOADING)
 	{
-		static CButtonContainer s_VersionUpdate;
-		if(GameClient()->m_Menus.DoButton_Menu(&s_VersionUpdate, Localize("Restart"), 0, &UpdateButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
+		int Percent = GameClient()->m_TClient.GetUpdatePercent();
+		Ui()->RenderProgressBar(UpdateButton, Percent / 100.0f);
+		str_format(aBuf, sizeof(aBuf), Localize("Descargando DDNet.exe: %d%%"), Percent);
+		TextRender()->TextColor(0.4f, 0.8f, 1.0f, 1.0f);
+	}
+	else if(State == CTClient::UPDATE_STATE_NEED_RESTART)
+	{
+		static CButtonContainer s_RestartUpdate;
+		if(GameClient()->m_Menus.DoButton_Menu(&s_RestartUpdate, Localize("Reiniciar"), 0, &UpdateButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.2f, 0.75f, 0.2f, 0.6f)))
 		{
 			Client()->Restart();
 		}
+		str_copy(aBuf, Localize("AClient actualizado correctamente!"));
+		TextRender()->TextColor(0.3f, 1.0f, 0.3f, 1.0f);
 	}
-	else if(State >= IUpdater::GETTING_MANIFEST && State < IUpdater::NEED_RESTART)
+	else if(State == CTClient::UPDATE_STATE_FAIL)
 	{
-		Ui()->RenderProgressBar(UpdateButton, Updater()->GetCurrentPercent() / 100.0f);
-	}
-
-	if(State == IUpdater::CLEAN && NeedUpdate)
-	{
-		str_format(aBuf, sizeof(aBuf), Localize("TClient %s is out!"), GameClient()->m_TClient.m_aVersionStr);
-		TextRender()->TextColor(1.0f, 0.4f, 0.4f, 1.0f);
-	}
-	else if(State == IUpdater::CLEAN)
-	{
-		aBuf[0] = '\0';
-	}
-	else if(State >= IUpdater::GETTING_MANIFEST && State < IUpdater::NEED_RESTART)
-	{
-		char aCurrentFile[64];
-		Updater()->GetCurrentFile(aCurrentFile, sizeof(aCurrentFile));
-		str_format(aBuf, sizeof(aBuf), Localize("Downloading %s:"), aCurrentFile);
-	}
-	else if(State == IUpdater::FAIL)
-	{
-		str_copy(aBuf, Localize("Update failed! Check log…"));
-		TextRender()->TextColor(1.0f, 0.4f, 0.4f, 1.0f);
-	}
-	else if(State == IUpdater::NEED_RESTART)
-	{
-		str_copy(aBuf, Localize("DDNet Client updated!"));
-		TextRender()->TextColor(1.0f, 0.4f, 0.4f, 1.0f);
-	}
-	Ui()->DoLabel(&VersionUpdate, aBuf, 14.0f, TEXTALIGN_ML);
-	TextRender()->TextColor(TextRender()->DefaultTextColor());
-#elif defined(CONF_INFORM_UPDATE)
-	if(str_comp(Client()->LatestVersion(), "0") != 0 && false)
-	{
-		CUIRect DownloadButton;
-		VersionUpdate.VSplitRight(100.0f, &VersionUpdate, &DownloadButton);
-		VersionUpdate.VSplitRight(10.0f, &VersionUpdate, nullptr);
-
-		static CButtonContainer s_DownloadButton;
-		if(GameClient()->m_Menus.DoButton_Menu(&s_DownloadButton, Localize("Download"), 0, &DownloadButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
+		static CButtonContainer s_RetryUpdate;
+		if(GameClient()->m_Menus.DoButton_Menu(&s_RetryUpdate, Localize("Reintentar"), 0, &UpdateButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.8f, 0.2f, 0.2f, 0.5f)))
 		{
-			Client()->ViewLink("https://ddnet.org/downloads/");
+			GameClient()->m_TClient.FetchTClientInfo(true);
 		}
-
-		char aBuf[64];
-		str_format(aBuf, sizeof(aBuf), Localize("DDNet %s is out!"), Client()->LatestVersion());
-		SLabelProperties UpdateLabelProps;
-		UpdateLabelProps.SetColor(ColorRGBA(1.0f, 0.4f, 0.4f, 1.0f));
-		Ui()->DoLabel(&VersionUpdate, aBuf, 14.0f, TEXTALIGN_ML, UpdateLabelProps);
+		str_copy(aBuf, Localize("Error al actualizar."));
+		TextRender()->TextColor(1.0f, 0.4f, 0.4f, 1.0f);
 	}
-#endif
+
+	if(aBuf[0] != '\0')
+	{
+		Ui()->DoLabel(&VersionUpdate, aBuf, 14.0f, TEXTALIGN_ML);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
+	}
 
 	if(NewPage != -1)
 	{

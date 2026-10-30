@@ -27,11 +27,9 @@ void CMenus::RenderSettingsDDNet(CUIRect MainView)
 {
 	CUIRect Button, Left, Right, LeftLeft, Label;
 
-#if defined(CONF_AUTOUPDATE)
 	CUIRect UpdaterRect;
 	MainView.HSplitBottom(20.0f, &MainView, &UpdaterRect);
 	MainView.HSplitBottom(5.0f, &MainView, nullptr);
-#endif
 
 	// demo
 	CUIRect Demo;
@@ -300,46 +298,57 @@ void CMenus::RenderSettingsDDNet(CUIRect MainView)
 #endif
 
 	// Updater
-#if defined(CONF_AUTOUPDATE)
 	{
-		const bool NeedUpdate = GameClient()->m_TClient.NeedUpdate();
-		IUpdater::EUpdaterState State = Updater()->GetCurrentState();
+		const auto State = GameClient()->m_TClient.GetUpdateState();
+		const char *pLatestVersion = GameClient()->m_TClient.GetLatestVersion();
 
 		// Update Button
 		char aBuf[256];
-		if(NeedUpdate && State <= IUpdater::CLEAN)
+		if(State == CTClient::UPDATE_STATE_AVAILABLE)
 		{
-			str_format(aBuf, sizeof(aBuf), Localize("TClient %s is available:"), GameClient()->m_TClient.m_aVersionStr);
+			str_format(aBuf, sizeof(aBuf), Localize("AClient %s disponible:"), pLatestVersion);
 			UpdaterRect.VSplitLeft(TextRender()->TextWidth(14.0f, aBuf, -1, -1.0f) + 10.0f, &UpdaterRect, &Button);
-			Button.VSplitLeft(100.0f, &Button, nullptr);
+			Button.VSplitLeft(110.0f, &Button, nullptr);
 			static CButtonContainer s_ButtonUpdate;
-			if(DoButton_Menu(&s_ButtonUpdate, Localize("Update now"), 0, &Button))
+			if(DoButton_Menu(&s_ButtonUpdate, Localize("Actualizar ahora"), 0, &Button))
 			{
-				Updater()->InitiateUpdate();
+				GameClient()->m_TClient.InitiateUpdate();
 			}
 		}
-		else if(State >= IUpdater::GETTING_MANIFEST && State < IUpdater::NEED_RESTART)
-			str_copy(aBuf, Localize("Updating…"));
-		else if(State == IUpdater::NEED_RESTART)
+		else if(State == CTClient::UPDATE_STATE_DOWNLOADING)
 		{
-			str_copy(aBuf, Localize("TClient Client updated!"));
-			m_NeedRestartUpdate = true;
+			int Percent = GameClient()->m_TClient.GetUpdatePercent();
+			str_format(aBuf, sizeof(aBuf), Localize("Descargando DDNet.exe: %d%%"), Percent);
+		}
+		else if(State == CTClient::UPDATE_STATE_NEED_RESTART)
+		{
+			str_copy(aBuf, Localize("AClient actualizado!"));
+			UpdaterRect.VSplitLeft(TextRender()->TextWidth(14.0f, aBuf, -1, -1.0f) + 10.0f, &UpdaterRect, &Button);
+			Button.VSplitLeft(100.0f, &Button, nullptr);
+			static CButtonContainer s_ButtonRestart;
+			if(DoButton_Menu(&s_ButtonRestart, Localize("Reiniciar"), 0, &Button))
+			{
+				Client()->Restart();
+			}
+		}
+		else if(State == CTClient::UPDATE_STATE_CHECKING)
+		{
+			str_copy(aBuf, Localize("Buscando actualizacion en GitHub..."));
 		}
 		else
 		{
-			str_copy(aBuf, Localize("No updates available"));
+			str_copy(aBuf, Localize("No hay actualizaciones disponibles"));
 			UpdaterRect.VSplitLeft(TextRender()->TextWidth(14.0f, aBuf, -1, -1.0f) + 10.0f, &UpdaterRect, &Button);
-			Button.VSplitLeft(100.0f, &Button, nullptr);
+			Button.VSplitLeft(110.0f, &Button, nullptr);
 			static CButtonContainer s_ButtonUpdate;
-			if(DoButton_Menu(&s_ButtonUpdate, Localize("Check now"), 0, &Button))
+			if(DoButton_Menu(&s_ButtonUpdate, Localize("Buscar ahora"), 0, &Button))
 			{
-				GameClient()->m_TClient.FetchTClientInfo();
+				GameClient()->m_TClient.FetchTClientInfo(true);
 			}
 		}
 		Ui()->DoLabel(&UpdaterRect, aBuf, 14.0f, TEXTALIGN_ML);
 		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 	}
-#endif
 }
 
 CUi::EPopupMenuFunctionResult CMenus::PopupMapPicker(void *pContext, CUIRect View, bool Active)

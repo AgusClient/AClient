@@ -12,6 +12,7 @@
 #include <engine/textrender.h>
 #include <engine/updater.h>
 
+#include <game/version.h>
 #include <game/client/animstate.h>
 #include <game/client/components/binds.h>
 #include <game/client/components/chat.h>
@@ -4431,6 +4432,78 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
 
 	RightView = Column;
+
+	// ***** Bloque: Actualizador Integrado de AClient ***** //
+	CUIRect UpdateSection;
+	UpdateSection.x = LeftView.x;
+	UpdateSection.y = std::max(LeftView.y, RightView.y) + MarginBetweenSections;
+	UpdateSection.w = (RightView.x + RightView.w) - LeftView.x;
+	UpdateSection.h = 75.0f;
+
+	s_SectionBoxesAc.push_back(UpdateSection);
+
+	UpdateSection.HSplitTop(HeadlineHeight, &Label, &UpdateSection);
+	Ui()->DoLabel(&Label, TCLocalize("AClient In-Game Auto-Updater"), HeadlineFontSize, TEXTALIGN_ML);
+	UpdateSection.HSplitTop(MarginSmall, nullptr, &UpdateSection);
+
+	CUIRect StatusLine, ActionBtn;
+	UpdateSection.HSplitTop(LineSize * 1.5f, &StatusLine, &UpdateSection);
+	StatusLine.VSplitRight(140.0f, &StatusLine, &ActionBtn);
+
+	const auto UpState = GameClient()->m_TClient.GetUpdateState();
+	const char *pCurVer = ACLIENT_VERSION;
+	const char *pLatVer = GameClient()->m_TClient.GetLatestVersion();
+
+	char aStatusText[256];
+	if(UpState == CTClient::UPDATE_STATE_AVAILABLE)
+	{
+		str_format(aStatusText, sizeof(aStatusText), "Nueva version disponible: %s (Instalada: %s)", pLatVer, pCurVer);
+		TextRender()->TextColor(0.4f, 0.95f, 0.4f, 1.0f);
+		static CButtonContainer s_BtnUpdateAc;
+		if(DoButton_Menu(&s_BtnUpdateAc, TCLocalize("Actualizar ahora"), 0, &ActionBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.45f, 0.85f, 0.6f)))
+		{
+			GameClient()->m_TClient.InitiateUpdate();
+		}
+	}
+	else if(UpState == CTClient::UPDATE_STATE_DOWNLOADING)
+	{
+		int Pct = GameClient()->m_TClient.GetUpdatePercent();
+		str_format(aStatusText, sizeof(aStatusText), "Descargando DDNet.exe: %d%%", Pct);
+		TextRender()->TextColor(0.4f, 0.8f, 1.0f, 1.0f);
+		Ui()->RenderProgressBar(ActionBtn, Pct / 100.0f);
+	}
+	else if(UpState == CTClient::UPDATE_STATE_NEED_RESTART)
+	{
+		str_copy(aStatusText, "Actualizacion descargada. Reinicie para aplicar.", sizeof(aStatusText));
+		TextRender()->TextColor(0.3f, 1.0f, 0.3f, 1.0f);
+		static CButtonContainer s_BtnRestartAc;
+		if(DoButton_Menu(&s_BtnRestartAc, TCLocalize("Reiniciar"), 0, &ActionBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.2f, 0.75f, 0.2f, 0.6f)))
+		{
+			Client()->Restart();
+		}
+	}
+	else if(UpState == CTClient::UPDATE_STATE_CHECKING)
+	{
+		str_copy(aStatusText, "Comprobando ultima version en GitHub Releases...", sizeof(aStatusText));
+		TextRender()->TextColor(0.7f, 0.85f, 1.0f, 1.0f);
+	}
+	else
+	{
+		str_format(aStatusText, sizeof(aStatusText), "AClient v%s (Cliente al dia)", pCurVer);
+		TextRender()->TextColor(0.85f, 0.88f, 0.95f, 1.0f);
+		static CButtonContainer s_BtnCheckAc;
+		if(DoButton_Menu(&s_BtnCheckAc, TCLocalize("Buscar ahora"), 0, &ActionBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
+		{
+			GameClient()->m_TClient.FetchTClientInfo(true);
+		}
+	}
+	Ui()->DoLabel(&StatusLine, aStatusText, 13.0f, TEXTALIGN_ML);
+	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+	s_SectionBoxesAc.back().h = UpdateSection.y - s_SectionBoxesAc.back().y + MarginSmall;
+
+	LeftView.y = UpdateSection.y + MarginSmall;
+	RightView.y = UpdateSection.y + MarginSmall;
 
 	// ***** Bloque Inferior: Novedades de AClient ***** //
 	CUIRect BottomWhatsNew;

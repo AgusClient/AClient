@@ -42,6 +42,16 @@ class CTClient : public CComponent
 	bool ServerCommandExists(const char *pCommand);
 
 public:
+	enum EUpdateState
+	{
+		UPDATE_STATE_IDLE = 0,
+		UPDATE_STATE_CHECKING,
+		UPDATE_STATE_AVAILABLE,
+		UPDATE_STATE_DOWNLOADING,
+		UPDATE_STATE_NEED_RESTART,
+		UPDATE_STATE_FAIL,
+	};
+
 	CTClient();
 	int Sizeof() const override { return sizeof(*this); }
 	void OnInit() override;
@@ -54,10 +64,26 @@ public:
 	void SetForcedAspect();
 
 	std::shared_ptr<IHttpRequest> m_pTClientInfoTask = nullptr;
-	void FetchTClientInfo();
+	std::shared_ptr<IHttpRequest> m_pDownloadTask = nullptr;
+
+	EUpdateState m_UpdateState = UPDATE_STATE_IDLE;
+	char m_aLatestVersion[32] = "0";
+	char m_aDownloadUrl[512] = "";
+	char m_aUpdateStatus[128] = "";
+	int m_UpdatePercent = 0;
+
+	void FetchTClientInfo(bool Force = false);
 	void FinishTClientInfo();
 	void ResetTClientInfoTask();
 	bool NeedUpdate();
+
+	void InitiateUpdate();
+	bool ReplaceExecutable();
+
+	EUpdateState GetUpdateState() const { return m_UpdateState; }
+	int GetUpdatePercent() const { return m_UpdatePercent; }
+	const char *GetLatestVersion() const { return m_aLatestVersion; }
+	const char *GetUpdateStatus() const { return m_aUpdateStatus; }
 
 	void RenderMiniVoteHud();
 	void RenderCenterLines();
@@ -66,7 +92,7 @@ public:
 	bool ChatDoSpecId(const char *pInput);
 	bool InfoTaskDone() { return m_pTClientInfoTask && m_pTClientInfoTask->State() == EHttpState::DONE; }
 	bool m_FetchedTClientInfo = false;
-	char m_aVersionStr[10] = "0";
+	char m_aVersionStr[32] = "0";
 
 	Regex m_RegexChatIgnore;
 };
