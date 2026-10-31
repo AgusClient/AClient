@@ -6,7 +6,7 @@
 [![Base TClient](https://img.shields.io/badge/Base-TClient-purple?logo=github)](https://github.com/TaterClient/TClient)
 [![License](https://img.shields.io/badge/License-Zlib-green)](license.txt)
 
-**AClient** es un cliente competitivo y de practica avanzado para **DDraceNetwork (DDNet)** y **Teeworlds**, desarrollado sobre la base de **TClient** y **DDNet**. Incorpora herramientas de analisis en tiempo real, perfiles KoG y DDNet, HUD modular de pulsaciones, gameskins compartidos entre jugadores, multiples algoritmos de respuesta rapida de entrada (Fast Input), editor de texturas integrado y actualizador automatico.
+**AClient** es un cliente competitivo y de practica avanzado para **DDraceNetwork (DDNet)** y **Teeworlds**, desarrollado sobre la base de **TClient** y **DDNet**. Incorpora herramientas de analisis en tiempo real, perfiles KoG y DDNet, herramientas de moderacion integradas, HUD modular de pulsaciones, gameskins compartidos entre jugadores, multiples algoritmos de respuesta rapida de entrada (Fast Input), editor de texturas integrado y actualizador automatico.
 
 ---
 
@@ -18,6 +18,17 @@
 * **Descarga automatica opcional (`cl_download_gameskins`)**: Opcion para descargar gameskins remotos en caliente desde el repositorio de assets.
 * **Zero Polling**: Anuncio y consulta unica al conectar o refresco manual bajo demanda en **Configuracion -> Tee** (`reload_remote_gameskins`).
 * **Texture Pooling**: Memoria de video optimizada compartiendo instancias de texturas entre jugadores que usen el mismo gameskin.
+
+### Herramientas de Moderacion (Mod Tools)
+* **Pestana dedicada en Ajustes -> AClient -> Moderacion**: Panel completo para configurar atajos, duraciones y motivos de sancion para moderadores y administradores de servidores.
+* **Auto-grabado de repeticiones en sanciones (`cl_mod_record_on_punish`)**: Guarda automaticamente los ultimos 3 minutos de gameplay en `demos/replays/` al confirmar un kick o ban, asegurando evidencia inmediata.
+* **Integracion rapida en Scoreboard**: Haz clic en cualquier jugador de la tabla de puntuaciones para desplegar el menu de moderacion contextual con botones de tiempo y razones predefinidas.
+* **Presets de Mute (`muteid`)**: 6 duraciones configurables en segundos (`cl_mod_mute_sec1` a `cl_mod_mute_sec6`: 1m, 5m, 15m, 1h, 4h, 24h) y 3 razones editables (`cl_mod_mute_reason1` a `cl_mod_mute_reason3`: "Spam", "Insultos", "Bloqueo").
+* **Presets de Kick (`kick`)**: 3 motivos editables (`cl_mod_kick_reason1` a `cl_mod_kick_reason3`: "AFK", "Troll", "Reglas").
+* **Presets de Ban (`ban`)**: 4 duraciones en minutos (`cl_mod_ban_min1` a `cl_mod_ban_min4`: 5m, 1h, 1d, 7d) y 3 motivos editables (`cl_mod_ban_reason1` a `cl_mod_ban_reason3`: "Cheats", "Insultos", "Griefing").
+* **Arma de Moderacion (`tc_mod_weapon`)**: Permite ejecutar un comando de consola remota al apuntar y disparar a un jugador (`tc_mod_weapon_command`, por defecto `rcon kill_pl`), mostrando una cuenta regresiva visual sobre el tee antes de actuar.
+* **Moderacion de Dummy Local (`cl_mod_allow_target_dummy`)**: Habilita botones de kick, ban y mute sobre tu propio dummy para probar la interfaz localmente.
+* **Restauracion con un clic**: Boton de reseteo para devolver todos los presets de moderacion a sus valores recomendados de fabrica.
 
 ### Perfiles de Jugador y Modo Equipo (DDNet & KoG)
 * **Doble fuente de datos (`ac_profile_source`)**: Consulta de perfiles oficiales de DDNet y King of Gores (KoG.tw) directamente dentro del juego (`profile <nombre>`).
@@ -66,13 +77,17 @@
 
 ---
 
-## Comandos y Variables Clave (`ac_`)
+## Comandos y Variables Clave (`ac_` & `cl_mod_`)
 
 | Comando / Variable | Por Defecto | Descripcion |
 | :--- | :---: | :--- |
 | `ac_show_remote_gameskins` | `1` | Mostrar gameskins de armas y gancho de otros jugadores de AClient |
 | `cl_download_gameskins` | `0` | Descargar gameskins automaticamente si no se tienen en disco |
 | `reload_remote_gameskins` | - | Consultar y refrescar los gameskins remotos del servidor actual |
+| `cl_mod_record_on_punish` | `1` | Graba automaticamente repeticion de 3 minutos al sancionar (Kick/Ban) |
+| `cl_mod_allow_target_dummy` | `0` | Permite acciones de moderacion sobre el dummy propio para pruebas locales |
+| `tc_mod_weapon` | `0` | Ejecutar comando RCON al apuntar y disparar a un jugador |
+| `tc_mod_weapon_command` | `rcon kill_pl` | Comando ejecutado por el arma de moderacion |
 | `ac_profile_source` | `0` | Fuente de datos para perfiles (0: DDNet, 1: KoG) |
 | `ac_profile_view_mode` | `0` | Modo de visualizacion de perfiles (0: Individual, 1: Equipo) |
 | `profile <nombre>` | - | Abrir el panel de perfil del jugador indicado |
@@ -92,4 +107,4 @@
 * **[DDraceNetwork (DDNet)](https://ddnet.org):** Desarrollado por Dennis Felsing (`def-`) y la comunidad de DDNet.
 * **[TClient](https://github.com/TaterClient/TClient):** Desarrollado por Taters (`sjrc6`).
 * **[Teeworlds](https://www.teeworlds.com):** Creado originalmente por Magnus Auvinen (`matricks`).
-* **AClient:** Modificaciones, perfiles KoG/DDNet, gameskins compartidos, Fast Input aX30/AClient, HUD modular y mantenimiento por el equipo de **[AgusClient](https://github.com/AgusClient/AClient)**.
+* **AClient:** Modificaciones, perfiles KoG/DDNet, herramientas de moderacion, gameskins compartidos, Fast Input aX30/AClient, HUD modular y mantenimiento por el equipo de **[AgusClient](https://github.com/AgusClient/AClient)**.
