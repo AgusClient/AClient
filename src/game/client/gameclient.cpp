@@ -1071,7 +1071,12 @@ bool CGameClient::Predict() const
 
 bool CGameClient::PredictDummy() const
 {
-	return (g_Config.m_ClPredictDummy || m_FastPractice.Enabled()) &&
+	if(m_FastPractice.Active())
+	{
+		const int FastPracticeDummyId = m_FastPractice.CurrentPracticeDummyId();
+		return FastPracticeDummyId >= 0 && m_Snap.m_LocalClientId >= 0 && !m_aClients[FastPracticeDummyId].m_Paused;
+	}
+	return g_Config.m_ClPredictDummy &&
 	       Client()->DummyConnected() &&
 	       m_Snap.m_LocalClientId >= 0 &&
 	       m_aLocalIds[!g_Config.m_ClDummy] >= 0 &&
@@ -2810,8 +2815,12 @@ void CGameClient::OnPredict()
 	CCharacterCore BeforeChar = m_PredictedChar;
 
 	// we can't predict without our own id or own character
-	if(m_Snap.m_LocalClientId == -1 || (!m_FastPractice.Enabled() && !m_Snap.m_aCharacters[m_Snap.m_LocalClientId].m_Active))
+	if(m_Snap.m_LocalClientId == -1 || !m_Snap.m_aCharacters[m_Snap.m_LocalClientId].m_Active)
+	{
+		if(m_FastPractice.Enabled())
+			m_FastPractice.SyncFromPrediction();
 		return;
+	}
 
 	// don't predict anything if we are paused
 	if(m_Snap.m_pGameInfoObj && m_Snap.m_pGameInfoObj->m_GameStateFlags & GAMESTATEFLAG_PAUSED)
@@ -2826,11 +2835,11 @@ void CGameClient::OnPredict()
 			m_PredictedPrevChar.Read(m_Snap.m_pLocalPrevCharacter);
 			m_PredictedPrevChar.m_ActiveWeapon = m_Snap.m_pLocalPrevCharacter->m_Weapon;
 		}
+		if(m_FastPractice.Enabled())
+			m_FastPractice.SyncFromPrediction();
 		return;
 	}
 
-	if(m_FastPractice.Enabled() && m_FastPractice.OverridePredict())
-		return;
 	vec2 aBeforeRender[MAX_CLIENTS];
 	const bool NeedBeforeRender = g_Config.m_ClAntiPingSmooth && Predict() && AntiPingPlayers();
 	if(NeedBeforeRender)
@@ -2840,6 +2849,15 @@ void CGameClient::OnPredict()
 			if(m_Snap.m_aCharacters[i].m_Active && i != m_Snap.m_LocalClientId && m_aLastActive[i])
 				aBeforeRender[i] = GetSmoothPos(i);
 		}
+	}
+
+	const bool PracticeActive = m_FastPractice.Active();
+	CNetObj_PlayerInput PracticeNeutralInput{};
+	CNetObj_PlayerInput PracticeNeutralDummyInput{};
+	if(PracticeActive)
+	{
+		m_FastPractice.BuildNeutralInput(PracticeNeutralInput, m_IsDummySwapping != 0, true);
+		m_FastPractice.BuildNeutralInput(PracticeNeutralDummyInput, (m_IsDummySwapping ^ 1) != 0, true);
 	}
 
 	// init
@@ -2867,7 +2885,11 @@ void CGameClient::OnPredict()
 
 	CCharacter *pLocalChar = m_PredictedWorld.GetCharacterById(m_Snap.m_LocalClientId);
 	if(!pLocalChar)
+	{
+		if(m_FastPractice.Enabled())
+			m_FastPractice.SyncFromPrediction();
 		return;
+	}
 	CCharacter *pDummyChar = nullptr;
 	if(PredictDummy())
 		pDummyChar = m_PredictedWorld.GetCharacterById(m_aLocalIds[!g_Config.m_ClDummy]);
@@ -2932,7 +2954,13 @@ void CGameClient::OnPredict()
 		CNetObj_PlayerInput DummyFastInput{};
 		bool DummyFirst = pInputData && pDummyInputData && pDummyChar->GetCid() < pLocalChar->GetCid();
 
-		if((FastInputTicks > 0 || g_Config.m_TcFastInput) && Tick > FinalTickRegular)
+		if(PracticeActive)
+		{
+			pInputData = &PracticeNeutralInput;
+			if(pDummyChar)
+				pDummyInputData = &PracticeNeutralDummyInput;
+		}
+		else if((FastInputTicks > 0 || g_Config.m_TcFastInput) && Tick > FinalTickRegular)
 		{
 			pInputData = &m_Controls.m_aFastInput[LocalTee];
 			if(g_Config.m_AcInputs != AC_INPUTS_SAIKO && GetDummyFastInput(DummyFastInput, pDummyInputData, pDummyChar, LocalTee, DummyTee))
@@ -3002,6 +3030,8 @@ void CGameClient::OnPredict()
 		for(int i = 0; i < MAX_CLIENTS; i++)
 			if(CCharacter *pChar = m_PredictedWorld.GetCharacterById(i))
 			{
+				if(PracticeActive && m_FastPractice.IsPracticeParticipant(i))
+					continue;
 				m_aClients[i].m_aPredPos[Tick % 200] = pChar->Core()->m_Pos;
 				m_aClients[i].m_aPredTick[Tick % 200] = Tick;
 			}
@@ -3420,6 +3450,8 @@ void CGameClient::OnPredict()
 
 	if(m_NewPredictedTick)
 		m_Ghost.OnNewPredictedSnapshot();
+
+	m_FastPractice.SyncFromPrediction();
 }
 
 void CGameClient::OnActivateEditor()
@@ -4340,12 +4372,26 @@ void CGameClient::UpdatePrediction()
 	// advance the gameworld to the current gametick
 	if(pLocalChar && absolute(m_GameWorld.GameTick() - Client()->GameTick(g_Config.m_ClDummy)) < Client()->GameTickSpeed())
 	{
+		const bool PracticeEnabled = m_FastPractice.Enabled();
+		CNetObj_PlayerInput PracticeNeutralInput{};
+		CNetObj_PlayerInput PracticeNeutralDummyInput{};
+		if(PracticeEnabled)
+		{
+			m_FastPractice.BuildNeutralInput(PracticeNeutralInput, m_IsDummySwapping != 0, true);
+			m_FastPractice.BuildNeutralInput(PracticeNeutralDummyInput, (m_IsDummySwapping ^ 1) != 0, true);
+		}
 		for(int Tick = m_GameWorld.GameTick() + 1; Tick <= Client()->GameTick(g_Config.m_ClDummy); Tick++)
 		{
 			CNetObj_PlayerInput *pInput = (CNetObj_PlayerInput *)Client()->GetInput(Tick);
 			CNetObj_PlayerInput *pDummyInput = nullptr;
 			if(pDummyChar)
 				pDummyInput = (CNetObj_PlayerInput *)Client()->GetInput(Tick, 1);
+			if(PracticeEnabled)
+			{
+				pInput = &PracticeNeutralInput;
+				if(pDummyChar)
+					pDummyInput = &PracticeNeutralDummyInput;
+			}
 			if(pInput)
 				pLocalChar->OnDirectInput(pInput);
 			if(pDummyInput)
@@ -4366,6 +4412,8 @@ void CGameClient::UpdatePrediction()
 			for(int i = 0; i < MAX_CLIENTS; i++)
 				if(CCharacter *pChar = m_GameWorld.GetCharacterById(i))
 				{
+					if(m_FastPractice.IsPracticeParticipant(i))
+						continue;
 					m_aClients[i].m_aPredPos[Tick % 200] = pChar->Core()->m_Pos;
 					m_aClients[i].m_aPredTick[Tick % 200] = Tick;
 				}
@@ -4375,17 +4423,33 @@ void CGameClient::UpdatePrediction()
 	{
 		// skip to current gametick
 		m_GameWorld.m_GameTick = Client()->GameTick(g_Config.m_ClDummy);
-		if(pLocalChar)
-			if(CNetObj_PlayerInput *pInput = (CNetObj_PlayerInput *)Client()->GetInput(Client()->GameTick(g_Config.m_ClDummy)))
-				pLocalChar->SetInput(pInput);
-		if(pDummyChar)
-			if(CNetObj_PlayerInput *pInput = (CNetObj_PlayerInput *)Client()->GetInput(Client()->GameTick(g_Config.m_ClDummy), 1))
-				pDummyChar->SetInput(pInput);
+		if(m_FastPractice.Enabled())
+		{
+			CNetObj_PlayerInput PracticeNeutralInput{};
+			CNetObj_PlayerInput PracticeNeutralDummyInput{};
+			m_FastPractice.BuildNeutralInput(PracticeNeutralInput, m_IsDummySwapping != 0, true);
+			m_FastPractice.BuildNeutralInput(PracticeNeutralDummyInput, (m_IsDummySwapping ^ 1) != 0, true);
+			if(pLocalChar)
+				pLocalChar->SetInput(&PracticeNeutralInput);
+			if(pDummyChar)
+				pDummyChar->SetInput(&PracticeNeutralDummyInput);
+		}
+		else
+		{
+			if(pLocalChar)
+				if(CNetObj_PlayerInput *pInput = (CNetObj_PlayerInput *)Client()->GetInput(Client()->GameTick(g_Config.m_ClDummy)))
+					pLocalChar->SetInput(pInput);
+			if(pDummyChar)
+				if(CNetObj_PlayerInput *pInput = (CNetObj_PlayerInput *)Client()->GetInput(Client()->GameTick(g_Config.m_ClDummy), 1))
+					pDummyChar->SetInput(pInput);
+		}
 	}
 
 	for(int i = 0; i < MAX_CLIENTS; i++)
 		if(CCharacter *pChar = m_GameWorld.GetCharacterById(i))
 		{
+			if(m_FastPractice.IsPracticeParticipant(i))
+				continue;
 			m_aClients[i].m_aPredPos[Client()->GameTick(g_Config.m_ClDummy) % 200] = pChar->Core()->m_Pos;
 			m_aClients[i].m_aPredTick[Client()->GameTick(g_Config.m_ClDummy) % 200] = Client()->GameTick(g_Config.m_ClDummy);
 		}
@@ -4555,6 +4619,10 @@ void CGameClient::UpdateSpectatorCursor()
 
 void CGameClient::UpdateRenderedCharacters()
 {
+	const bool PracticeActive = m_FastPractice.Active();
+	const int PracticeControlledId = PracticeActive ? m_FastPractice.ControlledPracticeId() : -1;
+	const int PracticePartnerId = PracticeActive ? m_FastPractice.PartnerPracticeId() : -1;
+
 	const float FastInputOffsetTicks = AcInputs::EffectiveOffsetTicks(false);
 	const int FastInputTicks = AcInputs::PredictionTicks(FastInputOffsetTicks);
 	const bool FastInputOthers = AcInputs::AnyOthers();
@@ -4565,27 +4633,67 @@ void CGameClient::UpdateRenderedCharacters()
 
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
-		if(!m_Snap.m_aCharacters[i].m_Active)
+		const bool IsPracticeParticipant = PracticeActive && m_FastPractice.IsPracticeParticipant(i);
+		if(!m_Snap.m_aCharacters[i].m_Active && !IsPracticeParticipant)
 			continue;
-		m_aClients[i].m_RenderCur = m_Snap.m_aCharacters[i].m_Cur;
-		m_aClients[i].m_RenderPrev = m_Snap.m_aCharacters[i].m_Prev;
+		if(m_Snap.m_aCharacters[i].m_Active)
+		{
+			m_aClients[i].m_RenderCur = m_Snap.m_aCharacters[i].m_Cur;
+			m_aClients[i].m_RenderPrev = m_Snap.m_aCharacters[i].m_Prev;
+		}
 		m_aClients[i].m_IsPredicted = false;
 		m_aClients[i].m_IsPredictedLocal = false;
-		vec2 UnpredPos = mix(
-			vec2(m_Snap.m_aCharacters[i].m_Prev.m_X, m_Snap.m_aCharacters[i].m_Prev.m_Y),
-			vec2(m_Snap.m_aCharacters[i].m_Cur.m_X, m_Snap.m_aCharacters[i].m_Cur.m_Y),
-			Client()->IntraGameTick(g_Config.m_ClDummy));
+		vec2 UnpredPos = m_aClients[i].m_RenderPos;
+		if(m_Snap.m_aCharacters[i].m_Active)
+		{
+			UnpredPos = mix(
+				vec2(m_Snap.m_aCharacters[i].m_Prev.m_X, m_Snap.m_aCharacters[i].m_Prev.m_Y),
+				vec2(m_Snap.m_aCharacters[i].m_Cur.m_X, m_Snap.m_aCharacters[i].m_Cur.m_Y),
+				Client()->IntraGameTick(g_Config.m_ClDummy));
+		}
 		vec2 Pos = UnpredPos;
-		CCharacter *pChar = m_PredictedWorld.GetCharacterById(i);
+		CCharacter *pChar = IsPracticeParticipant ? m_FastPractice.PracticeWorld().GetCharacterById(i) : m_PredictedWorld.GetCharacterById(i);
 
-		// TClient TODO: Remove
-		if(i == m_Snap.m_LocalClientId)
+		if(i == (PracticeActive ? PracticeControlledId : m_Snap.m_LocalClientId))
 			Client()->m_IsLocalFrozen = pChar && pChar->m_FreezeTime > 0;
 
 		const bool IsDummy = PredictDummy() && i == m_aLocalIds[!g_Config.m_ClDummy];
 		bool AntiPingPlayer = AntiPingPlayers() == 1 || (AntiPingPlayers() >= 2 && (IsDummy || (pChar && pChar->IsInterfering())));
-		const bool IsPracticeParticipant = m_FastPractice.Enabled() && m_FastPractice.IsPracticeParticipant(i);
-		if(Predict() && (i == m_Snap.m_LocalClientId || IsPracticeParticipant || (AntiPingPlayer && !IsOtherTeam(i))) && pChar)
+
+		if(IsPracticeParticipant && pChar)
+		{
+			CNetObj_Character FastPrev{};
+			CNetObj_Character FastCur{};
+			if(m_FastPractice.GetFastInputRenderCharacter(i, FastPrev, FastCur))
+			{
+				m_aClients[i].m_RenderPrev = FastPrev;
+				m_aClients[i].m_RenderCur = FastCur;
+			}
+			else
+			{
+				m_aClients[i].m_Predicted.Write(&m_aClients[i].m_RenderCur);
+				m_aClients[i].m_PrevPredicted.Write(&m_aClients[i].m_RenderPrev);
+			}
+
+			m_aClients[i].m_IsPredicted = true;
+			m_aClients[i].m_IsPredictedLocal = true;
+
+			Pos = mix(
+				vec2(m_aClients[i].m_RenderPrev.m_X, m_aClients[i].m_RenderPrev.m_Y),
+				vec2(m_aClients[i].m_RenderCur.m_X, m_aClients[i].m_RenderCur.m_Y),
+				Client()->PredIntraGameTick(g_Config.m_ClDummy));
+
+			if(pChar->m_NinjaJetpack && pChar->m_FreezeTime == 0)
+			{
+				m_aClients[i].m_RenderCur.m_AttackTick = pChar->GetAttackTick();
+			}
+			else if(m_Snap.m_aCharacters[i].m_Cur.m_Weapon != WEAPON_NINJA)
+			{
+				m_aClients[i].m_RenderCur.m_AttackTick = pChar->GetAttackTick();
+				m_aClients[i].m_RenderCur.m_Weapon = m_aClients[i].m_Predicted.m_ActiveWeapon;
+			}
+		}
+		else if(Predict() && (i == m_Snap.m_LocalClientId || (AntiPingPlayer && !IsOtherTeam(i))) && pChar)
 		{
 			m_aClients[i].m_Predicted.Write(&m_aClients[i].m_RenderCur);
 			m_aClients[i].m_PrevPredicted.Write(&m_aClients[i].m_RenderPrev);
