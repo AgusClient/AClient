@@ -131,7 +131,7 @@ void CAClientAuth::StartLogin(const char *pUser, const char *pPass)
 	if(!pUser || !pUser[0] || !pPass || !pPass[0])
 	{
 		m_AuthState = AUTH_ERROR;
-		str_copy(m_aErrorMessage, "Ingresa usuario y contrasena", sizeof(m_aErrorMessage));
+		str_copy(m_aErrorMessage, "Ingresa usuario y contraseña", sizeof(m_aErrorMessage));
 		return;
 	}
 
@@ -334,10 +334,10 @@ void CAClientAuth::RenderAuthModal(CUIRect Screen)
 
 	Box.HSplitTop(10.0f, nullptr, &Box);
 
-	// Campo: Contrasena
+	// Campo: Contraseña
 	Box.HSplitTop(15.0f, &PassLabel, &Box);
 	TextRender()->TextColor(0.85f, 0.85f, 0.9f, 1.0f);
-	TextRender()->Text(PassLabel.x, PassLabel.y, 11.5f, "Contrasena:", -1.0f);
+	TextRender()->Text(PassLabel.x, PassLabel.y, 11.5f, "Contraseña:", -1.0f);
 
 	Box.HSplitTop(24.0f, &PassInput, &Box);
 	Ui()->DoEditBox(&m_PasswordInput, &PassInput, 12.0f);
