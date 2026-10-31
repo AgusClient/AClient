@@ -221,6 +221,8 @@ public:
 	bool GetKoGMapMeta(const char *pMapName, CMapMetadata &OutMeta);
 	bool GetDDNetMapMeta(const char *pMapName, CMapMetadata &OutMeta);
 	void EnsureKoGMapsMetaLoaded();
+	void FetchKoGMapsMetaNetwork();
+	bool ParseKoGMapsMetaJson(const char *pJsonStr, size_t Length);
 
 	const std::vector<std::string> &TeamPlayers() const { return m_vTeamPlayers; }
 	const std::vector<CTeamUnfinishedMap> &CommonUnfinishedMaps() const { return m_vCommonUnfinishedMaps; }
@@ -228,6 +230,9 @@ public:
 	bool TeamComparisonReady() const { return m_TeamComparisonReady; }
 
 private:
+	void ProcessKoGMapsMetaResponse();
+
+	std::shared_ptr<IHttpRequest> m_pKoGMapsHttpRequest = nullptr;
 	std::vector<std::string> m_vTeamPlayers;
 	std::vector<CTeamUnfinishedMap> m_vCommonUnfinishedMaps;
 	std::deque<std::string> m_qTeamPendingDDNet;

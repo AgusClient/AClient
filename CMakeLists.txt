@@ -2902,6 +2902,7 @@ if(CLIENT)
     components/tclient/pet.h
     components/tclient/player_indicator.cpp
     components/tclient/player_indicator.h
+    components/tclient/kog_maps_data.h
     components/tclient/player_profiles.cpp
     components/tclient/player_profiles.h
     components/tclient/rainbow.cpp

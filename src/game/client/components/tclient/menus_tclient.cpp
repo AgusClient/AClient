@@ -5254,7 +5254,10 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 		{
 			str_copy(s_aLastSyncedReq, pTarget);
 			if(IsKoG)
+			{
 				Profiles.FetchKoGProfile(pTarget, true);
+				Profiles.FetchKoGMapsMetaNetwork();
+			}
 			else
 				Profiles.FetchProfile(pTarget, true);
 		}
@@ -5413,6 +5416,8 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 				else
 					Profiles.FetchProfile(Name.c_str(), true);
 			}
+			if(IsKoG)
+				Profiles.FetchKoGMapsMetaNetwork();
 		}
 
 		// Status text on right side of controls
@@ -5544,7 +5549,7 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 			s_LastSourceForCat = g_Config.m_AcProfileSource;
 		}
 
-		const char *apCatsKoG[] = { "Todos", "Easy", "Main", "Hard", "Insane", "Extreme", "Mod" };
+		const char *apCatsKoG[] = { "Todos", "Easy", "Main", "Hard", "Insane", "Extreme", "Mod", "Otros" };
 		const char *apCatsDDNet[] = { "Todos", "Novice", "Moderate", "Brutal", "Insane", "Dummy", "DDMaX", "Solo" };
 
 		const char **apCats = IsKoG ? apCatsKoG : apCatsDDNet;
