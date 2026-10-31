@@ -22,6 +22,73 @@ void CMenus::RenderSettingsSound(CUIRect MainView)
 	if(!g_Config.m_SndEnable)
 		return;
 
+	// Audio output device selection
+	{
+		CUIRect DeviceRow, Label, PrevBtn, DevBtn, NextBtn;
+		MainView.HSplitTop(20.0f, &DeviceRow, &MainView);
+		DeviceRow.VSplitLeft(160.0f, &Label, &DeviceRow);
+		Ui()->DoLabel(&Label, Localize("Audio device"), 14.0f, TEXTALIGN_ML);
+
+		DeviceRow.VSplitLeft(24.0f, &PrevBtn, &DeviceRow);
+		DeviceRow.VSplitRight(24.0f, &DeviceRow, &NextBtn);
+		DeviceRow.VSplitLeft(4.0f, nullptr, &DevBtn);
+		DevBtn.VSplitRight(4.0f, &DevBtn, nullptr);
+
+		int NumDevices = Sound()->GetNumAudioDevices();
+		int CurIdx = -1;
+		if(g_Config.m_SndDevice[0] && str_comp(g_Config.m_SndDevice, "default") != 0)
+		{
+			for(int i = 0; i < NumDevices; i++)
+			{
+				const char *pName = Sound()->GetAudioDeviceName(i);
+				if(pName && str_comp(pName, g_Config.m_SndDevice) == 0)
+				{
+					CurIdx = i;
+					break;
+				}
+			}
+		}
+
+		static CButtonContainer s_PrevDevice;
+		static CButtonContainer s_NextDevice;
+		static CButtonContainer s_CurrentDevice;
+
+		if(DoButton_Menu(&s_PrevDevice, "<", 0, &PrevBtn))
+		{
+			int NextIdx = CurIdx - 1;
+			if(NextIdx < -1)
+				NextIdx = NumDevices - 1;
+			if(NextIdx == -1 || NumDevices <= 0)
+				Sound()->SetAudioDevice("default");
+			else
+				Sound()->SetAudioDevice(Sound()->GetAudioDeviceName(NextIdx));
+		}
+
+		const char *pCurrentName = (CurIdx >= 0) ? Sound()->GetAudioDeviceName(CurIdx) : Localize("Default");
+		if(DoButton_Menu(&s_CurrentDevice, pCurrentName ? pCurrentName : Localize("Default"), 0, &DevBtn))
+		{
+			int NextIdx = CurIdx + 1;
+			if(NextIdx >= NumDevices)
+				NextIdx = -1;
+			if(NextIdx == -1 || NumDevices <= 0)
+				Sound()->SetAudioDevice("default");
+			else
+				Sound()->SetAudioDevice(Sound()->GetAudioDeviceName(NextIdx));
+		}
+
+		if(DoButton_Menu(&s_NextDevice, ">", 0, &NextBtn))
+		{
+			int NextIdx = CurIdx + 1;
+			if(NextIdx >= NumDevices)
+				NextIdx = -1;
+			if(NextIdx == -1 || NumDevices <= 0)
+				Sound()->SetAudioDevice("default");
+			else
+				Sound()->SetAudioDevice(Sound()->GetAudioDeviceName(NextIdx));
+		}
+		MainView.HSplitTop(4.0f, nullptr, &MainView);
+	}
+
 	MainView.HSplitTop(20.0f, &Button, &MainView);
 	if(DoButton_CheckBox(&g_Config.m_SndMusic, Localize("Play background music"), g_Config.m_SndMusic, &Button))
 	{

@@ -1,5 +1,7 @@
 #include <base/log.h>
 #include <base/math.h>
+#include <base/io.h>
+#include <base/time.h>
 #include <base/types.h>
 
 #include <engine/font_icons.h>
@@ -11,6 +13,8 @@
 #include <engine/storage.h>
 #include <engine/textrender.h>
 #include <engine/updater.h>
+#include <engine/image.h>
+#include <engine/gfx/image_loader.h>
 
 #include <game/version.h>
 #include <game/client/animstate.h>
@@ -3268,6 +3272,18 @@ void CMenus::RenderSettingsTClientRaceStats(CUIRect MainView)
 	DoLine_KeyReader(LeftView, s_ReaderBtnTabSave, s_ClearBtnTabSave, TCLocalize("Save stats key"), "ac_save_racestats");
 
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcStatboardAutoSave, TCLocalize("Auto-save before reset (/kill or /team)"), &g_Config.m_AcStatboardAutoSave, &LeftView, LineSize);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcRaceStatsSaveOnFinish, TCLocalize("Auto-save on map finish"), &g_Config.m_AcRaceStatsSaveOnFinish, &LeftView, LineSize);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcRaceStatsSaveOnlyOnFinish, TCLocalize("Save ONLY on map finish"), &g_Config.m_AcRaceStatsSaveOnlyOnFinish, &LeftView, LineSize);
+
+	LeftView.HSplitTop(MarginSmall, nullptr, &LeftView);
+	CUIRect DurationSlider, MaxLogsSlider;
+	LeftView.HSplitTop(LineSize, &DurationSlider, &LeftView);
+	Ui()->DoScrollbarOption(&g_Config.m_AcRaceStatsMinDuration, &g_Config.m_AcRaceStatsMinDuration, &DurationSlider, TCLocalize("Min run duration"), 0, 120, &CUi::ms_LinearScrollbarScale, 0u, "s");
+
+	LeftView.HSplitTop(MarginSmall, nullptr, &LeftView);
+	LeftView.HSplitTop(LineSize, &MaxLogsSlider, &LeftView);
+	Ui()->DoScrollbarOption(&g_Config.m_AcRaceStatsMaxLogs, &g_Config.m_AcRaceStatsMaxLogs, &MaxLogsSlider, TCLocalize("Max saved logs (0=unlimited)"), 0, 200, &CUi::ms_LinearScrollbarScale, 0u);
+
 	LeftView.HSplitTop(MarginSmall, nullptr, &LeftView);
 
 	// Botones de acción: Guardar Actual / Borrar / Limpiar Todo
@@ -3328,10 +3344,19 @@ void CMenus::RenderSettingsTClientRaceStats(CUIRect MainView)
 			s_SelectedEntry = i;
 		}
 
-		CUIRect TopLine, BottomLine, MapRect, TimeRect;
+		CUIRect TopLine, BottomLine, MapRect, TimeRect, FlagRect;
 		ItemRect.Margin(4.0f, &ItemRect);
 		ItemRect.HSplitMid(&TopLine, &BottomLine);
 		TopLine.VSplitRight(95.0f, &MapRect, &TimeRect);
+
+		if(Entry.m_Completed)
+		{
+			MapRect.VSplitLeft(16.0f, &FlagRect, &MapRect);
+			TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+			TextRender()->TextColor(1.0f, 0.85f, 0.2f, 1.0f);
+			Ui()->DoLabel(&FlagRect, FontIcon::FLAG_CHECKERED, 11.5f, TEXTALIGN_ML);
+			TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+		}
 
 		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 		Ui()->DoLabel(&MapRect, Entry.m_aMapName, 12.5f, TEXTALIGN_ML);
@@ -3351,6 +3376,7 @@ void CMenus::RenderSettingsTClientRaceStats(CUIRect MainView)
 	s_HistoryScroll.End();
 
 	// ===== PANEL DERECHO: VISUALIZADOR DETALLADO =====
+	CUIRect ExportCardRect = RightView;
 	RightView.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 8.0f);
 	RightView.Margin(Margin, &RightView);
 
@@ -3373,8 +3399,17 @@ void CMenus::RenderSettingsTClientRaceStats(CUIRect MainView)
 	MetaCard.Margin(8.0f, &MetaCard);
 	MetaCard.HSplitMid(&MetaTop, &MetaBottom);
 
-	CUIRect MetaMap, MetaRunTime;
-	MetaTop.VSplitRight(160.0f, &MetaMap, &MetaRunTime);
+	CUIRect MetaMap, MetaRunTime, BtnExportPng;
+	MetaTop.VSplitRight(95.0f, &MetaTop, &BtnExportPng);
+	MetaTop.VSplitRight(8.0f, &MetaTop, nullptr);
+	MetaTop.VSplitRight(140.0f, &MetaMap, &MetaRunTime);
+
+	static CButtonContainer s_BtnExportPng;
+	static bool s_ExportPngPending = false;
+	if(DoButton_Menu(&s_BtnExportPng, "Export PNG", 0, &BtnExportPng))
+	{
+		s_ExportPngPending = true;
+	}
 
 	char aTitleBuf[128];
 	str_format(aTitleBuf, sizeof(aTitleBuf), "Map: %s", Sel.m_aMapName);
@@ -3561,6 +3596,71 @@ void CMenus::RenderSettingsTClientRaceStats(CUIRect MainView)
 
 	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 	s_PlayersScroll.End();
+
+	if(s_ExportPngPending)
+	{
+		s_ExportPngPending = false;
+
+		CImageInfo FullImage;
+		Graphics()->ReadFramebuffer(FullImage);
+
+		if(FullImage.m_pData && FullImage.m_Width > 0 && FullImage.m_Height > 0)
+		{
+			float ScreenW = Ui()->Screen()->w;
+			float ScreenH = Ui()->Screen()->h;
+			float FbW = (float)FullImage.m_Width;
+			float FbH = (float)FullImage.m_Height;
+
+			float ScaleX = FbW / ScreenW;
+			float ScaleY = FbH / ScreenH;
+
+			int PixX = std::clamp((int)(ExportCardRect.x * ScaleX), 0, (int)FullImage.m_Width - 1);
+			int PixY = std::clamp((int)(ExportCardRect.y * ScaleY), 0, (int)FullImage.m_Height - 1);
+			int PixW = std::clamp((int)(ExportCardRect.w * ScaleX), 1, (int)FullImage.m_Width - PixX);
+			int PixH = std::clamp((int)(ExportCardRect.h * ScaleY), 1, (int)FullImage.m_Height - PixY);
+
+			CImageInfo CroppedImage;
+			CroppedImage.m_Width = PixW;
+			CroppedImage.m_Height = PixH;
+			CroppedImage.m_Format = FullImage.m_Format;
+			CroppedImage.Allocate();
+			CroppedImage.CopyRectFrom(FullImage, PixX, PixY, PixW, PixH, 0, 0);
+
+			Storage()->CreateFolder("screenshots", IStorage::TYPE_SAVE);
+			Storage()->CreateFolder("screenshots/racestats", IStorage::TYPE_SAVE);
+
+			char aDate[32];
+			str_timestamp_format(aDate, sizeof(aDate), "%Y-%m-%d_%H-%M-%S");
+			char aSafeMap[64];
+			str_copy(aSafeMap, Sel.m_aMapName, sizeof(aSafeMap));
+			for(char *p = aSafeMap; *p; ++p)
+			{
+				if(*p == '/' || *p == '\\' || *p == ':' || *p == '*' || *p == '?' || *p == '"' || *p == '<' || *p == '>' || *p == '|')
+					*p = '_';
+			}
+
+			char aFilename[IO_MAX_PATH_LENGTH];
+			str_format(aFilename, sizeof(aFilename), "screenshots/racestats/%s_%s.png", aSafeMap, aDate);
+
+			char aWholePath[IO_MAX_PATH_LENGTH];
+			IOHANDLE File = Storage()->OpenFile(aFilename, IOFLAG_WRITE, IStorage::TYPE_SAVE, aWholePath, sizeof(aWholePath));
+			if(File)
+			{
+				if(CImageLoader::SavePng(File, aFilename, CroppedImage))
+				{
+					char aEcho[256];
+					str_format(aEcho, sizeof(aEcho), "RaceStats PNG guardado en: %s", aWholePath);
+					GameClient()->m_Chat.Echo(aEcho);
+				}
+				else
+				{
+					GameClient()->m_Chat.Echo("Error al guardar PNG de RaceStats.");
+				}
+			}
+			CroppedImage.Free();
+		}
+		FullImage.Free();
+	}
 }
 
 void CMenus::RenderSettingsAClient(CUIRect MainView)
@@ -4346,6 +4446,12 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		Column.HSplitTop(LineSize, &Button, &Column);
 		Ui()->DoScrollbarOption(&g_Config.m_AcMiniStatboardAnimSpeed, &g_Config.m_AcMiniStatboardAnimSpeed, &Button, TCLocalize("Animation speed"), 3, 30, &CUi::ms_LinearScrollbarScale, 0);
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		DoCheckboxWithHelp(&g_Config.m_AcMiniStatboardRankUpColor, TCLocalize("Green color on rank up"), TCLocalize("Show green flash when gaining a rank in mini statboard"), &g_Config.m_AcMiniStatboardRankUpColor, &Column, LineSize);
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		DoCheckboxWithHelp(&g_Config.m_AcMiniStatboardRankDownColor, TCLocalize("Red color on rank down"), TCLocalize("Show red flash when losing a rank in mini statboard"), &g_Config.m_AcMiniStatboardRankDownColor, &Column, LineSize);
 	}
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);

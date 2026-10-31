@@ -154,6 +154,7 @@ public:
 		int m_Team;
 		char m_aRunTime[32];
 		char m_aReason[32];
+		bool m_Completed = false;
 		std::vector<CSavedPlayerStat> m_vPlayers;
 	};
 

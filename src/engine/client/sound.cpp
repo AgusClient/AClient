@@ -269,7 +269,13 @@ bool CSound::OpenDevice(bool AllowFrequencyChange)
 	dbg_assert(m_Device == 0, "Audio device already open");
 
 	SDL_AudioSpec FormatOut;
-	m_Device = SDL_OpenAudioDevice(nullptr, 0, &m_AudioSpec, &FormatOut, AllowFrequencyChange ? SDL_AUDIO_ALLOW_FREQUENCY_CHANGE : 0);
+	const char *pDeviceName = (g_Config.m_SndDevice[0] && str_comp(g_Config.m_SndDevice, "default") != 0) ? g_Config.m_SndDevice : nullptr;
+	m_Device = SDL_OpenAudioDevice(pDeviceName, 0, &m_AudioSpec, &FormatOut, AllowFrequencyChange ? SDL_AUDIO_ALLOW_FREQUENCY_CHANGE : 0);
+	if(m_Device == 0 && pDeviceName != nullptr)
+	{
+		log_warn("sound", "Failed to open audio device '%s', falling back to default", pDeviceName);
+		m_Device = SDL_OpenAudioDevice(nullptr, 0, &m_AudioSpec, &FormatOut, AllowFrequencyChange ? SDL_AUDIO_ALLOW_FREQUENCY_CHANGE : 0);
+	}
 	if(m_Device == 0)
 		return false;
 
@@ -1177,6 +1183,39 @@ void CSound::UnpauseAudioDevice()
 	if(m_Device != 0)
 	{
 		SDL_PauseAudioDevice(m_Device, 0);
+	}
+}
+
+int CSound::GetNumAudioDevices()
+{
+	return SDL_GetNumAudioDevices(0);
+}
+
+const char *CSound::GetAudioDeviceName(int Index)
+{
+	return SDL_GetAudioDeviceName(Index, 0);
+}
+
+void CSound::SetAudioDevice(const char *pDeviceName)
+{
+	if(!m_SoundEnabled)
+		return;
+
+	if(pDeviceName && pDeviceName[0])
+		str_copy(g_Config.m_SndDevice, pDeviceName);
+	else
+		str_copy(g_Config.m_SndDevice, "default");
+
+	CloseDevice();
+	if(OpenDevice(false))
+	{
+		log_info("sound", "Audio device set to '%s'", g_Config.m_SndDevice);
+	}
+	else
+	{
+		log_error("sound", "Failed to open audio device '%s', resetting to default", g_Config.m_SndDevice);
+		str_copy(g_Config.m_SndDevice, "default");
+		OpenDevice(false);
 	}
 }
 

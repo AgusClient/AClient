@@ -122,6 +122,10 @@ public:
 
 	bool IsSoundEnabled() override { return m_SoundEnabled; }
 
+	int GetNumAudioDevices() override;
+	const char *GetAudioDeviceName(int Index) override;
+	void SetAudioDevice(const char *pDeviceName) override;
+
 	int LoadOpus(const char *pFilename, int StorageType = IStorage::TYPE_ALL) override REQUIRES(!m_SoundLock);
 	int LoadWV(const char *pFilename, int StorageType = IStorage::TYPE_ALL) override REQUIRES(!m_SoundLock);
 	int LoadOpusFromMem(const void *pData, unsigned DataSize, bool ForceLoad, const char *pContextName) override REQUIRES(!m_SoundLock);
