@@ -1,5 +1,6 @@
 #include <set>
 #include "player_profiles.h"
+#include "kog_maps_data.h"
 #include <base/io.h>
 #include <base/log.h>
 #include <base/str.h>
@@ -54,12 +55,22 @@ CPlayerProfiles::~CPlayerProfiles()
 {
 	AbortCurrentFetch();
 	AbortKoGFetch();
+	if(m_pKoGMapsHttpRequest)
+	{
+		m_pKoGMapsHttpRequest->Abort();
+		m_pKoGMapsHttpRequest = nullptr;
+	}
 }
 
 void CPlayerProfiles::OnReset()
 {
 	AbortCurrentFetch();
 	AbortKoGFetch();
+	if(m_pKoGMapsHttpRequest)
+	{
+		m_pKoGMapsHttpRequest->Abort();
+		m_pKoGMapsHttpRequest = nullptr;
+	}
 }
 
 void CPlayerProfiles::AbortCurrentFetch()
@@ -228,6 +239,12 @@ void CPlayerProfiles::OnRender()
 		std::string Next = m_qTeamPendingKoG.front();
 		m_qTeamPendingKoG.pop_front();
 		FetchKoGProfile(Next.c_str(), false);
+	}
+
+	// 4. Check KoG maps metadata background download
+	if(m_pKoGMapsHttpRequest && m_pKoGMapsHttpRequest->Done())
+	{
+		ProcessKoGMapsMetaResponse();
 	}
 }
 
@@ -1410,35 +1427,14 @@ void CPlayerProfiles::ComputeTeamCommonUnfinished()
 	str_format(m_aTeamStatusMsg, sizeof(m_aTeamStatusMsg), "%zu mapas incompletos en comun para el equipo", m_vCommonUnfinishedMaps.size());
 }
 
-void CPlayerProfiles::EnsureKoGMapsMetaLoaded()
+bool CPlayerProfiles::ParseKoGMapsMetaJson(const char *pJsonStr, size_t Length)
 {
-	if(m_KoGMapsMetaLoaded)
-		return;
+	if(!pJsonStr || Length == 0)
+		return false;
 
-	IOHANDLE File = Storage()->OpenFile("kog_cache/maps.json", IOFLAG_READ, IStorage::TYPE_SAVE);
-	if(!File)
-	{
-		File = Storage()->OpenFile("data/tclient/kog_maps.json", IOFLAG_READ, IStorage::TYPE_ALL);
-	}
-
-	if(!File)
-		return;
-
-	int64_t FileSize = io_length(File);
-	if(FileSize <= 0 || FileSize > 10 * 1024 * 1024)
-	{
-		io_close(File);
-		return;
-	}
-
-	std::string Content;
-	Content.resize((size_t)FileSize);
-	io_read(File, &Content[0], (unsigned int)FileSize);
-	io_close(File);
-
-	json_value *pJson = JsonParse(Content.c_str(), Content.size());
+	json_value *pJson = JsonParse(pJsonStr, Length);
 	if(!pJson)
-		return;
+		return false;
 
 	if(pJson->type == json_object)
 	{
@@ -1463,7 +1459,103 @@ void CPlayerProfiles::EnsureKoGMapsMetaLoaded()
 	}
 
 	json_value_free(pJson);
-	m_KoGMapsMetaLoaded = true;
+	return !m_mKoGMapsMeta.empty();
+}
+
+void CPlayerProfiles::EnsureKoGMapsMetaLoaded()
+{
+	if(m_KoGMapsMetaLoaded)
+		return;
+
+	IOHANDLE File = Storage()->OpenFile("kog_cache/maps.json", IOFLAG_READ, IStorage::TYPE_SAVE);
+	if(!File)
+	{
+		File = Storage()->OpenFile("tclient/kog_maps.json", IOFLAG_READ, IStorage::TYPE_ALL);
+	}
+	if(!File)
+	{
+		File = Storage()->OpenFile("data/tclient/kog_maps.json", IOFLAG_READ, IStorage::TYPE_ALL);
+	}
+
+	if(File)
+	{
+		int64_t FileSize = io_length(File);
+		if(FileSize > 0 && FileSize <= 10 * 1024 * 1024)
+		{
+			std::string Content;
+			Content.resize((size_t)FileSize);
+			io_read(File, &Content[0], (unsigned int)FileSize);
+			io_close(File);
+			File = nullptr;
+
+			if(ParseKoGMapsMetaJson(Content.c_str(), Content.size()))
+			{
+				m_KoGMapsMetaLoaded = true;
+			}
+		}
+		if(File)
+		{
+			io_close(File);
+			File = nullptr;
+		}
+	}
+
+	if(!m_KoGMapsMetaLoaded)
+	{
+		if(ParseKoGMapsMetaJson((const char *)s_aDefaultKoGMapsData, s_DefaultKoGMapsDataSize))
+		{
+			m_KoGMapsMetaLoaded = true;
+			log_info("kog", "KoG maps metadata loaded from built-in fallback (%zu maps)", m_mKoGMapsMeta.size());
+		}
+	}
+
+	FetchKoGMapsMetaNetwork();
+}
+
+void CPlayerProfiles::FetchKoGMapsMetaNetwork()
+{
+	if(m_pKoGMapsHttpRequest)
+		return;
+
+	m_pKoGMapsHttpRequest = HttpGet("https://raw.githubusercontent.com/AgusClient/AClient/master/data/tclient/kog_maps.json");
+	m_pKoGMapsHttpRequest->Timeout(CTimeout{4000, 10000, 500, 5});
+	m_pKoGMapsHttpRequest->IpResolve(IPRESOLVE::V4);
+	Http()->Run(m_pKoGMapsHttpRequest);
+}
+
+void CPlayerProfiles::ProcessKoGMapsMetaResponse()
+{
+	if(!m_pKoGMapsHttpRequest)
+		return;
+
+	if(m_pKoGMapsHttpRequest->State() == EHttpState::DONE && m_pKoGMapsHttpRequest->StatusCode() == 200)
+	{
+		unsigned char *pData = nullptr;
+		size_t DataLength = 0;
+		m_pKoGMapsHttpRequest->Result(&pData, &DataLength);
+		if(pData && DataLength > 0)
+		{
+			Storage()->CreateFolder("kog_cache", IStorage::TYPE_SAVE);
+			IOHANDLE File = Storage()->OpenFile("kog_cache/maps.json", IOFLAG_WRITE, IStorage::TYPE_SAVE);
+			if(File)
+			{
+				io_write(File, pData, DataLength);
+				io_close(File);
+			}
+
+			if(ParseKoGMapsMetaJson((const char *)pData, DataLength))
+			{
+				m_KoGMapsMetaLoaded = true;
+				log_info("kog", "KoG maps metadata updated from network (%zu maps)", m_mKoGMapsMeta.size());
+
+				if(m_TeamComparisonReady && !m_vTeamPlayers.empty())
+				{
+					ComputeTeamCommonUnfinished();
+				}
+			}
+		}
+	}
+	m_pKoGMapsHttpRequest = nullptr;
 }
 
 bool CPlayerProfiles::GetKoGMapMeta(const char *pMapName, CMapMetadata &OutMeta)
