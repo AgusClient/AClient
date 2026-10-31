@@ -131,6 +131,22 @@ const server = http.createServer((req, res) => {
   // ==========================================
   if (req.method === 'GET') {
     const serverAddr = parsedUrl.query.server;
+    const playerName = parsedUrl.query.player;
+
+    if (playerName) {
+      for (const [sAddr, playerMap] of servers.entries()) {
+        if (playerMap.has(playerName)) {
+          const data = playerMap.get(playerName);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ player: playerName, asset_game: data.asset_game, server: sAddr }));
+          return;
+        }
+      }
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Player not found' }));
+      return;
+    }
+
     if (!serverAddr) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Missing server parameter' }));

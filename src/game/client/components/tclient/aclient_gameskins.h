@@ -23,6 +23,9 @@ class CAClientGameSkins : public CComponent
 
 	bool m_PendingAnnounce;
 	char m_aLastServerAddress[128];
+	char m_aLastAnnouncedPlayer[128];
+	char m_aLastAnnouncedSkin[128];
+	int64_t m_LastPresenceRefreshTime;
 	int64_t m_LastRenderCheckTime;
 
 	bool FindGameSkinFile(const char *pName, char *pOutPath, int OutPathSize);

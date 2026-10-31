@@ -14,9 +14,12 @@
 
 CAClientGameSkins::CAClientGameSkins() :
 	m_PendingAnnounce(false),
+	m_LastPresenceRefreshTime(0),
 	m_LastRenderCheckTime(0)
 {
 	m_aLastServerAddress[0] = '\0';
+	m_aLastAnnouncedPlayer[0] = '\0';
+	m_aLastAnnouncedSkin[0] = '\0';
 }
 
 CAClientGameSkins::~CAClientGameSkins()
@@ -65,6 +68,9 @@ void CAClientGameSkins::OnReset()
 	m_sFailedSkins.clear();
 	m_PendingAnnounce = false;
 	m_aLastServerAddress[0] = '\0';
+	m_aLastAnnouncedPlayer[0] = '\0';
+	m_aLastAnnouncedSkin[0] = '\0';
+	m_LastPresenceRefreshTime = 0;
 	m_LastRenderCheckTime = 0;
 }
 
@@ -275,6 +281,9 @@ void CAClientGameSkins::RefreshPresence()
 		return;
 
 	str_copy(m_aLastServerAddress, aServerAddr);
+	str_copy(m_aLastAnnouncedPlayer, g_Config.m_PlayerName);
+	str_copy(m_aLastAnnouncedSkin, g_Config.m_ClAssetGame);
+	m_LastPresenceRefreshTime = time_get();
 
 	if(!g_Config.m_AcPresenceUrl[0])
 		return;
@@ -357,6 +366,18 @@ void CAClientGameSkins::OnRender()
 			RefreshPresence();
 		}
 	}
+	else if(Client()->State() == IClient::STATE_ONLINE && g_Config.m_AcShowRemoteGameSkins)
+	{
+		int64_t Now = time_get();
+		bool SkinChanged = str_comp(m_aLastAnnouncedSkin, g_Config.m_ClAssetGame) != 0;
+		bool NameChanged = str_comp(m_aLastAnnouncedPlayer, g_Config.m_PlayerName) != 0;
+		bool PeriodicRefresh = (m_LastPresenceRefreshTime == 0) || ((Now - m_LastPresenceRefreshTime) > time_freq() * 45);
+
+		if(SkinChanged || NameChanged || PeriodicRefresh)
+		{
+			RefreshPresence();
+		}
+	}
 
 	if(m_pPresenceRequest && m_pPresenceRequest->Done())
 	{
@@ -377,6 +398,7 @@ void CAClientGameSkins::OnRender()
 
 				if(pArr)
 				{
+					std::map<std::string, std::string> NewSkins;
 					int Len = json_array_length(pArr);
 					for(int i = 0; i < Len; ++i)
 					{
@@ -393,11 +415,12 @@ void CAClientGameSkins::OnRender()
 							{
 								if(str_comp(pPlName, g_Config.m_PlayerName) != 0)
 								{
-									m_mRemotePlayerGameSkins[pPlName] = pSkinName;
+									NewSkins[pPlName] = pSkinName;
 								}
 							}
 						}
 					}
+					m_mRemotePlayerGameSkins = std::move(NewSkins);
 					UpdateAllPlayerSkins();
 				}
 				json_value_free(pJson);
