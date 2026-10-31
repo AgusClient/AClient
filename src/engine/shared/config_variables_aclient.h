@@ -126,5 +126,5 @@ MACRO_CONFIG_INT(AcProfileViewMode, ac_profile_view_mode, 0, 0, 1, CFGFLAG_CLIEN
 // Custom Gameskin Sharing & Downloads
 MACRO_CONFIG_INT(AcShowRemoteGameSkins, ac_show_remote_gameskins, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show other AClient players' custom gameskins")
 MACRO_CONFIG_INT(ClDownloadGameskins, cl_download_gameskins, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Download gameskins on-the-fly")
-MACRO_CONFIG_STR(ClGameskinDownloadUrl, cl_gameskin_download_url, 128, "https://teedata.net/api/gameskins/", CFGFLAG_CLIENT | CFGFLAG_SAVE, "URL used to download gameskins")
+MACRO_CONFIG_STR(ClGameskinDownloadUrl, cl_gameskin_download_url, 128, "https://raw.githubusercontent.com/AgusClient/gameskins/main/", CFGFLAG_CLIENT | CFGFLAG_SAVE, "URL used to download gameskins")
 MACRO_CONFIG_STR(AcPresenceUrl, ac_presence_url, 128, "https://presence.aclient.app/api/presence", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Presence relay server URL")
