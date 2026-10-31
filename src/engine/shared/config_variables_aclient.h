@@ -150,3 +150,6 @@ MACRO_CONFIG_INT(AcAfkAutoReply, ac_afk_auto_reply, 0, 0, 1, CFGFLAG_CLIENT | CF
 MACRO_CONFIG_STR(AcAfkAutoReplyMsg, ac_afk_auto_reply_msg, 128, "Estoy tabulado / afk", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mensaje de auto-respuesta cuando estas tabulado y te taggean")
 MACRO_CONFIG_INT(AcAfkAutoReplyCooldown, ac_afk_auto_reply_cooldown, 30, 5, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Cooldown en segundos para no repetir auto-respuesta al mismo jugador")
 MACRO_CONFIG_INT(AcAfkNotifyOnReturn, ac_afk_notify_on_return, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Avisar en chat local al volver al juego si alguien te taggeo mientras estabas tabulado")
+
+// Sound Packs
+MACRO_CONFIG_STR(AcSoundPack, ac_sound_pack, 128, "default", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Current sound pack / audio theme")

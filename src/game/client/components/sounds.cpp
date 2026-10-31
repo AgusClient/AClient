@@ -9,6 +9,9 @@
 #include <engine/engine.h>
 #include <engine/shared/config.h>
 #include <engine/sound.h>
+#include <engine/storage.h>
+
+#include <algorithm>
 
 #include <generated/client_data.h>
 
@@ -26,6 +29,9 @@ CSoundLoading::CSoundLoading(CGameClient *pGameClient, bool Render) :
 
 void CSoundLoading::Run()
 {
+	const char *pCurPack = g_Config.m_AcSoundPack;
+	const bool CustomPack = pCurPack[0] && str_comp(pCurPack, "default") != 0;
+
 	for(int s = 0; s < g_pData->m_NumSounds; s++)
 	{
 		const char *pLoadingCaption = Localize("Loading DDNet Client");
@@ -36,7 +42,60 @@ void CSoundLoading::Run()
 			if(State() == IJob::STATE_ABORTED)
 				return;
 
-			int Id = m_pGameClient->Sound()->LoadWV(g_pData->m_aSounds[s].m_aSounds[i].m_pFilename);
+			const char *pDefaultFilename = g_pData->m_aSounds[s].m_aSounds[i].m_pFilename;
+			int Id = -1;
+
+			if(CustomPack)
+			{
+				const char *pBase = pDefaultFilename;
+				if(str_startswith(pBase, "audio/"))
+					pBase += 6;
+
+				char aStem[128];
+				str_copy(aStem, pBase);
+				char *pDot = (char *)str_rchr(aStem, '.');
+				if(pDot)
+					*pDot = '\0';
+
+				const char *apPrefixes[] = {
+					"assets/audio/%s/%s",
+					"assets/audio/%s/audio/%s",
+					"audio/packs/%s/%s",
+					"audio/packs/%s/audio/%s",
+					"data/audio/packs/%s/%s",
+					"data/audio/packs/%s/audio/%s",
+				};
+
+				char aCandidate[IO_MAX_PATH_LENGTH];
+				for(const char *pPattern : apPrefixes)
+				{
+					str_format(aCandidate, sizeof(aCandidate), pPattern, pCurPack, aStem);
+					str_append(aCandidate, ".opus", sizeof(aCandidate));
+					if(m_pGameClient->Storage()->FileExists(aCandidate, IStorage::TYPE_ALL))
+					{
+						Id = m_pGameClient->Sound()->LoadOpus(aCandidate);
+						if(Id >= 0)
+							break;
+					}
+
+					str_format(aCandidate, sizeof(aCandidate), pPattern, pCurPack, aStem);
+					str_append(aCandidate, ".wv", sizeof(aCandidate));
+					if(m_pGameClient->Storage()->FileExists(aCandidate, IStorage::TYPE_ALL))
+					{
+						Id = m_pGameClient->Sound()->LoadWV(aCandidate);
+						if(Id >= 0)
+							break;
+					}
+				}
+			}
+
+			if(Id < 0)
+			{
+				if(str_endswith(pDefaultFilename, ".opus"))
+					Id = m_pGameClient->Sound()->LoadOpus(pDefaultFilename);
+				else
+					Id = m_pGameClient->Sound()->LoadWV(pDefaultFilename);
+			}
 			g_pData->m_aSounds[s].m_aSounds[i].m_Id = Id;
 			// try to render a frame
 			if(m_Render)
@@ -250,4 +309,84 @@ ISound::CVoiceHandle CSounds::PlaySampleAt(int Channel, int SampleId, int Flags,
 		Flags |= ISound::FLAG_LOOP;
 
 	return Sound()->PlayAt(Channel, SampleId, Flags, Volume, Position);
+}
+
+
+int CSounds::SoundPackScan(const char *pName, int IsDir, int DirType, void *pUser)
+{
+	CSounds *pSelf = static_cast<CSounds *>(pUser);
+	if(!IsDir || pName[0] == '.')
+		return 0;
+
+	if(str_comp(pName, "default") == 0)
+		return 0;
+
+	for(const auto &Pack : pSelf->m_vSoundPacks)
+	{
+		if(str_comp(Pack.c_str(), pName) == 0)
+			return 0;
+	}
+
+	pSelf->m_vSoundPacks.emplace_back(pName);
+	return 0;
+}
+
+void CSounds::ScanSoundPacks()
+{
+	m_vSoundPacks.clear();
+	m_vSoundPacks.emplace_back("default");
+
+	Storage()->CreateFolder("assets", IStorage::TYPE_SAVE);
+	Storage()->CreateFolder("assets/audio", IStorage::TYPE_SAVE);
+
+	Storage()->ListDirectory(IStorage::TYPE_ALL, "assets/audio", SoundPackScan, this);
+	Storage()->ListDirectory(IStorage::TYPE_ALL, "audio/packs", SoundPackScan, this);
+	Storage()->ListDirectory(IStorage::TYPE_ALL, "data/audio/packs", SoundPackScan, this);
+
+	std::sort(m_vSoundPacks.begin() + 1, m_vSoundPacks.end());
+	m_SoundPacksScanned = true;
+}
+
+const std::vector<std::string> &CSounds::GetSoundPacks()
+{
+	if(!m_SoundPacksScanned)
+		ScanSoundPacks();
+	return m_vSoundPacks;
+}
+
+void CSounds::ReloadSoundPack()
+{
+	if(!Sound()->IsSoundEnabled())
+		return;
+
+	Sound()->StopAll();
+	ClearQueue();
+
+	for(int s = 0; s < g_pData->m_NumSounds; s++)
+	{
+		for(int i = 0; i < g_pData->m_aSounds[s].m_NumSounds; i++)
+		{
+			if(g_pData->m_aSounds[s].m_aSounds[i].m_Id >= 0)
+			{
+				Sound()->UnloadSample(g_pData->m_aSounds[s].m_aSounds[i].m_Id);
+				g_pData->m_aSounds[s].m_aSounds[i].m_Id = -1;
+			}
+		}
+	}
+
+	CSoundLoading(GameClient(), false).Run();
+
+	Play(CHN_GUI, SOUND_WEAPON_SWITCH, 1.0f);
+}
+
+void CSounds::SetSoundPack(const char *pPackName)
+{
+	if(!pPackName || !pPackName[0])
+		pPackName = "default";
+
+	if(str_comp(g_Config.m_AcSoundPack, pPackName) == 0)
+		return;
+
+	str_copy(g_Config.m_AcSoundPack, pPackName);
+	ReloadSoundPack();
 }

@@ -4,6 +4,9 @@
 
 #include <engine/shared/config.h>
 #include <engine/sound.h>
+#include <engine/font_icons.h>
+
+#include <game/client/gameclient.h>
 
 #include <game/localization.h>
 
@@ -86,6 +89,101 @@ void CMenus::RenderSettingsSound(CUIRect MainView)
 			else
 				Sound()->SetAudioDevice(Sound()->GetAudioDeviceName(NextIdx));
 		}
+		MainView.HSplitTop(4.0f, nullptr, &MainView);
+	}
+
+	// Sound pack selection
+	{
+		CUIRect PackRow, Label, PrevBtn, PackBtn, NextBtn, DirBtn, ReloadBtn;
+		MainView.HSplitTop(20.0f, &PackRow, &MainView);
+		PackRow.VSplitLeft(160.0f, &Label, &PackRow);
+		Ui()->DoLabel(&Label, Localize("Sound pack"), 14.0f, TEXTALIGN_ML);
+
+		PackRow.VSplitRight(24.0f, &PackRow, &ReloadBtn);
+		PackRow.VSplitRight(4.0f, &PackRow, nullptr);
+		PackRow.VSplitRight(24.0f, &PackRow, &DirBtn);
+		PackRow.VSplitRight(4.0f, &PackRow, nullptr);
+
+		PackRow.VSplitLeft(24.0f, &PrevBtn, &PackRow);
+		PackRow.VSplitRight(24.0f, &PackRow, &NextBtn);
+		PackRow.VSplitLeft(4.0f, nullptr, &PackBtn);
+		PackBtn.VSplitRight(4.0f, &PackBtn, nullptr);
+
+		const auto &vPacks = GameClient()->m_Sounds.GetSoundPacks();
+		int NumPacks = (int)vPacks.size();
+		int CurIdx = 0;
+		for(int i = 0; i < NumPacks; i++)
+		{
+			if(str_comp(vPacks[i].c_str(), g_Config.m_AcSoundPack) == 0)
+			{
+				CurIdx = i;
+				break;
+			}
+		}
+
+		static CButtonContainer s_PrevPack;
+		static CButtonContainer s_NextPack;
+		static CButtonContainer s_CurrentPack;
+		static CButtonContainer s_DirPack;
+		static CButtonContainer s_ReloadPack;
+
+		if(DoButton_Menu(&s_PrevPack, "<", 0, &PrevBtn))
+		{
+			int NextIdx = CurIdx - 1;
+			if(NextIdx < 0)
+				NextIdx = NumPacks - 1;
+			if(NextIdx >= 0 && NextIdx < NumPacks)
+				GameClient()->m_Sounds.SetSoundPack(vPacks[NextIdx].c_str());
+		}
+
+		const char *pCurrentName = (CurIdx >= 0 && CurIdx < NumPacks) ? vPacks[CurIdx].c_str() : g_Config.m_AcSoundPack;
+		char aDisplayName[128];
+		if(str_comp(pCurrentName, "default") == 0)
+			str_copy(aDisplayName, Localize("Default"));
+		else
+			str_copy(aDisplayName, pCurrentName);
+
+		if(DoButton_Menu(&s_CurrentPack, aDisplayName, 0, &PackBtn))
+		{
+			int NextIdx = CurIdx + 1;
+			if(NextIdx >= NumPacks)
+				NextIdx = 0;
+			if(NextIdx >= 0 && NextIdx < NumPacks)
+				GameClient()->m_Sounds.SetSoundPack(vPacks[NextIdx].c_str());
+		}
+
+		if(DoButton_Menu(&s_NextPack, ">", 0, &NextBtn))
+		{
+			int NextIdx = CurIdx + 1;
+			if(NextIdx >= NumPacks)
+				NextIdx = 0;
+			if(NextIdx >= 0 && NextIdx < NumPacks)
+				GameClient()->m_Sounds.SetSoundPack(vPacks[NextIdx].c_str());
+		}
+
+		TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+		TextRender()->SetRenderFlags(ETextRenderFlags::TEXT_RENDER_FLAG_ONLY_ADVANCE_WIDTH | ETextRenderFlags::TEXT_RENDER_FLAG_NO_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_Y_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT | ETextRenderFlags::TEXT_RENDER_FLAG_NO_OVERSIZE);
+
+		if(DoButton_Menu(&s_DirPack, FontIcon::FOLDER, 0, &DirBtn))
+		{
+			Storage()->CreateFolder("assets", IStorage::TYPE_SAVE);
+			Storage()->CreateFolder("assets/audio", IStorage::TYPE_SAVE);
+			char aBuf[IO_MAX_PATH_LENGTH];
+			Storage()->GetCompletePath(IStorage::TYPE_SAVE, "assets/audio", aBuf, sizeof(aBuf));
+			Client()->ViewFile(aBuf);
+		}
+		GameClient()->m_Tooltips.DoToolTip(&s_DirPack, &DirBtn, Localize("Open the directory to add custom sound packs"));
+
+		if(DoButton_Menu(&s_ReloadPack, FontIcon::ARROW_ROTATE_RIGHT, 0, &ReloadBtn))
+		{
+			GameClient()->m_Sounds.ScanSoundPacks();
+			GameClient()->m_Sounds.ReloadSoundPack();
+		}
+		GameClient()->m_Tooltips.DoToolTip(&s_ReloadPack, &ReloadBtn, Localize("Reload sound packs"));
+
+		TextRender()->SetRenderFlags(0);
+		TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+
 		MainView.HSplitTop(4.0f, nullptr, &MainView);
 	}
 
