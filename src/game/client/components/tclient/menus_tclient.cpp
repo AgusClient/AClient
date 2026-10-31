@@ -4630,6 +4630,106 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
 
+	// ***** Sound Packs (Temas de Sonido) ***** //
+	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	s_SectionBoxesAc.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("Sound Packs (Temas de Sonido)"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	CUIRect PackRow, PackLabel, PrevBtn, PackBtn, NextBtn, DirBtn, ReloadBtn;
+	Column.HSplitTop(LineSize, &PackRow, &Column);
+	PackRow.VSplitLeft(100.0f, &PackLabel, &PackRow);
+	Ui()->DoLabel(&PackLabel, TCLocalize("Sound pack"), 14.0f, TEXTALIGN_ML);
+
+	PackRow.VSplitRight(24.0f, &PackRow, &ReloadBtn);
+	PackRow.VSplitRight(4.0f, &PackRow, nullptr);
+	PackRow.VSplitRight(24.0f, &PackRow, &DirBtn);
+	PackRow.VSplitRight(4.0f, &PackRow, nullptr);
+
+	PackRow.VSplitLeft(24.0f, &PrevBtn, &PackRow);
+	PackRow.VSplitRight(24.0f, &PackRow, &NextBtn);
+	PackRow.VSplitLeft(4.0f, nullptr, &PackBtn);
+	PackBtn.VSplitRight(4.0f, &PackBtn, nullptr);
+
+	const auto &vPacks = GameClient()->m_Sounds.GetSoundPacks();
+	int NumPacks = (int)vPacks.size();
+	int CurIdx = 0;
+	for(int i = 0; i < NumPacks; i++)
+	{
+		if(str_comp(vPacks[i].c_str(), g_Config.m_AcSoundPack) == 0)
+		{
+			CurIdx = i;
+			break;
+		}
+	}
+
+	static CButtonContainer s_PrevPackAc;
+	static CButtonContainer s_NextPackAc;
+	static CButtonContainer s_CurrentPackAc;
+	static CButtonContainer s_DirPackAc;
+	static CButtonContainer s_ReloadPackAc;
+
+	if(DoButton_Menu(&s_PrevPackAc, "<", 0, &PrevBtn))
+	{
+		int NextIdx = CurIdx - 1;
+		if(NextIdx < 0)
+			NextIdx = NumPacks - 1;
+		if(NextIdx >= 0 && NextIdx < NumPacks)
+			GameClient()->m_Sounds.SetSoundPack(vPacks[NextIdx].c_str());
+	}
+
+	const char *pCurrentName = (CurIdx >= 0 && CurIdx < NumPacks) ? vPacks[CurIdx].c_str() : g_Config.m_AcSoundPack;
+	char aDisplayName[128];
+	if(str_comp(pCurrentName, "default") == 0)
+		str_copy(aDisplayName, TCLocalize("Default"));
+	else
+		str_copy(aDisplayName, pCurrentName);
+
+	if(DoButton_Menu(&s_CurrentPackAc, aDisplayName, 0, &PackBtn))
+	{
+		int NextIdx = CurIdx + 1;
+		if(NextIdx >= NumPacks)
+			NextIdx = 0;
+		if(NextIdx >= 0 && NextIdx < NumPacks)
+			GameClient()->m_Sounds.SetSoundPack(vPacks[NextIdx].c_str());
+	}
+
+	if(DoButton_Menu(&s_NextPackAc, ">", 0, &NextBtn))
+	{
+		int NextIdx = CurIdx + 1;
+		if(NextIdx >= NumPacks)
+			NextIdx = 0;
+		if(NextIdx >= 0 && NextIdx < NumPacks)
+			GameClient()->m_Sounds.SetSoundPack(vPacks[NextIdx].c_str());
+	}
+
+	TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+	TextRender()->SetRenderFlags(ETextRenderFlags::TEXT_RENDER_FLAG_ONLY_ADVANCE_WIDTH | ETextRenderFlags::TEXT_RENDER_FLAG_NO_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_Y_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT | ETextRenderFlags::TEXT_RENDER_FLAG_NO_OVERSIZE);
+
+	if(DoButton_Menu(&s_DirPackAc, FontIcon::FOLDER, 0, &DirBtn))
+	{
+		Storage()->CreateFolder("assets", IStorage::TYPE_SAVE);
+		Storage()->CreateFolder("assets/audio", IStorage::TYPE_SAVE);
+		char aBuf[IO_MAX_PATH_LENGTH];
+		Storage()->GetCompletePath(IStorage::TYPE_SAVE, "assets/audio", aBuf, sizeof(aBuf));
+		Client()->ViewFile(aBuf);
+	}
+	GameClient()->m_Tooltips.DoToolTip(&s_DirPackAc, &DirBtn, TCLocalize("Open directory for sound packs"));
+
+	if(DoButton_Menu(&s_ReloadPackAc, FontIcon::ARROW_ROTATE_RIGHT, 0, &ReloadBtn))
+	{
+		GameClient()->m_Sounds.ScanSoundPacks();
+		GameClient()->m_Sounds.ReloadSoundPack();
+	}
+	GameClient()->m_Tooltips.DoToolTip(&s_ReloadPackAc, &ReloadBtn, TCLocalize("Reload sound packs"));
+
+	TextRender()->SetRenderFlags(0);
+	TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
+
 	RightView = Column;
 
 	// ***** Bloque: Actualizador Integrado de AClient ***** //

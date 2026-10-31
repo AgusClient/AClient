@@ -10,6 +10,9 @@
 
 #include <game/client/component.h>
 
+#include <string>
+#include <vector>
+
 class CSoundLoading : public IJob
 {
 	CGameClient *m_pGameClient;
@@ -46,6 +49,10 @@ class CSounds : public CComponent
 	float m_MapSoundVolume = -1.0f;
 	float m_BackgroundMusicVolume = -1.0f;
 
+	std::vector<std::string> m_vSoundPacks;
+	bool m_SoundPacksScanned = false;
+	static int SoundPackScan(const char *pName, int IsDir, int DirType, void *pUser);
+
 public:
 	// sound channels
 	enum
@@ -73,6 +80,11 @@ public:
 
 	ISound::CVoiceHandle PlaySample(int Channel, int SampleId, int Flags, float Volume);
 	ISound::CVoiceHandle PlaySampleAt(int Channel, int SampleId, int Flags, float Volume, vec2 Position);
+
+	void ScanSoundPacks();
+	const std::vector<std::string> &GetSoundPacks();
+	void SetSoundPack(const char *pPackName);
+	void ReloadSoundPack();
 };
 
 #endif
