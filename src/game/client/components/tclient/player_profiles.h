@@ -166,9 +166,6 @@ private:
 	bool GetFromCache(const char *pName, CDDNetPlayerProfile &OutProfile);
 
 	static void KoGFetchWorker(void *pUser);
-#if defined(CONF_FAMILY_WINDOWS)
-	bool KoGFetchWorkerWindows();
-#endif
 	void ProcessKoGFetchCompletion();
 	void AddToKoGCache(const CKoGPlayerProfile &Profile);
 	bool GetFromKoGCache(const char *pName, CKoGPlayerProfile &OutProfile);

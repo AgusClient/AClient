@@ -386,224 +386,6 @@ void CPlayerProfiles::ProcessHttpResponse()
 	json_value_free(pJson);
 }
 
-#if defined(CONF_FAMILY_WINDOWS)
-#include <windows.h>
-#include <cstdio>
-
-static bool ExecuteProcessCaptureOutput(const wchar_t *pCommandLine, std::string &Output)
-{
-	HANDLE hReadPipe = nullptr, hWritePipe = nullptr;
-	SECURITY_ATTRIBUTES sa{};
-	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
-	sa.bInheritHandle = TRUE;
-	sa.lpSecurityDescriptor = nullptr;
-
-	if(!CreatePipe(&hReadPipe, &hWritePipe, &sa, 0))
-		return false;
-
-	SetHandleInformation(hReadPipe, HANDLE_FLAG_INHERIT, 0);
-
-	STARTUPINFOW si{};
-	si.cb = sizeof(STARTUPINFOW);
-	si.hStdOutput = hWritePipe;
-	si.hStdError = hWritePipe;
-	si.dwFlags |= STARTF_USESTDHANDLES;
-
-	PROCESS_INFORMATION pi{};
-	wchar_t aCmd[4096];
-	wcsncpy(aCmd, pCommandLine, 4095);
-	aCmd[4095] = L'\0';
-
-	BOOL Success = CreateProcessW(
-		nullptr,
-		aCmd,
-		nullptr,
-		nullptr,
-		TRUE,
-		CREATE_NO_WINDOW,
-		nullptr,
-		nullptr,
-		&si,
-		&pi
-	);
-
-	CloseHandle(hWritePipe);
-
-	if(!Success)
-	{
-		CloseHandle(hReadPipe);
-		return false;
-	}
-
-	char aBuffer[4096];
-	DWORD BytesRead = 0;
-	while(ReadFile(hReadPipe, aBuffer, sizeof(aBuffer), &BytesRead, nullptr) && BytesRead > 0)
-	{
-		Output.append(aBuffer, BytesRead);
-	}
-
-	CloseHandle(hReadPipe);
-	WaitForSingleObject(pi.hProcess, 15000);
-	CloseHandle(pi.hProcess);
-	CloseHandle(pi.hThread);
-	return true;
-}
-
-bool CPlayerProfiles::KoGFetchWorkerWindows()
-{
-	char aTempDir[MAX_PATH];
-	if(!GetTempPathA(MAX_PATH, aTempDir))
-		return false;
-
-	DWORD Pid = GetCurrentProcessId();
-	char aCookieFile[MAX_PATH];
-	str_format(aCookieFile, sizeof(aCookieFile), "%skog_c_%u.txt", aTempDir, (unsigned)Pid);
-	char aPostFile[MAX_PATH];
-	str_format(aPostFile, sizeof(aPostFile), "%skog_p_%u.json", aTempDir, (unsigned)Pid);
-
-	DeleteFileA(aCookieFile);
-	DeleteFileA(aPostFile);
-
-	// 1. Visit root to establish session cookie
-	std::string Dummy;
-	wchar_t aCmd1[2048];
-	swprintf_s(aCmd1, L"C:\\Windows\\System32\\curl.exe -s -c \"%hs\" -A \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\" -H \"Referer: https://kog.tw/\" -H \"Origin: https://kog.tw\" \"https://kog.tw/\"", aCookieFile);
-	if(!ExecuteProcessCaptureOutput(aCmd1, Dummy))
-	{
-		DeleteFileA(aCookieFile);
-		return false;
-	}
-
-	// Helper lambda to fetch a fresh CSRF nonce using the existing session cookie
-	auto FetchFreshNonce = [&]() -> std::string {
-		std::string FreshCsrf;
-		wchar_t aCmdCsrf[2048];
-		swprintf_s(aCmdCsrf, L"C:\\Windows\\System32\\curl.exe -s -b \"%hs\" -c \"%hs\" -A \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\" -H \"Referer: https://kog.tw/\" -H \"Origin: https://kog.tw\" -H \"Accept: application/json, text/javascript, */*; q=0.01\" -H \"X-Requested-With: XMLHttpRequest\" \"https://kog.tw/api.php?type=csrf-token\"", aCookieFile, aCookieFile);
-		if(!ExecuteProcessCaptureOutput(aCmdCsrf, FreshCsrf) || FreshCsrf.empty())
-			return "";
-
-		std::string FreshToken;
-		json_value *pCsrf = JsonParse(FreshCsrf.c_str(), FreshCsrf.size());
-		if(pCsrf)
-		{
-			if(pCsrf->type == json_object && (*pCsrf)["nonce"].type == json_string)
-			{
-				FreshToken = (const char *)(*pCsrf)["nonce"];
-			}
-			json_value_free(pCsrf);
-		}
-		if(FreshToken.empty())
-		{
-			size_t Pos = FreshCsrf.find("\"nonce\":\"");
-			if(Pos != std::string::npos)
-			{
-				Pos += 9;
-				size_t EndPos = FreshCsrf.find('"', Pos);
-			if(EndPos != std::string::npos)
-				{
-					FreshToken = FreshCsrf.substr(Pos, EndPos - Pos);
-				}
-			}
-		}
-		return FreshToken;
-	};
-
-	// 2. Fetch CSRF token
-	std::string Nonce = FetchFreshNonce();
-	if(Nonce.empty())
-	{
-		DeleteFileA(aCookieFile);
-		return false;
-	}
-
-	// 3. Write POST payload file without BOM
-	std::string PostData = "{\"nonce\":\"" + Nonce + "\",\"type\":\"players\",\"player\":\"" + EscapeForJson(m_aKoGFetchThreadPlayer) + "\",\"tz\":\"UTC\"}";
-	FILE *pFile = fopen(aPostFile, "wb");
-	if(!pFile)
-	{
-		DeleteFileA(aCookieFile);
-		return false;
-	}
-	fwrite(PostData.data(), 1, PostData.size(), pFile);
-	fclose(pFile);
-
-	// 4. Post request to api.php
-	std::string ResultJson;
-	wchar_t aCmd3[2048];
-	swprintf_s(aCmd3, L"C:\\Windows\\System32\\curl.exe -s -b \"%hs\" -A \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\" -H \"Referer: https://kog.tw/\" -H \"Origin: https://kog.tw\" -H \"Accept: application/json, text/javascript, */*; q=0.01\" -H \"X-Requested-With: XMLHttpRequest\" -H \"Content-Type: application/json;charset=UTF-8\" -d \"@%hs\" \"https://kog.tw/api.php\"", aCookieFile, aPostFile);
-
-	bool ExecOk = ExecuteProcessCaptureOutput(aCmd3, ResultJson);
-
-	// If player was not found, check alternative casing variants (e.g. "tae" -> "Tae", "Akisi" -> "akisi")
-	if(ExecOk && ResultJson.find("\"data\":[]") != std::string::npos)
-	{
-		std::string BaseName = m_aKoGFetchThreadPlayer;
-		std::vector<std::string> vVariants;
-
-		if(!BaseName.empty())
-		{
-			// Variant 1: Capitalized (first upper, rest lower)
-			std::string Cap = BaseName;
-			Cap[0] = (char)toupper((unsigned char)Cap[0]);
-			for(size_t i = 1; i < Cap.size(); ++i)
-				Cap[i] = (char)tolower((unsigned char)Cap[i]);
-			if(Cap != BaseName)
-				vVariants.push_back(Cap);
-
-			// Variant 2: All lowercase
-			std::string Low = BaseName;
-			for(size_t i = 0; i < Low.size(); ++i)
-				Low[i] = (char)tolower((unsigned char)Low[i]);
-			if(Low != BaseName && std::find(vVariants.begin(), vVariants.end(), Low) == vVariants.end())
-				vVariants.push_back(Low);
-
-			// Variant 3: All uppercase
-			std::string Up = BaseName;
-			for(size_t i = 0; i < Up.size(); ++i)
-				Up[i] = (char)toupper((unsigned char)Up[i]);
-			if(Up != BaseName && std::find(vVariants.begin(), vVariants.end(), Up) == vVariants.end())
-				vVariants.push_back(Up);
-		}
-
-		for(const auto &Variant : vVariants)
-		{
-			// Nonce is one-time use; fetch a fresh nonce for each variant query
-			std::string FreshNonce = FetchFreshNonce();
-			if(FreshNonce.empty())
-				break;
-
-			std::string PostDataVar = "{\"nonce\":\"" + FreshNonce + "\",\"type\":\"players\",\"player\":\"" + EscapeForJson(Variant.c_str()) + "\",\"tz\":\"UTC\"}";
-			FILE *pVarFile = fopen(aPostFile, "wb");
-			if(!pVarFile)
-				break;
-			fwrite(PostDataVar.data(), 1, PostDataVar.size(), pVarFile);
-			fclose(pVarFile);
-
-			std::string VarResult;
-			if(ExecuteProcessCaptureOutput(aCmd3, VarResult) && !VarResult.empty())
-			{
-				if(VarResult.find("\"data\":[]") == std::string::npos && VarResult.find("\"status\":200") != std::string::npos)
-				{
-					ResultJson = VarResult;
-					str_copy(m_aKoGFetchThreadPlayer, Variant.c_str());
-					str_copy(m_aKoGRequestedName, Variant.c_str());
-					break;
-				}
-			}
-		}
-	}
-	DeleteFileA(aCookieFile);
-	DeleteFileA(aPostFile);
-
-	if(!ExecOk || ResultJson.empty())
-		return false;
-
-	m_KoGResultData = ResultJson;
-	m_KoGFetchSuccess = true;
-	m_KoGFetchDone = true;
-	return true;
-}
-#endif
 
 // ==========================================
 // King of Gores (KoG) Profile Operations
@@ -612,10 +394,6 @@ bool CPlayerProfiles::KoGFetchWorkerWindows()
 void CPlayerProfiles::KoGFetchWorker(void *pUser)
 {
 	CPlayerProfiles *pSelf = static_cast<CPlayerProfiles *>(pUser);
-#if defined(CONF_FAMILY_WINDOWS)
-	if(pSelf->KoGFetchWorkerWindows())
-		return;
-#endif
 	CURL *pCurl = curl_easy_init();
 	if(!pCurl)
 	{
@@ -742,6 +520,111 @@ void CPlayerProfiles::KoGFetchWorker(void *pUser)
 	long Code = 0;
 	curl_easy_getinfo(pCurl, CURLINFO_RESPONSE_CODE, &Code);
 	pSelf->m_KoGResultStatusCode = (int)Code;
+
+	// If player was not found, check alternative casing variants (e.g. "tae" -> "Tae", "Akisi" -> "akisi")
+	if(ResponseJson.find("\"data\":[]") != std::string::npos)
+	{
+		std::string BaseName = pSelf->m_aKoGFetchThreadPlayer;
+		std::vector<std::string> vVariants;
+
+		if(!BaseName.empty())
+		{
+			// Variant 1: Capitalized (first upper, rest lower)
+			std::string Cap = BaseName;
+			Cap[0] = (char)toupper((unsigned char)Cap[0]);
+			for(size_t i = 1; i < Cap.size(); ++i)
+				Cap[i] = (char)tolower((unsigned char)Cap[i]);
+			if(Cap != BaseName)
+				vVariants.push_back(Cap);
+
+			// Variant 2: All lowercase
+			std::string Low = BaseName;
+			for(size_t i = 0; i < Low.size(); ++i)
+				Low[i] = (char)tolower((unsigned char)Low[i]);
+			if(Low != BaseName && std::find(vVariants.begin(), vVariants.end(), Low) == vVariants.end())
+				vVariants.push_back(Low);
+
+			// Variant 3: All uppercase
+			std::string Up = BaseName;
+			for(size_t i = 0; i < Up.size(); ++i)
+				Up[i] = (char)toupper((unsigned char)Up[i]);
+			if(Up != BaseName && std::find(vVariants.begin(), vVariants.end(), Up) == vVariants.end())
+				vVariants.push_back(Up);
+		}
+
+		for(const auto &Variant : vVariants)
+		{
+			// Fetch fresh nonce
+			struct curl_slist *pNonceHeaders = nullptr;
+			pNonceHeaders = curl_slist_append(pNonceHeaders, "Referer: https://kog.tw/");
+			pNonceHeaders = curl_slist_append(pNonceHeaders, "Origin: https://kog.tw");
+			pNonceHeaders = curl_slist_append(pNonceHeaders, "Accept: application/json, text/plain, */*");
+			pNonceHeaders = curl_slist_append(pNonceHeaders, "X-Requested-With: XMLHttpRequest");
+			curl_easy_setopt(pCurl, CURLOPT_HTTPHEADER, pNonceHeaders);
+			curl_easy_setopt(pCurl, CURLOPT_HTTPGET, 1L);
+			curl_easy_setopt(pCurl, CURLOPT_URL, "https://kog.tw/api.php?type=csrf-token");
+
+			std::string FreshCsrf;
+			curl_easy_setopt(pCurl, CURLOPT_WRITEDATA, &FreshCsrf);
+			CURLcode NonceRes = curl_easy_perform(pCurl);
+			curl_slist_free_all(pNonceHeaders);
+			if(NonceRes != CURLE_OK || FreshCsrf.empty())
+				continue;
+
+			std::string FreshNonce;
+			json_value *pCsrf = JsonParse(FreshCsrf.c_str(), FreshCsrf.size());
+			if(pCsrf)
+			{
+				if(pCsrf->type == json_object && (*pCsrf)["nonce"].type == json_string)
+					FreshNonce = (const char *)(*pCsrf)["nonce"];
+				json_value_free(pCsrf);
+			}
+			if(FreshNonce.empty())
+			{
+				size_t Pos = FreshCsrf.find("\"nonce\":\"");
+				if(Pos != std::string::npos)
+				{
+					Pos += 9;
+					size_t EndPos = FreshCsrf.find('\"', Pos);
+					if(EndPos != std::string::npos)
+						FreshNonce = FreshCsrf.substr(Pos, EndPos - Pos);
+				}
+			}
+			if(FreshNonce.empty())
+				continue;
+
+			struct curl_slist *pPostHeaders = nullptr;
+			pPostHeaders = curl_slist_append(pPostHeaders, "Referer: https://kog.tw/");
+			pPostHeaders = curl_slist_append(pPostHeaders, "Origin: https://kog.tw");
+			pPostHeaders = curl_slist_append(pPostHeaders, "Accept: application/json, text/plain, */*");
+			pPostHeaders = curl_slist_append(pPostHeaders, "X-Requested-With: XMLHttpRequest");
+			pPostHeaders = curl_slist_append(pPostHeaders, "Content-Type: application/json;charset=UTF-8");
+			curl_easy_setopt(pCurl, CURLOPT_HTTPHEADER, pPostHeaders);
+
+			std::string VarPostData = "{\"nonce\":\"" + FreshNonce + "\",\"type\":\"players\",\"player\":\"" + EscapeForJson(Variant.c_str()) + "\",\"tz\":\"UTC\"}";
+			std::string VarResponseJson;
+			curl_easy_setopt(pCurl, CURLOPT_URL, "https://kog.tw/api.php");
+			curl_easy_setopt(pCurl, CURLOPT_POST, 1L);
+			curl_easy_setopt(pCurl, CURLOPT_POSTFIELDS, VarPostData.c_str());
+			curl_easy_setopt(pCurl, CURLOPT_POSTFIELDSIZE, (long)VarPostData.size());
+			curl_easy_setopt(pCurl, CURLOPT_WRITEDATA, &VarResponseJson);
+
+			CURLcode PostRes = curl_easy_perform(pCurl);
+			curl_slist_free_all(pPostHeaders);
+
+			if(PostRes == CURLE_OK && !VarResponseJson.empty())
+			{
+				if(VarResponseJson.find("\"data\":[]") == std::string::npos && VarResponseJson.find("\"status\":200") != std::string::npos)
+				{
+					ResponseJson = VarResponseJson;
+					str_copy(pSelf->m_aKoGFetchThreadPlayer, Variant.c_str());
+					str_copy(pSelf->m_aKoGRequestedName, Variant.c_str());
+					break;
+				}
+			}
+		}
+	}
+
 	curl_easy_cleanup(pCurl);
 
 	pSelf->m_KoGResultData = ResponseJson;
