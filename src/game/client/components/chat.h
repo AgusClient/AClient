@@ -155,9 +155,15 @@ class CChat : public CComponent
 
 	bool m_ServerSupportsCommandInfo;
 	std::vector<std::string> m_vPendingInviteCommands;
+	int m_LastInviteTeam;
+	char m_aLastInviteSender[64];
 	bool TryHandleBulkInviteCommand(const char *pLine);
 	bool TryHandleStealSkinCommand(const char *pLine);
 	bool TryHandleProfileCommand(const char *pLine);
+	bool TryHandleJoinInviteCommand(const char *pLine);
+
+	static void ConJoinInvite(IConsole::IResult *pResult, void *pUserData);
+	static void ConTeam(IConsole::IResult *pResult, void *pUserData);
 
 	static void ConSay(IConsole::IResult *pResult, void *pUserData);
 	static void ConSayTeam(IConsole::IResult *pResult, void *pUserData);
@@ -187,6 +193,10 @@ public:
 	static constexpr float MESSAGE_TEE_PADDING_RIGHT = 0.5f;
 
 	bool IsActive() const { return m_Mode != MODE_NONE; }
+	int LastInviteTeam() const { return m_LastInviteTeam; }
+	const char *LastInviteSender() const { return m_aLastInviteSender; }
+	void JoinLastInvite();
+
 	void AddLine(int ClientId, int Team, const char *pLine);
 	void EnableMode(int Team);
 	void DisableMode();
