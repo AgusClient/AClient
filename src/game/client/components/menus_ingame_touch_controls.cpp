@@ -55,7 +55,7 @@ void CMenusIngameTouchControls::RenderTouchButtonEditor(CUIRect MainView)
 	// Used to decide if need to update the Samplebutton.
 	bool Changed = false;
 	CUIRect Functional, LeftButton, MiddleButton, RightButton, EditBox, Block;
-	MainView.h = 600.0f - 40.0f - MainView.y;
+	MainView.h = Ui()->Screen()->h - 40.0f - MainView.y;
 	MainView.Draw(CMenus::ms_ColorTabbarActive, IGraphics::CORNER_B, 10.0f);
 	MainView.VMargin(MAINMARGIN, &MainView);
 	MainView.HSplitTop(MAINMARGIN, nullptr, &MainView);
@@ -634,7 +634,7 @@ bool CMenusIngameTouchControls::RenderVisibilitySettingBlock(CUIRect Block)
 void CMenusIngameTouchControls::RenderTouchButtonBrowser(CUIRect MainView)
 {
 	CUIRect LeftButton, MiddleButton, RightButton, EditBox, LabelRect, CommandRect, X, Y, W, H, Row;
-	MainView.h = 600.0f - 40.0f - MainView.y;
+	MainView.h = Ui()->Screen()->h - 40.0f - MainView.y;
 	MainView.Draw(CMenus::ms_ColorTabbarActive, IGraphics::CORNER_B, 10.0f);
 	MainView.Margin(MAINMARGIN, &MainView);
 
@@ -983,7 +983,7 @@ void CMenusIngameTouchControls::RenderConfigSettings(CUIRect MainView)
 void CMenusIngameTouchControls::RenderPreviewSettings(CUIRect MainView)
 {
 	CUIRect EditBox, Button;
-	MainView.h = 600.0f - 40.0f - MainView.y;
+	MainView.h = Ui()->Screen()->h - 40.0f - MainView.y;
 	MainView.Draw(CMenus::ms_ColorTabbarActive, IGraphics::CORNER_B, 10.0f);
 	MainView.Margin(MAINMARGIN, &MainView);
 	MainView.HSplitTop(ROWSIZE, &EditBox, &MainView);

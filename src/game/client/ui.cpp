@@ -452,8 +452,23 @@ float CUi::ButtonColorMul(const void *pId)
 
 const CUIRect *CUi::Screen()
 {
-	m_Screen.h = 600.0f;
-	m_Screen.w = Graphics()->ScreenAspect() * m_Screen.h;
+	const float Aspect = Graphics()->ScreenAspect();
+	const float MinDesignWidth = 1066.6667f;
+	const float BaseDesignHeight = 600.0f;
+
+	// Si el aspect ratio es menor que 16:9 (ej. 4:3, 5:4, 16:10), mantenemos el ancho minimo
+	// de diseno para que los menus de dos columnas y barras no se rompan ni solapen,
+	// adaptando la altura proporcionalmente para mantener una relacion de aspecto perfecta (1:1 pixel aspect ratio).
+	if(Aspect < 16.0f / 9.0f)
+	{
+		m_Screen.w = MinDesignWidth;
+		m_Screen.h = MinDesignWidth / Aspect;
+	}
+	else
+	{
+		m_Screen.h = BaseDesignHeight;
+		m_Screen.w = Aspect * BaseDesignHeight;
+	}
 	return &m_Screen;
 }
 

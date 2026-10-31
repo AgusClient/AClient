@@ -190,7 +190,9 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 
 	CUIRect VersionUpdate;
 	MainView.HSplitBottom(20.0f, nullptr, &VersionUpdate);
-	VersionUpdate.VMargin(VMargin, &VersionUpdate);
+	const float UpdateBarWidth = std::min(MainView.w - 100.0f, 520.0f);
+	const float UpdateMargin = (MainView.w - UpdateBarWidth) / 2.0f;
+	VersionUpdate.VMargin(UpdateMargin, &VersionUpdate);
 	CUIRect UpdateButton;
 	VersionUpdate.VSplitRight(120.0f, &VersionUpdate, &UpdateButton);
 	VersionUpdate.VSplitRight(10.0f, &VersionUpdate, nullptr);
