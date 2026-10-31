@@ -45,17 +45,16 @@ void CAClientAuth::GenerateHWID(char *pOutHWID, int MaxSize)
 	DWORD VolumeSerial = 0;
 	GetVolumeInformationW(L"C:\\", NULL, 0, &VolumeSerial, NULL, NULL, NULL, 0);
 
-	char aMachineGuid[128] = {0};
-	HKEY hKey;
-	if(RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Cryptography", 0, KEY_READ | KEY_WOW64_64KEY, &hKey) == ERROR_SUCCESS)
-	{
-		DWORD GuidSize = sizeof(aMachineGuid) - 1;
-		RegQueryValueExA(hKey, "MachineGuid", NULL, NULL, (LPBYTE)aMachineGuid, &GuidSize);
-		RegCloseKey(hKey);
-	}
+	wchar_t aCompName[MAX_COMPUTERNAME_LENGTH + 1] = {0};
+	DWORD CompSize = sizeof(aCompName) / sizeof(aCompName[0]);
+	GetComputerNameW(aCompName, &CompSize);
 
-	char aRawHWID[256];
-	str_format(aRawHWID, sizeof(aRawHWID), "%s-%lu-AClient-Salt-2026", aMachineGuid, VolumeSerial);
+	wchar_t aUserName[256] = {0};
+	DWORD UserSize = sizeof(aUserName) / sizeof(aUserName[0]);
+	GetUserNameW(aUserName, &UserSize);
+
+	char aRawHWID[512];
+	str_format(aRawHWID, sizeof(aRawHWID), "%ls-%ls-%lu-AClient-Salt-2026", aCompName, aUserName, VolumeSerial);
 	SHA256_DIGEST Digest = sha256(aRawHWID, str_length(aRawHWID));
 	sha256_str(Digest, pOutHWID, MaxSize);
 #else
