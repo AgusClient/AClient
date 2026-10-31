@@ -1,4 +1,4 @@
-﻿/* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
+/* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
 #ifndef GAME_CLIENT_GAMECLIENT_H
 #define GAME_CLIENT_GAMECLIENT_H
@@ -82,6 +82,7 @@
 #include "components/tclient/rainbow.h"
 #include "components/tclient/race_stats.h"
 #include "components/tclient/aclient_hud.h"
+#include "components/tclient/aclient_auth.h"
 #include "components/tclient/aclient_gameskins.h"
 #include "components/tclient/fast_practice.h"
 #include "components/tclient/scripting.h"
@@ -236,6 +237,7 @@ public:
 	CStatusBar m_StatusBar;
 	CRaceStats m_RaceStats;
 	CAClientHud m_AClientHud;
+	CAClientAuth m_AClientAuth;
 	CAClientGameSkins m_AClientGameSkins;
 	CPlayerProfiles m_PlayerProfiles;
 	CFastPractice m_FastPractice;

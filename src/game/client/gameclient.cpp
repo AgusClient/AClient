@@ -174,6 +174,7 @@ void CGameClient::OnConsoleInit()
 					      &m_StatusBar, // TClient
 					      &m_RaceStats, // TClient
 					      &m_AClientHud, // AClient
+						      &m_AClientAuth, // AClient
 						      &m_AClientGameSkins, // AClient
 					      &m_PlayerProfiles, // TClient
 					      &m_FastPractice, // TClient
