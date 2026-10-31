@@ -2,6 +2,7 @@
 
 #include <base/math.h>
 #include <base/str.h>
+#include <base/time.h>
 
 #include <engine/console.h>
 #include <engine/graphics.h>
@@ -12,7 +13,8 @@
 #include <generated/client_data.h>
 
 CAClientGameSkins::CAClientGameSkins() :
-	m_PendingAnnounce(false)
+	m_PendingAnnounce(false),
+	m_LastRenderCheckTime(0)
 {
 	m_aLastServerAddress[0] = '\0';
 }
@@ -60,8 +62,10 @@ void CAClientGameSkins::OnReset()
 	}
 
 	FreeAllGameSkins();
+	m_sFailedSkins.clear();
 	m_PendingAnnounce = false;
 	m_aLastServerAddress[0] = '\0';
+	m_LastRenderCheckTime = 0;
 }
 
 void CAClientGameSkins::UnloadSkin(SClientGameSkin &Skin)
@@ -157,6 +161,8 @@ void CAClientGameSkins::StartDownload(const char *pSkinName)
 		return;
 	if(!pSkinName || !pSkinName[0] || str_comp(pSkinName, "default") == 0)
 		return;
+	if(m_sFailedSkins.find(pSkinName) != m_sFailedSkins.end())
+		return;
 
 	Storage()->CreateFolder("downloaded_gameskins", IStorage::TYPE_SAVE);
 
@@ -186,6 +192,9 @@ const SClientGameSkin *CAClientGameSkins::GetOrLoadGameSkin(const char *pName)
 	if(it != m_mLoadedGameSkins.end())
 		return &it->second;
 
+	if(m_sFailedSkins.find(pName) != m_sFailedSkins.end())
+		return nullptr;
+
 	char aPath[IO_MAX_PATH_LENGTH];
 	if(!FindGameSkinFile(pName, aPath, sizeof(aPath)))
 	{
@@ -199,7 +208,10 @@ const SClientGameSkin *CAClientGameSkins::GetOrLoadGameSkin(const char *pName)
 
 	CImageInfo ImgInfo;
 	if(!Graphics()->LoadPng(ImgInfo, aPath, IStorage::TYPE_ALL))
+	{
+		m_sFailedSkins.insert(pName);
 		return nullptr;
+	}
 
 	CImageInfo DefaultInfo;
 	std::optional<CImageInfo> FallbackInfo;
@@ -208,6 +220,10 @@ const SClientGameSkin *CAClientGameSkins::GetOrLoadGameSkin(const char *pName)
 
 	if(!Graphics()->CheckImageDivisibility(aPath, ImgInfo, g_pData->m_aSprites[SPRITE_HOOK_HEAD].m_pSet->m_Gridx, g_pData->m_aSprites[SPRITE_HOOK_HEAD].m_pSet->m_Gridy, true) || !Graphics()->IsImageFormatRgba(aPath, ImgInfo))
 	{
+		ImgInfo.Free();
+		if(FallbackInfo.has_value())
+			FallbackInfo->Free();
+		m_sFailedSkins.insert(pName);
 		return nullptr;
 	}
 
@@ -240,6 +256,10 @@ const SClientGameSkin *CAClientGameSkins::GetOrLoadGameSkin(const char *pName)
 		Skin.m_aaSpriteWeaponsMuzzles[2][i] = Skin.m_aSpriteWeaponShotgunMuzzles[i];
 		Skin.m_aaSpriteWeaponsMuzzles[5][i] = Skin.m_aaSpriteWeaponNinjaMuzzles[i];
 	}
+
+	ImgInfo.Free();
+	if(FallbackInfo.has_value())
+		FallbackInfo->Free();
 
 	return &Skin;
 }
@@ -396,12 +416,19 @@ void CAClientGameSkins::OnRender()
 				UpdateAllPlayerSkins();
 			}
 		}
+		else
+		{
+			if(!m_DownloadingSkinName.empty())
+				m_sFailedSkins.insert(m_DownloadingSkinName);
+		}
 		m_pDownloadRequest = nullptr;
 		m_DownloadingSkinName.clear();
 	}
 
-	if(g_Config.m_AcShowRemoteGameSkins && Client()->State() == IClient::STATE_ONLINE)
+	int64_t Now = time_get();
+	if(g_Config.m_AcShowRemoteGameSkins && Client()->State() == IClient::STATE_ONLINE && (Now - m_LastRenderCheckTime) > time_freq() / 2)
 	{
+		m_LastRenderCheckTime = Now;
 		for(int i = 0; i < MAX_CLIENTS; ++i)
 		{
 			if(!GameClient()->m_aClients[i].m_Active || i == GameClient()->m_Snap.m_LocalClientId)
@@ -416,6 +443,10 @@ void CAClientGameSkins::OnRender()
 					if(pSkin)
 					{
 						GameClient()->m_aClients[i].m_pCustomGameSkin = pSkin;
+						str_copy(GameClient()->m_aClients[i].m_aCustomGameSkinName, it->second.c_str());
+					}
+					else if(m_sFailedSkins.find(it->second) != m_sFailedSkins.end())
+					{
 						str_copy(GameClient()->m_aClients[i].m_aCustomGameSkinName, it->second.c_str());
 					}
 				}
