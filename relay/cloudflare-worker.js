@@ -90,17 +90,68 @@ export default {
     }
 
     // ==========================================
-    // PRESENCIA DE GAMESKINS (Existente)
+    // PRESENCIA DE GAMESKINS
     // ==========================================
-    // GET /?server=ip:port
+    // GET /?server=ip:port o /?player=Nombre
     if (request.method === 'GET') {
       const server = url.searchParams.get('server');
+      const player = url.searchParams.get('player');
+
+      // Consulta directa del skin de un jugador por nombre
+      if (player) {
+        const safePlayerKey = encodeURIComponent(player.trim());
+        const raw = await env.PRESENCE_KV.get(`player_skin:${safePlayerKey}`);
+        if (raw) {
+          return new Response(raw, { headers });
+        }
+        return new Response(JSON.stringify({ error: 'Player not found' }), { status: 404, headers });
+      }
+
       if (!server) {
         return new Response(JSON.stringify([]), { headers });
       }
 
-      const raw = await env.PRESENCE_KV.get(server);
-      return new Response(raw || '[]', { headers });
+      const normalizedServer = server.trim();
+      const prefix = `presence:${normalizedServer}:`;
+      const list = await env.PRESENCE_KV.list({ prefix });
+      const players = [];
+
+      for (const item of list.keys) {
+        if (item.metadata && item.metadata.player && item.metadata.asset_game) {
+          players.push({
+            player: item.metadata.player,
+            asset_game: item.metadata.asset_game
+          });
+        } else {
+          const raw = await env.PRESENCE_KV.get(item.name);
+          if (raw) {
+            try {
+              const data = JSON.parse(raw);
+              if (data && data.player && data.asset_game) {
+                players.push({
+                  player: data.player,
+                  asset_game: data.asset_game
+                });
+              }
+            } catch (e) {}
+          }
+        }
+      }
+
+      // Si no hay claves atomicas, revisar si existe el registro legacy para compatibilidad
+      if (players.length === 0) {
+        const legacyRaw = await env.PRESENCE_KV.get(normalizedServer);
+        if (legacyRaw) {
+          try {
+            const legacyPlayers = JSON.parse(legacyRaw);
+            if (Array.isArray(legacyPlayers)) {
+              return new Response(JSON.stringify(legacyPlayers), { headers });
+            }
+          } catch (e) {}
+        }
+      }
+
+      return new Response(JSON.stringify(players), { headers });
     }
 
     // POST /
@@ -113,21 +164,46 @@ export default {
           return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400, headers });
         }
 
-        let players = [];
-        const raw = await env.PRESENCE_KV.get(server);
+        const normalizedServer = server.trim();
+        const safePlayer = player.trim();
+        const safeSkin = asset_game.trim();
+        const safePlayerKey = encodeURIComponent(safePlayer);
+
+        const individualKey = `presence:${normalizedServer}:${safePlayerKey}`;
+        const record = {
+          player: safePlayer,
+          asset_game: safeSkin,
+          updated_at: Date.now()
+        };
+
+        // 1. Guardar la clave atomica individual por jugador en KV con TTL de 300 segundos
+        // Almacenamos metadata para recuperacion sin lecturas KV adicionales
+        await env.PRESENCE_KV.put(individualKey, JSON.stringify(record), {
+          expirationTtl: 300,
+          metadata: { player: safePlayer, asset_game: safeSkin }
+        });
+
+        // 2. Guardar registro por jugador individual (player_skin:<nombre>) con TTL de 600 segundos
+        const playerGlobalKey = `player_skin:${safePlayerKey}`;
+        await env.PRESENCE_KV.put(playerGlobalKey, JSON.stringify(record), {
+          expirationTtl: 600,
+          metadata: { player: safePlayer, asset_game: safeSkin }
+        });
+
+        // 3. Mantener compatibilidad con clientes legados actualizando la clave monolítica
+        let legacyPlayers = [];
+        const raw = await env.PRESENCE_KV.get(normalizedServer);
         if (raw) {
           try {
-            players = JSON.parse(raw);
+            legacyPlayers = JSON.parse(raw);
+            if (!Array.isArray(legacyPlayers)) legacyPlayers = [];
           } catch (e) {
-            players = [];
+            legacyPlayers = [];
           }
         }
-
-        players = players.filter(p => p.player !== player);
-        players.push({ player, asset_game, updated_at: Date.now() });
-
-        // TTL de 300 segundos (5 minutos)
-        await env.PRESENCE_KV.put(server, JSON.stringify(players), { expirationTtl: 300 });
+        legacyPlayers = legacyPlayers.filter(p => p.player !== safePlayer);
+        legacyPlayers.push({ player: safePlayer, asset_game: safeSkin, updated_at: Date.now() });
+        await env.PRESENCE_KV.put(normalizedServer, JSON.stringify(legacyPlayers), { expirationTtl: 300 });
 
         return new Response(JSON.stringify({ status: 'ok' }), { headers });
       } catch (err) {
