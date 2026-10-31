@@ -2872,6 +2872,8 @@ if(CLIENT)
     components/tclient/aclient_hud.cpp
     components/tclient/aclient_hud.h
     components/tclient/aclient_inputs.cpp
+    components/tclient/aclient_gameskins.cpp
+    components/tclient/aclient_gameskins.h
     components/tclient/aclient_inputs.h
     components/tclient/bg_draw.cpp
     components/tclient/bg_draw.h
@@ -2931,6 +2933,7 @@ if(CLIENT)
     components/voting.h
     gameclient.cpp
     gameclient.h
+    gameskin.h
     laser_data.cpp
     laser_data.h
     lineinput.cpp

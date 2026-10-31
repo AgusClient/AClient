@@ -92,7 +92,7 @@ void CMenus::RenderSettingsTee(CUIRect MainView)
 	const float EyeButtonSize = 40.0f;
 	const bool RenderEyesBelow = MainView.w < 750.0f;
 	CUIRect YourSkin, Checkboxes, SkinPrefix, Eyes, Button, Label;
-	MainView.HSplitTop(90.0f, &YourSkin, &MainView);
+	MainView.HSplitTop(150.0f, &YourSkin, &MainView);
 	if(RenderEyesBelow)
 	{
 		YourSkin.VSplitLeft(MainView.w * 0.45f, &YourSkin, &Checkboxes);
@@ -139,6 +139,26 @@ void CMenus::RenderSettingsTee(CUIRect MainView)
 	if(DoButton_CheckBox(&g_Config.m_ClFatSkins, Localize("Fat skins (DDFat)"), g_Config.m_ClFatSkins, &Button))
 	{
 		g_Config.m_ClFatSkins ^= 1;
+	}
+
+	Checkboxes.HSplitTop(20.0f, &Button, &Checkboxes);
+	if(DoButton_CheckBox(&g_Config.m_AcShowRemoteGameSkins, Localize("Mostrar gameskins de otros"), g_Config.m_AcShowRemoteGameSkins, &Button))
+	{
+		g_Config.m_AcShowRemoteGameSkins ^= 1;
+	}
+
+	Checkboxes.HSplitTop(20.0f, &Button, &Checkboxes);
+	if(DoButton_CheckBox(&g_Config.m_ClDownloadGameskins, Localize("Descargar gameskins automaticamente"), g_Config.m_ClDownloadGameskins, &Button))
+	{
+		g_Config.m_ClDownloadGameskins ^= 1;
+	}
+
+	static CButtonContainer s_BtnReloadGameSkins;
+	Checkboxes.HSplitTop(20.0f, &Button, &Checkboxes);
+	Button.HMargin(1.0f, &Button);
+	if(DoButton_Menu(&s_BtnReloadGameSkins, Localize("Recargar gameskins"), 0, &Button))
+	{
+		GameClient()->m_AClientGameSkins.RefreshPresence();
 	}
 
 	// Skin prefix
