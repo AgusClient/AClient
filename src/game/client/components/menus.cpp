@@ -1181,6 +1181,12 @@ void CMenus::Render()
 		Ui()->SetHotItem(nullptr);
 	}
 
+	// Render AClient Auth Modal if not authenticated
+	if(!GameClient()->m_AClientAuth.IsAuthenticated())
+	{
+		GameClient()->m_AClientAuth.RenderAuthModal(Screen);
+	}
+
 	// Handle this escape hotkey after popup menus
 	if(!m_ShowStart && ClientState == IClient::STATE_OFFLINE && Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE))
 	{
