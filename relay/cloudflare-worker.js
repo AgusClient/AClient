@@ -62,7 +62,7 @@ export default {
         }
 
         if (userData.password !== password) {
-          return new Response(JSON.stringify({ status: 'error', message: 'Contrasena incorrecta' }), { status: 401, headers });
+          return new Response(JSON.stringify({ status: 'error', message: 'Contraseña incorrecta' }), { status: 401, headers });
         }
 
         // Si es la primera vez que inicia sesion, vinculamos su HWID
