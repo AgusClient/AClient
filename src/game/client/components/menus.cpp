@@ -1050,6 +1050,13 @@ void CMenus::Render()
 	}
 
 	CUIRect Screen = *Ui()->Screen();
+
+	// Bloqueo total si el usuario no ha iniciado sesion
+	if(!GameClient()->m_AClientAuth.IsAuthenticated())
+	{
+		GameClient()->m_AClientAuth.RenderAuthModal(*Ui()->Screen());
+		return;
+	}
 	if(Client()->State() != IClient::STATE_DEMOPLAYBACK || m_Popup != POPUP_NONE)
 	{
 		Screen.Margin(10.0f, &Screen);
@@ -1179,12 +1186,6 @@ void CMenus::Render()
 	if(GameClient()->m_KeyBinder.IsActive())
 	{
 		Ui()->SetHotItem(nullptr);
-	}
-
-	// Render AClient Auth Modal if not authenticated
-	if(!GameClient()->m_AClientAuth.IsAuthenticated())
-	{
-		GameClient()->m_AClientAuth.RenderAuthModal(Screen);
 	}
 
 	// Handle this escape hotkey after popup menus

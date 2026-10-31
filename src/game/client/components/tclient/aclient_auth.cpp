@@ -258,19 +258,54 @@ void CAClientAuth::OnRender()
 
 void CAClientAuth::RenderAuthModal(CUIRect Screen)
 {
-	// Fondo semitransparente que cubre y bloquea toda la pantalla
-	Screen.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.82f), IGraphics::CORNER_NONE, 0.0f);
+	// Fondo solido y completamente opaco para cubrir toda la pantalla y bloquear los menus de atras
+	Screen.Draw(ColorRGBA(0.06f, 0.07f, 0.10f, 1.0f), IGraphics::CORNER_NONE, 0.0f);
+
+	// Botones estaticos declarados para gestion de focus
+	static CButtonContainer s_RememberBtn;
+	static CButtonContainer s_LoginBtn;
+	static CButtonContainer s_QuitBtn;
+
+	// Navegacion con tecla TAB entre usuario y contrasena
+	if(Ui()->ConsumeHotkey(CUi::HOTKEY_TAB))
+	{
+		if(Ui()->ActiveItem() == &m_UsernameInput)
+		{
+			Ui()->SetActiveItem(&m_PasswordInput);
+			m_PasswordInput.SelectAll();
+		}
+		else if(Ui()->ActiveItem() == &m_PasswordInput)
+		{
+			Ui()->SetActiveItem(&m_UsernameInput);
+			m_UsernameInput.SelectAll();
+		}
+		else
+		{
+			Ui()->SetActiveItem(&m_UsernameInput);
+			m_UsernameInput.SelectAll();
+		}
+	}
+
+	// Auto-enfoque inicial si ningun elemento esta activo
+	if(Ui()->ActiveItem() != &m_UsernameInput && Ui()->ActiveItem() != &m_PasswordInput &&
+	   Ui()->ActiveItem() != &s_RememberBtn && Ui()->ActiveItem() != &s_LoginBtn && Ui()->ActiveItem() != &s_QuitBtn)
+	{
+		if(m_UsernameInput.GetString()[0] == '\0')
+			Ui()->SetActiveItem(&m_UsernameInput);
+		else
+			Ui()->SetActiveItem(&m_PasswordInput);
+	}
 
 	// Ventana modal centrada
-	const float ModalWidth = 420.0f;
-	const float ModalHeight = 290.0f;
+	const float ModalWidth = 440.0f;
+	const float ModalHeight = 310.0f;
 	CUIRect Box;
 	Box.x = Screen.x + (Screen.w - ModalWidth) / 2.0f;
 	Box.y = Screen.y + (Screen.h - ModalHeight) / 2.0f;
 	Box.w = ModalWidth;
 	Box.h = ModalHeight;
 
-	Box.Draw(ColorRGBA(0.12f, 0.14f, 0.18f, 0.98f), IGraphics::CORNER_ALL, 12.0f);
+	Box.Draw(ColorRGBA(0.12f, 0.14f, 0.19f, 1.0f), IGraphics::CORNER_ALL, 12.0f);
 
 	Box.Margin(20.0f, &Box);
 
@@ -308,7 +343,6 @@ void CAClientAuth::RenderAuthModal(CUIRect Screen)
 
 	// Checkbox Recordar sesion
 	Box.HSplitTop(18.0f, &RememberBox, &Box);
-	static CButtonContainer s_RememberBtn;
 	if(GameClient()->m_Menus.DoButton_CheckBox(&s_RememberBtn, "Recordar sesion en esta PC", m_Remember, &RememberBox))
 	{
 		m_Remember = !m_Remember;
@@ -332,17 +366,25 @@ void CAClientAuth::RenderAuthModal(CUIRect Screen)
 	CUIRect LoginBtnRect, QuitBtnRect;
 	ButtonsRow.VSplitMid(&LoginBtnRect, &QuitBtnRect, 15.0f);
 
-	static CButtonContainer s_LoginBtn;
-	if(GameClient()->m_Menus.DoButton_Menu(&s_LoginBtn, "Iniciar Sesion", 0, &LoginBtnRect) ||
-	   (Ui()->ActiveItem() == &m_PasswordInput && Ui()->ConsumeHotkey(CUi::HOTKEY_ENTER)))
+	bool Submit = GameClient()->m_Menus.DoButton_Menu(&s_LoginBtn, "Iniciar Sesion", 0, &LoginBtnRect);
+	if(!Submit && Ui()->ConsumeHotkey(CUi::HOTKEY_ENTER))
 	{
-		if(m_AuthState != AUTH_CHECKING)
+		if(Ui()->ActiveItem() == &m_UsernameInput && m_PasswordInput.GetString()[0] == '\0')
 		{
-			StartLogin(m_UsernameInput.GetString(), m_PasswordInput.GetString());
+			Ui()->SetActiveItem(&m_PasswordInput);
+			m_PasswordInput.SelectAll();
+		}
+		else if(m_AuthState != AUTH_CHECKING)
+		{
+			Submit = true;
 		}
 	}
 
-	static CButtonContainer s_QuitBtn;
+	if(Submit && m_AuthState != AUTH_CHECKING)
+	{
+		StartLogin(m_UsernameInput.GetString(), m_PasswordInput.GetString());
+	}
+
 	if(GameClient()->m_Menus.DoButton_Menu(&s_QuitBtn, "Salir", 0, &QuitBtnRect))
 	{
 		Client()->Quit();
