@@ -30,6 +30,7 @@ public:
 
 	void ReconstructSmokeTrail(const CProjectileData *pCurrent, int DestroyTick);
 	void RenderLaser(vec2 From, vec2 Pos, ColorRGBA OuterColor, ColorRGBA InnerColor, float TicksBody, float TicksHead, int Type) const;
+	void RenderLaserData(const CLaserData *pCurrent);
 
 private:
 	int m_BlueFlagOffset;
