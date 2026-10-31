@@ -3666,6 +3666,7 @@ void CMenus::RenderSettingsAClientCommands(CUIRect MainView)
 	DrawCommandCard(Column, "ac_auto_team_lock [0|1]", TCLocalize("Automatically lock team (/lock 1) after joining a team."));
 	DrawCommandCard(Column, "ac_auto_team_lock_delay [sec]", TCLocalize("Delay in seconds before sending /lock 1 after joining."));
 	DrawCommandCard(Column, "/invite friends", TCLocalize("Invites only connected players on your friends list to your team."));
+	DrawCommandCard(Column, "/team last / team_invite", TCLocalize("Se une instantaneamente al ultimo equipo al que fuiste invitado."));
 	s_SectionBoxesCmds.back().h = Column.y - s_SectionBoxesCmds.back().y;
 
 	// 2. RaceStats & HUD
@@ -4454,6 +4455,10 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	static CButtonContainer s_ReaderInviteFriendsAc, s_ClearInviteFriendsAc;
 	DoLine_KeyReader(Column, s_ReaderInviteFriendsAc, s_ClearInviteFriendsAc, TCLocalize("Invite friends key (/invite friends)"), "say /invite friends");
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	static CButtonContainer s_ReaderJoinInviteAc, s_ClearJoinInviteAc;
+	DoLine_KeyReader(Column, s_ReaderJoinInviteAc, s_ClearJoinInviteAc, TCLocalize("Unirse a invitacion (/team last)"), "team_invite");
 
 	if(Client()->State() == IClient::STATE_ONLINE)
 	{

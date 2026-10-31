@@ -54,6 +54,8 @@ void CChat::CLine::Reset(CChat &This)
 CChat::CChat()
 {
 	m_Mode = MODE_NONE;
+	m_LastInviteTeam = 0;
+	m_aLastInviteSender[0] = '\0';
 
 	m_Input.SetCalculateOffsetCallback([this]() { return m_IsInputCensored; });
 	m_Input.SetDisplayTextCallback([this](char *pStr, size_t NumChars) {
@@ -148,6 +150,8 @@ void CChat::Reset()
 	m_IsInputCensored = false;
 	m_EditingNewLine = true;
 	m_ServerSupportsCommandInfo = false;
+	m_LastInviteTeam = 0;
+	m_aLastInviteSender[0] = '\0';
 	m_ServerCommandsNeedSorting = false;
 	m_aCurrentInputText[0] = '\0';
 	DisableMode();
@@ -289,6 +293,10 @@ void CChat::OnConsoleInit()
 	Console()->Register("tc_silent_typing", "?i[val]", CFGFLAG_CLIENT, ConTcSilentTyping, this, "Alias for ac_silent_typing");
 	Console()->Register("cl_silent_typing", "?i[val]", CFGFLAG_CLIENT, ConTcSilentTyping, this, "Alias for ac_silent_typing");
 	Console()->Register("tc_hide_chat_bubbles", "?i[val]", CFGFLAG_CLIENT, ConTcSilentTyping, this, "Alias for ac_silent_typing");
+	Console()->Register("team_invite", "", CFGFLAG_CLIENT, ConJoinInvite, this, "Unirse al ultimo equipo al que fuiste invitado");
+	Console()->Register("join_invite", "", CFGFLAG_CLIENT, ConJoinInvite, this, "Unirse al ultimo equipo al que fuiste invitado");
+	Console()->Register("team_last", "", CFGFLAG_CLIENT, ConJoinInvite, this, "Unirse al ultimo equipo al que fuiste invitado");
+	Console()->Register("team", "?s[arg]", CFGFLAG_CLIENT, ConTeam, this, "Unirse a un equipo (ej. team 3) o al ultimo invitado (team last)");
 }
 
 void CChat::OnInit()
@@ -350,8 +358,24 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 			return true;
 		}
 
-		// AClient: Autocompletado directo para /invite friends
+		// AClient: Autocompletado directo para /team last
 		const char *pInputStr = m_Input.GetString();
+		if(str_startswith_nocase(pInputStr, "/team"))
+		{
+			const char *pArg = pInputStr + 5;
+			while(*pArg == ' ')
+				pArg++;
+
+			if(str_comp_nocase(pInputStr, "/team") == 0 || (pInputStr[5] == ' ' && (*pArg == '\0' || str_startswith_nocase("last", pArg))))
+			{
+				m_Input.Set("/team last");
+				m_Input.SetCursorOffset(str_length("/team last"));
+				m_CompletionUsed = true;
+				return true;
+			}
+		}
+
+		// AClient: Autocompletado directo para /invite friends
 		if(str_startswith_nocase(pInputStr, "/invite"))
 		{
 			const char *pArg = pInputStr + 7;
@@ -774,6 +798,59 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 	if(ClientId == CLIENT_MSG && !g_Config.m_AcShowChatClient)
 		return;
 
+	// AClient: Detect incoming team invite
+	bool EmitInviteHint = false;
+	if(ClientId != CLIENT_MSG &&
+		(str_find_nocase(pLine, "invited you") ||
+		 str_find_nocase(pLine, "te ha invitado") ||
+		 str_find_nocase(pLine, "te invito") ||
+		 str_find_nocase(pLine, "te invitó")))
+	{
+		int InviteTeam = -1;
+		const char *pTeamSearch = str_find_nocase(pLine, "/team ");
+		if(pTeamSearch)
+			InviteTeam = str_toint(pTeamSearch + 6);
+		else
+		{
+			const char *pToTeam = str_find_nocase(pLine, "to team ");
+			if(pToTeam)
+				InviteTeam = str_toint(pToTeam + 8);
+			else
+			{
+				const char *pAlEquipo = str_find_nocase(pLine, "al equipo ");
+				if(pAlEquipo)
+					InviteTeam = str_toint(pAlEquipo + 10);
+				else
+				{
+					const char *pEquipo = str_find_nocase(pLine, "equipo ");
+					if(pEquipo)
+						InviteTeam = str_toint(pEquipo + 7);
+				}
+			}
+		}
+
+		if(InviteTeam > 0 && InviteTeam < 64)
+		{
+			m_LastInviteTeam = InviteTeam;
+			m_aLastInviteSender[0] = '\0';
+			const char *pQuoteStart = str_find(pLine, "'");
+			if(!pQuoteStart)
+				pQuoteStart = str_find(pLine, "\"");
+
+			if(pQuoteStart)
+			{
+				char QuoteChar = *pQuoteStart;
+				const char *pQuoteEnd = str_find(pQuoteStart + 1, QuoteChar == '\'' ? "'" : "\"");
+				if(pQuoteEnd && pQuoteEnd > pQuoteStart + 1)
+				{
+					int NameLen = (int)(pQuoteEnd - (pQuoteStart + 1));
+					str_truncate(m_aLastInviteSender, sizeof(m_aLastInviteSender), pQuoteStart + 1, NameLen);
+				}
+			}
+			EmitInviteHint = true;
+		}
+	}
+
 	// AClient: Filter start line messages
 	if(g_Config.m_AcHideStartMessages && ClientId == SERVER_MSG)
 	{
@@ -1054,6 +1131,16 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 
 	// TClient
 	GameClient()->m_Translate.AutoTranslate(CurrentLine);
+
+	if(EmitInviteHint)
+	{
+		char aHint[160];
+		if(m_aLastInviteSender[0] != '\0')
+			str_format(aHint, sizeof(aHint), TCLocalize("[AClient] Invitacion guardada (Equipo %d de '%s'). Usa '/team last' o tu bind para unirte."), m_LastInviteTeam, m_aLastInviteSender);
+		else
+			str_format(aHint, sizeof(aHint), TCLocalize("[AClient] Invitacion guardada al Equipo %d. Usa '/team last' o tu bind para unirte."), m_LastInviteTeam);
+		Echo(aHint);
+	}
 }
 
 void CChat::OnPrepareLines(float y)
@@ -1626,6 +1713,8 @@ void CChat::SendChat(int Team, const char *pLine)
 		return;
 	if(TryHandleProfileCommand(pLine))
 		return;
+	if(TryHandleJoinInviteCommand(pLine))
+		return;
 
 	m_LastChatSend = time();
 
@@ -1798,4 +1887,79 @@ bool CChat::TryHandleProfileCommand(const char *pLine)
 	GameClient()->m_Menus.SetAClientTab(CMenus::ACLIENT_TAB_PROFILES);
 	GameClient()->m_Menus.SetActive(true);
 	return true;
+}
+
+
+void CChat::JoinLastInvite()
+{
+	if(Client()->State() != IClient::STATE_ONLINE)
+	{
+		Echo(TCLocalize("[AClient] Debes estar conectado a un servidor."));
+		return;
+	}
+
+	if(m_LastInviteTeam <= 0 || m_LastInviteTeam >= 64)
+	{
+		Echo(TCLocalize("[AClient] No tienes invitaciones recientes a ningun equipo."));
+		return;
+	}
+
+	char aBuf[64];
+	str_format(aBuf, sizeof(aBuf), "/team %d", m_LastInviteTeam);
+	SendChat(0, aBuf);
+
+	char aEcho[128];
+	if(m_aLastInviteSender[0] != '\0')
+		str_format(aEcho, sizeof(aEcho), TCLocalize("[AClient] Uniendose al equipo %d (invitado por '%s')..."), m_LastInviteTeam, m_aLastInviteSender);
+	else
+		str_format(aEcho, sizeof(aEcho), TCLocalize("[AClient] Uniendose al equipo %d..."), m_LastInviteTeam);
+	Echo(aEcho);
+}
+
+bool CChat::TryHandleJoinInviteCommand(const char *pLine)
+{
+	if(!pLine)
+		return false;
+
+	const char *pTrimmed = str_utf8_skip_whitespaces(pLine);
+	if(str_comp_nocase(pTrimmed, "/team last") == 0 ||
+		str_comp_nocase(pTrimmed, "/team invite") == 0 ||
+		str_comp_nocase(pTrimmed, "/join_invite") == 0 ||
+		str_comp_nocase(pTrimmed, "/joininvite") == 0)
+	{
+		JoinLastInvite();
+		return true;
+	}
+
+	return false;
+}
+
+void CChat::ConJoinInvite(IConsole::IResult *pResult, void *pUserData)
+{
+	CChat *pSelf = (CChat *)pUserData;
+	pSelf->JoinLastInvite();
+}
+
+void CChat::ConTeam(IConsole::IResult *pResult, void *pUserData)
+{
+	CChat *pSelf = (CChat *)pUserData;
+	const char *pArg = pResult->NumArguments() > 0 ? pResult->GetString(0) : nullptr;
+	if(!pArg || *pArg == '\0' || str_comp_nocase(pArg, "last") == 0 || str_comp_nocase(pArg, "invite") == 0)
+	{
+		pSelf->JoinLastInvite();
+	}
+	else
+	{
+		int TeamNum = str_toint(pArg);
+		if(TeamNum >= 0 && TeamNum < 64)
+		{
+			char aBuf[64];
+			str_format(aBuf, sizeof(aBuf), "/team %d", TeamNum);
+			pSelf->SendChat(0, aBuf);
+		}
+		else
+		{
+			pSelf->Echo(TCLocalize("[AClient] Uso: team <numero_equipo> o team last"));
+		}
+	}
 }
