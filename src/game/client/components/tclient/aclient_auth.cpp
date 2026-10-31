@@ -22,6 +22,7 @@ CAClientAuth::CAClientAuth()
 	m_aCurrentUsername[0] = '\0';
 	m_Remember = true;
 	m_InitialCheckDone = false;
+	m_InitialFocusSet = false;
 
 	m_PasswordInput.SetHidden(true);
 }
@@ -168,6 +169,7 @@ void CAClientAuth::Logout()
 	g_Config.m_ClAuthUser[0] = '\0';
 	g_Config.m_ClAuthPass[0] = '\0';
 	g_Config.m_ClAuthRemember = 0;
+	m_InitialFocusSet = false;
 	m_PasswordInput.Clear();
 }
 
@@ -266,34 +268,35 @@ void CAClientAuth::RenderAuthModal(CUIRect Screen)
 	static CButtonContainer s_LoginBtn;
 	static CButtonContainer s_QuitBtn;
 
-	// Navegacion con tecla TAB entre usuario y contrasena
-	if(Ui()->ConsumeHotkey(CUi::HOTKEY_TAB))
+	// Auto-enfoque inicial una sola vez al aparecer la ventana
+	if(!m_InitialFocusSet)
 	{
-		if(Ui()->ActiveItem() == &m_UsernameInput)
+		m_InitialFocusSet = true;
+		if(m_UsernameInput.GetString()[0] == '\0')
+		{
+			Ui()->SetActiveItem(&m_UsernameInput);
+			m_UsernameInput.SelectAll();
+		}
+		else
 		{
 			Ui()->SetActiveItem(&m_PasswordInput);
 			m_PasswordInput.SelectAll();
 		}
-		else if(Ui()->ActiveItem() == &m_PasswordInput)
-		{
-			Ui()->SetActiveItem(&m_UsernameInput);
-			m_UsernameInput.SelectAll();
-		}
-		else
-		{
-			Ui()->SetActiveItem(&m_UsernameInput);
-			m_UsernameInput.SelectAll();
-		}
 	}
 
-	// Auto-enfoque inicial si ningun elemento esta activo
-	if(Ui()->ActiveItem() != &m_UsernameInput && Ui()->ActiveItem() != &m_PasswordInput &&
-	   Ui()->ActiveItem() != &s_RememberBtn && Ui()->ActiveItem() != &s_LoginBtn && Ui()->ActiveItem() != &s_QuitBtn)
+	// Navegacion con tecla TAB entre usuario y contrasena
+	if(Ui()->ConsumeHotkey(CUi::HOTKEY_TAB))
 	{
-		if(m_UsernameInput.GetString()[0] == '\0')
-			Ui()->SetActiveItem(&m_UsernameInput);
-		else
+		if(m_UsernameInput.IsActive() || Ui()->ActiveItem() == &m_UsernameInput)
+		{
 			Ui()->SetActiveItem(&m_PasswordInput);
+			m_PasswordInput.SelectAll();
+		}
+		else
+		{
+			Ui()->SetActiveItem(&m_UsernameInput);
+			m_UsernameInput.SelectAll();
+		}
 	}
 
 	// Ventana modal centrada
@@ -369,7 +372,7 @@ void CAClientAuth::RenderAuthModal(CUIRect Screen)
 	bool Submit = GameClient()->m_Menus.DoButton_Menu(&s_LoginBtn, "Iniciar Sesion", 0, &LoginBtnRect);
 	if(!Submit && Ui()->ConsumeHotkey(CUi::HOTKEY_ENTER))
 	{
-		if(Ui()->ActiveItem() == &m_UsernameInput && m_PasswordInput.GetString()[0] == '\0')
+		if((m_UsernameInput.IsActive() || Ui()->ActiveItem() == &m_UsernameInput) && m_PasswordInput.GetString()[0] == '\0')
 		{
 			Ui()->SetActiveItem(&m_PasswordInput);
 			m_PasswordInput.SelectAll();

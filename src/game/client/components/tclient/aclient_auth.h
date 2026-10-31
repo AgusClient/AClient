@@ -29,6 +29,7 @@ private:
 	char m_aCurrentUsername[64];
 	bool m_Remember;
 	bool m_InitialCheckDone;
+	bool m_InitialFocusSet;
 
 	std::shared_ptr<IHttpRequest> m_pAuthRequest;
 
