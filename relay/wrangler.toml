@@ -1,0 +1,7 @@
+name = "aclient-presence"
+main = "cloudflare-worker.js"
+compatibility_date = "2024-10-30"
+
+[[kv_namespaces]]
+binding = "PRESENCE_KV"
+id = "0ecbd5978bee465b930daf376e18c23a"
