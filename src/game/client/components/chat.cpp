@@ -56,6 +56,15 @@ CChat::CChat()
 	m_Mode = MODE_NONE;
 	m_LastInviteTeam = 0;
 	m_aLastInviteSender[0] = '\0';
+	m_aLastTaggedPlayer[0] = '\0';
+	m_LastTaggedClientId = -1;
+	m_LastTaggedTeam = 0;
+	m_LastTaggedTime = 0;
+	m_PrevWindowActive = true;
+	m_TaggedWhileTabbed = false;
+	m_TaggedWhileTabbedCount = 0;
+	for(int i = 0; i < MAX_CLIENTS; i++)
+		m_aLastAfkReplyTime[i] = 0;
 
 	m_Input.SetCalculateOffsetCallback([this]() { return m_IsInputCensored; });
 	m_Input.SetDisplayTextCallback([this](char *pStr, size_t NumChars) {
@@ -152,6 +161,14 @@ void CChat::Reset()
 	m_ServerSupportsCommandInfo = false;
 	m_LastInviteTeam = 0;
 	m_aLastInviteSender[0] = '\0';
+	m_aLastTaggedPlayer[0] = '\0';
+	m_LastTaggedClientId = -1;
+	m_LastTaggedTeam = 0;
+	m_LastTaggedTime = 0;
+	m_TaggedWhileTabbed = false;
+	m_TaggedWhileTabbedCount = 0;
+	for(int i = 0; i < MAX_CLIENTS; i++)
+		m_aLastAfkReplyTime[i] = 0;
 	m_ServerCommandsNeedSorting = false;
 	m_aCurrentInputText[0] = '\0';
 	DisableMode();
@@ -297,6 +314,9 @@ void CChat::OnConsoleInit()
 	Console()->Register("join_invite", "", CFGFLAG_CLIENT, ConJoinInvite, this, "Unirse al ultimo equipo al que fuiste invitado");
 	Console()->Register("team_last", "", CFGFLAG_CLIENT, ConJoinInvite, this, "Unirse al ultimo equipo al que fuiste invitado");
 	Console()->Register("team", "?s[arg]", CFGFLAG_CLIENT, ConTeam, this, "Unirse a un equipo (ej. team 3) o al ultimo invitado (team last)");
+	Console()->Register("greet_last", "?r[custom_message]", CFGFLAG_CLIENT, ConGreetLast, this, "Saludar a la ultima persona que te taggeo o susurro");
+	Console()->Register("say_greet", "?r[custom_message]", CFGFLAG_CLIENT, ConGreetLast, this, "Saludar a la ultima persona que te taggeo o susurro");
+	Console()->Register("greet", "?r[custom_message]", CFGFLAG_CLIENT, ConGreetLast, this, "Saludar a la ultima persona que te taggeo o susurro");
 }
 
 void CChat::OnInit()
@@ -354,6 +374,23 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 		{
 			m_Input.Set("/stealskin ");
 			m_Input.SetCursorOffset(str_length("/stealskin "));
+			m_CompletionUsed = true;
+			return true;
+		}
+
+		// AClient: Autocompletado directo para /greet o /saludar
+		const char *pInputGreet = m_Input.GetString();
+		if(str_comp_nocase(pInputGreet, "/gr") == 0 || str_comp_nocase(pInputGreet, "/gree") == 0)
+		{
+			m_Input.Set("/greet");
+			m_Input.SetCursorOffset(str_length("/greet"));
+			m_CompletionUsed = true;
+			return true;
+		}
+		if(str_comp_nocase(pInputGreet, "/sal") == 0 || str_comp_nocase(pInputGreet, "/salu") == 0)
+		{
+			m_Input.Set("/saludar");
+			m_Input.SetCursorOffset(str_length("/saludar"));
 			m_CompletionUsed = true;
 			return true;
 		}
@@ -1008,6 +1045,47 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 	}
 	CurrentLine.m_Highlighted = Highlighted;
 
+	// AClient: Detect mentions (Highlighted) and incoming whispers to track last tag & AFK auto-reply
+	if((Highlighted || Team == TEAM_WHISPER_RECV) && ClientId >= 0 && ClientId < MAX_CLIENTS && ClientId != GameClient()->m_aLocalIds[0] && (!GameClient()->Client()->DummyConnected() || ClientId != GameClient()->m_aLocalIds[1]))
+	{
+		const char *pSender = GameClient()->m_aClients[ClientId].m_aName;
+		if(pSender && pSender[0] != '\0')
+		{
+			str_copy(m_aLastTaggedPlayer, pSender, sizeof(m_aLastTaggedPlayer));
+			m_LastTaggedClientId = ClientId;
+			m_LastTaggedTime = time();
+			m_LastTaggedTeam = Team;
+
+			bool WindowActive = GameClient()->EngineGraphics() && GameClient()->EngineGraphics()->WindowActive();
+			if(!WindowActive)
+			{
+				m_TaggedWhileTabbed = true;
+				m_TaggedWhileTabbedCount++;
+
+				if(g_Config.m_AcAfkAutoReply && g_Config.m_AcAfkAutoReplyMsg[0] != '\0')
+				{
+					int64_t NowTime = time();
+					int64_t CooldownTicks = time_freq() * (int64_t)g_Config.m_AcAfkAutoReplyCooldown;
+					if(NowTime - m_aLastAfkReplyTime[ClientId] >= CooldownTicks)
+					{
+						char aAfkMsg[256];
+						if(Team == TEAM_WHISPER_RECV)
+						{
+							str_format(aAfkMsg, sizeof(aAfkMsg), "/w %s %s", m_aLastTaggedPlayer, g_Config.m_AcAfkAutoReplyMsg);
+							SendChat(0, aAfkMsg);
+						}
+						else
+						{
+							str_format(aAfkMsg, sizeof(aAfkMsg), "%s: %s", m_aLastTaggedPlayer, g_Config.m_AcAfkAutoReplyMsg);
+							SendChat(Team == 1 ? 1 : 0, aAfkMsg);
+						}
+						m_aLastAfkReplyTime[ClientId] = NowTime;
+					}
+				}
+			}
+		}
+	}
+
 	str_copy(CurrentLine.m_aText, pLine);
 
 	if(CurrentLine.m_ClientId == SERVER_MSG)
@@ -1477,6 +1555,23 @@ void CChat::OnRender()
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
 
+	bool CurrentWindowActive = GameClient()->EngineGraphics() && GameClient()->EngineGraphics()->WindowActive();
+	if(CurrentWindowActive && !m_PrevWindowActive)
+	{
+		if(m_TaggedWhileTabbed && g_Config.m_AcAfkNotifyOnReturn && m_aLastTaggedPlayer[0] != '\0')
+		{
+			char aNotice[160];
+			if(m_TaggedWhileTabbedCount > 1)
+				str_format(aNotice, sizeof(aNotice), TCLocalize("[AClient] Mientras estabas tabulado recibiste %d menciones (ultimo: '%s'). Usa tu bind de saludo para responderle."), m_TaggedWhileTabbedCount, m_aLastTaggedPlayer);
+			else
+				str_format(aNotice, sizeof(aNotice), TCLocalize("[AClient] Mientras estabas tabulado te taggeo '%s'. Usa tu bind de saludo para responderle."), m_aLastTaggedPlayer);
+			Echo(aNotice);
+		}
+		m_TaggedWhileTabbed = false;
+		m_TaggedWhileTabbedCount = 0;
+	}
+	m_PrevWindowActive = CurrentWindowActive;
+
 	// send pending chat messages
 	// send pending chat messages
 	if(!m_vPendingInviteCommands.empty() && m_LastChatSend + (time_freq() * 5) / 2 < time())
@@ -1714,6 +1809,8 @@ void CChat::SendChat(int Team, const char *pLine)
 	if(TryHandleProfileCommand(pLine))
 		return;
 	if(TryHandleJoinInviteCommand(pLine))
+		return;
+	if(TryHandleGreetCommand(pLine))
 		return;
 
 	m_LastChatSend = time();
@@ -1962,4 +2059,97 @@ void CChat::ConTeam(IConsole::IResult *pResult, void *pUserData)
 			pSelf->Echo(TCLocalize("[AClient] Uso: team <numero_equipo> o team last"));
 		}
 	}
+}
+
+
+bool CChat::TryHandleGreetCommand(const char *pLine)
+{
+	if(!pLine)
+		return false;
+
+	const char *pTrimmed = str_utf8_skip_whitespaces(pLine);
+	if(str_comp_nocase(pTrimmed, "/greet") == 0 || str_comp_nocase(pTrimmed, "/saludar") == 0 || str_comp_nocase(pTrimmed, "/saludo") == 0)
+	{
+		GreetLast();
+		return true;
+	}
+
+	if(str_startswith_nocase(pTrimmed, "/greet "))
+	{
+		const char *pArg = str_utf8_skip_whitespaces(pTrimmed + 7);
+		GreetLast(pArg);
+		return true;
+	}
+
+	if(str_startswith_nocase(pTrimmed, "/saludar "))
+	{
+		const char *pArg = str_utf8_skip_whitespaces(pTrimmed + 9);
+		GreetLast(pArg);
+		return true;
+	}
+
+	if(str_startswith_nocase(pTrimmed, "/saludo "))
+	{
+		const char *pArg = str_utf8_skip_whitespaces(pTrimmed + 8);
+		GreetLast(pArg);
+		return true;
+	}
+
+	return false;
+}
+
+void CChat::GreetLast(const char *pCustomMessage)
+{
+	if(Client()->State() != IClient::STATE_ONLINE)
+	{
+		Echo(TCLocalize("[AClient] Debes estar conectado a un servidor."));
+		return;
+	}
+
+	if(m_aLastTaggedPlayer[0] == '\0')
+	{
+		Echo(TCLocalize("[AClient] Nadie te ha taggeado recientemente."));
+		return;
+	}
+
+	const char *pGreeting = (pCustomMessage && *str_utf8_skip_whitespaces(pCustomMessage)) ? pCustomMessage : g_Config.m_AcGreetMessage;
+	if(!pGreeting || *str_utf8_skip_whitespaces(pGreeting) == '\0')
+		pGreeting = "wenas";
+
+	char aOutMessage[256];
+	const char *pNameHolder = str_find(pGreeting, "{name}");
+	if(pNameHolder)
+	{
+		int PrefixLen = (int)(pNameHolder - pGreeting);
+		char aPrefix[128];
+		str_truncate(aPrefix, sizeof(aPrefix), pGreeting, PrefixLen);
+		const char *pSuffix = pNameHolder + 6;
+		str_format(aOutMessage, sizeof(aOutMessage), "%s%s%s", aPrefix, m_aLastTaggedPlayer, pSuffix);
+	}
+	else
+	{
+		str_format(aOutMessage, sizeof(aOutMessage), "%s %s", pGreeting, m_aLastTaggedPlayer);
+	}
+
+	if(m_LastTaggedTeam >= 2 && g_Config.m_AcGreetWhisperMode)
+	{
+		char aWhisper[300];
+		str_format(aWhisper, sizeof(aWhisper), "/w %s %s", m_aLastTaggedPlayer, aOutMessage);
+		SendChat(0, aWhisper);
+	}
+	else
+	{
+		SendChat(m_LastTaggedTeam == 1 ? 1 : 0, aOutMessage);
+	}
+
+	char aEcho[160];
+	str_format(aEcho, sizeof(aEcho), TCLocalize("[AClient] Saludaste a '%s'."), m_aLastTaggedPlayer);
+	Echo(aEcho);
+}
+
+void CChat::ConGreetLast(IConsole::IResult *pResult, void *pUserData)
+{
+	CChat *pSelf = (CChat *)pUserData;
+	const char *pMsg = pResult->NumArguments() > 0 ? pResult->GetString(0) : nullptr;
+	pSelf->GreetLast(pMsg);
 }

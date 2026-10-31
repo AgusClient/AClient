@@ -3667,6 +3667,7 @@ void CMenus::RenderSettingsAClientCommands(CUIRect MainView)
 	DrawCommandCard(Column, "ac_auto_team_lock_delay [sec]", TCLocalize("Delay in seconds before sending /lock 1 after joining."));
 	DrawCommandCard(Column, "/invite friends", TCLocalize("Invites only connected players on your friends list to your team."));
 	DrawCommandCard(Column, "/team last / team_invite", TCLocalize("Se une instantaneamente al ultimo equipo al que fuiste invitado."));
+	DrawCommandCard(Column, "greet_last / greet [mensaje]", TCLocalize("Saluda a la ultima persona que te taggeo o susurro (personalizable con {name})."));
 	s_SectionBoxesCmds.back().h = Column.y - s_SectionBoxesCmds.back().y;
 
 	// 2. RaceStats & HUD
@@ -4460,6 +4461,17 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	static CButtonContainer s_ReaderJoinInviteAc, s_ClearJoinInviteAc;
 	DoLine_KeyReader(Column, s_ReaderJoinInviteAc, s_ClearJoinInviteAc, TCLocalize("Unirse a invitacion (/team last)"), "team_invite");
 
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	static CButtonContainer s_ReaderGreetLastAc, s_ClearGreetLastAc;
+	DoLine_KeyReader(Column, s_ReaderGreetLastAc, s_ClearGreetLastAc, TCLocalize("Saludar al ultimo que te taggeo (greet_last)"), "greet_last");
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize, &Button, &Column);
+	static CLineInput s_GreetMsgInput(g_Config.m_AcGreetMessage, sizeof(g_Config.m_AcGreetMessage));
+	DoEditBoxWithLabel(&s_GreetMsgInput, &Button, TCLocalize("Mensaje de saludo"), "wenas", g_Config.m_AcGreetMessage, sizeof(g_Config.m_AcGreetMessage));
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcGreetWhisperMode, TCLocalize("Responder por susurro si el tag fue susurro"), &g_Config.m_AcGreetWhisperMode, &Column, LineSize);
+
 	if(Client()->State() == IClient::STATE_ONLINE)
 	{
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
@@ -4492,6 +4504,22 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcNotifySound, TCLocalize("Sound alert"), &g_Config.m_AcNotifySound, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcNotifyFlash, TCLocalize("Taskbar flash"), &g_Config.m_AcNotifyFlash, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcNotifyDesktop, TCLocalize("Desktop notification"), &g_Config.m_AcNotifyDesktop, &Column, LineSize);
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcAfkAutoReply, TCLocalize("Auto-responder si te taggean estando tabulado (AFK)"), &g_Config.m_AcAfkAutoReply, &Column, LineSize);
+	if(g_Config.m_AcAfkAutoReply)
+	{
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		static CLineInput s_AfkMsgInput(g_Config.m_AcAfkAutoReplyMsg, sizeof(g_Config.m_AcAfkAutoReplyMsg));
+		DoEditBoxWithLabel(&s_AfkMsgInput, &Button, TCLocalize("Mensaje tabulado / AFK"), "Estoy tabulado / afk", g_Config.m_AcAfkAutoReplyMsg, sizeof(g_Config.m_AcAfkAutoReplyMsg));
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		Ui()->DoScrollbarOption(&g_Config.m_AcAfkAutoReplyCooldown, &g_Config.m_AcAfkAutoReplyCooldown, &Button, TCLocalize("Cooldown respuesta por jugador"), 5, 120, &CUi::ms_LinearScrollbarScale, 0, "s");
+	}
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcAfkNotifyOnReturn, TCLocalize("Avisar en chat al volver si alguien te taggeo"), &g_Config.m_AcAfkNotifyOnReturn, &Column, LineSize);
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;

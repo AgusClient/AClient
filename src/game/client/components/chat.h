@@ -157,13 +157,25 @@ class CChat : public CComponent
 	std::vector<std::string> m_vPendingInviteCommands;
 	int m_LastInviteTeam;
 	char m_aLastInviteSender[64];
+	char m_aLastTaggedPlayer[64];
+	int m_LastTaggedClientId;
+	int m_LastTaggedTeam;
+	int64_t m_LastTaggedTime;
+
+	bool m_PrevWindowActive;
+	bool m_TaggedWhileTabbed;
+	int m_TaggedWhileTabbedCount;
+	int64_t m_aLastAfkReplyTime[MAX_CLIENTS];
+
 	bool TryHandleBulkInviteCommand(const char *pLine);
 	bool TryHandleStealSkinCommand(const char *pLine);
 	bool TryHandleProfileCommand(const char *pLine);
 	bool TryHandleJoinInviteCommand(const char *pLine);
+	bool TryHandleGreetCommand(const char *pLine);
 
 	static void ConJoinInvite(IConsole::IResult *pResult, void *pUserData);
 	static void ConTeam(IConsole::IResult *pResult, void *pUserData);
+	static void ConGreetLast(IConsole::IResult *pResult, void *pUserData);
 
 	static void ConSay(IConsole::IResult *pResult, void *pUserData);
 	static void ConSayTeam(IConsole::IResult *pResult, void *pUserData);
@@ -196,6 +208,9 @@ public:
 	int LastInviteTeam() const { return m_LastInviteTeam; }
 	const char *LastInviteSender() const { return m_aLastInviteSender; }
 	void JoinLastInvite();
+
+	const char *LastTaggedPlayer() const { return m_aLastTaggedPlayer; }
+	void GreetLast(const char *pCustomMessage = nullptr);
 
 	void AddLine(int ClientId, int Team, const char *pLine);
 	void EnableMode(int Team);
