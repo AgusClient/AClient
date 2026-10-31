@@ -134,3 +134,13 @@ MACRO_CONFIG_STR(ClAuthUser, cl_auth_user, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE
 MACRO_CONFIG_STR(ClAuthPass, cl_auth_pass, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "AClient authentication password")
 MACRO_CONFIG_INT(ClAuthRemember, cl_auth_remember, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Remember AClient login credentials")
 MACRO_CONFIG_STR(ClAuthHwid, cl_auth_hwid, 65, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "AClient machine hardware ID")
+
+// Greet & Last Tag System
+MACRO_CONFIG_STR(AcGreetMessage, ac_greet_message, 128, "wenas", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mensaje de saludo al presionar el bind de saludar al ultimo que te taggeo")
+MACRO_CONFIG_INT(AcGreetWhisperMode, ac_greet_whisper_mode, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Responder por susurro si el ultimo tag fue un susurro recibido")
+
+// AFK / Tabbed out Auto-Reply
+MACRO_CONFIG_INT(AcAfkAutoReply, ac_afk_auto_reply, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Auto-responder si te taggean mientras el juego esta tabulado (AFK)")
+MACRO_CONFIG_STR(AcAfkAutoReplyMsg, ac_afk_auto_reply_msg, 128, "Estoy tabulado / afk", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mensaje de auto-respuesta cuando estas tabulado y te taggean")
+MACRO_CONFIG_INT(AcAfkAutoReplyCooldown, ac_afk_auto_reply_cooldown, 30, 5, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Cooldown en segundos para no repetir auto-respuesta al mismo jugador")
+MACRO_CONFIG_INT(AcAfkNotifyOnReturn, ac_afk_notify_on_return, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Avisar en chat local al volver al juego si alguien te taggeo mientras estabas tabulado")
