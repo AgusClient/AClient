@@ -225,6 +225,8 @@ void CGameClient::OnConsoleInit()
 	Console()->Register("tc_toggle_antiping", "", CFGFLAG_CLIENT, ConToggleAntiPing, this, "Toggle antiping with on-screen notification (alias)");
 	Console()->Register("ready_change", "", CFGFLAG_CLIENT, ConReadyChange7, this, "Change ready state (0.7 only)");
 	Console()->Register("steal_skin", "?s[player]", CFGFLAG_CLIENT, ConStealSkin, this, "Copy skin and colors from another player");
+	Console()->Register("random_color", "?i[dummy]", CFGFLAG_CLIENT, ConRandomColor, this, "Randomize Tee body and feet colors");
+	Console()->Register("ac_random_color", "?i[dummy]", CFGFLAG_CLIENT, ConRandomColor, this, "Randomize Tee body and feet colors");
 
 	// register game commands to allow the client prediction to load settings from the map
 	Console()->Register("tune", "s[tuning] ?f[value]", CFGFLAG_GAME, ConTuneParam, this, "Tune variable to value");
@@ -3934,6 +3936,37 @@ void CGameClient::ConReadyChange7(IConsole::IResult *pResult, void *pUserData)
 	CGameClient *pClient = static_cast<CGameClient *>(pUserData);
 	if(pClient->Client()->State() == IClient::STATE_ONLINE)
 		pClient->SendReadyChange7();
+}
+
+void CGameClient::ConRandomColor(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameClient *pSelf = (CGameClient *)pUserData;
+	bool Dummy = pResult->NumArguments() > 0 ? (pResult->GetInteger(0) != 0) : false;
+
+	int *pUseCustomColor = Dummy ? &g_Config.m_ClDummyUseCustomColor : &g_Config.m_ClPlayerUseCustomColor;
+	unsigned *pColorBody = Dummy ? &g_Config.m_ClDummyColorBody : &g_Config.m_ClPlayerColorBody;
+	unsigned *pColorFeet = Dummy ? &g_Config.m_ClDummyColorFeet : &g_Config.m_ClPlayerColorFeet;
+
+	*pUseCustomColor = 1;
+
+	ColorHSLA BodyHsla(
+		(rand() % 360) / 360.0f,
+		(rand() % 100) / 100.0f,
+		std::max((rand() % 100) / 100.0f, ColorHSLA::DARKEST_LGT),
+		1.0f);
+	*pColorBody = BodyHsla.Pack(ColorHSLA::DARKEST_LGT);
+
+	ColorHSLA FeetHsla(
+		(rand() % 360) / 360.0f,
+		(rand() % 100) / 100.0f,
+		std::max((rand() % 100) / 100.0f, ColorHSLA::DARKEST_LGT),
+		1.0f);
+	*pColorFeet = FeetHsla.Pack(ColorHSLA::DARKEST_LGT);
+
+	if(Dummy)
+		pSelf->SendDummyInfo(false);
+	else
+		pSelf->SendInfo(false);
 }
 
 void CGameClient::ConStealSkin(IConsole::IResult *pResult, void *pUserData)

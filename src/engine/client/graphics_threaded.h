@@ -1236,7 +1236,7 @@ public:
 	void ReadPixel(ivec2 Position, ColorRGBA *pColor) override;
 	void TakeScreenshot(const char *pFilename) override;
 	void TakeCustomScreenshot(const char *pFilename) override;
-	void ReadFramebuffer(CImageInfo &Image);
+	void ReadFramebuffer(CImageInfo &Image) override;
 	void SetScreenSize(int Width, int Height);
 	void Swap() override;
 	bool SetVSync(bool State) override;

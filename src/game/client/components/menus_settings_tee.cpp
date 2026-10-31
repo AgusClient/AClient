@@ -190,11 +190,13 @@ void CMenus::RenderSettingsTee(CUIRect MainView)
 	}
 
 	// Player skin area
-	CUIRect CustomColorsButton, RandomSkinButton;
+	CUIRect CustomColorsButton, RandomSkinButton, RandomColorButton;
 	YourSkin.HSplitTop(20.0f, &Label, &YourSkin);
 	YourSkin.HSplitBottom(20.0f, &YourSkin, &CustomColorsButton);
 	CustomColorsButton.VSplitRight(30.0f, &CustomColorsButton, &RandomSkinButton);
-	CustomColorsButton.VSplitRight(20.0f, &CustomColorsButton, nullptr);
+	CustomColorsButton.VSplitRight(6.0f, &CustomColorsButton, nullptr);
+	CustomColorsButton.VSplitRight(30.0f, &CustomColorsButton, &RandomColorButton);
+	CustomColorsButton.VSplitRight(14.0f, &CustomColorsButton, nullptr);
 	YourSkin.VSplitLeft(65.0f, &YourSkin, &Button);
 	Button.VSplitLeft(5.0f, nullptr, &Button);
 	Button.HMargin((Button.h - 20.0f) / 2.0f, &Button);
@@ -304,6 +306,33 @@ void CMenus::RenderSettingsTee(CUIRect MainView)
 	TextRender()->SetRenderFlags(0);
 	TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
 	GameClient()->m_Tooltips.DoToolTip(&s_RandomSkinButton, &RandomSkinButton, Localize("Create a random skin"));
+
+	// Random color button
+	static CButtonContainer s_RandomColorButton;
+	TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+	TextRender()->SetRenderFlags(ETextRenderFlags::TEXT_RENDER_FLAG_ONLY_ADVANCE_WIDTH | ETextRenderFlags::TEXT_RENDER_FLAG_NO_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_Y_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT | ETextRenderFlags::TEXT_RENDER_FLAG_NO_OVERSIZE);
+	if(DoButton_Menu(&s_RandomColorButton, FontIcon::BRUSH, 0, &RandomColorButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, -0.2f))
+	{
+		*pUseCustomColor = 1;
+		ColorHSLA BodyHsla(
+			(rand() % 360) / 360.0f,
+			(rand() % 100) / 100.0f,
+			std::max((rand() % 100) / 100.0f, ColorHSLA::DARKEST_LGT),
+			1.0f);
+		*pColorBody = BodyHsla.Pack(ColorHSLA::DARKEST_LGT);
+
+		ColorHSLA FeetHsla(
+			(rand() % 360) / 360.0f,
+			(rand() % 100) / 100.0f,
+			std::max((rand() % 100) / 100.0f, ColorHSLA::DARKEST_LGT),
+			1.0f);
+		*pColorFeet = FeetHsla.Pack(ColorHSLA::DARKEST_LGT);
+
+		SetNeedSendInfo();
+	}
+	TextRender()->SetRenderFlags(0);
+	TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+	GameClient()->m_Tooltips.DoToolTip(&s_RandomColorButton, &RandomColorButton, Localize("Random colors"));
 
 	// Custom colors button
 	if(DoButton_CheckBox(pUseCustomColor, Localize("Custom colors"), *pUseCustomColor, &CustomColorsButton))

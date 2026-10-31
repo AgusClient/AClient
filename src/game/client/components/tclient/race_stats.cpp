@@ -1,3 +1,4 @@
+#include <game/client/race.h>
 #include "race_stats.h"
 #include "race_stats_icons.h"
 
@@ -182,7 +183,19 @@ bool CRaceStats::SaveCurrentStats(const char *pReason, bool RequireActivity, boo
 		return false;
 	}
 
+	bool IsFinish = (pReason && (str_comp(pReason, "Finish") == 0 || str_find_nocase(pReason, "Finish") != nullptr));
+
+	if(g_Config.m_AcRaceStatsSaveOnlyOnFinish && !IsFinish)
+		return false;
+
 	if(RequireActivity && !HasCurrentTeamActivity())
+		return false;
+
+	// Verificar duracion minima de la run si esta configurada
+	int CurTick = Client()->GameTick(g_Config.m_ClDummy);
+	int ElapsedTicks = (m_RunStartTick > 0 && CurTick >= m_RunStartTick) ? (CurTick - m_RunStartTick) : 0;
+	int ElapsedSec = ElapsedTicks / std::max(1, Client()->GameTickSpeed());
+	if(g_Config.m_AcRaceStatsMinDuration > 0 && ElapsedSec < g_Config.m_AcRaceStatsMinDuration)
 		return false;
 
 	int LocalClientId = GameClient()->m_Snap.m_LocalClientId;
@@ -201,6 +214,7 @@ bool CRaceStats::SaveCurrentStats(const char *pReason, bool RequireActivity, boo
 	Entry.m_Team = RecordTeam;
 	FormatCurrentRunTime(Entry.m_aRunTime, sizeof(Entry.m_aRunTime));
 	str_copy(Entry.m_aReason, pReason ? pReason : "Manual", sizeof(Entry.m_aReason));
+	Entry.m_Completed = IsFinish;
 
 	auto AddPlayerToEntry = [&](int CID, bool IsLocal) {
 		CSavedPlayerStat PStat;
@@ -252,8 +266,9 @@ bool CRaceStats::SaveCurrentStats(const char *pReason, bool RequireActivity, boo
 
 	// Insertar al inicio para ver las más recientes primero (límite de 100 entradas)
 	m_vSavedEntries.insert(m_vSavedEntries.begin(), Entry);
-	if(m_vSavedEntries.size() > 100)
-		m_vSavedEntries.resize(100);
+	int MaxLogs = g_Config.m_AcRaceStatsMaxLogs;
+	if(MaxLogs > 0 && (int)m_vSavedEntries.size() > MaxLogs)
+		m_vSavedEntries.resize(MaxLogs);
 
 	if(NotifyChat)
 	{
@@ -300,8 +315,8 @@ void CRaceStats::SaveHistoryToFile()
 	char aLine[512];
 	for(const auto &Entry : m_vSavedEntries)
 	{
-		str_format(aLine, sizeof(aLine), "ENTRY\t%s\t%s\t%d\t%s\t%s\n",
-			Entry.m_aTimestamp, Entry.m_aMapName, Entry.m_Team, Entry.m_aRunTime, Entry.m_aReason);
+		str_format(aLine, sizeof(aLine), "ENTRY\t%s\t%s\t%d\t%s\t%s\t%d\n",
+			Entry.m_aTimestamp, Entry.m_aMapName, Entry.m_Team, Entry.m_aRunTime, Entry.m_aReason, Entry.m_Completed ? 1 : 0);
 		io_write(File, aLine, str_length(aLine));
 
 		for(const auto &Pl : Entry.m_vPlayers)
@@ -386,6 +401,11 @@ void CRaceStats::LoadHistoryFromFile()
 			NextTabToken(&pCursor, CurrentEntry.m_aReason, sizeof(CurrentEntry.m_aReason));
 			if(CurrentEntry.m_aReason[0] == '\0')
 				str_copy(CurrentEntry.m_aReason, "Saved", sizeof(CurrentEntry.m_aReason));
+			char aCompleted[16] = {0};
+			if(NextTabToken(&pCursor, aCompleted, sizeof(aCompleted)))
+				CurrentEntry.m_Completed = str_toint(aCompleted) != 0;
+			else
+				CurrentEntry.m_Completed = (str_find_nocase(CurrentEntry.m_aReason, "Finish") != nullptr);
 			InEntry = true;
 		}
 		else if(str_comp(aTag, "PLAYER") == 0 && InEntry)
@@ -494,6 +514,48 @@ void CRaceStats::OnMessage(int MsgType, void *pRawMsg)
 			if(g_Config.m_AcStatboardAutoSave)
 				SaveCurrentStats("Auto (/kill)", true, false);
 			ResetTeamStats();
+		}
+	}
+	else if(MsgType == NETMSGTYPE_SV_RACEFINISH)
+	{
+		CNetMsg_Sv_RaceFinish *pMsg = (CNetMsg_Sv_RaceFinish *)pRawMsg;
+		bool IsLocal = (pMsg->m_ClientId == LocalClientId);
+		bool IsTeammate = (LocalTeam > 0 && GameClient()->m_Teams.Team(pMsg->m_ClientId) == LocalTeam);
+		if(IsLocal || IsTeammate)
+		{
+			if(g_Config.m_AcRaceStatsSaveOnFinish)
+			{
+				SaveCurrentStats("Finish", false, false);
+			}
+		}
+	}
+	else if(MsgType == NETMSGTYPE_SV_CHAT)
+	{
+		CNetMsg_Sv_Chat *pMsg = (CNetMsg_Sv_Chat *)pRawMsg;
+		if(pMsg->m_ClientId == -1 && g_Config.m_AcRaceStatsSaveOnFinish)
+		{
+			char aName[MAX_NAME_LENGTH];
+			int Time = CRaceHelper::TimeFromFinishMessage(pMsg->m_pMessage, aName, sizeof(aName));
+			if(Time > 0)
+			{
+				bool IsLocal = (str_comp(aName, GameClient()->m_aClients[LocalClientId].m_aName) == 0);
+				bool IsTeammate = false;
+				if(!IsLocal && LocalTeam > 0)
+				{
+					for(int i = 0; i < MAX_CLIENTS; i++)
+					{
+						if(GameClient()->m_Snap.m_apPlayerInfos[i] && GameClient()->m_Teams.Team(i) == LocalTeam && str_comp(aName, GameClient()->m_aClients[i].m_aName) == 0)
+						{
+							IsTeammate = true;
+							break;
+						}
+					}
+				}
+				if(IsLocal || IsTeammate)
+				{
+					SaveCurrentStats("Finish", false, false);
+				}
+			}
 		}
 	}
 }
@@ -1259,12 +1321,12 @@ void CRaceStats::RenderMiniStatboard()
 		// Efecto F1 de cambio de posicion (adelantamiento)
 		if(Anim.m_RankChangeTimer > 0.0f)
 		{
-			if(Anim.m_RankChangeDir == 1)
+			if(Anim.m_RankChangeDir == 1 && g_Config.m_AcMiniStatboardRankUpColor)
 			{
 				float FlashAlpha = 0.28f * (Anim.m_RankChangeTimer / 0.45f);
 				Graphics()->DrawRect(BaseX + 1.0f * Scale, CurrentRowY, TotalWidth - 2.0f * Scale, RowHeight, ColorRGBA(0.20f, 1.0f, 0.40f, FlashAlpha), IGraphics::CORNER_ALL, 2.0f * Scale);
 			}
-			else if(Anim.m_RankChangeDir == -1)
+			else if(Anim.m_RankChangeDir == -1 && g_Config.m_AcMiniStatboardRankDownColor)
 			{
 				float FlashAlpha = 0.18f * (Anim.m_RankChangeTimer / 0.35f);
 				Graphics()->DrawRect(BaseX + 1.0f * Scale, CurrentRowY, TotalWidth - 2.0f * Scale, RowHeight, ColorRGBA(1.0f, 0.40f, 0.20f, FlashAlpha), IGraphics::CORNER_ALL, 2.0f * Scale);

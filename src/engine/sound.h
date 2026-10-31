@@ -65,6 +65,10 @@ public:
 
 	virtual bool IsSoundEnabled() = 0;
 
+	virtual int GetNumAudioDevices() = 0;
+	virtual const char *GetAudioDeviceName(int Index) = 0;
+	virtual void SetAudioDevice(const char *pDeviceName) = 0;
+
 	virtual int LoadOpus(const char *pFilename, int StorageType = IStorage::TYPE_ALL) = 0;
 	virtual int LoadWV(const char *pFilename, int StorageType = IStorage::TYPE_ALL) = 0;
 	virtual int LoadOpusFromMem(const void *pData, unsigned DataSize, bool ForceLoad, const char *pContextName) = 0;
