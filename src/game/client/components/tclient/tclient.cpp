@@ -1,4 +1,4 @@
-﻿#include "tclient.h"
+#include "tclient.h"
 
 #include "data_version.h"
 
@@ -23,7 +23,7 @@
 #include <game/localization.h>
 #include <game/version.h>
 
-static constexpr const char *ACLIENT_LATEST_RELEASE_URL = "https://api.github.com/repos/agusx30/AClient/releases/latest";
+static constexpr const char *ACLIENT_LATEST_RELEASE_URL = "https://api.github.com/repos/AgusClient/AClient/releases/latest";
 
 CTClient::CTClient()
 {
