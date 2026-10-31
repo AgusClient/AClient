@@ -174,6 +174,7 @@ void CGameClient::OnConsoleInit()
 					      &m_StatusBar, // TClient
 					      &m_RaceStats, // TClient
 					      &m_AClientHud, // AClient
+						      &m_AClientGameSkins, // AClient
 					      &m_PlayerProfiles, // TClient
 					      &m_FastPractice, // TClient
 					      &m_InfoMessages,
@@ -3568,6 +3569,9 @@ void CGameClient::CClientData::Reset()
 	m_Emoticon = 0;
 	m_EmoticonStartFraction = 0;
 	m_EmoticonStartTick = -1;
+
+	m_pCustomGameSkin = nullptr;
+	m_aCustomGameSkinName[0] = '\0';
 
 	m_Solo = false;
 	m_Jetpack = false;
