@@ -284,7 +284,7 @@ void CAClientAuth::RenderAuthModal(CUIRect Screen)
 		}
 	}
 
-	// Navegacion con tecla TAB entre usuario y contrasena
+	// Navegacion con tecla TAB entre usuario y contraseña
 	if(Ui()->ConsumeHotkey(CUi::HOTKEY_TAB))
 	{
 		if(m_UsernameInput.IsActive() || Ui()->ActiveItem() == &m_UsernameInput)

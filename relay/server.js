@@ -93,7 +93,7 @@ const server = http.createServer((req, res) => {
 
         if (userData.password !== password) {
           res.writeHead(401, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ status: 'error', message: 'Contrasena incorrecta' }));
+          res.end(JSON.stringify({ status: 'error', message: 'Contraseña incorrecta' }));
           return;
         }
 

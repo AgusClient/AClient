@@ -5590,7 +5590,7 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 		LeftCol.HSplitTop(22.0f, &LeftHeader, &LeftList);
 		LeftHeader.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 3.0f);
 
-		static int s_KoGLeftTab = 0; // 0: Categorias, 1: Companeros
+		static int s_KoGLeftTab = 0; // 0: Categorias, 1: Compañeros
 		static CButtonContainer s_BtnKoGCats;
 		static CButtonContainer s_BtnKoGTms;
 
@@ -5600,7 +5600,7 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 			s_KoGLeftTab = 0;
 
 		char aTmTabStr[64];
-		str_format(aTmTabStr, sizeof(aTmTabStr), "%s (%zu)", TCLocalize("Companeros"), Prof.m_vTeammates.size());
+		str_format(aTmTabStr, sizeof(aTmTabStr), "%s (%zu)", TCLocalize("Compañeros"), Prof.m_vTeammates.size());
 		ColorRGBA TabTmCol = (s_KoGLeftTab == 1) ? ColorRGBA(0.9f, 0.5f, 0.1f, 0.7f) : ColorRGBA(0.2f, 0.2f, 0.2f, 0.3f);
 		if(DoButton_Menu(&s_BtnKoGTms, aTmTabStr, 0, &LeftHeader, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R, 3.0f, 0.0f, TabTmCol))
 			s_KoGLeftTab = 1;
@@ -5680,7 +5680,7 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 				if(s_ScrollKoGTms.AddRect(EmptyLabel))
 				{
 					TextRender()->TextColor(0.6f, 0.6f, 0.6f, 0.8f);
-					Ui()->DoLabel(&EmptyLabel, TCLocalize("Sin companeros registrados"), 11.0f, TEXTALIGN_MC);
+					Ui()->DoLabel(&EmptyLabel, TCLocalize("Sin compañeros registrados"), 11.0f, TEXTALIGN_MC);
 					TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 				}
 			}
