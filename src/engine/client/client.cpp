@@ -5291,7 +5291,11 @@ int main(int argc, const char **argv)
 		g_Config.m_AcAX30OthersAmount = 100;
 		g_Config.m_AcFastInputOthersOnlyFrozen = 0;
 	}
-	g_Config.m_AcConfigVersion = 1;
+	if(g_Config.m_AcConfigVersion < 2)
+	{
+		g_Config.m_ClDownloadGameskins = 1;
+	}
+	g_Config.m_AcConfigVersion = 2;
 	if(g_Config.m_AcInputs == 7)
 		g_Config.m_AcInputs = AC_INPUTS_AX30;
 
