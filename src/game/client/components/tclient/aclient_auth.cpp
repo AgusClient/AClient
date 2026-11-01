@@ -1,4 +1,5 @@
 #include "aclient_auth.h"
+#include "aclient_backend.h"
 
 #include <base/hash.h>
 #include <base/str.h>
@@ -122,10 +123,10 @@ void CAClientAuth::StartLogin(const char *pUser, const char *pPass)
 		m_pAuthRequest = nullptr;
 	}
 
-	if(!pUser || !pUser[0] || !pPass || !pPass[0])
+	if(!pUser || !pUser[0])
 	{
 		m_AuthState = AUTH_ERROR;
-		str_copy(m_aErrorMessage, "Ingresa usuario y contraseña", sizeof(m_aErrorMessage));
+		str_copy(m_aErrorMessage, "Ingresa tu usuario", sizeof(m_aErrorMessage));
 		return;
 	}
 
@@ -134,25 +135,27 @@ void CAClientAuth::StartLogin(const char *pUser, const char *pPass)
 	str_copy(m_aCurrentUsername, pUser, sizeof(m_aCurrentUsername));
 
 	char aEscUser[128];
-	char aEscPass[128];
 	char aEscHwid[128];
 	EscapeJson(aEscUser, sizeof(aEscUser), pUser);
-	EscapeJson(aEscPass, sizeof(aEscPass), (pPass && pPass[0]) ? pPass : "123");
 	EscapeJson(aEscHwid, sizeof(aEscHwid), m_aHWID);
 
 	char aPayload[512];
 	str_format(aPayload, sizeof(aPayload),
-		"{\"user\":\"%s\",\"password\":\"%s\",\"hwid\":\"%s\"}",
-		aEscUser, aEscPass, aEscHwid);
+		"{\"p_user\":\"%s\",\"p_hwid\":\"%s\"}",
+		aEscUser, aEscHwid);
+
+	const char *pBaseUrl = (g_Config.m_AcPresenceUrl[0] != '\0' && str_find(g_Config.m_AcPresenceUrl, "workers.dev") == nullptr) ? g_Config.m_AcPresenceUrl : AClientBackend::SUPABASE_URL;
 
 	char aUrl[512];
-	str_format(aUrl, sizeof(aUrl), "%s/api/auth/login", g_Config.m_AcPresenceUrl);
+	str_format(aUrl, sizeof(aUrl), "%s/rest/v1/rpc/aclient_login", pBaseUrl);
 
 	m_pAuthRequest = HttpPostJson(aUrl, aPayload);
 	m_pAuthRequest->Timeout(CTimeout{6000, 6000, 500, 6});
 	m_pAuthRequest->IpResolve(IPRESOLVE::V4);
 	m_pAuthRequest->FailOnErrorStatus(false);
-	m_pAuthRequest->Header("User-Agent: AClient");
+	m_pAuthRequest->Header(AClientBackend::USER_AGENT_HEADER);
+	m_pAuthRequest->Header(AClientBackend::API_KEY_HEADER);
+	m_pAuthRequest->Header(AClientBackend::AUTH_BEARER_HEADER);
 	Http()->Run(m_pAuthRequest);
 }
 
@@ -227,7 +230,7 @@ void CAClientAuth::OnRender()
 		else
 		{
 			m_AuthState = AUTH_ERROR;
-			str_copy(m_aErrorMessage, "Error al conectar con Cloudflare", sizeof(m_aErrorMessage));
+			str_copy(m_aErrorMessage, "Error al conectar con el servidor", sizeof(m_aErrorMessage));
 		}
 
 		m_pAuthRequest = nullptr;
@@ -300,7 +303,7 @@ void CAClientAuth::RenderAuthModal(CUIRect Screen)
 	if(m_AuthState == AUTH_CHECKING)
 	{
 		TextRender()->TextColor(0.95f, 0.85f, 0.2f, 1.0f);
-		TextRender()->Text(StatusBox.x, StatusBox.y + 4.0f, 11.0f, "Verificando con Cloudflare...", -1.0f);
+		TextRender()->Text(StatusBox.x, StatusBox.y + 4.0f, 11.0f, "Verificando sesion...", -1.0f);
 	}
 	else if(m_AuthState == AUTH_ERROR && m_aErrorMessage[0] != '\0')
 	{

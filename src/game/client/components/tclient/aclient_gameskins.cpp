@@ -1,4 +1,5 @@
 #include "aclient_gameskins.h"
+#include "aclient_backend.h"
 
 #include <base/math.h>
 #include <base/str.h>
@@ -285,10 +286,9 @@ void CAClientGameSkins::RefreshPresence()
 	str_copy(m_aLastAnnouncedSkin, g_Config.m_ClAssetGame);
 	m_LastPresenceRefreshTime = time_get();
 
-	if(!g_Config.m_AcPresenceUrl[0])
-		return;
+	const char *pBaseUrl = (g_Config.m_AcPresenceUrl[0] != '\0' && str_find(g_Config.m_AcPresenceUrl, "workers.dev") == nullptr) ? g_Config.m_AcPresenceUrl : AClientBackend::SUPABASE_URL;
 
-	// 1. Announce own presence via POST
+	// 1. Announce own presence via POST RPC
 	if(g_Config.m_PlayerName[0] != '\0')
 	{
 		char aEscPlayer[128];
@@ -300,13 +300,18 @@ void CAClientGameSkins::RefreshPresence()
 
 		char aPayload[512];
 		str_format(aPayload, sizeof(aPayload),
-			"{\"server\":\"%s\",\"player\":\"%s\",\"asset_game\":\"%s\"}",
+			"{\"p_server\":\"%s\",\"p_player\":\"%s\",\"p_asset_game\":\"%s\"}",
 			aEscServer, aEscPlayer, aEscSkin);
 
-		std::shared_ptr<IHttpRequest> pPost = HttpPostJson(g_Config.m_AcPresenceUrl, aPayload);
+		char aPostUrl[512];
+		str_format(aPostUrl, sizeof(aPostUrl), "%s/rest/v1/rpc/aclient_presence", pBaseUrl);
+
+		std::shared_ptr<IHttpRequest> pPost = HttpPostJson(aPostUrl, aPayload);
 		pPost->Timeout(CTimeout{3000, 3000, 500, 3});
 		pPost->IpResolve(IPRESOLVE::V4);
-		pPost->Header("User-Agent: AClient");
+		pPost->Header(AClientBackend::USER_AGENT_HEADER);
+		pPost->Header(AClientBackend::API_KEY_HEADER);
+		pPost->Header(AClientBackend::AUTH_BEARER_HEADER);
 		Http()->Run(pPost);
 	}
 
@@ -320,12 +325,14 @@ void CAClientGameSkins::RefreshPresence()
 	EscapeUrl(aEscapedServer, sizeof(aEscapedServer), aServerAddr);
 
 	char aGetUrl[512];
-	str_format(aGetUrl, sizeof(aGetUrl), "%s?server=%s", g_Config.m_AcPresenceUrl, aEscapedServer);
+	str_format(aGetUrl, sizeof(aGetUrl), "%s/rest/v1/presence?server=eq.%s&select=player,asset_game", pBaseUrl, aEscapedServer);
 
 	m_pPresenceRequest = HttpGet(aGetUrl);
 	m_pPresenceRequest->Timeout(CTimeout{4000, 4000, 500, 4});
 	m_pPresenceRequest->IpResolve(IPRESOLVE::V4);
-	m_pPresenceRequest->Header("User-Agent: AClient");
+	m_pPresenceRequest->Header(AClientBackend::USER_AGENT_HEADER);
+	m_pPresenceRequest->Header(AClientBackend::API_KEY_HEADER);
+	m_pPresenceRequest->Header(AClientBackend::AUTH_BEARER_HEADER);
 	Http()->Run(m_pPresenceRequest);
 }
 
