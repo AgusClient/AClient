@@ -171,6 +171,8 @@ public:
 	bool m_HistoryNeedsSave = false;
 	int m_LastStatsTick = -1;
 	bool m_StatsDirty = true;
+	bool m_RunFinishedSaved = false;
+	int64_t m_LastFinishSaveTime = 0;
 
 	struct SCachedStatCol
 	{

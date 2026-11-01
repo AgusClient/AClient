@@ -31,6 +31,8 @@ void CRaceStats::OnInit()
 	m_Active = false;
 	m_LastLocalTeam = -1;
 	m_RunStartTick = 0;
+	m_RunFinishedSaved = false;
+	m_LastFinishSaveTime = 0;
 	for(int i = 0; i < MAX_CLIENTS; i++)
 		m_aRowAnim[i].Reset();
 
@@ -119,6 +121,9 @@ void CRaceStats::OnReset()
 	m_CachedDisplayCount = 0;
 	m_CachedTotalTeamPlayers = 0;
 	m_StatsDirty = true;
+	m_RunFinishedSaved = false;
+	m_RunFinishedSaved = false;
+	m_LastFinishSaveTime = 0;
 }
 
 bool CRaceStats::HasCurrentTeamActivity() const
@@ -184,6 +189,18 @@ bool CRaceStats::SaveCurrentStats(const char *pReason, bool RequireActivity, boo
 	}
 
 	bool IsFinish = (pReason && (str_comp(pReason, "Finish") == 0 || str_find_nocase(pReason, "Finish") != nullptr));
+	bool IsAutoReset = (pReason && str_startswith(pReason, "Auto ("));
+
+	// Evitar guardar multiples logs de Finish por cada integrante del equipo o por doble evento (RaceFinish + Chat)
+	if(IsFinish)
+	{
+		if(m_RunFinishedSaved || (m_LastFinishSaveTime > 0 && (time_get() - m_LastFinishSaveTime) < time_freq() * 15))
+			return false;
+	}
+
+	// Si la run actual ya se guardo al cruzar la finish, no guardar otro log redundante al disolverse el team o hacer /kill
+	if(IsAutoReset && m_RunFinishedSaved)
+		return false;
 
 	if(g_Config.m_AcRaceStatsSaveOnlyOnFinish && !IsFinish)
 		return false;
@@ -263,6 +280,26 @@ bool CRaceStats::SaveCurrentStats(const char *pReason, bool RequireActivity, boo
 
 	if(Entry.m_vPlayers.empty())
 		return false;
+
+	// Evitar entrada duplicada consecutiva identica
+	if(!m_vSavedEntries.empty())
+	{
+		const CSavedRaceStatsEntry &Top = m_vSavedEntries.front();
+		if(Top.m_Completed == Entry.m_Completed &&
+		   Top.m_Team == Entry.m_Team &&
+		   str_comp(Top.m_aMapName, Entry.m_aMapName) == 0 &&
+		   str_comp(Top.m_aRunTime, Entry.m_aRunTime) == 0 &&
+		   str_comp(Top.m_aReason, Entry.m_aReason) == 0)
+		{
+			return false;
+		}
+	}
+
+	if(IsFinish)
+	{
+		m_RunFinishedSaved = true;
+		m_LastFinishSaveTime = time_get();
+	}
 
 	// Insertar al inicio para ver las más recientes primero (límite de 100 entradas)
 	m_vSavedEntries.insert(m_vSavedEntries.begin(), Entry);
@@ -451,7 +488,24 @@ void CRaceStats::LoadHistoryFromFile()
 		else if(str_comp(aTag, "END") == 0 && InEntry)
 		{
 			if(!CurrentEntry.m_vPlayers.empty())
-				m_vSavedEntries.push_back(CurrentEntry);
+			{
+				bool IsDuplicate = false;
+				if(!m_vSavedEntries.empty())
+				{
+					const CSavedRaceStatsEntry &Prev = m_vSavedEntries.back();
+					if(Prev.m_Completed == CurrentEntry.m_Completed &&
+					   Prev.m_Team == CurrentEntry.m_Team &&
+					   str_comp(Prev.m_aMapName, CurrentEntry.m_aMapName) == 0 &&
+					   str_comp(Prev.m_aRunTime, CurrentEntry.m_aRunTime) == 0 &&
+					   str_comp(Prev.m_aReason, CurrentEntry.m_aReason) == 0)
+					{
+						IsDuplicate = true;
+						m_HistoryNeedsSave = true;
+					}
+				}
+				if(!IsDuplicate)
+					m_vSavedEntries.push_back(CurrentEntry);
+			}
 			InEntry = false;
 		}
 	}
