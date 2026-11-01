@@ -171,13 +171,23 @@ void CAClientAuth::Logout()
 	m_UsernameInput.Clear();
 }
 
+bool CAClientAuth::IsRequired() const
+{
+	return g_Config.m_ClAuthRequired != 0;
+}
+
+bool CAClientAuth::IsAuthenticated() const
+{
+	return !IsRequired() || m_AuthState == AUTH_LOGGED_IN;
+}
+
 void CAClientAuth::OnRender()
 {
 	// Auto-login silencioso al iniciar
 	if(!m_InitialCheckDone)
 	{
 		m_InitialCheckDone = true;
-		if(g_Config.m_ClAuthRemember && g_Config.m_ClAuthUser[0] != '\0' && true)
+		if(IsRequired() && g_Config.m_ClAuthRemember && g_Config.m_ClAuthUser[0] != '\0')
 		{
 			StartLogin(g_Config.m_ClAuthUser, g_Config.m_ClAuthPass);
 		}
@@ -236,6 +246,11 @@ void CAClientAuth::OnRender()
 		m_pAuthRequest = nullptr;
 	}
 
+	// Bloqueo de seguridad: Si el modal esta encendido y no esta autenticado al conectar, desconectar
+	if(IsRequired() && !IsAuthenticated() && Client()->State() >= IClient::STATE_CONNECTING)
+	{
+		Client()->Disconnect();
+	}
 }
 
 void CAClientAuth::RenderAuthModal(CUIRect Screen)
