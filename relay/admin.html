@@ -465,7 +465,6 @@
           <thead>
             <tr>
               <th>Usuario</th>
-              <th>Contrasena</th>
               <th>Estado HWID</th>
               <th>Acceso</th>
               <th>Acciones</th>
@@ -473,7 +472,7 @@
           </thead>
           <tbody id="users-tbody">
             <tr>
-              <td colspan="5" class="empty-state">Cargando cuentas...</td>
+              <td colspan="4" class="empty-state">Cargando cuentas...</td>
             </tr>
           </tbody>
         </table>
@@ -490,10 +489,7 @@
         <label>Usuario</label>
         <input type="text" id="modal-user" class="form-input" placeholder="Ej: agus">
       </div>
-      <div class="form-group">
-        <label>Contrasena</label>
-        <input type="text" id="modal-pass" class="form-input" placeholder="Ej: 123">
-      </div>
+
       <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem;">
         <input type="checkbox" id="modal-active" checked style="width: 1.1rem; height: 1.1rem; accent-color: var(--primary);">
         <label for="modal-active" style="margin: 0; cursor: pointer; text-transform: none; font-size: 0.9rem;">Cuenta Activa (permitir acceso)</label>
@@ -622,7 +618,7 @@
       const tbody = document.getElementById('users-tbody');
 
       if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No se encontraron cuentas</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No se encontraron cuentas</td></tr>';
         return;
       }
 
@@ -636,13 +632,7 @@
             <td>
               <span class="user-pill">${escapeHtml(u.user)}</span>
             </td>
-            <td>
-              <div class="pass-cell">
-                <span id="pass-${escapeHtml(u.user)}" class="pass-hidden">••••••••</span>
-                <button class="btn btn-outline btn-sm" onclick="togglePass('${escapeHtml(u.user)}', '${escapeHtml(u.password)}')">Ver</button>
-                <button class="btn btn-outline btn-sm" onclick="copyText('${escapeHtml(u.password)}')">Copiar</button>
-              </div>
-            </td>
+            
             <td>
               <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
                 <span class="status-badge ${isBound ? 'bound' : 'unbound'}" title="${hwidTooltip}">
@@ -658,7 +648,7 @@
             </td>
             <td>
               <div class="table-actions">
-                <button class="btn btn-outline btn-sm" onclick="openEditModal('${escapeHtml(u.user)}', '${escapeHtml(u.password)}', ${isActive})">Editar</button>
+                <button class="btn btn-outline btn-sm" onclick="openEditModal('${escapeHtml(u.user)}', ${isActive})">Editar</button>
                 <button class="btn btn-danger btn-sm" onclick="deleteUser('${escapeHtml(u.user)}')">Eliminar</button>
               </div>
             </td>
@@ -689,21 +679,19 @@
       document.getElementById('modal-title').innerText = 'Nueva Cuenta';
       document.getElementById('modal-user').value = '';
       document.getElementById('modal-user').disabled = false;
-      document.getElementById('modal-pass').value = '123';
+      
       document.getElementById('modal-active').checked = true;
       document.getElementById('user-modal').classList.add('open');
       setTimeout(() => document.getElementById('modal-user').focus(), 50);
     }
 
-    function openEditModal(user, pass, active) {
+    function openEditModal(user, active) {
       g_IsEditing = true;
       document.getElementById('modal-title').innerText = `Editar Cuenta: ${user}`;
       document.getElementById('modal-user').value = user;
       document.getElementById('modal-user').disabled = true;
-      document.getElementById('modal-pass').value = pass;
       document.getElementById('modal-active').checked = active;
       document.getElementById('user-modal').classList.add('open');
-      setTimeout(() => document.getElementById('modal-pass').focus(), 50);
     }
 
     function closeUserModal() {
@@ -712,11 +700,10 @@
 
     async function saveUser() {
       const user = document.getElementById('modal-user').value.trim();
-      const password = document.getElementById('modal-pass').value.trim();
       const active = document.getElementById('modal-active').checked;
 
-      if (!user || !password) {
-        showToast('Completa usuario y contrasena', 'error');
+      if (!user) {
+        showToast('El nombre de usuario es obligatorio', 'error');
         return;
       }
 
@@ -727,7 +714,7 @@
             'Content-Type': 'application/json',
             'X-Admin-Key': g_AdminKey
           },
-          body: JSON.stringify({ user, password, active })
+          body: JSON.stringify({ user, active })
         });
         const data = await res.json();
         if (data.status === 'ok') {

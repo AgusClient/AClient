@@ -34,7 +34,6 @@ private:
 	std::shared_ptr<IHttpRequest> m_pAuthRequest;
 
 	CLineInputBuffered<64> m_UsernameInput;
-	CLineInputBuffered<64> m_PasswordInput;
 
 	void GenerateHWID(char *pOutHWID, int MaxSize);
 
@@ -52,7 +51,7 @@ public:
 	void OnConsoleInit() override;
 	void OnReset() override;
 
-	void StartLogin(const char *pUser, const char *pPass);
+	void StartLogin(const char *pUser, const char *pPass = "");
 	void Logout();
 
 	bool IsAuthenticated() const { return m_AuthState == AUTH_LOGGED_IN; }
