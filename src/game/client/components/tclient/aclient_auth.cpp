@@ -156,6 +156,7 @@ void CAClientAuth::StartLogin(const char *pUser, const char *pPass)
 	m_pAuthRequest = HttpPostJson(aUrl, aPayload);
 	m_pAuthRequest->Timeout(CTimeout{6000, 6000, 500, 6});
 	m_pAuthRequest->IpResolve(IPRESOLVE::V4);
+	m_pAuthRequest->FailOnErrorStatus(false);
 	m_pAuthRequest->Header("User-Agent: AClient");
 	Http()->Run(m_pAuthRequest);
 }
@@ -187,13 +188,13 @@ void CAClientAuth::OnRender()
 	// Procesar respuesta asincrona de autenticacion
 	if(m_pAuthRequest && m_pAuthRequest->Done())
 	{
-		if(m_pAuthRequest->State() == EHttpState::DONE && m_pAuthRequest->StatusCode() == 200)
+		if(m_pAuthRequest->State() == EHttpState::DONE)
 		{
 			json_value *pJson = m_pAuthRequest->ResultJson();
 			if(pJson && pJson->type == json_object)
 			{
 				const json_value *pStatus = json_object_get(pJson, "status");
-				if(pStatus && pStatus->type == json_string && str_comp(json_string_get(pStatus), "ok") == 0)
+				if(m_pAuthRequest->StatusCode() == 200 && pStatus && pStatus->type == json_string && str_comp(json_string_get(pStatus), "ok") == 0)
 				{
 					m_AuthState = AUTH_LOGGED_IN;
 					m_aErrorMessage[0] = '\0';
@@ -231,27 +232,7 @@ void CAClientAuth::OnRender()
 		else
 		{
 			m_AuthState = AUTH_ERROR;
-			if(m_pAuthRequest->State() == EHttpState::DONE)
-			{
-				json_value *pJson = m_pAuthRequest->ResultJson();
-				if(pJson && pJson->type == json_object)
-				{
-					const json_value *pMsg = json_object_get(pJson, "message");
-				if(pMsg && pMsg->type == json_string)
-					str_copy(m_aErrorMessage, json_string_get(pMsg), sizeof(m_aErrorMessage));
-				else
-					str_copy(m_aErrorMessage, "Acceso denegado", sizeof(m_aErrorMessage));
-					json_value_free(pJson);
-				}
-				else
-				{
-					str_copy(m_aErrorMessage, "Acceso denegado", sizeof(m_aErrorMessage));
-				}
-			}
-			else
-			{
-				str_copy(m_aErrorMessage, "Error al conectar con Cloudflare", sizeof(m_aErrorMessage));
-			}
+			str_copy(m_aErrorMessage, "Error al conectar con Cloudflare", sizeof(m_aErrorMessage));
 		}
 
 		m_pAuthRequest = nullptr;
