@@ -2828,18 +2828,23 @@ Use /invite all or /invite friends with anti-flood queue and Tab auto-complete.
 Compiled SPIR-V shaders included for smoother frame rates and lower CPU usage.
 == Kompilierte SPIR-V Shader für flüssigere FPS und weniger CPU-Last.
 
+[]
 [AClient] You must be connected to a server to use /invite.
 == [AClient] Du musst mit einem Server verbunden sein, um /invite zu nutzen.
 
+[]
 [AClient] Join a team first (e.g. /team 1) before using /invite.
 == [AClient] Tritt zuerst einem Team bei (z.B. /team 1).
 
+[]
 [AClient] No connected friends outside your team found to invite.
 == [AClient] Keine Freunde außerhalb deines Teams zum Einladen gefunden.
 
+[]
 [AClient] No other players outside your team found to invite.
 == [AClient] Keine anderen Spieler außerhalb deines Teams zum Einladen gefunden.
 
+[]
 [AClient] Inviting %d %s to Team %d...
 == [AClient] Lade %d %s in Team %d ein...
 

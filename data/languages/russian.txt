@@ -2828,18 +2828,23 @@ Use /invite all or /invite friends with anti-flood queue and Tab auto-complete.
 Compiled SPIR-V shaders included for smoother frame rates and lower CPU usage.
 == Встроенные шейдеры SPIR-V для плавной частоты кадров и снижения нагрузки на ЦП.
 
+[]
 [AClient] You must be connected to a server to use /invite.
 == [AClient] Вы должны быть подключены к серверу для использования /invite.
 
+[]
 [AClient] Join a team first (e.g. /team 1) before using /invite.
 == [AClient] Сначала вступите в команду (например, /team 1) перед вызовом /invite.
 
+[]
 [AClient] No connected friends outside your team found to invite.
 == [AClient] Друзей вне вашей команды для приглашения не найдено.
 
+[]
 [AClient] No other players outside your team found to invite.
 == [AClient] Других игроков вне вашей команды для приглашения не найдено.
 
+[]
 [AClient] Inviting %d %s to Team %d...
 == [AClient] Приглашение %d %s в Команду %d...
 
@@ -2855,92 +2860,96 @@ Keep stats on death (do not reset on /kill)
 Column: Deaths
 == Колонка: Смерти
 
-== Background Alerts (Tabbed out)
-Оповещения в фоновом режиме
+Background Alerts (Tabbed out)
+== Оповещения в фоновом режиме
 
-== Notify when unfreezing (tabbed out)
-Оповещать при разморозке в фоне
+Notify when unfreezing (tabbed out)
+== Оповещать при разморозке в фоне
 
-== Notify when moved or tile changes (tabbed out)
-Оповещать при смене тайла или перемещении
+Notify when moved or tile changes (tabbed out)
+== Оповещать при смене тайла или перемещении
 
-== Alert methods (independent):
-Способы оповещения (независимые):
+Alert methods (independent):
+== Способы оповещения (независимые):
 
-== Sound alert
-Звуковое оповещение
+Sound alert
+== Звуковое оповещение
 
-== Taskbar flash
-Мигание на панели задач
+Taskbar flash
+== Мигание на панели задач
 
-== Desktop notification
-Уведомление на рабочем столе
+Desktop notification
+== Уведомление на рабочем столе
 
-== Skin Stealer
-Кража скина (Копирование)
+Skin Stealer
+== Кража скина (Копирование)
 
-== Steal skin key (aiming at player)
-Клавиша копирования скина (по прицелу)
+Steal skin key (aiming at player)
+== Клавиша копирования скина (по прицелу)
 
-== Chat: /stealskin [name]  or  Console: steal_skin [name]
-Чат: /stealskin [ник]  |  Консоль: steal_skin [ник]
+Chat: /stealskin [name]  or  Console: steal_skin [name]
+== Чат: /stealskin [ник]  |  Консоль: steal_skin [ник]
 
-== You can also right-click / click on any player in Scoreboard (Tab) to steal skin.
-Также можно нажать на любого игрока в таблице счета (Tab), чтобы скопировать скин.
+You can also right-click / click on any player in Scoreboard (Tab) to steal skin.
+== Также можно нажать на любого игрока в таблице счета (Tab), чтобы скопировать скин.
 
-== Steal skin from aimed player now
-Скопировать скин игрока под прицелом
+Steal skin from aimed player now
+== Скопировать скин игрока под прицелом
 
-== Steal Skin
-Копировать скин
+Steal Skin
+== Копировать скин
 
-== You were unfrozen!
-Вас разморозили!
+You were unfrozen!
+== Вас разморозили!
 
-== You were moved or changed tile!
-Вас переместили или сменился тайл!
+You were moved or changed tile!
+== Вас переместили или сменился тайл!
 
-== [AClient] Skin copied from %s: %s
-[AClient] Скин скопирован у %s: %s
+[]
+[AClient] Skin copied from %s: %s
+== [AClient] Скин скопирован у %s: %s
 
-== [AClient] No target player found to steal skin from.
-[AClient] Целевой игрок для копирования скина не найден.
+[]
+[AClient] No target player found to steal skin from.
+== [AClient] Целевой игрок для копирования скина не найден.
 
-== [AClient] You cannot steal your own skin.
-[AClient] Нельзя скопировать свой собственный скин.
+[]
+[AClient] You cannot steal your own skin.
+== [AClient] Нельзя скопировать свой собственный скин.
 
-== * Background Alerts (Tabbed out):
-* Оповещения в фоновом режиме:
+* Background Alerts (Tabbed out):
+== * Оповещения в фоновом режиме:
 
-== Granular alerts (sound, taskbar flash, desktop notification) on unfreeze or tile change.
-Настраиваемые оповещения (звук, мигание в панели задач, уведомление) при разморозке или движении.
+Granular alerts (sound, taskbar flash, desktop notification) on unfreeze or tile change.
+== Настраиваемые оповещения (звук, мигание в панели задач, уведомление) при разморозке или движении.
 
-== * Skin Stealer:
-* Кража скина:
+* Skin Stealer:
+== * Кража скина:
 
-== Instantly copy skins and colors by aiming with bind, via /stealskin [name] or from Scoreboard (Tab).
-Мгновенно копируйте скин и цвета игрока по прицелу биндом, через /stealskin [ник] или из таблицы счета.
+Instantly copy skins and colors by aiming with bind, via /stealskin [name] or from Scoreboard (Tab).
+== Мгновенно копируйте скин и цвета игрока по прицелу биндом, через /stealskin [ник] или из таблицы счета.
 
-== Chat & Client Messages (Echo)
-Чат и клиентские сообщения (Echo)
+Chat & Client Messages (Echo)
+== Чат и клиентские сообщения (Echo)
 
-== Show client messages in chat (Echo / Local notices)
-Показывать сообщения клиента в чате (Echo / локальные оповещения)
+Show client messages in chat (Echo / Local notices)
+== Показывать сообщения клиента в чате (Echo / локальные оповещения)
 
-== Controls whether local echo messages (like [AClient], command feedback and notices) appear in the chat.
-Управляет отображением локальных эхо-сообщений (таких как [AClient], подтверждения команд и уведомления) в чате.
+Controls whether local echo messages (like [AClient], command feedback and notices) appear in the chat.
+== Управляет отображением локальных эхо-сообщений (таких как [AClient], подтверждения команд и уведомления) в чате.
 
-== Send Test Echo Message
-Отправить тестовое эхо-сообщение
+Send Test Echo Message
+== Отправить тестовое эхо-сообщение
 
-== [AClient] This is a test Echo message.
-[AClient] Это тестовое эхо-сообщение.
+[]
+[AClient] This is a test Echo message.
+== [AClient] Это тестовое эхо-сообщение.
 
-== * Client Echo Control:
-* Управление эхо-сообщениями:
+* Client Echo Control:
+== * Управление эхо-сообщениями:
 
-== Enable or silence local client notices ([AClient], command confirmations, script echoes).
-Включение или отключение локальных уведомлений клиента ([AClient], подтверждения команд, эхо скриптов).
+Enable or silence local client notices ([AClient], command confirmations, script echoes).
+== Включение или отключение локальных уведомлений клиента ([AClient], подтверждения команд, эхо скриптов).
 
 Shows the compact live team statistics table on your screen during the game.
 == Отображает компактную таблицу статистики команды на экране во время игры.
@@ -2999,6 +3008,7 @@ Live stats (Freezes, Saves, Deaths, Dynamic % Eff, Net +/-, Frozen time, Hook ac
 Invite all online friends to your team with /invite friends, with anti-flood queue and Tab auto-complete.
 == Пригласите всех друзей онлайн в команду командой /invite friends (защита от флуда и автодополнение).
 
+[]
 [AClient] /invite all has been disabled. Use /invite friends.
 == [AClient] /invite all отключена. Используйте /invite friends.
 

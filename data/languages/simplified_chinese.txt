@@ -2828,18 +2828,23 @@ Use /invite all or /invite friends with anti-flood queue and Tab auto-complete.
 Compiled SPIR-V shaders included for smoother frame rates and lower CPU usage.
 == 内置编译好的 SPIR-V 着色器，帧率更稳且大幅降低 CPU 占用。
 
+[]
 [AClient] You must be connected to a server to use /invite.
 == [AClient] 必须在服务器在线状态下才能使用 /invite。
 
+[]
 [AClient] Join a team first (e.g. /team 1) before using /invite.
 == [AClient] 请先加入队伍 (例如 /team 1) 再使用 /invite。
 
+[]
 [AClient] No connected friends outside your team found to invite.
 == [AClient] 未发现队伍外的好友在线。
 
+[]
 [AClient] No other players outside your team found to invite.
 == [AClient] 未发现队伍外的其他玩家。
 
+[]
 [AClient] Inviting %d %s to Team %d...
 == [AClient] 正在邀请 %d 名%s加入队伍 %d...
 
@@ -2855,92 +2860,96 @@ Keep stats on death (do not reset on /kill)
 Column: Deaths
 == 显示列: 死亡次数
 
-== Background Alerts (Tabbed out)
-后台挂起提醒
+Background Alerts (Tabbed out)
+== 后台挂起提醒
 
-== Notify when unfreezing (tabbed out)
-后台解除冰冻时提醒
+Notify when unfreezing (tabbed out)
+== 后台解除冰冻时提醒
 
-== Notify when moved or tile changes (tabbed out)
-后台被拉拽或移动方块时提醒
+Notify when moved or tile changes (tabbed out)
+== 后台被拉拽或移动方块时提醒
 
-== Alert methods (independent):
-提醒方式 (可独立多选):
+Alert methods (independent):
+== 提醒方式 (可独立多选):
 
-== Sound alert
-声音提醒
+Sound alert
+== 声音提醒
 
-== Taskbar flash
-任务栏图标闪烁
+Taskbar flash
+== 任务栏图标闪烁
 
-== Desktop notification
-桌面弹窗通知
+Desktop notification
+== 桌面弹窗通知
 
-== Skin Stealer
-一键复制皮肤 (Skin Stealer)
+Skin Stealer
+== 一键复制皮肤 (Skin Stealer)
 
-== Steal skin key (aiming at player)
-瞄准一键复制皮肤快捷键
+Steal skin key (aiming at player)
+== 瞄准一键复制皮肤快捷键
 
-== Chat: /stealskin [name]  or  Console: steal_skin [name]
-聊天: /stealskin [名字]  |  控制台: steal_skin [名字]
+Chat: /stealskin [name]  or  Console: steal_skin [name]
+== 聊天: /stealskin [名字]  |  控制台: steal_skin [名字]
 
-== You can also right-click / click on any player in Scoreboard (Tab) to steal skin.
-也可在 Tab 计分板中点击任意玩家菜单选择复制皮肤。
+You can also right-click / click on any player in Scoreboard (Tab) to steal skin.
+== 也可在 Tab 计分板中点击任意玩家菜单选择复制皮肤。
 
-== Steal skin from aimed player now
-立即复制当前瞄准玩家的皮肤
+Steal skin from aimed player now
+== 立即复制当前瞄准玩家的皮肤
 
-== Steal Skin
-复制皮肤
+Steal Skin
+== 复制皮肤
 
-== You were unfrozen!
-你已被解冻！
+You were unfrozen!
+== 你已被解冻！
 
-== You were moved or changed tile!
-你被移动或位置发生变化！
+You were moved or changed tile!
+== 你被移动或位置发生变化！
 
-== [AClient] Skin copied from %s: %s
-[AClient] 已复制 %s 的皮肤: %s
+[]
+[AClient] Skin copied from %s: %s
+== [AClient] 已复制 %s 的皮肤: %s
 
-== [AClient] No target player found to steal skin from.
-[AClient] 未找到可复制皮肤的目标玩家。
+[]
+[AClient] No target player found to steal skin from.
+== [AClient] 未找到可复制皮肤的目标玩家。
 
-== [AClient] You cannot steal your own skin.
-[AClient] 无法复制自己的皮肤。
+[]
+[AClient] You cannot steal your own skin.
+== [AClient] 无法复制自己的皮肤。
 
-== * Background Alerts (Tabbed out):
-* 后台切屏提醒:
+* Background Alerts (Tabbed out):
+== * 后台切屏提醒:
 
-== Granular alerts (sound, taskbar flash, desktop notification) on unfreeze or tile change.
-支持声音、任务栏闪烁与桌面通知多重独立提醒，在解冻或被移动时触发。
+Granular alerts (sound, taskbar flash, desktop notification) on unfreeze or tile change.
+== 支持声音、任务栏闪烁与桌面通知多重独立提醒，在解冻或被移动时触发。
 
-== * Skin Stealer:
-* 一键复制皮肤 (Skin Stealer):
+* Skin Stealer:
+== * 一键复制皮肤 (Skin Stealer):
 
-== Instantly copy skins and colors by aiming with bind, via /stealskin [name] or from Scoreboard (Tab).
-通过准星绑定快捷键、/stealskin [名字] 指令或 Tab 计分板一键直接复制玩家皮肤与颜色。
+Instantly copy skins and colors by aiming with bind, via /stealskin [name] or from Scoreboard (Tab).
+== 通过准星绑定快捷键、/stealskin [名字] 指令或 Tab 计分板一键直接复制玩家皮肤与颜色。
 
-== Chat & Client Messages (Echo)
-聊天与客户端提示信息 (Echo)
+Chat & Client Messages (Echo)
+== 聊天与客户端提示信息 (Echo)
 
-== Show client messages in chat (Echo / Local notices)
-在聊天栏显示客户端本地提示 (Echo / 本地通知)
+Show client messages in chat (Echo / Local notices)
+== 在聊天栏显示客户端本地提示 (Echo / 本地通知)
 
-== Controls whether local echo messages (like [AClient], command feedback and notices) appear in the chat.
-控制是否在聊天框中显示客户端本地回显信息 (例如 [AClient]、指令执行反馈与提示)。
+Controls whether local echo messages (like [AClient], command feedback and notices) appear in the chat.
+== 控制是否在聊天框中显示客户端本地回显信息 (例如 [AClient]、指令执行反馈与提示)。
 
-== Send Test Echo Message
-发送测试回显消息 (Echo 测试)
+Send Test Echo Message
+== 发送测试回显消息 (Echo 测试)
 
-== [AClient] This is a test Echo message.
-[AClient] 这是一条 Echo 测试提示消息。
+[]
+[AClient] This is a test Echo message.
+== [AClient] 这是一条 Echo 测试提示消息。
 
-== * Client Echo Control:
-* 客户端回显控制:
+* Client Echo Control:
+== * 客户端回显控制:
 
-== Enable or silence local client notices ([AClient], command confirmations, script echoes).
-开启或静音客户端本地提示 ([AClient]、指令反馈与脚本回显)。
+Enable or silence local client notices ([AClient], command confirmations, script echoes).
+== 开启或静音客户端本地提示 ([AClient]、指令反馈与脚本回显)。
 
 Shows the compact live team statistics table on your screen during the game.
 == 在游戏屏幕上显示团队实时紧凑统计表。
@@ -2999,6 +3008,7 @@ Live stats (Freezes, Saves, Deaths, Dynamic % Eff, Net +/-, Frozen time, Hook ac
 Invite all online friends to your team with /invite friends, with anti-flood queue and Tab auto-complete.
 == 使用 /invite friends 邀请全服在线好友入队，带防刷屏队列及 Tab 自动补全。
 
+[]
 [AClient] /invite all has been disabled. Use /invite friends.
 == [AClient] /invite all 已停用，请使用 /invite friends。
 

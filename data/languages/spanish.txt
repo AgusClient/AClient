@@ -2828,18 +2828,23 @@ Use /invite all or /invite friends with anti-flood queue and Tab auto-complete.
 Compiled SPIR-V shaders included for smoother frame rates and lower CPU usage.
 == Shaders SPIR-V incluidos para mayor fluidez y menor consumo de CPU.
 
+[]
 [AClient] You must be connected to a server to use /invite.
 == [AClient] Debes estar conectado a un servidor para usar /invite.
 
+[]
 [AClient] Join a team first (e.g. /team 1) before using /invite.
 == [AClient] Entra primero a un equipo (ej. /team 1) antes de usar /invite.
 
+[]
 [AClient] No connected friends outside your team found to invite.
 == [AClient] No hay amigos conectados fuera de tu equipo para invitar.
 
+[]
 [AClient] No other players outside your team found to invite.
 == [AClient] No hay otros jugadores fuera de tu equipo para invitar.
 
+[]
 [AClient] Inviting %d %s to Team %d...
 == [AClient] Invitando a %d %s al Equipo %d...
 
@@ -2855,92 +2860,96 @@ Keep stats on death (do not reset on /kill)
 Column: Deaths
 == Columna: Muertes
 
-== Background Alerts (Tabbed out)
-Alertas en Segundo Plano (Tabeado)
+Background Alerts (Tabbed out)
+== Alertas en Segundo Plano (Tabeado)
 
-== Notify when unfreezing (tabbed out)
-Avisar al descongelarme (tabeado)
+Notify when unfreezing (tabbed out)
+== Avisar al descongelarme (tabeado)
 
-== Notify when moved or tile changes (tabbed out)
-Avisar si me mueven / cambio de tile (tabeado)
+Notify when moved or tile changes (tabbed out)
+== Avisar si me mueven / cambio de tile (tabeado)
 
-== Alert methods (independent):
-Métodos de alerta (independientes):
+Alert methods (independent):
+== Métodos de alerta (independientes):
 
-== Sound alert
-Sonido de alerta
+Sound alert
+== Sonido de alerta
 
-== Taskbar flash
-Parpadeo en la barra de tareas
+Taskbar flash
+== Parpadeo en la barra de tareas
 
-== Desktop notification
-Notificación de escritorio
+Desktop notification
+== Notificación de escritorio
 
-== Skin Stealer
-Skin Stealer (Copiar Skins)
+Skin Stealer
+== Skin Stealer (Copiar Skins)
 
-== Steal skin key (aiming at player)
-Tecla para copiar skin (apuntando al jugador)
+Steal skin key (aiming at player)
+== Tecla para copiar skin (apuntando al jugador)
 
-== Chat: /stealskin [name]  or  Console: steal_skin [name]
-Chat: /stealskin [nombre]  |  Consola: steal_skin [nombre]
+Chat: /stealskin [name]  or  Console: steal_skin [name]
+== Chat: /stealskin [nombre]  |  Consola: steal_skin [nombre]
 
-== You can also right-click / click on any player in Scoreboard (Tab) to steal skin.
-También puedes hacer clic sobre cualquier jugador en el Scoreboard (Tab) para copiar su skin.
+You can also right-click / click on any player in Scoreboard (Tab) to steal skin.
+== También puedes hacer clic sobre cualquier jugador en el Scoreboard (Tab) para copiar su skin.
 
-== Steal skin from aimed player now
-Copiar skin del jugador apuntado ahora
+Steal skin from aimed player now
+== Copiar skin del jugador apuntado ahora
 
-== Steal Skin
-Copiar Skin
+Steal Skin
+== Copiar Skin
 
-== You were unfrozen!
-¡Has sido descongelado!
+You were unfrozen!
+== ¡Has sido descongelado!
 
-== You were moved or changed tile!
-¡Te han movido o has cambiado de casilla!
+You were moved or changed tile!
+== ¡Te han movido o has cambiado de casilla!
 
-== [AClient] Skin copied from %s: %s
-[AClient] Skin copiada de %s: %s
+[]
+[AClient] Skin copied from %s: %s
+== [AClient] Skin copiada de %s: %s
 
-== [AClient] No target player found to steal skin from.
-[AClient] No se encontró ningún jugador objetivo para copiar skin.
+[]
+[AClient] No target player found to steal skin from.
+== [AClient] No se encontró ningún jugador objetivo para copiar skin.
 
-== [AClient] You cannot steal your own skin.
-[AClient] No puedes copiar tu propia skin.
+[]
+[AClient] You cannot steal your own skin.
+== [AClient] No puedes copiar tu propia skin.
 
-== * Background Alerts (Tabbed out):
-* Alertas en Segundo Plano (Tabeado):
+* Background Alerts (Tabbed out):
+== * Alertas en Segundo Plano (Tabeado):
 
-== Granular alerts (sound, taskbar flash, desktop notification) on unfreeze or tile change.
-Avisos configurables (sonido, parpadeo de ventana, notificación de escritorio) al descongelarte o moverte.
+Granular alerts (sound, taskbar flash, desktop notification) on unfreeze or tile change.
+== Avisos configurables (sonido, parpadeo de ventana, notificación de escritorio) al descongelarte o moverte.
 
-== * Skin Stealer:
-* Skin Stealer (Copiar Skins):
+* Skin Stealer:
+== * Skin Stealer (Copiar Skins):
 
-== Instantly copy skins and colors by aiming with bind, via /stealskin [name] or from Scoreboard (Tab).
-Copia al instante la skin y colores apuntando con tu bind, con /stealskin [nombre] o desde el Scoreboard.
+Instantly copy skins and colors by aiming with bind, via /stealskin [name] or from Scoreboard (Tab).
+== Copia al instante la skin y colores apuntando con tu bind, con /stealskin [nombre] o desde el Scoreboard.
 
-== Chat & Client Messages (Echo)
-Chat y Mensajes de Cliente (Echo)
+Chat & Client Messages (Echo)
+== Chat y Mensajes de Cliente (Echo)
 
-== Show client messages in chat (Echo / Local notices)
-Mostrar mensajes de cliente en chat (Echo / Avisos locales)
+Show client messages in chat (Echo / Local notices)
+== Mostrar mensajes de cliente en chat (Echo / Avisos locales)
 
-== Controls whether local echo messages (like [AClient], command feedback and notices) appear in the chat.
-Controla si los mensajes locales de echo (como [AClient], confirmaciones y avisos) aparecen en el chat.
+Controls whether local echo messages (like [AClient], command feedback and notices) appear in the chat.
+== Controla si los mensajes locales de echo (como [AClient], confirmaciones y avisos) aparecen en el chat.
 
-== Send Test Echo Message
-Enviar Mensaje de Prueba (Echo Test)
+Send Test Echo Message
+== Enviar Mensaje de Prueba (Echo Test)
 
-== [AClient] This is a test Echo message.
-[AClient] Este es un mensaje de prueba de Echo.
+[]
+[AClient] This is a test Echo message.
+== [AClient] Este es un mensaje de prueba de Echo.
 
-== * Client Echo Control:
-* Control de Mensajes Echo:
+* Client Echo Control:
+== * Control de Mensajes Echo:
 
-== Enable or silence local client notices ([AClient], command confirmations, script echoes).
-Activa o silencia avisos locales ([AClient], confirmación de comandos y ecos de scripts).
+Enable or silence local client notices ([AClient], command confirmations, script echoes).
+== Activa o silencia avisos locales ([AClient], confirmación de comandos y ecos de scripts).
 
 Shows the compact live team statistics table on your screen during the game.
 == Muestra la tabla compacta de estadísticas de equipo en pantalla durante la partida.
@@ -2999,6 +3008,7 @@ Live stats (Freezes, Saves, Deaths, Dynamic % Eff, Net +/-, Frozen time, Hook ac
 Invite all online friends to your team with /invite friends, with anti-flood queue and Tab auto-complete.
 == Invita a todos tus amigos conectados al equipo con /invite friends (cola anti-flood y tecla rápida).
 
+[]
 [AClient] /invite all has been disabled. Use /invite friends.
 == [AClient] /invite all ha sido desactivado. Usa /invite friends.
 

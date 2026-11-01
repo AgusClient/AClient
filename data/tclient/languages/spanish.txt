@@ -1018,18 +1018,23 @@ Use /invite all or /invite friends with anti-flood queue and Tab auto-complete.
 Compiled SPIR-V shaders included for smoother frame rates and lower CPU usage.
 == Shaders SPIR-V incluidos para mayor fluidez y menor consumo de CPU.
 
+[]
 [Clientx30] You must be connected to a server to use /invite.
 == [Clientx30] Debes estar conectado a un servidor para usar /invite.
 
+[]
 [Clientx30] Join a team first (e.g. /team 1) before using /invite.
 == [Clientx30] Entra primero a un equipo (ej. /team 1) antes de usar /invite.
 
+[]
 [Clientx30] No connected friends outside your team found to invite.
 == [Clientx30] No hay amigos conectados fuera de tu equipo para invitar.
 
+[]
 [Clientx30] No other players outside your team found to invite.
 == [Clientx30] No hay otros jugadores fuera de tu equipo para invitar.
 
+[]
 [Clientx30] Inviting %d %s to Team %d...
 == [Clientx30] Invitando a %d %s al Equipo %d...
 
@@ -1102,6 +1107,7 @@ Live stats (Freezes, Saves, Deaths, Dynamic % Eff, Net +/-, Frozen time, Hook ac
 Invite all online friends to your team with /invite friends, with anti-flood queue and Tab auto-complete.
 == Invita a todos tus amigos conectados al equipo con /invite friends (cola anti-flood y tecla rápida).
 
+[]
 [Clientx30] /invite all has been disabled. Use /invite friends.
 == [Clientx30] /invite all ha sido desactivado. Usa /invite friends.
 

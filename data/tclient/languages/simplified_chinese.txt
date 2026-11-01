@@ -1080,18 +1080,23 @@ Use /invite all or /invite friends with anti-flood queue and Tab auto-complete.
 Compiled SPIR-V shaders included for smoother frame rates and lower CPU usage.
 == 内置编译好的 SPIR-V 着色器，帧率更稳且大幅降低 CPU 占用。
 
+[]
 [Clientx30] You must be connected to a server to use /invite.
 == [Clientx30] 必须在服务器在线状态下才能使用 /invite。
 
+[]
 [Clientx30] Join a team first (e.g. /team 1) before using /invite.
 == [Clientx30] 请先加入队伍 (例如 /team 1) 再使用 /invite。
 
+[]
 [Clientx30] No connected friends outside your team found to invite.
 == [Clientx30] 未发现队伍外的好友在线。
 
+[]
 [Clientx30] No other players outside your team found to invite.
 == [Clientx30] 未发现队伍外的其他玩家。
 
+[]
 [Clientx30] Inviting %d %s to Team %d...
 == [Clientx30] 正在邀请 %d 名%s加入队伍 %d...
 
@@ -1164,6 +1169,7 @@ Live stats (Freezes, Saves, Deaths, Dynamic % Eff, Net +/-, Frozen time, Hook ac
 Invite all online friends to your team with /invite friends, with anti-flood queue and Tab auto-complete.
 == 使用 /invite friends 邀请全服在线好友入队，带防刷屏队列及 Tab 自动补全。
 
+[]
 [Clientx30] /invite all has been disabled. Use /invite friends.
 == [Clientx30] /invite all 已停用，请使用 /invite friends。
 

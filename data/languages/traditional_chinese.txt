@@ -2828,18 +2828,23 @@ Use /invite all or /invite friends with anti-flood queue and Tab auto-complete.
 Compiled SPIR-V shaders included for smoother frame rates and lower CPU usage.
 == 内置编译好的 SPIR-V 着色器，帧率更稳且大幅降低 CPU 占用。
 
+[]
 [AClient] You must be connected to a server to use /invite.
 == [AClient] 必须在服务器在线状态下才能使用 /invite。
 
+[]
 [AClient] Join a team first (e.g. /team 1) before using /invite.
 == [AClient] 请先加入隊伍 (例如 /team 1) 再使用 /invite。
 
+[]
 [AClient] No connected friends outside your team found to invite.
 == [AClient] 未发现隊伍外的好友在线。
 
+[]
 [AClient] No other players outside your team found to invite.
 == [AClient] 未发现隊伍外的其他玩家。
 
+[]
 [AClient] Inviting %d %s to Team %d...
 == [AClient] 正在邀请 %d 名%s加入隊伍 %d...
 
