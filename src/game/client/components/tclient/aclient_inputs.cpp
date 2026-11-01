@@ -97,7 +97,7 @@ namespace
 		float Offset = RawAmount / 100.0f;
 
 		if(g_Config.m_AcAX30AdaptiveJitter)
-			Offset += AcInputs::GetAdaptiveJitterTicks();
+			Offset += AcInputs::AX30_GetAdaptiveLatencyOffset();
 
 		if(std::isnan(Offset) || std::isinf(Offset) || Offset <= 0.0f)
 			return 0.0f;
@@ -234,8 +234,14 @@ bool AcInputs::ImmediateOthers()
 	return BestOthers() || SaikoOthers() || DeltaOthers() || AClientOthers() || AX30Others();
 }
 
-vec2 AcInputs::AX30_EvaluateTrajectory(vec2 P_prev, vec2 P0, vec2 P1, vec2 P_next, float Fraction)
+vec2 AcInputs::AX30_EvaluateTrajectory(vec2 P_prev, vec2 P0, vec2 P1, vec2 P_next, float Fraction, int Mode)
 {
+	const float t = std::clamp(Fraction, 0.0f, 1.0f);
+	if(Mode == 2)
+		return mix(P0, P1, t);
+	if(Mode == 3)
+		return BestInterpolate(P0, P1, t, true);
+
 	return aX30::EvaluateTrajectory(P_prev, P0, P1, P_next, Fraction);
 }
 
@@ -249,12 +255,33 @@ void AcInputs::UpdatePingSample(int PingMs)
 		s_PingHistoryCount++;
 }
 
-float AcInputs::GetAdaptiveJitterTicks()
+float AcInputs::AX30_GetAdaptiveLatencyOffset()
 {
-	return aX30::GetAdaptiveLatencyOffset();
+	if(s_PingHistoryCount < 4)
+		return 0.0f;
+
+	float sum = 0.0f;
+	for(int i = 0; i < s_PingHistoryCount; ++i)
+		sum += (float)s_aPingHistory[i];
+
+	const float inv = 1.0f / (float)s_PingHistoryCount;
+	const float avg = sum * inv;
+
+	float var_sum = 0.0f;
+	for(int i = 0; i < s_PingHistoryCount; ++i)
+	{
+		const float d = (float)s_aPingHistory[i] - avg;
+		var_sum += d * d;
+	}
+
+	const float delta = std::sqrt(std::max(0.0f, var_sum * inv));
+	if(std::isnan(delta) || std::isinf(delta))
+		return 0.0f;
+
+	return std::clamp(delta * 0.05f, 0.0f, 0.35f);
 }
 
-vec2 AcInputs::ClampCollision(vec2 P0, vec2 TargetPos, const ::CCollision *pCollision)
+vec2 AcInputs::AX30_FilterBoundary(vec2 P0, vec2 TargetPos, const ::CCollision *pCollision)
 {
 	if(!pCollision)
 		return TargetPos;
@@ -264,21 +291,15 @@ vec2 AcInputs::ClampCollision(vec2 P0, vec2 TargetPos, const ::CCollision *pColl
 		return P0;
 
 	const float Dist = distance(P0, TargetPos);
-	if(Dist < 1.0f)
+	if(Dist < 1.0f || Dist > 300.0f)
 		return TargetPos;
 
-	// Bypass raycasting if teleported or respawned across map
-	if(Dist > 300.0f)
-		return TargetPos;
-
-	// 1. Raycast line collision against solid walls
 	vec2 OutCollision, OutBefore;
 	if(pCollision->IntersectLine(P0, TargetPos, &OutCollision, &OutBefore))
 	{
 		TargetPos = OutBefore;
 	}
 
-	// 2. Check if final predicted position lands inside a freeze tile
 	const int Tile = pCollision->GetCollisionAt(TargetPos.x, TargetPos.y);
 	const int FrontTile = pCollision->GetFrontCollisionAt(TargetPos.x, TargetPos.y);
 	if(Tile == TILE_FREEZE || Tile == TILE_DFREEZE || Tile == TILE_LFREEZE ||

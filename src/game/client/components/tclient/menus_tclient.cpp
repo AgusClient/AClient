@@ -3807,8 +3807,8 @@ void CMenus::RenderSettingsAClientCommands(CUIRect MainView)
 	DrawCommandCard(Column, "ac_inputs [0-8]", TCLocalize("Prediction mode: 0=Off, 1=Fast, 2=Best, 3=Saiko, 4=Delta, 5=F, 6=Cloud, 7=AClient, 8=aX30."));
 	DrawCommandCard(Column, "cl_prediction_margin [-50 to 50]", TCLocalize("Prediction margin in ms (Anti-lag tool)."));
 	DrawCommandCard(Column, "ac_ax30_input_amount / others", TCLocalize("Prediction offset in 0.01 ticks for aX30 mode."));
-	DrawCommandCard(Column, "ac_ax30_adaptive_jitter [0|1]", TCLocalize("Real-time ping jitter tracking & dynamic ping compensation for aX30."));
-	DrawCommandCard(Column, "ac_ax30_collision_clamp [0|1]", TCLocalize("Collision & freeze boundary clamping to prevent rubberband snap."));
+	DrawCommandCard(Column, "ac_ax30_adaptive_jitter [0|1]", TCLocalize("Adaptive latency compensation for aX30."));
+	DrawCommandCard(Column, "ac_ax30_collision_clamp [0|1]", TCLocalize("Safety boundary filter for aX30."));
 	DrawCommandCard(Column, "ac_aclient_input_amount / others", TCLocalize("Prediction offset in 0.01 ticks for AClient mode."));
 	DrawCommandCard(Column, "ac_aclient_input_latency_comp [0-50]", TCLocalize("Latency compensation percentage for AClient mode."));
 	DrawCommandCard(Column, "ac_fast_input_amount / others", TCLocalize("Prediction offset in ms for Fast mode (self and others)."));
@@ -3979,20 +3979,20 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		DoTickAmountSlider(&g_Config.m_AcAX30InputAmount, &Button, TCLocalize("Prediction offset"), 0, 1000);
 
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcAX30AdaptiveJitter, TCLocalize("Adaptive ping jitter tracking (Auto anti-lag)"), &g_Config.m_AcAX30AdaptiveJitter, &Column, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcAX30AdaptiveJitter, TCLocalize("Compensacion adaptativa inteligente"), &g_Config.m_AcAX30AdaptiveJitter, &Column, LineSize);
 
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcAX30CollisionClamp, TCLocalize("Collision & freeze boundary clamping (Anti-snap)"), &g_Config.m_AcAX30CollisionClamp, &Column, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcAX30CollisionClamp, TCLocalize("Filtro de seguridad de bordes"), &g_Config.m_AcAX30CollisionClamp, &Column, LineSize);
 
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		Column.HSplitTop(LineSize, &Label, &Column);
-		Ui()->DoLabel(&Label, TCLocalize("Interpolation"), Label.h * CUi::ms_FontmodHeight * 0.8f, TEXTALIGN_ML);
+		Ui()->DoLabel(&Label, TCLocalize("Perfil de movimiento"), Label.h * CUi::ms_FontmodHeight * 0.8f, TEXTALIGN_ML);
 
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		Column.HSplitTop(LineSize, &Button, &Column);
 		{
 			static CButtonContainer s_aAX30InterpolationButtons[3];
-			static const char *s_apInterpolationNames[] = {"HE", "Linear (1:1)", "Cubic"};
+			static const char *s_apInterpolationNames[] = {"Dinamico", "Directo", "Suave"};
 			static const int s_aInterpolationValues[] = {1, 2, 3};
 
 			CUIRect ButtonsRect = Button;

@@ -53,7 +53,7 @@
   * `3: Best` - Algoritmo adaptado de BestClient.
   * `4: Saiko` - Motor estilo Saiko.
   * `7: AClient` - Ring-buffer de 200 ticks con respuesta 1:1 seca y directa.
-  * `8: aX30` - Interpolacion Interpolacion HE con compensacion adaptativa de jitter en tiempo real.
+  * `8: aX30` - Motor de prediccion y suavizado continuo exclusivo de AClient.
 * **Margen de prediccion integrado (`ac_prediction_margin`)**: Ajuste en milisegundos.
 
 ### Actualizador Integrado en el Juego

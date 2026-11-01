@@ -18,11 +18,11 @@ namespace AcInputs
 	vec2 BestInterpolate(vec2 PrevPos, vec2 CurPos, float Fraction, bool Enable);
 	float BestInterpolate(float PrevPos, float CurPos, float Fraction, bool Enable);
 
-	// aX30 Advanced Features
-	vec2 AX30_EvaluateTrajectory(vec2 P_prev, vec2 P0, vec2 P1, vec2 P_next, float Fraction);
+	// aX30 Proprietary Engine
+	vec2 AX30_EvaluateTrajectory(vec2 P_prev, vec2 P0, vec2 P1, vec2 P_next, float Fraction, int Mode);
 	void UpdatePingSample(int PingMs);
-	float GetAdaptiveJitterTicks();
-	vec2 ClampCollision(vec2 P0, vec2 TargetPos, const ::CCollision *pCollision);
+	float AX30_GetAdaptiveLatencyOffset();
+	vec2 AX30_FilterBoundary(vec2 P0, vec2 TargetPos, const ::CCollision *pCollision);
 
 	bool FastOthers();
 	bool BestOthers();
