@@ -172,6 +172,7 @@ class CChat : public CComponent
 	bool TryHandleProfileCommand(const char *pLine);
 	bool TryHandleJoinInviteCommand(const char *pLine);
 	bool TryHandleGreetCommand(const char *pLine);
+	bool TryHandleNotificationsCommand(const char *pLine);
 
 	static void ConJoinInvite(IConsole::IResult *pResult, void *pUserData);
 	static void ConTeam(IConsole::IResult *pResult, void *pUserData);

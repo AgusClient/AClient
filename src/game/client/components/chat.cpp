@@ -369,6 +369,16 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 	{
 		const bool ShiftPressed = Input()->ShiftIsPressed();
 
+		// AClient: Autocompletado directo para /notifications o /notif
+		if((str_startswith_nocase("/notifications", m_Input.GetString()) && str_length(m_Input.GetString()) >= 3) ||
+			(str_startswith_nocase("/notif", m_Input.GetString()) && str_length(m_Input.GetString()) >= 3))
+		{
+			m_Input.Set("/notifications ");
+			m_Input.SetCursorOffset(str_length("/notifications "));
+			m_CompletionUsed = true;
+			return true;
+		}
+
 		// AClient: Autocompletado directo para /stealskin
 		if(str_startswith_nocase("/stealskin", m_Input.GetString()) && str_length(m_Input.GetString()) >= 3)
 		{
@@ -1812,6 +1822,8 @@ void CChat::SendChat(int Team, const char *pLine)
 		return;
 	if(TryHandleGreetCommand(pLine))
 		return;
+	if(TryHandleNotificationsCommand(pLine))
+		return;
 
 	m_LastChatSend = time();
 
@@ -2152,4 +2164,36 @@ void CChat::ConGreetLast(IConsole::IResult *pResult, void *pUserData)
 	CChat *pSelf = (CChat *)pUserData;
 	const char *pMsg = pResult->NumArguments() > 0 ? pResult->GetString(0) : nullptr;
 	pSelf->GreetLast(pMsg);
+}
+
+bool CChat::TryHandleNotificationsCommand(const char *pLine)
+{
+	if(!pLine)
+		return false;
+
+	const char *pTrimmed = str_utf8_skip_whitespaces(pLine);
+	if(str_comp_nocase(pTrimmed, "/notif") == 0 || str_comp_nocase(pTrimmed, "/notifications") == 0)
+	{
+		g_Config.m_ClShowNotifications ^= 1;
+		char aBuf[128];
+		str_format(aBuf, sizeof(aBuf), TCLocalize("[AClient] Notificaciones de escritorio: %s"), g_Config.m_ClShowNotifications ? "ACTIVADAS (ON)" : "DESACTIVADAS (OFF)");
+		Echo(aBuf);
+		return true;
+	}
+	if(str_startswith_nocase(pTrimmed, "/notif ") || str_startswith_nocase(pTrimmed, "/notifications "))
+	{
+		const char *pArg = str_utf8_skip_whitespaces(pTrimmed + (*(pTrimmed + 6) == ' ' ? 6 : 14));
+		if(str_comp_nocase(pArg, "1") == 0 || str_comp_nocase(pArg, "on") == 0 || str_comp_nocase(pArg, "enable") == 0)
+			g_Config.m_ClShowNotifications = 1;
+		else if(str_comp_nocase(pArg, "0") == 0 || str_comp_nocase(pArg, "off") == 0 || str_comp_nocase(pArg, "disable") == 0)
+			g_Config.m_ClShowNotifications = 0;
+		else
+			g_Config.m_ClShowNotifications ^= 1;
+
+		char aBuf[128];
+		str_format(aBuf, sizeof(aBuf), TCLocalize("[AClient] Notificaciones de escritorio: %s"), g_Config.m_ClShowNotifications ? "ACTIVADAS (ON)" : "DESACTIVADAS (OFF)");
+		Echo(aBuf);
+		return true;
+	}
+	return false;
 }
