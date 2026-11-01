@@ -220,6 +220,11 @@ void CMenus::RenderSettingsGraphics(CUIRect MainView)
 	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClShowfps, &Button, Localize("Renders your frame rate in the top right"));
 
 	MainView.HSplitTop(20.0f, &Button, &MainView);
+	if(DoButton_CheckBox(&g_Config.m_AcShowFrametime, Localize("Show Frametime"), g_Config.m_AcShowFrametime, &Button))
+		g_Config.m_AcShowFrametime ^= 1;
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_AcShowFrametime, &Button, Localize("Renders your frametime in milliseconds in the top right"));
+
+	MainView.HSplitTop(20.0f, &Button, &MainView);
 	str_copy(aBuf, " ");
 	str_append(aBuf, Localize("Hz", "Hertz"));
 	Ui()->DoScrollbarOption(&g_Config.m_GfxRefreshRate, &g_Config.m_GfxRefreshRate, &Button, Localize("Refresh Rate"), 10, 1000, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_INFINITE | CUi::SCROLLBAR_OPTION_NOCLAMPVALUE | CUi::SCROLLBAR_OPTION_DELAYUPDATE, aBuf);

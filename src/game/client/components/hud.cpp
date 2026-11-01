@@ -580,11 +580,20 @@ void CHud::RenderTextInfo()
 			TextRender()->RenderTextContainer(m_FPSTextContainerIndex, TextRender()->DefaultTextColor(), TextRender()->DefaultTextOutlineColor());
 		}
 	}
+	float NextY = Showfps ? 20.0f : 5.0f;
 	if(g_Config.m_ClShowpred && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 	{
 		char aBuf[64];
 		str_format(aBuf, sizeof(aBuf), "%d", Client()->GetPredictionTime());
-		TextRender()->Text(m_Width - 10 - TextRender()->TextWidth(12, aBuf, -1, -1.0f), Showfps ? 20 : 5, 12, aBuf, -1.0f);
+		TextRender()->Text(m_Width - 10 - TextRender()->TextWidth(12, aBuf, -1, -1.0f), NextY, 12, aBuf, -1.0f);
+		NextY += 15.0f;
+	}
+	if(g_Config.m_AcShowFrametime)
+	{
+		char aBuf[64];
+		const float FrameTimeMs = Client()->FrameTimeAverage() * 1000.0f;
+		str_format(aBuf, sizeof(aBuf), "%.1f ms", FrameTimeMs);
+		TextRender()->Text(m_Width - 10 - TextRender()->TextWidth(12, aBuf, -1, -1.0f), NextY, 12, aBuf, -1.0f);
 	}
 
 	if(g_Config.m_TcMiniDebug)
@@ -706,7 +715,7 @@ void CHud::RenderTextInfo()
 			float ProgressiveOffset = 0.0f;
 			float TeeSize = g_Config.m_TcFrozenHudTeeSize;
 			int MaxTees = (int)(8.3f * (m_Width / m_Height) * 13.0f / TeeSize);
-			if(!g_Config.m_ClShowfps && !g_Config.m_ClShowpred)
+			if(!g_Config.m_ClShowfps && !g_Config.m_ClShowpred && !g_Config.m_AcShowFrametime)
 				MaxTees = (int)(9.5f * (m_Width / m_Height) * 13.0f / TeeSize);
 			int MaxRows = g_Config.m_TcFrozenMaxRows;
 			float StartPos = m_Width / 2.0f + 38.0f * (m_Width / m_Height) / 1.78f;

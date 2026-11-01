@@ -48,6 +48,7 @@ public:
 	void OnConsoleInit() override;
 	void OnReset() override;
 
+	void SendPresenceLeave(const char *pServer, const char *pPlayer);
 	void RefreshPresence();
 	bool IsPlayerAClient(int ClientId) const;
 	const SClientGameSkin *GetOrLoadGameSkin(const char *pName);
