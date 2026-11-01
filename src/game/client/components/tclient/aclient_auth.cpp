@@ -231,15 +231,22 @@ void CAClientAuth::OnRender()
 		else
 		{
 			m_AuthState = AUTH_ERROR;
-			json_value *pJson = m_pAuthRequest->ResultJson();
-			if(pJson && pJson->type == json_object)
+			if(m_pAuthRequest->State() == EHttpState::DONE)
 			{
-				const json_value *pMsg = json_object_get(pJson, "message");
+				json_value *pJson = m_pAuthRequest->ResultJson();
+				if(pJson && pJson->type == json_object)
+				{
+					const json_value *pMsg = json_object_get(pJson, "message");
 				if(pMsg && pMsg->type == json_string)
 					str_copy(m_aErrorMessage, json_string_get(pMsg), sizeof(m_aErrorMessage));
 				else
 					str_copy(m_aErrorMessage, "Acceso denegado", sizeof(m_aErrorMessage));
-				json_value_free(pJson);
+					json_value_free(pJson);
+				}
+				else
+				{
+					str_copy(m_aErrorMessage, "Acceso denegado", sizeof(m_aErrorMessage));
+				}
 			}
 			else
 			{
