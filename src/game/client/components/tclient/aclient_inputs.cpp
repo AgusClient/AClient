@@ -1,4 +1,5 @@
 #include "aclient_inputs.h"
+#include "ax30/ax30.h"
 
 #include <base/math.h>
 #include <engine/shared/config.h>
@@ -83,6 +84,7 @@ namespace
 
 		return Offset;
 	}
+
 
 
 	float AX30ModeOffsetTicks(bool ForOthers)
@@ -244,12 +246,12 @@ vec2 AcInputs::AX30_EvaluateTrajectory(vec2 P_prev, vec2 P0, vec2 P1, vec2 P_nex
 
 void AcInputs::UpdatePingSample(int PingMs)
 {
-	(void)PingMs;
+	aX30::UpdatePingSample(PingMs);
 }
 
 float AcInputs::AX30_GetAdaptiveLatencyOffset()
 {
-	return 0.0f;
+	return aX30::GetAdaptiveLatencyOffset();
 }
 
 vec2 AcInputs::AX30_FilterBoundary(vec2 P0, vec2 TargetPos, const ::CCollision *pCollision)

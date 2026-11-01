@@ -5230,7 +5230,7 @@ int main(int argc, const char **argv)
 	pEngine->Init();
 	pConsole->Init();
 	pConfigManager->Init();
-	pNotifications->Init(GAME_NAME " Client");
+	pNotifications->Init("AClient");
 
 	// register all console commands
 	pClient->RegisterCommands();
