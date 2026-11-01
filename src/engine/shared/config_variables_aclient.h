@@ -55,13 +55,13 @@ MACRO_CONFIG_INT(AcNotifyDesktop, ac_notify_desktop, 1, 0, 1, CFGFLAG_CLIENT | C
 // Fast Input Prediction Modes & Amounts
 MACRO_CONFIG_INT(AcInputs, ac_inputs, 0, 0, 8, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Input prediction mode (0 = off, 1 = fast, 2 = best, 3 = saiko, 4 = delta, 5 = f, 6 = cloud, 7 = aclient, 8 = ax30)")
 
-// aX30 Mode (Advanced Hybrid: Dynamic Trajectory, Adaptive Jitter Comp, Collision Clamping)
-MACRO_CONFIG_INT(AcAX30InputAmount, ac_ax30_input_amount, 100, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aX30 input prediction amount in 0.01 ticks")
-MACRO_CONFIG_INT(AcAX30AdaptiveJitter, ac_ax30_adaptive_jitter, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aX30 real-time ping jitter tracking and dynamic latency compensation")
-MACRO_CONFIG_INT(AcAX30CollisionClamp, ac_ax30_collision_clamp, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aX30 collision and freeze boundary clamping to prevent rubberband snap")
-MACRO_CONFIG_INT(AcAX30Interpolation, ac_ax30_interpolation, 1, 1, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aX30 interpolation mode (1 = HE continuous, 2 = linear, 3 = cubic)")
-MACRO_CONFIG_INT(AcAX30Others, ac_ax30_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply aX30 input to other tees")
-MACRO_CONFIG_INT(AcAX30OthersAmount, ac_ax30_others_amount, 100, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aX30 input prediction amount for other tees in 0.01 ticks")
+// aX30 Mode
+MACRO_CONFIG_INT(AcAX30InputAmount, ac_ax30_input_amount, 100, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aX30 prediction offset in 0.01 ticks")
+MACRO_CONFIG_INT(AcAX30AdaptiveJitter, ac_ax30_adaptive_jitter, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aX30 adaptive latency compensation")
+MACRO_CONFIG_INT(AcAX30CollisionClamp, ac_ax30_collision_clamp, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aX30 boundary safety filter")
+MACRO_CONFIG_INT(AcAX30Interpolation, ac_ax30_interpolation, 1, 1, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aX30 motion profile preset (1-3)")
+MACRO_CONFIG_INT(AcAX30Others, ac_ax30_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply aX30 to other players")
+MACRO_CONFIG_INT(AcAX30OthersAmount, ac_ax30_others_amount, 100, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aX30 prediction offset for other players in 0.01 ticks")
 
 // AClient Mode (Ultimate Fast Input: Best architecture without smoothing, sub-tick interpolation, latency comp)
 MACRO_CONFIG_INT(AcAClientInputAmount, ac_aclient_input_amount, 100, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "AClient input prediction amount in 0.01 ticks")

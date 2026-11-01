@@ -5008,16 +5008,11 @@ vec2 CGameClient::GetFastInputPos(int ClientId)
 			const vec2 P_next = (PredTick + 1 <= MaxTick && m_aClients[ClientId].m_aPredTick[(PredTick + 1) % 200] == PredTick + 1) ?
 				m_aClients[ClientId].m_aPredPos[(PredTick + 1) % 200] : P1;
 
-			if(g_Config.m_AcAX30Interpolation == 1)
-				Pos = AcInputs::AX30_EvaluateTrajectory(P_prev, P0, P1, P_next, PredIntraTick);
-			else if(g_Config.m_AcAX30Interpolation == 2)
-				Pos = mix(P0, P1, PredIntraTick);
-			else
-				Pos = AcInputs::BestInterpolate(P0, P1, PredIntraTick, true);
+			Pos = AcInputs::AX30_EvaluateTrajectory(P_prev, P0, P1, P_next, PredIntraTick, g_Config.m_AcAX30Interpolation);
 
 			if(g_Config.m_AcAX30CollisionClamp)
 			{
-				Pos = AcInputs::ClampCollision(P0, Pos, Collision());
+				Pos = AcInputs::AX30_FilterBoundary(P0, Pos, Collision());
 			}
 		}
 		else
