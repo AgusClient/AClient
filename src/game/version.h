@@ -21,9 +21,9 @@ extern const char *GIT_SHORTREV_HASH;
 #define GAME_NETVERSION7 "0.7 802f1be60a05665f"
 
 // AClient & TClient
-#define ACLIENT_VERSION "2.4.12"
+#define ACLIENT_VERSION "2.5.0"
 #ifndef TCLIENT_VERSION
-#define TCLIENT_VERSION "2.4.12"
+#define TCLIENT_VERSION "2.5.0"
 #endif
 
 // custom
