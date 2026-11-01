@@ -824,7 +824,7 @@ endif()
 
 if(TARGET_OS STREQUAL "windows")
   set(PLATFORM_CLIENT)
-  set(PLATFORM_CLIENT_LIBS opengl32.lib winmm.lib imm32.lib)
+  set(PLATFORM_CLIENT_LIBS opengl32.lib winmm.lib imm32.lib mmdevapi.lib)
   set(PLATFORM_LIBS)
   list(APPEND PLATFORM_LIBS shlwapi.lib) # PathIsRelativeW
   list(APPEND PLATFORM_LIBS version.lib) # GetFileVersionInfoSizeW
@@ -832,6 +832,7 @@ if(TARGET_OS STREQUAL "windows")
   list(APPEND PLATFORM_LIBS advapi32.lib) # Reg* and Crypt* functions
   list(APPEND PLATFORM_LIBS bcrypt.lib userenv.lib) # for Rust (https://github.com/rust-lang/rust/issues/91974)
   list(APPEND PLATFORM_LIBS ole32.lib) # CoInitialize(Ex)
+  list(APPEND PLATFORM_LIBS runtimeobject.lib) # RoGetActivationFactory / WinRT Music Player
   list(APPEND PLATFORM_LIBS shell32.lib)
   list(APPEND PLATFORM_LIBS ntdll.lib) # https://github.com/ddnet/ddnet/issues/6725
   list(APPEND PLATFORM_LIBS uuid.lib) # FOLDERID_RoamingAppData
@@ -2451,6 +2452,7 @@ set_src(ENGINE_SHARED GLOB_RECURSE src/engine/shared
   config_domains.h
   config_includes.h
   config_variables.h
+  config_variables_aclient.h
   config_variables_tclient.h
   console.cpp
   console.h
@@ -2582,6 +2584,7 @@ set_src(GAME_SHARED GLOB src/game
   prng.cpp
   prng.h
   race_state.h
+  tclient_embedded_languages.h
   team_state.h
   teamscore.cpp
   teamscore.h
@@ -2765,6 +2768,7 @@ if(CLIENT)
     # tidy-alphabetical-start
     animstate.cpp
     animstate.h
+    bc_ui_animations.h
     component.cpp
     component.h
     components/background.cpp
@@ -2924,12 +2928,32 @@ if(CLIENT)
     components/tclient/hud_editor.h
     components/tclient/hud_layout.cpp
     components/tclient/hud_layout.h
+    components/tclient/media_decoder.cpp
+    components/tclient/media_decoder.h
+    components/tclient/music_player.cpp
+    components/tclient/music_player.h
+    components/tclient/music_player_lyrics.cpp
+    components/tclient/music_player_lyrics.h
     components/tclient/snap_tap.cpp
     components/tclient/snap_tap.h
     components/tclient/statusbar.cpp
     components/tclient/statusbar.h
     components/tclient/tclient.cpp
     components/tclient/tclient.h
+    components/tclient/ui_animations.cpp
+    components/tclient/ui_animations.h
+    components/tclient/visualizer/analyzer.cpp
+    components/tclient/visualizer/analyzer.h
+    components/tclient/visualizer/service.cpp
+    components/tclient/visualizer/service.h
+    components/tclient/visualizer/smoother.cpp
+    components/tclient/visualizer/smoother.h
+    components/tclient/visualizer/source.h
+    components/tclient/visualizer/source_passive.cpp
+    components/tclient/visualizer/source_priority.h
+    components/tclient/visualizer/source_pulse.cpp
+    components/tclient/visualizer/source_wasapi.cpp
+    components/tclient/visualizer/types.h
     components/tclient/trails.cpp
     components/tclient/trails.h
     components/tclient/translate.cpp

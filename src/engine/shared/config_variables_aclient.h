@@ -55,6 +55,38 @@ MACRO_CONFIG_INT(AcNotifyDesktop, ac_notify_desktop, 1, 0, 1, CFGFLAG_CLIENT | C
 // Frametime HUD
 MACRO_CONFIG_INT(AcShowFrametime, ac_show_frametime, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show frametime in milliseconds in top-right HUD")
 
+// Music Player
+MACRO_CONFIG_INT(AcMusicPlayer, ac_music_player, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable Music Player HUD element")
+MACRO_CONFIG_INT(AcMusicPlayerVisualizerMode, ac_music_player_visualizer_mode, 1, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Music player visualizer mode (0=bottom, 1=center, 2=up)")
+MACRO_CONFIG_INT(AcMusicPlayerVisualizerRounding, ac_music_player_visualizer_rounding, 0, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Music player visualizer rounding (0=cube, 200=soft)")
+MACRO_CONFIG_INT(AcMusicPlayerVisualizerColumns, ac_music_player_visualizer_columns, 5, 5, 10, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Music player visualizer bar count")
+MACRO_CONFIG_INT(AcMusicPlayerColorMode, ac_music_player_color_mode, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Music player color mode (0=static visualizer, 1=cover visualizer)")
+MACRO_CONFIG_COL(AcMusicPlayerStaticColor, ac_music_player_static_color, 128, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Static color for the music player when static color mode is selected")
+MACRO_CONFIG_INT(AcMusicPlayerTextScale, ac_music_player_text_scale, 110, 70, 150, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Music player text scale in percent")
+MACRO_CONFIG_INT(AcMusicPlayerShowLyrics, ac_music_player_show_lyrics, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show synchronized song lyrics in the music player")
+MACRO_CONFIG_INT(AcMusicPlayerShowCurrentTime, ac_music_player_show_current_time, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show current time tab under lyrics in the music player")
+MACRO_CONFIG_INT(ClFocusMode, cl_focus_mode, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Focus mode")
+MACRO_CONFIG_INT(ClFocusModeHideSongPlayer, cl_focus_mode_hide_song_player, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hide music player in focus mode")
+
+// Aliases for compatibility with BestClient engine code
+#define m_BcMusicPlayer m_AcMusicPlayer
+#define m_BcMusicPlayerVisualizerMode m_AcMusicPlayerVisualizerMode
+#define m_BcMusicPlayerVisualizerRounding m_AcMusicPlayerVisualizerRounding
+#define m_BcMusicPlayerVisualizerColumns m_AcMusicPlayerVisualizerColumns
+#define m_BcMusicPlayerColorMode m_AcMusicPlayerColorMode
+#define m_BcMusicPlayerStaticColor m_AcMusicPlayerStaticColor
+#define m_BcMusicPlayerTextScale m_AcMusicPlayerTextScale
+#define m_BcMusicPlayerShowLyrics m_AcMusicPlayerShowLyrics
+#define m_BcMusicPlayerShowCurrentTime m_AcMusicPlayerShowCurrentTime
+
+// UI Animations
+MACRO_CONFIG_INT(AcAnimations, ac_animations, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable UI animations")
+MACRO_CONFIG_INT(AcModuleUiRevealAnimation, ac_module_ui_reveal_animation, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable module reveal animation")
+MACRO_CONFIG_INT(AcModuleUiRevealAnimationMs, ac_module_ui_reveal_animation_ms, 250, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Module reveal animation duration")
+#define m_BcAnimations m_AcAnimations
+#define m_BcModuleUiRevealAnimation m_AcModuleUiRevealAnimation
+#define m_BcModuleUiRevealAnimationMs m_AcModuleUiRevealAnimationMs
+
 // Snap Tap
 MACRO_CONFIG_INT(AcSnapTap, ac_snap_tap, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable Snap Tap (last-key priority for left/right)")
 MACRO_CONFIG_INT(AcSnapTapDelay, ac_snap_tap_delay, 0, 0, 50, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Snap Tap direction switch delay in milliseconds (0 = off)")

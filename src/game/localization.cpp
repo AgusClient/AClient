@@ -214,15 +214,10 @@ bool CLocalizationDatabase::Load(const char *pFilename, IStorage *pStorage, ICon
 		if(pLine[0] == '#') // skip comments
 			continue;
 
-		if(pLine[0] == '[') // context
+		size_t LineLen = str_length(pLine);
+		if(pLine[0] == '[' && LineLen >= 2 && pLine[LineLen - 1] == ']') // context
 		{
-			size_t Len = str_length(pLine);
-			if(Len < 1 || pLine[Len - 1] != ']')
-			{
-				log_error("localization", "malformed context '%s' on line %d", pLine, Line);
-				continue;
-			}
-			str_truncate(aContext, sizeof(aContext), pLine + 1, Len - 2);
+			str_truncate(aContext, sizeof(aContext), pLine + 1, LineLen - 2);
 			pLine = LineReader.Get();
 			if(!pLine)
 			{

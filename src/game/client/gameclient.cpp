@@ -178,6 +178,7 @@ void CGameClient::OnConsoleInit()
 						      &m_AClientGameSkins, // AClient
 						      &m_SnapTap, // Snap Tap
 						      &m_HudEditor, // HUD Editor
+						      &m_MusicPlayer, // Music Player
 					      &m_PlayerProfiles, // TClient
 					      &m_FastPractice, // TClient
 					      &m_InfoMessages,

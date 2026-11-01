@@ -4215,6 +4215,47 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
 
+	// ***** Drag-and-Drop HUD Editor ***** //
+	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	s_SectionBoxesAc.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("Editor de HUD (Arrastrar y Soltar)"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	static CButtonContainer s_OpenHudEditorBtn;
+	const bool CanOpenHudEditor = Client()->State() == IClient::STATE_ONLINE || Client()->State() == IClient::STATE_DEMOPLAYBACK;
+	Column.HSplitTop(LineSize, &Button, &Column);
+	if(DoButton_Menu(&s_OpenHudEditorBtn, CanOpenHudEditor ? TCLocalize("Abrir Editor de HUD (/hud_edit)") : TCLocalize("Entra a un servidor para editar el HUD"), CanOpenHudEditor ? 0 : 1, &Button) && CanOpenHudEditor)
+	{
+		m_MenuActive = false;
+		GameClient()->m_HudEditor.Activate();
+	}
+	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
+
+	// ***** Reproductor de Musica (Music Player) ***** //
+	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	s_SectionBoxesAc.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("Reproductor de Musica"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcMusicPlayer, TCLocalize("Activar Reproductor de Musica (Spotify / Navegador / Windows)"), &g_Config.m_AcMusicPlayer, &Column, LineSize);
+	if(g_Config.m_AcMusicPlayer)
+	{
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcMusicPlayerShowLyrics, TCLocalize("Mostrar letras sincronizadas (Lyrics)"), &g_Config.m_AcMusicPlayerShowLyrics, &Column, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcMusicPlayerShowCurrentTime, TCLocalize("Mostrar tiempo transcurrido"), &g_Config.m_AcMusicPlayerShowCurrentTime, &Column, LineSize);
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		Ui()->DoScrollbarOption(&g_Config.m_AcMusicPlayerTextScale, &g_Config.m_AcMusicPlayerTextScale, &Button, TCLocalize("Escala de texto"), 70, 150, &CUi::ms_LinearScrollbarScale, 0, "%");
+
+		Column.HSplitTop(LineSize, &Button, &Column);
+		Ui()->DoScrollbarOption(&g_Config.m_AcMusicPlayerVisualizerColumns, &g_Config.m_AcMusicPlayerVisualizerColumns, &Button, TCLocalize("Barras de ecualizador"), 5, 10);
+	}
+	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
+
 	// ***** Keystrokes HUD ***** //
 	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 	s_SectionBoxesAc.push_back(Column);

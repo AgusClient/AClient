@@ -80,6 +80,8 @@ void ResetEditableModules();
 SModuleRect ClampRectToScreen(const SModuleRect &Rect, float HudWidth, float HudHeight);
 float CanvasXToHud(float CanvasX, float HudWidth);
 int BackgroundCorners(int DefaultCorners, float RectX, float RectY, float RectW, float RectH, float CanvasWidth, float CanvasHeight);
+inline void TryApplyMusicPlayerLegacyPositionFix(float, float, ITextRender *) {}
+inline void SetMusicPlayerResolvedDefaultX(float, float) {}
 void OnConsoleInit(IConsole *pConsole, IConfigManager *pConfigManager);
 
 } // namespace HudLayout

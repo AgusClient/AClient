@@ -86,6 +86,7 @@
 #include "components/tclient/aclient_gameskins.h"
 #include "components/tclient/snap_tap.h"
 #include "components/tclient/hud_editor.h"
+#include "components/tclient/music_player.h"
 #include "components/tclient/fast_practice.h"
 #include "components/tclient/scripting.h"
 #include "components/tclient/skinprofiles.h"
@@ -243,6 +244,7 @@ public:
 	CAClientGameSkins m_AClientGameSkins;
 	CSnapTap m_SnapTap;
 	CHudEditor m_HudEditor;
+	CMusicPlayer m_MusicPlayer;
 	CPlayerProfiles m_PlayerProfiles;
 	CFastPractice m_FastPractice;
 	CBindChat m_BindChat;
