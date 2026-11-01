@@ -5158,7 +5158,78 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 	Content.HSplitTop(Margin, nullptr, &Content);
 
 	const bool IsKoG = (g_Config.m_AcProfileSource == 1);
+	const bool IsOnline = (Client()->State() == IClient::STATE_ONLINE);
 	const char *pReqName = IsKoG ? Profiles.KoGRequestedName() : Profiles.RequestedName();
+
+	char aCurCategory[64] = "";
+	if(IsOnline)
+	{
+		const char *pCurMap = Client()->ServerInfo().m_aMap;
+		if(pCurMap && pCurMap[0])
+		{
+			CMapMetadata CurMeta{};
+			bool GotMeta = IsKoG ? Profiles.GetKoGMapMeta(pCurMap, CurMeta) : Profiles.GetDDNetMapMeta(pCurMap, CurMeta);
+			if(GotMeta && CurMeta.m_aCategory[0])
+			{
+				str_copy(aCurCategory, CurMeta.m_aCategory);
+			}
+		}
+		if(aCurCategory[0] == '\0')
+		{
+			const char *pGameType = Client()->ServerInfo().m_aGameType;
+			const char *pServerName = Client()->ServerInfo().m_aName;
+			static const char *s_aCats[] = {"Easy", "Main", "Hard", "Insane", "Extreme", "Mod", "Novice", "Moderate", "Brutal", "Solo", "Dummy"};
+			for(const char *pC : s_aCats)
+			{
+				if((pGameType && str_find_nocase(pGameType, pC)) || (pServerName && str_find_nocase(pServerName, pC)))
+				{
+					str_copy(aCurCategory, pC);
+					break;
+				}
+			}
+		}
+	}
+
+	auto VoteForCategory = [this](const char *pCategory) {
+		if(!pCategory || pCategory[0] == '\0')
+			return;
+
+		int FoundOptionIndex = -1;
+		int CurrentIndex = 0;
+		for(const CVoteOptionClient *pOption = GameClient()->m_Voting.FirstOption(); pOption; pOption = pOption->m_pNext, CurrentIndex++)
+		{
+			if(str_comp_nocase(pOption->m_aDescription, pCategory) == 0)
+			{
+				FoundOptionIndex = CurrentIndex;
+				break;
+			}
+		}
+
+		if(FoundOptionIndex == -1)
+		{
+			CurrentIndex = 0;
+			for(const CVoteOptionClient *pOption = GameClient()->m_Voting.FirstOption(); pOption; pOption = pOption->m_pNext, CurrentIndex++)
+			{
+				if(str_find_nocase(pOption->m_aDescription, pCategory) != nullptr)
+				{
+					FoundOptionIndex = CurrentIndex;
+					break;
+				}
+			}
+		}
+
+		if(FoundOptionIndex != -1)
+		{
+			GameClient()->m_Voting.CallvoteOption(FoundOptionIndex, "");
+		}
+		else
+		{
+			char aBuf[128];
+			str_format(aBuf, sizeof(aBuf), "/%s", pCategory);
+			for(char *p = aBuf + 1; *p; ++p) *p = (char)tolower((unsigned char)*p);
+			GameClient()->m_Chat.SendChat(0, aBuf);
+		}
+	};
 
 	// Search input box with internal buffer
 	static CLineInputBuffered<128> s_ProfileSearchInput;
@@ -5609,7 +5680,6 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 
 		const float ItemH = 24.0f;
 		size_t Shown = 0;
-		const bool IsOnline = (Client()->State() == IClient::STATE_ONLINE);
 
 		for(size_t i = 0; i < Profiles.CommonUnfinishedMaps().size(); ++i)
 		{
@@ -5660,21 +5730,36 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 				}
 
 				CUIRect MapNameCol, ActionCol, StatusCol;
-				ItemRect.VSplitLeft(ItemRect.w * 0.58f, &MapNameCol, &StatusCol);
+				ItemRect.VSplitLeft(ItemRect.w * 0.48f, &MapNameCol, &StatusCol);
 
 				TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 				Ui()->DoLabel(&MapNameCol, M.m_aMap, 11.5f, TEXTALIGN_ML);
 
 				if(IsOnline)
 				{
-					StatusCol.VSplitRight(55.0f, &StatusCol, &ActionCol);
-					static CButtonContainer s_aBtnVoteMap[256];
-					CButtonContainer *pVoteBtn = (i < 256) ? &s_aBtnVoteMap[i] : &s_aBtnVoteMap[0];
+					bool DifferentDiff = (aCurCategory[0] != '\0' && M.m_aCategory[0] != '\0' && str_comp_nocase(M.m_aCategory, aCurCategory) != 0);
+
+					StatusCol.VSplitRight(50.0f, &StatusCol, &ActionCol);
+					static CButtonContainer s_aBtnVoteMap[1024];
+					CButtonContainer *pVoteBtn = (i < 1024) ? &s_aBtnVoteMap[i] : &s_aBtnVoteMap[0];
 					if(DoButton_Menu(pVoteBtn, TCLocalize("Votar"), 0, &ActionCol, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 2.0f, 0.0f, ColorRGBA(0.2f, 0.5f, 0.85f, 0.65f)))
 					{
 						char aVoteCmd[128];
-						str_format(aVoteCmd, sizeof(aVoteCmd), "callvote map \"%s\"", M.m_aMap);
-						GameClient()->Console()->ExecuteLine(aVoteCmd, IConsole::CLIENT_ID_UNSPECIFIED);
+						str_format(aVoteCmd, sizeof(aVoteCmd), "/map %s", M.m_aMap);
+						GameClient()->m_Chat.SendChat(0, aVoteCmd);
+					}
+
+					if(DifferentDiff)
+					{
+						CUIRect DiffCol;
+						StatusCol.VSplitRight(3.0f, &StatusCol, nullptr);
+						StatusCol.VSplitRight(60.0f, &StatusCol, &DiffCol);
+						static CButtonContainer s_aBtnVoteDiff[1024];
+						CButtonContainer *pDiffBtn = (i < 1024) ? &s_aBtnVoteDiff[i] : &s_aBtnVoteDiff[0];
+						if(DoButton_Menu(pDiffBtn, TCLocalize("Votar Dif"), 0, &DiffCol, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 2.0f, 0.0f, ColorRGBA(0.85f, 0.5f, 0.15f, 0.75f)))
+						{
+							VoteForCategory(M.m_aCategory);
+						}
 					}
 				}
 
@@ -6135,14 +6220,42 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 						Ui()->DoLabel(&PtsBadge, aPtsBuf, 10.0f, TEXTALIGN_MC);
 					}
 
-					CUIRect MapNameCol, StatusCol;
-					ItemRect.VSplitLeft(ItemRect.w * 0.65f, &MapNameCol, &StatusCol);
+					CUIRect MapNameCol, ActionCol, StatusCol;
+					ItemRect.VSplitLeft(ItemRect.w * 0.48f, &MapNameCol, &StatusCol);
 
 					TextRender()->TextColor(1.0f, 0.6f, 0.5f, 1.0f);
 					Ui()->DoLabel(&MapNameCol, MapName.c_str(), 11.0f, TEXTALIGN_ML);
 
+					if(IsOnline)
+					{
+						bool DifferentDiff = (aCurCategory[0] != '\0' && HasMeta && Meta.m_aCategory[0] != '\0' && str_comp_nocase(Meta.m_aCategory, aCurCategory) != 0);
+
+						StatusCol.VSplitRight(50.0f, &StatusCol, &ActionCol);
+						static CButtonContainer s_aBtnIndivVoteMap[1024];
+						CButtonContainer *pVoteBtn = (i < 1024) ? &s_aBtnIndivVoteMap[i] : &s_aBtnIndivVoteMap[0];
+						if(DoButton_Menu(pVoteBtn, TCLocalize("Votar"), 0, &ActionCol, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 2.0f, 0.0f, ColorRGBA(0.2f, 0.5f, 0.85f, 0.65f)))
+						{
+							char aVoteCmd[128];
+							str_format(aVoteCmd, sizeof(aVoteCmd), "/map %s", MapName.c_str());
+							GameClient()->m_Chat.SendChat(0, aVoteCmd);
+						}
+
+						if(DifferentDiff)
+						{
+							CUIRect DiffCol;
+							StatusCol.VSplitRight(3.0f, &StatusCol, nullptr);
+							StatusCol.VSplitRight(60.0f, &StatusCol, &DiffCol);
+							static CButtonContainer s_aBtnIndivVoteDiff[1024];
+							CButtonContainer *pDiffBtn = (i < 1024) ? &s_aBtnIndivVoteDiff[i] : &s_aBtnIndivVoteDiff[0];
+							if(DoButton_Menu(pDiffBtn, TCLocalize("Votar Dif"), 0, &DiffCol, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 2.0f, 0.0f, ColorRGBA(0.85f, 0.5f, 0.15f, 0.75f)))
+							{
+								VoteForCategory(Meta.m_aCategory);
+							}
+						}
+					}
+
 					TextRender()->TextColor(0.6f, 0.6f, 0.6f, 0.8f);
-					Ui()->DoLabel(&StatusCol, TCLocalize("Pendiente"), 10.0f, TEXTALIGN_MR);
+					Ui()->DoLabel(&StatusCol, TCLocalize("Pendiente"), 10.0f, TEXTALIGN_MC);
 					TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 				}
 			}
