@@ -34,7 +34,6 @@ class CVoting : public CComponent
 
 	void RemoveOption(const char *pDescription);
 	void ClearOptions();
-	void Callvote(const char *pType, const char *pValue, const char *pReason);
 
 	void RenderBars(CUIRect Bars) const;
 
@@ -51,6 +50,7 @@ public:
 
 	void CallvoteSpectate(int ClientId, const char *pReason, bool ForceVote = false);
 	void CallvoteKick(int ClientId, const char *pReason, bool ForceVote = false);
+	void Callvote(const char *pType, const char *pValue, const char *pReason);
 	void CallvoteOption(int OptionId, const char *pReason, bool ForceVote = false);
 	void RemovevoteOption(int OptionId);
 	void AddvoteOption(const char *pDescription, const char *pCommand);

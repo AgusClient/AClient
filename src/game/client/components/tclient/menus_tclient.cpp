@@ -5228,10 +5228,75 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 		}
 		else
 		{
-			char aBuf[128];
-			str_format(aBuf, sizeof(aBuf), "/%s", pCategory);
-			for(char *p = aBuf + 1; *p; ++p) *p = (char)tolower((unsigned char)*p);
-			GameClient()->m_Chat.SendChat(0, aBuf);
+			GameClient()->m_Voting.Callvote("option", pCategory, "");
+		}
+	};
+
+	auto VoteForMap = [this](const char *pMapName) {
+		if(!pMapName || pMapName[0] == '\0')
+			return;
+
+		int FoundOptionIndex = -1;
+		int CurrentIndex = 0;
+		const int MapLen = str_length(pMapName);
+
+		// 1. Coincidencia exacta con la opcion de votacion del servidor (ej. "60s")
+		for(const CVoteOptionClient *pOption = GameClient()->m_Voting.FirstOption(); pOption; pOption = pOption->m_pNext, CurrentIndex++)
+		{
+			if(str_comp_nocase(pOption->m_aDescription, pMapName) == 0)
+			{
+				FoundOptionIndex = CurrentIndex;
+				break;
+			}
+		}
+
+		// 2. Coincidencia cuando la opcion empieza con el nombre del mapa seguido de separador
+		if(FoundOptionIndex == -1)
+		{
+			CurrentIndex = 0;
+			for(const CVoteOptionClient *pOption = GameClient()->m_Voting.FirstOption(); pOption; pOption = pOption->m_pNext, CurrentIndex++)
+			{
+				if(str_startswith_nocase(pOption->m_aDescription, pMapName))
+				{
+					char NextChar = pOption->m_aDescription[MapLen];
+					if(NextChar == '\0' || NextChar == ' ' || NextChar == '|' || NextChar == '(' || NextChar == '[' || NextChar == '-' || NextChar == ':')
+					{
+						FoundOptionIndex = CurrentIndex;
+						break;
+					}
+				}
+			}
+		}
+
+		// 3. Coincidencia con delimitadores de palabra en cualquier parte de la opcion (ej. "Map: 60s")
+		if(FoundOptionIndex == -1)
+		{
+			CurrentIndex = 0;
+			for(const CVoteOptionClient *pOption = GameClient()->m_Voting.FirstOption(); pOption; pOption = pOption->m_pNext, CurrentIndex++)
+			{
+				const char *pFound = str_find_nocase(pOption->m_aDescription, pMapName);
+				if(pFound != nullptr)
+				{
+					bool ValidStart = (pFound == pOption->m_aDescription) ||
+						(*(pFound - 1) == ' ' || *(pFound - 1) == ':' || *(pFound - 1) == '|' || *(pFound - 1) == '[' || *(pFound - 1) == '(' || *(pFound - 1) == '-');
+					char EndChar = pFound[MapLen];
+					bool ValidEnd = (EndChar == '\0' || EndChar == ' ' || EndChar == '|' || EndChar == '(' || EndChar == '[' || EndChar == ']' || EndChar == ')' || EndChar == '-');
+					if(ValidStart && ValidEnd)
+					{
+						FoundOptionIndex = CurrentIndex;
+						break;
+					}
+				}
+			}
+		}
+
+		if(FoundOptionIndex != -1)
+		{
+			GameClient()->m_Voting.CallvoteOption(FoundOptionIndex, "");
+		}
+		else
+		{
+			GameClient()->m_Voting.Callvote("option", pMapName, "");
 		}
 	};
 
@@ -5748,9 +5813,7 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 					CButtonContainer *pVoteBtn = (i < 1024) ? &s_aBtnVoteMap[i] : &s_aBtnVoteMap[0];
 					if(DoButton_Menu(pVoteBtn, TCLocalize("Votar"), 0, &ActionCol, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 2.0f, 0.0f, ColorRGBA(0.2f, 0.5f, 0.85f, 0.65f)))
 					{
-						char aVoteCmd[128];
-						str_format(aVoteCmd, sizeof(aVoteCmd), "/map %s", M.m_aMap);
-						GameClient()->m_Chat.SendChat(0, aVoteCmd);
+						VoteForMap(M.m_aMap);
 					}
 
 					if(DifferentDiff)
@@ -6239,9 +6302,7 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 						CButtonContainer *pVoteBtn = (i < 1024) ? &s_aBtnIndivVoteMap[i] : &s_aBtnIndivVoteMap[0];
 						if(DoButton_Menu(pVoteBtn, TCLocalize("Votar"), 0, &ActionCol, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 2.0f, 0.0f, ColorRGBA(0.2f, 0.5f, 0.85f, 0.65f)))
 						{
-							char aVoteCmd[128];
-							str_format(aVoteCmd, sizeof(aVoteCmd), "/map %s", MapName.c_str());
-							GameClient()->m_Chat.SendChat(0, aVoteCmd);
+							VoteForMap(MapName.c_str());
 						}
 
 						if(DifferentDiff)
