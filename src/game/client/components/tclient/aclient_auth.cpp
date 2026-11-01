@@ -152,6 +152,7 @@ void CAClientAuth::StartLogin(const char *pUser, const char *pPass)
 	m_pAuthRequest = HttpPostJson(aUrl, aPayload);
 	m_pAuthRequest->Timeout(CTimeout{6000, 6000, 500, 6});
 	m_pAuthRequest->IpResolve(IPRESOLVE::V4);
+	m_pAuthRequest->LogProgress(HTTPLOG::NONE);
 	m_pAuthRequest->FailOnErrorStatus(false);
 	m_pAuthRequest->Header(AClientBackend::USER_AGENT_HEADER);
 	m_pAuthRequest->Header(AClientBackend::API_KEY_HEADER);
