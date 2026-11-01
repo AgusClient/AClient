@@ -1,3 +1,5 @@
+#include <chrono>
+#include <cinttypes>
 #include "aclient_gameskins.h"
 #include "aclient_backend.h"
 
@@ -62,6 +64,13 @@ void CAClientGameSkins::OnStateChange(int NewState, int OldState)
 	}
 	else if(NewState < IClient::STATE_ONLINE)
 	{
+		if(m_aLastServerAddress[0] != '\0')
+		{
+			if(m_aLastAnnouncedPlayer[0] != '\0')
+				SendPresenceLeave(m_aLastServerAddress, m_aLastAnnouncedPlayer);
+			if(m_aLastAnnouncedDummy[0] != '\0')
+				SendPresenceLeave(m_aLastServerAddress, m_aLastAnnouncedDummy);
+		}
 		OnReset();
 	}
 }
@@ -317,6 +326,36 @@ bool CAClientGameSkins::IsPlayerAClient(int ClientId) const
 	return aTrimmed[0] != '\0' && m_sRemoteAClientPlayers.find(aTrimmed) != m_sRemoteAClientPlayers.end();
 }
 
+void CAClientGameSkins::SendPresenceLeave(const char *pServer, const char *pPlayer)
+{
+	if(!pServer || !pServer[0] || !pPlayer || !pPlayer[0])
+		return;
+
+	const char *pBaseUrl = (g_Config.m_AcPresenceUrl[0] != '\0' && str_find(g_Config.m_AcPresenceUrl, "workers.dev") == nullptr) ? g_Config.m_AcPresenceUrl : AClientBackend::SUPABASE_URL;
+
+	char aEscPlayer[128];
+	char aEscServer[128];
+	EscapeJson(aEscPlayer, sizeof(aEscPlayer), pPlayer);
+	EscapeJson(aEscServer, sizeof(aEscServer), pServer);
+
+	char aPostUrl[512];
+	str_format(aPostUrl, sizeof(aPostUrl), "%s/rest/v1/rpc/aclient_leave", pBaseUrl);
+
+	char aPayload[512];
+	str_format(aPayload, sizeof(aPayload),
+		"{\"p_server\":\"%s\",\"p_player\":\"%s\"}",
+		aEscServer, aEscPlayer);
+
+	std::shared_ptr<IHttpRequest> pPost = HttpPostJson(aPostUrl, aPayload);
+	pPost->Timeout(CTimeout{2000, 2000, 500, 2});
+	pPost->IpResolve(IPRESOLVE::V4);
+	pPost->LogProgress(HTTPLOG::NONE);
+	pPost->Header(AClientBackend::USER_AGENT_HEADER);
+	pPost->Header(AClientBackend::API_KEY_HEADER);
+	pPost->Header(AClientBackend::AUTH_BEARER_HEADER);
+	Http()->Run(pPost);
+}
+
 void CAClientGameSkins::RefreshPresence()
 {
 	if(Client()->State() != IClient::STATE_ONLINE)
@@ -347,6 +386,24 @@ void CAClientGameSkins::RefreshPresence()
 	}
 
 	const char *pAssetGame = g_Config.m_ClAssetGame[0] != '\0' ? g_Config.m_ClAssetGame : "default";
+
+	// If server address changed, send leave for previous server
+	if(m_aLastServerAddress[0] != '\0' && str_comp(m_aLastServerAddress, aServerAddr) != 0)
+	{
+		if(m_aLastAnnouncedPlayer[0] != '\0')
+			SendPresenceLeave(m_aLastServerAddress, m_aLastAnnouncedPlayer);
+		if(m_aLastAnnouncedDummy[0] != '\0')
+			SendPresenceLeave(m_aLastServerAddress, m_aLastAnnouncedDummy);
+	}
+	else if(m_aLastServerAddress[0] != '\0' && m_aLastAnnouncedPlayer[0] != '\0' && str_comp(m_aLastAnnouncedPlayer, aPrimaryPlayer) != 0)
+	{
+		SendPresenceLeave(m_aLastServerAddress, m_aLastAnnouncedPlayer);
+	}
+
+	if(m_aLastServerAddress[0] != '\0' && m_aLastAnnouncedDummy[0] != '\0' && str_comp(m_aLastAnnouncedDummy, aPrimaryDummy) != 0)
+	{
+		SendPresenceLeave(m_aLastServerAddress, m_aLastAnnouncedDummy);
+	}
 
 	str_copy(m_aLastServerAddress, aServerAddr);
 	str_copy(m_aLastAnnouncedPlayer, aPrimaryPlayer);
@@ -401,8 +458,11 @@ void CAClientGameSkins::RefreshPresence()
 	char aEscapedServer[256];
 	EscapeUrl(aEscapedServer, sizeof(aEscapedServer), aServerAddr);
 
+	int64_t NowEpochMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+	int64_t MinUpdatedAt = NowEpochMs - 35000;
+
 	char aGetUrl[512];
-	str_format(aGetUrl, sizeof(aGetUrl), "%s/rest/v1/presence?server=eq.%s&select=player,asset_game", pBaseUrl, aEscapedServer);
+	str_format(aGetUrl, sizeof(aGetUrl), "%s/rest/v1/presence?server=eq.%s&updated_at=gt.%" PRId64 "&select=player,asset_game,updated_at", pBaseUrl, aEscapedServer, MinUpdatedAt);
 
 	m_pPresenceRequest = HttpGet(aGetUrl);
 	m_pPresenceRequest->Timeout(CTimeout{4000, 4000, 500, 4});
@@ -523,12 +583,21 @@ void CAClientGameSkins::OnRender()
 				{
 					std::map<std::string, std::string> NewSkins;
 					std::set<std::string> NewAClientPlayers;
+					int64_t NowEpochMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+					int64_t MinUpdatedAt = NowEpochMs - 40000;
 					int Len = json_array_length(pArr);
 					for(int i = 0; i < Len; ++i)
 					{
 						const json_value *pItem = json_array_get(pArr, i);
 						if(!pItem || pItem->type != json_object)
 							continue;
+						const json_value *pUp = json_object_get(pItem, "updated_at");
+						if(pUp && (pUp->type == json_integer || pUp->type == json_double))
+						{
+							int64_t UpdatedAt = (pUp->type == json_integer) ? (int64_t)pUp->u.integer : (int64_t)pUp->u.dbl;
+							if(UpdatedAt < MinUpdatedAt)
+								continue;
+						}
 						const json_value *pPl = json_object_get(pItem, "player");
 						const json_value *pAs = json_object_get(pItem, "asset_game");
 						if(pPl && pPl->type == json_string)

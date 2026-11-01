@@ -144,37 +144,54 @@ void IHttpRequest::OnValidation(bool Success)
 
 void IHttpRequest::Result(unsigned char **ppResult, size_t *pResultLength) const
 {
-	dbg_assert(State() == EHttpState::DONE, "Request not done");
-	dbg_assert(m_WriteToMemory, "Result only usable when written to memory");
+	if(State() != EHttpState::DONE || !m_WriteToMemory)
+	{
+		*ppResult = nullptr;
+		*pResultLength = 0;
+		return;
+	}
 	*ppResult = m_pBuffer;
 	*pResultLength = m_ResponseLength;
 }
 
 json_value *IHttpRequest::ResultJson() const
 {
+	if(State() != EHttpState::DONE || !m_WriteToMemory)
+	{
+		return nullptr;
+	}
 	unsigned char *pResult;
 	size_t ResultLength;
 	Result(&pResult, &ResultLength);
+	if(!pResult || ResultLength == 0)
+	{
+		return nullptr;
+	}
 	return JsonParse((char *)pResult, ResultLength);
 }
 
 const SHA256_DIGEST &IHttpRequest::ResultSha256() const
 {
-	dbg_assert(State() == EHttpState::DONE, "Request not done");
-	dbg_assert(m_ActualSha256.has_value(), "Result SHA256 missing");
+	static const SHA256_DIGEST s_EmptyDigest{};
+	if(State() != EHttpState::DONE || !m_ActualSha256.has_value())
+	{
+		return s_EmptyDigest;
+	}
 	return m_ActualSha256.value();
 }
 
 int IHttpRequest::StatusCode() const
 {
-	dbg_assert(State() == EHttpState::DONE, "Request not done");
+	if(State() != EHttpState::DONE)
+	{
+		return 0;
+	}
 	return m_StatusCode;
 }
 
 std::optional<int64_t> IHttpRequest::ResultAgeSeconds() const
 {
-	dbg_assert(State() == EHttpState::DONE, "Request not done");
-	if(!m_ResultDate || !m_ResultLastModified)
+	if(State() != EHttpState::DONE || !m_ResultDate || !m_ResultLastModified)
 	{
 		return {};
 	}
@@ -183,7 +200,10 @@ std::optional<int64_t> IHttpRequest::ResultAgeSeconds() const
 
 std::optional<int64_t> IHttpRequest::ResultLastModified() const
 {
-	dbg_assert(State() == EHttpState::DONE, "Request not done");
+	if(State() != EHttpState::DONE)
+	{
+		return {};
+	}
 	return m_ResultLastModified;
 }
 
