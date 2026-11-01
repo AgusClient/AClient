@@ -55,6 +55,10 @@ MACRO_CONFIG_INT(AcNotifyDesktop, ac_notify_desktop, 1, 0, 1, CFGFLAG_CLIENT | C
 // Frametime HUD
 MACRO_CONFIG_INT(AcShowFrametime, ac_show_frametime, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show frametime in milliseconds in top-right HUD")
 
+// Snap Tap
+MACRO_CONFIG_INT(AcSnapTap, ac_snap_tap, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable Snap Tap (last-key priority for left/right)")
+MACRO_CONFIG_INT(AcSnapTapDelay, ac_snap_tap_delay, 0, 0, 50, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Snap Tap direction switch delay in milliseconds (0 = off)")
+
 // Fast Input Prediction Modes & Amounts
 MACRO_CONFIG_INT(AcConfigVersion, ac_config_version, 0, 0, 10, CFGFLAG_CLIENT | CFGFLAG_SAVE, "AClient default configuration version")
 MACRO_CONFIG_INT(AcInputs, ac_inputs, 8, 0, 8, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Input prediction mode (0 = off, 1 = fast, 2 = best, 3 = saiko, 4 = delta, 5 = f, 6 = cloud, 8 = ax30)")

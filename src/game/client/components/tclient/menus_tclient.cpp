@@ -4168,6 +4168,16 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	}
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcSnapTap, TCLocalize("Snap Tap (prioridad a ultima tecla A/D)"), &g_Config.m_AcSnapTap, &Column, LineSize);
+	if(g_Config.m_AcSnapTap)
+	{
+		Column.HSplitTop(LineSize, &Button, &Column);
+		char aDelayBuf[32];
+		str_format(aDelayBuf, sizeof(aDelayBuf), "%d ms", g_Config.m_AcSnapTapDelay);
+		Ui()->DoScrollbarOption(&g_Config.m_AcSnapTapDelay, &g_Config.m_AcSnapTapDelay, &Button, TCLocalize("Snap Tap switch delay"), 0, 50, &CUi::ms_LinearScrollbarScale, 0, aDelayBuf);
+	}
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
 
 	// ***** Fast Practice ***** //

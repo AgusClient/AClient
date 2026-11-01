@@ -84,6 +84,7 @@
 #include "components/tclient/aclient_hud.h"
 #include "components/tclient/aclient_auth.h"
 #include "components/tclient/aclient_gameskins.h"
+#include "components/tclient/snap_tap.h"
 #include "components/tclient/fast_practice.h"
 #include "components/tclient/scripting.h"
 #include "components/tclient/skinprofiles.h"
@@ -239,6 +240,7 @@ public:
 	CAClientHud m_AClientHud;
 	CAClientAuth m_AClientAuth;
 	CAClientGameSkins m_AClientGameSkins;
+	CSnapTap m_SnapTap;
 	CPlayerProfiles m_PlayerProfiles;
 	CFastPractice m_FastPractice;
 	CBindChat m_BindChat;
