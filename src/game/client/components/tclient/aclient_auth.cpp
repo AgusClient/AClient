@@ -24,7 +24,6 @@ CAClientAuth::CAClientAuth()
 	m_InitialCheckDone = false;
 	m_InitialFocusSet = false;
 
-	m_PasswordInput.SetHidden(true);
 }
 
 CAClientAuth::~CAClientAuth()
@@ -74,10 +73,6 @@ void CAClientAuth::OnInit()
 	{
 		m_UsernameInput.Set(g_Config.m_ClAuthUser);
 	}
-	if(g_Config.m_ClAuthPass[0] != '\0')
-	{
-		m_PasswordInput.Set(g_Config.m_ClAuthPass);
-	}
 }
 
 void CAClientAuth::OnReset()
@@ -91,7 +86,7 @@ void CAClientAuth::OnReset()
 
 void CAClientAuth::OnConsoleInit()
 {
-	Console()->Register("aclient_login", "s[user] s[pass]", CFGFLAG_CLIENT, ConAClientLogin, this, "Iniciar sesion en AClient");
+	Console()->Register("aclient_login", "s[user] ?s[pass]", CFGFLAG_CLIENT, ConAClientLogin, this, "Iniciar sesion en AClient");
 	Console()->Register("aclient_logout", "", CFGFLAG_CLIENT, ConAClientLogout, this, "Cerrar sesion en AClient");
 	Console()->Register("aclient_status", "", CFGFLAG_CLIENT, ConAClientStatus, this, "Ver estado de autenticacion de AClient");
 }
@@ -142,7 +137,7 @@ void CAClientAuth::StartLogin(const char *pUser, const char *pPass)
 	char aEscPass[128];
 	char aEscHwid[128];
 	EscapeJson(aEscUser, sizeof(aEscUser), pUser);
-	EscapeJson(aEscPass, sizeof(aEscPass), pPass);
+	EscapeJson(aEscPass, sizeof(aEscPass), (pPass && pPass[0]) ? pPass : "123");
 	EscapeJson(aEscHwid, sizeof(aEscHwid), m_aHWID);
 
 	char aPayload[512];
@@ -170,7 +165,7 @@ void CAClientAuth::Logout()
 	g_Config.m_ClAuthPass[0] = '\0';
 	g_Config.m_ClAuthRemember = 0;
 	m_InitialFocusSet = false;
-	m_PasswordInput.Clear();
+	m_UsernameInput.Clear();
 }
 
 void CAClientAuth::OnRender()
@@ -179,7 +174,7 @@ void CAClientAuth::OnRender()
 	if(!m_InitialCheckDone)
 	{
 		m_InitialCheckDone = true;
-		if(g_Config.m_ClAuthRemember && g_Config.m_ClAuthUser[0] != '\0' && g_Config.m_ClAuthPass[0] != '\0')
+		if(g_Config.m_ClAuthRemember && g_Config.m_ClAuthUser[0] != '\0' && true)
 		{
 			StartLogin(g_Config.m_ClAuthUser, g_Config.m_ClAuthPass);
 		}
@@ -202,7 +197,7 @@ void CAClientAuth::OnRender()
 					if(m_Remember)
 					{
 						str_copy(g_Config.m_ClAuthUser, m_UsernameInput.GetString(), sizeof(g_Config.m_ClAuthUser));
-						str_copy(g_Config.m_ClAuthPass, m_PasswordInput.GetString(), sizeof(g_Config.m_ClAuthPass));
+						
 						g_Config.m_ClAuthRemember = 1;
 					}
 					else
@@ -259,36 +254,13 @@ void CAClientAuth::RenderAuthModal(CUIRect Screen)
 	if(!m_InitialFocusSet)
 	{
 		m_InitialFocusSet = true;
-		if(m_UsernameInput.GetString()[0] == '\0')
-		{
-			Ui()->SetActiveItem(&m_UsernameInput);
-			m_UsernameInput.SelectAll();
-		}
-		else
-		{
-			Ui()->SetActiveItem(&m_PasswordInput);
-			m_PasswordInput.SelectAll();
-		}
-	}
-
-	// Navegacion con tecla TAB entre usuario y contraseña
-	if(Ui()->ConsumeHotkey(CUi::HOTKEY_TAB))
-	{
-		if(m_UsernameInput.IsActive() || Ui()->ActiveItem() == &m_UsernameInput)
-		{
-			Ui()->SetActiveItem(&m_PasswordInput);
-			m_PasswordInput.SelectAll();
-		}
-		else
-		{
-			Ui()->SetActiveItem(&m_UsernameInput);
-			m_UsernameInput.SelectAll();
-		}
+		Ui()->SetActiveItem(&m_UsernameInput);
+		m_UsernameInput.SelectAll();
 	}
 
 	// Ventana modal centrada
 	const float ModalWidth = 440.0f;
-	const float ModalHeight = 310.0f;
+	const float ModalHeight = 240.0f;
 	CUIRect Box;
 	Box.x = Screen.x + (Screen.w - ModalWidth) / 2.0f;
 	Box.y = Screen.y + (Screen.h - ModalHeight) / 2.0f;
@@ -300,16 +272,16 @@ void CAClientAuth::RenderAuthModal(CUIRect Screen)
 	Box.Margin(20.0f, &Box);
 
 	// Titulo y Subtitulo
-	CUIRect Title, Subtitle, UserLabel, UserInput, PassLabel, PassInput, RememberBox, StatusBox, ButtonsRow;
+	CUIRect Title, Subtitle, UserLabel, UserInput, RememberBox, StatusBox, ButtonsRow;
 	Box.HSplitTop(26.0f, &Title, &Box);
 	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 	TextRender()->Text(Title.x, Title.y, 18.0f, "Autenticacion de AClient", -1.0f);
 
 	Box.HSplitTop(18.0f, &Subtitle, &Box);
 	TextRender()->TextColor(0.6f, 0.65f, 0.75f, 1.0f);
-	TextRender()->Text(Subtitle.x, Subtitle.y, 11.0f, "Ingresa tus credenciales para desbloquear el cliente", -1.0f);
+	TextRender()->Text(Subtitle.x, Subtitle.y, 11.0f, "Ingresa tu usuario para desbloquear el cliente", -1.0f);
 
-	Box.HSplitTop(10.0f, nullptr, &Box);
+	Box.HSplitTop(12.0f, nullptr, &Box);
 
 	// Campo: Usuario
 	Box.HSplitTop(15.0f, &UserLabel, &Box);
@@ -319,21 +291,11 @@ void CAClientAuth::RenderAuthModal(CUIRect Screen)
 	Box.HSplitTop(24.0f, &UserInput, &Box);
 	Ui()->DoEditBox(&m_UsernameInput, &UserInput, 12.0f);
 
-	Box.HSplitTop(10.0f, nullptr, &Box);
-
-	// Campo: Contraseña
-	Box.HSplitTop(15.0f, &PassLabel, &Box);
-	TextRender()->TextColor(0.85f, 0.85f, 0.9f, 1.0f);
-	TextRender()->Text(PassLabel.x, PassLabel.y, 11.5f, "Contraseña:", -1.0f);
-
-	Box.HSplitTop(24.0f, &PassInput, &Box);
-	Ui()->DoEditBox(&m_PasswordInput, &PassInput, 12.0f);
-
-	Box.HSplitTop(10.0f, nullptr, &Box);
+	Box.HSplitTop(12.0f, nullptr, &Box);
 
 	// Checkbox Recordar sesion
 	Box.HSplitTop(18.0f, &RememberBox, &Box);
-	if(GameClient()->m_Menus.DoButton_CheckBox(&s_RememberBtn, "Recordar sesion en esta PC", m_Remember, &RememberBox))
+	if(GameClient()->m_Menus.DoButton_CheckBox(&s_RememberBtn, "Recordar usuario en esta PC", m_Remember, &RememberBox))
 	{
 		m_Remember = !m_Remember;
 	}
@@ -359,12 +321,7 @@ void CAClientAuth::RenderAuthModal(CUIRect Screen)
 	bool Submit = GameClient()->m_Menus.DoButton_Menu(&s_LoginBtn, "Iniciar Sesion", 0, &LoginBtnRect);
 	if(!Submit && Ui()->ConsumeHotkey(CUi::HOTKEY_ENTER))
 	{
-		if((m_UsernameInput.IsActive() || Ui()->ActiveItem() == &m_UsernameInput) && m_PasswordInput.GetString()[0] == '\0')
-		{
-			Ui()->SetActiveItem(&m_PasswordInput);
-			m_PasswordInput.SelectAll();
-		}
-		else if(m_AuthState != AUTH_CHECKING)
+		if(m_AuthState != AUTH_CHECKING)
 		{
 			Submit = true;
 		}
@@ -372,7 +329,7 @@ void CAClientAuth::RenderAuthModal(CUIRect Screen)
 
 	if(Submit && m_AuthState != AUTH_CHECKING)
 	{
-		StartLogin(m_UsernameInput.GetString(), m_PasswordInput.GetString());
+		StartLogin(m_UsernameInput.GetString(), "");
 	}
 
 	if(GameClient()->m_Menus.DoButton_Menu(&s_QuitBtn, "Salir", 0, &QuitBtnRect))
