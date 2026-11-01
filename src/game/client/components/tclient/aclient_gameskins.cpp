@@ -14,6 +14,7 @@
 #include <engine/storage.h>
 #include <game/client/gameclient.h>
 #include <generated/client_data.h>
+#include <game/version.h>
 
 static void TrimPlayerName(const char *pSrc, char *pDst, int DstSize)
 {
@@ -45,6 +46,7 @@ CAClientGameSkins::CAClientGameSkins() :
 	m_aLastAnnouncedPlayer[0] = '\0';
 	m_aLastAnnouncedDummy[0] = '\0';
 	m_aLastAnnouncedSkin[0] = '\0';
+	m_aLastLoggedPlayer[0] = '\0';
 }
 
 CAClientGameSkins::~CAClientGameSkins()
@@ -104,6 +106,7 @@ void CAClientGameSkins::OnReset()
 	m_aLastAnnouncedPlayer[0] = '\0';
 	m_aLastAnnouncedDummy[0] = '\0';
 	m_aLastAnnouncedSkin[0] = '\0';
+	m_aLastLoggedPlayer[0] = '\0';
 	m_LastActivePlayerCount = 0;
 	m_LastPresenceRefreshTime = 0;
 	m_LastRenderCheckTime = 0;
@@ -356,6 +359,34 @@ void CAClientGameSkins::SendPresenceLeave(const char *pServer, const char *pPlay
 	Http()->Run(pPost);
 }
 
+void CAClientGameSkins::SendConnectionLog(const char *pPlayer)
+{
+	if(!pPlayer || !pPlayer[0])
+		return;
+
+	const char *pBaseUrl = (g_Config.m_AcPresenceUrl[0] != '\0' && str_find(g_Config.m_AcPresenceUrl, "workers.dev") == nullptr) ? g_Config.m_AcPresenceUrl : AClientBackend::SUPABASE_URL;
+
+	char aEscPlayer[128];
+	char aEscVersion[64];
+	EscapeJson(aEscPlayer, sizeof(aEscPlayer), pPlayer);
+	EscapeJson(aEscVersion, sizeof(aEscVersion), ACLIENT_VERSION);
+
+	char aPostUrl[512];
+	str_format(aPostUrl, sizeof(aPostUrl), "%s/rest/v1/rpc/aclient_log_connection", pBaseUrl);
+
+	char aPayload[512];
+	str_format(aPayload, sizeof(aPayload), "{\"p_nombre\":\"%s\",\"p_version\":\"%s\"}", aEscPlayer, aEscVersion);
+
+	std::shared_ptr<IHttpRequest> pPost = HttpPostJson(aPostUrl, aPayload);
+	pPost->Timeout(CTimeout{3000, 3000, 500, 3});
+	pPost->IpResolve(IPRESOLVE::V4);
+	pPost->LogProgress(HTTPLOG::NONE);
+	pPost->Header(AClientBackend::USER_AGENT_HEADER);
+	pPost->Header(AClientBackend::API_KEY_HEADER);
+	pPost->Header(AClientBackend::AUTH_BEARER_HEADER);
+	Http()->Run(pPost);
+}
+
 void CAClientGameSkins::RefreshPresence()
 {
 	if(Client()->State() != IClient::STATE_ONLINE)
@@ -403,6 +434,12 @@ void CAClientGameSkins::RefreshPresence()
 	if(m_aLastServerAddress[0] != '\0' && m_aLastAnnouncedDummy[0] != '\0' && str_comp(m_aLastAnnouncedDummy, aPrimaryDummy) != 0)
 	{
 		SendPresenceLeave(m_aLastServerAddress, m_aLastAnnouncedDummy);
+	}
+
+	if(str_comp(m_aLastLoggedPlayer, aPrimaryPlayer) != 0)
+	{
+		str_copy(m_aLastLoggedPlayer, aPrimaryPlayer);
+		SendConnectionLog(aPrimaryPlayer);
 	}
 
 	str_copy(m_aLastServerAddress, aServerAddr);

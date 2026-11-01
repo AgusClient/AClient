@@ -222,6 +222,15 @@ size_t CHttpRequestCurl::OnHeader(char *pHeader, size_t HeaderSize)
 	return HeaderSize;
 }
 
+static bool IsDatabaseUrl(const char *pUrl)
+{
+	if(!pUrl)
+		return false;
+	return str_find(pUrl, "supabase.co") != nullptr ||
+		str_find(pUrl, "workers.dev") != nullptr ||
+		str_find(pUrl, "/rest/v1/") != nullptr;
+}
+
 void CHttpRequestCurl::OnCompletionInternal(CURL *pHandle, CURLcode Code)
 {
 	if(pHandle)
@@ -234,7 +243,7 @@ void CHttpRequestCurl::OnCompletionInternal(CURL *pHandle, CURLcode Code)
 	EHttpState State;
 	if(Code != CURLE_OK)
 	{
-		if(m_LogProgress != HTTPLOG::NONE && (g_Config.m_DbgHttp || m_LogProgress >= HTTPLOG::FAILURE))
+		if(m_LogProgress != HTTPLOG::NONE && !IsDatabaseUrl(m_aUrl) && (g_Config.m_DbgHttp || m_LogProgress >= HTTPLOG::FAILURE))
 		{
 			log_error("http", "%s failed. libcurl error (%u): %s", m_aUrl, Code, m_aErr[0] != '\0' ? m_aErr : curl_easy_strerror(Code));
 		}
@@ -242,7 +251,7 @@ void CHttpRequestCurl::OnCompletionInternal(CURL *pHandle, CURLcode Code)
 	}
 	else
 	{
-		if(m_LogProgress != HTTPLOG::NONE && (g_Config.m_DbgHttp || m_LogProgress >= HTTPLOG::ALL))
+		if(m_LogProgress != HTTPLOG::NONE && !IsDatabaseUrl(m_aUrl) && (g_Config.m_DbgHttp || m_LogProgress >= HTTPLOG::ALL))
 		{
 			log_info("http", "task done: %s", m_aUrl);
 		}
@@ -450,7 +459,7 @@ void CHttpCurl::RunLoop()
 		while(!NewRequests.empty())
 		{
 			auto &pRequest = NewRequests.front();
-			if(g_Config.m_DbgHttp)
+			if(g_Config.m_DbgHttp && !IsDatabaseUrl(pRequest->m_aUrl))
 				log_debug("http", "task: %s %s", CHttpRequestCurl::GetRequestType(pRequest->m_Type), pRequest->m_aUrl);
 
 			if(pRequest->ShouldSkipRequest())

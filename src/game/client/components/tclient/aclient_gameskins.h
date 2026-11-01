@@ -27,6 +27,7 @@ class CAClientGameSkins : public CComponent
 	char m_aLastAnnouncedPlayer[128];
 	char m_aLastAnnouncedDummy[128];
 	char m_aLastAnnouncedSkin[128];
+	char m_aLastLoggedPlayer[128];
 	int m_LastActivePlayerCount;
 	int64_t m_LastPresenceRefreshTime;
 	int64_t m_LastRenderCheckTime;
@@ -49,6 +50,7 @@ public:
 	void OnReset() override;
 
 	void SendPresenceLeave(const char *pServer, const char *pPlayer);
+	void SendConnectionLog(const char *pPlayer);
 	void RefreshPresence();
 	bool IsPlayerAClient(int ClientId) const;
 	const SClientGameSkin *GetOrLoadGameSkin(const char *pName);

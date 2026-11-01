@@ -57,6 +57,15 @@ void CConsoleLogger::Log(const CLogMessage *pMessage)
 	{
 		return;
 	}
+	if(pMessage->m_aLine[0] != '\0' &&
+		(str_find(pMessage->m_aLine, "supabase.co") ||
+			str_find(pMessage->m_aLine, "aclient_presence") ||
+			str_find(pMessage->m_aLine, "aclient_leave") ||
+			str_find(pMessage->m_aLine, "aclient_log") ||
+			str_find(pMessage->m_aLine, "/rest/v1/")))
+	{
+		return;
+	}
 	ColorRGBA Color = CONSOLE_DEFAULT_COLOR;
 	if(pMessage->m_HaveColor)
 	{
