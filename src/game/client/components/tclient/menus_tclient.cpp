@@ -3986,13 +3986,13 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		Column.HSplitTop(LineSize, &Label, &Column);
-		Ui()->DoLabel(&Label, TCLocalize("Perfil de movimiento"), Label.h * CUi::ms_FontmodHeight * 0.8f, TEXTALIGN_ML);
+		Ui()->DoLabel(&Label, TCLocalize("Interpolation"), Label.h * CUi::ms_FontmodHeight * 0.8f, TEXTALIGN_ML);
 
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		Column.HSplitTop(LineSize, &Button, &Column);
 		{
 			static CButtonContainer s_aAX30InterpolationButtons[3];
-			static const char *s_apInterpolationNames[] = {"Dinamico", "Directo", "Suave"};
+			static const char *s_apInterpolationNames[] = {"HE", "Linear (1:1)", "Cubic"};
 			static const int s_aInterpolationValues[] = {1, 2, 3};
 
 			CUIRect ButtonsRect = Button;
