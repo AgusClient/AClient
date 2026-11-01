@@ -2871,6 +2871,7 @@ if(CLIENT)
     components/tclient/aclient_assets_editor.cpp
     components/tclient/aclient_auth.cpp
     components/tclient/aclient_auth.h
+    components/tclient/aclient_backend.h
     components/tclient/aclient_hud.cpp
     components/tclient/aclient_hud.h
     components/tclient/aclient_inputs.cpp
