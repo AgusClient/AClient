@@ -30,7 +30,6 @@ namespace AcInputs
 	bool DeltaOthers();
 	bool FOthers();
 	bool CloudOthers();
-	bool AClientOthers();
 	bool AX30Others();
 	bool AnyOthers();
 	bool ImmediateOthers();

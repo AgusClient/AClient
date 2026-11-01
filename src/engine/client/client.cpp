@@ -3014,7 +3014,6 @@ void CClient::Update()
 					(g_Config.m_AcInputs == AC_INPUTS_DELTA && g_Config.m_AcDeltaInputAmount > 0) ||
 					(g_Config.m_AcInputs == AC_INPUTS_F && g_Config.m_AcFInputAmount > 0) ||
 					(g_Config.m_AcInputs == AC_INPUTS_CLOUD && g_Config.m_AcCloudInputAmount > 0) ||
-					(g_Config.m_AcInputs == AC_INPUTS_ACLIENT && g_Config.m_AcAClientInputAmount > 0) ||
 					(g_Config.m_AcInputs == AC_INPUTS_AX30 && g_Config.m_AcAX30InputAmount > 0) ||
 					(g_Config.m_TcFastInput && g_Config.m_TcFastInputAmount > 0);
 				if(HasFastInput && GameClient()->CheckNewInput())
@@ -5278,6 +5277,24 @@ int main(int argc, const char **argv)
 	}
 	g_Config.m_ClConfigVersion = 1;
 
+	if(g_Config.m_AcConfigVersion < 1)
+	{
+		g_Config.m_ClPredictionMargin = 32;
+		g_Config.m_ClSubTickAiming = 1;
+		g_Config.m_AcInputs = AC_INPUTS_AX30;
+		g_Config.m_TcFastInput = 1;
+		g_Config.m_AcAX30InputAmount = 100;
+		g_Config.m_AcAX30AdaptiveJitter = 0;
+		g_Config.m_AcAX30CollisionClamp = 0;
+		g_Config.m_AcAX30Interpolation = 1;
+		g_Config.m_AcAX30Others = 1;
+		g_Config.m_AcAX30OthersAmount = 100;
+		g_Config.m_AcFastInputOthersOnlyFrozen = 0;
+	}
+	g_Config.m_AcConfigVersion = 1;
+	if(g_Config.m_AcInputs == 7)
+		g_Config.m_AcInputs = AC_INPUTS_AX30;
+
 	// parse the command line arguments
 	pConsole->SetUnknownCommandCallback(UnknownArgumentCallback, pClient);
 	pConsole->ParseArguments(argc - 1, &argv[1]);
@@ -5605,9 +5622,9 @@ static bool ViewLinkImpl(const char *pLink)
 
 bool CClient::ViewLink(const char *pLink)
 {
-	if(!str_startswith(pLink, "https://"))
+	if(!str_startswith(pLink, "https://") && !str_startswith(pLink, "discord://"))
 	{
-		log_error("client", "Failed to open link '%s': only https-links are allowed", pLink);
+		log_error("client", "Failed to open link '%s': only https or discord links are allowed", pLink);
 		return false;
 	}
 	return ViewLinkImpl(pLink);

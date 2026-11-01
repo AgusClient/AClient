@@ -4946,7 +4946,7 @@ vec2 CGameClient::GetSmoothPos(int ClientId)
 	const float FastInputOffsetTicks = IsLocal ? AcInputs::EffectiveOffsetTicks(false) : (AllowedOthers ? AcInputs::EffectiveOffsetTicks(true) : 0.0f);
 	const int FastInputTicks = IsLocal ? AcInputs::PredictionTicks(FastInputOffsetTicks) : (AllowedOthers ? AcInputs::PredictionTicksOthers(FastInputOffsetTicks) : 0);
 	const bool FastInputOthers = AllowedOthers && AcInputs::AnyOthers();
-	const bool BestInputInterpolationEnabled = (g_Config.m_AcInputs == AC_INPUTS_BEST || g_Config.m_AcInputs == AC_INPUTS_ACLIENT || g_Config.m_AcInputs == AC_INPUTS_AX30) && FastInputTicks > 0 && (IsLocal || FastInputOthers);
+	const bool BestInputInterpolationEnabled = (g_Config.m_AcInputs == AC_INPUTS_BEST || g_Config.m_AcInputs == AC_INPUTS_AX30) && FastInputTicks > 0 && (IsLocal || FastInputOthers);
 	if(!IsLocal && FastInputTicks > 0 && AcInputs::ImmediateOthers())
 		return GetFastInputPos(ClientId);
 
@@ -4991,7 +4991,7 @@ vec2 CGameClient::GetFastInputPos(int ClientId)
 	const bool AllowedOthers = !IsLocalForFastInput && (!g_Config.m_AcFastInputOthersOnlyFrozen || IsPlayerFrozen(ClientId));
 	const float FastInputOffsetTicks = IsLocalForFastInput ? AcInputs::EffectiveOffsetTicks(false) : (AllowedOthers ? AcInputs::EffectiveOffsetTicks(true) : 0.0f);
 	const int FastInputTicks = IsLocalForFastInput ? AcInputs::PredictionTicks(FastInputOffsetTicks) : (AllowedOthers ? AcInputs::PredictionTicksOthers(FastInputOffsetTicks) : 0);
-	const bool BestInputInterpolationEnabled = (g_Config.m_AcInputs == AC_INPUTS_BEST || g_Config.m_AcInputs == AC_INPUTS_ACLIENT || g_Config.m_AcInputs == AC_INPUTS_AX30) && FastInputTicks > 0;
+	const bool BestInputInterpolationEnabled = (g_Config.m_AcInputs == AC_INPUTS_BEST || g_Config.m_AcInputs == AC_INPUTS_AX30) && FastInputTicks > 0;
 	AcInputs::ApplyOffset(FastInputOffsetTicks, PredTick, PredIntraTick);
 
 	const int MaxTick = Client()->PredGameTick(g_Config.m_ClDummy) + FastInputTicks;
@@ -5071,7 +5071,7 @@ vec2 CGameClient::GetFreezePos(int ClientId)
 	const int FastInputTicks = IsLocalForFastInput ? AcInputs::PredictionTicks(FastInputOffsetTicks) : (AllowedOthers ? AcInputs::PredictionTicksOthers(FastInputOffsetTicks) : 0);
 	const bool FastInputOthers = AllowedOthers && AcInputs::AnyOthers();
 	const bool ApplyFastInput = (IsLocalForFastInput && AcInputs::IsActive()) || (!IsLocalForFastInput && FastInputOthers);
-	const bool BestInputInterpolationEnabled = (g_Config.m_AcInputs == AC_INPUTS_BEST || g_Config.m_AcInputs == AC_INPUTS_ACLIENT || g_Config.m_AcInputs == AC_INPUTS_AX30) && ApplyFastInput;
+	const bool BestInputInterpolationEnabled = (g_Config.m_AcInputs == AC_INPUTS_BEST || g_Config.m_AcInputs == AC_INPUTS_AX30) && ApplyFastInput;
 
 	if(ApplyFastInput && FastInputTicks > 0)
 	{
