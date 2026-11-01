@@ -77,15 +77,15 @@
 
 namespace
 {
-	static constexpr int MUSIC_ART_MAX_DIMENSION = 512;
+	static constexpr int MUSIC_ART_MAX_DIMENSION = 256;
 	static constexpr int MUSIC_ART_MAX_FRAMES = 60;
 	static constexpr int64_t MUSIC_ART_TEXTURE_UPLOAD_BUDGET_US = 1500;
 	static constexpr int MUSIC_ART_MAX_TEXTURE_UPLOADS_PER_FRAME = 1;
 	static constexpr int MUSIC_PLAYER_MAX_VISUALIZER_BARS = 12;
 	static constexpr int COVER_BAR_SEGMENTS = 10;
 	static constexpr size_t COVER_TINT_TARGET_SAMPLES = 4096u;
-	static constexpr int COVER_BAR_TINT_X_SAMPLES = 18;
-	static constexpr int COVER_BAR_TINT_Y_SAMPLES = 28;
+	static constexpr int COVER_BAR_TINT_X_SAMPLES = 4;
+	static constexpr int COVER_BAR_TINT_Y_SAMPLES = 4;
 	static constexpr float VISUALIZER_ATTACK_RATE = 46.0f;
 	static constexpr float VISUALIZER_RELEASE_RATE = 19.0f;
 	static constexpr int COVER_BAR_TINT_CELLS = MUSIC_PLAYER_MAX_VISUALIZER_BARS * COVER_BAR_SEGMENTS;
@@ -897,6 +897,8 @@ namespace
 		bool m_RequestNext = false;
 		bool m_HasSnapshot = false;
 		SNowPlayingSnapshot m_LatestSnapshot;
+		std::string m_CachedArtTrackId;
+		SMusicArt m_CachedArt;
 
 		static int64_t ToMilliseconds(winrt::Windows::Foundation::TimeSpan TimeSpan)
 		{
@@ -1009,16 +1011,26 @@ namespace
 					winrt::to_string(MediaProps.Subtitle()),
 					winrt::to_string(MediaProps.AlbumArtist()));
 
-				std::vector<unsigned char> vArtBytes = ReadThumbnailBytes(MediaProps.Thumbnail());
-				if(!vArtBytes.empty())
+				const std::string TrackId = Out.m_ServiceId + "|" + Out.m_Title + "|" + Out.m_Artist + "|" + Out.m_Album;
+				if(TrackId == m_CachedArtTrackId && !m_CachedArt.m_Key.empty())
 				{
-					Out.m_Art.m_Type = SMusicArt::EType::BYTES;
-					Out.m_Art.m_Key = Out.m_ServiceId + "|" + Out.m_Title + "|" + Out.m_Artist + "|" + std::to_string(vArtBytes.size());
-					Out.m_Art.m_vBytes = std::move(vArtBytes);
+					Out.m_Art = m_CachedArt;
 				}
 				else
 				{
-					Out.m_Art.m_Key = Out.m_ServiceId + "|" + Out.m_Title + "|" + Out.m_Artist;
+					std::vector<unsigned char> vArtBytes = ReadThumbnailBytes(MediaProps.Thumbnail());
+					if(!vArtBytes.empty())
+					{
+						Out.m_Art.m_Type = SMusicArt::EType::BYTES;
+						Out.m_Art.m_Key = Out.m_ServiceId + "|" + Out.m_Title + "|" + Out.m_Artist + "|" + std::to_string(vArtBytes.size());
+						Out.m_Art.m_vBytes = std::move(vArtBytes);
+					}
+					else
+					{
+						Out.m_Art.m_Key = Out.m_ServiceId + "|" + Out.m_Title + "|" + Out.m_Artist;
+					}
+					m_CachedArtTrackId = TrackId;
+					m_CachedArt = Out.m_Art;
 				}
 			}
 			catch(...)
@@ -2554,6 +2566,11 @@ class CMusicPlayerArtDecodeJob : public IJob
 	char m_aContextName[512];
 	SMediaDecodedFrames m_DecodedFrames;
 	bool m_Success = false;
+	SArtworkColorAnalysis m_Analysis{};
+	SCoverTintResult m_CoverTints{};
+	ColorRGBA m_Accent{1.0f, 1.0f, 1.0f, 1.0f};
+	SMusicPlayerPalette m_Palette{};
+	bool m_HasAnalysis = false;
 
 protected:
 	void Run() override
@@ -2571,6 +2588,16 @@ protected:
 			Limits.m_MaxAnimationDurationMs = 10000;
 			Limits.m_DecodeAllFrames = true;
 			m_Success = MediaDecoder::DecodeImageWithFfmpegCpu(m_pGraphics, m_vData.data(), m_vData.size(), m_aContextName, m_DecodedFrames, Limits);
+		}
+
+		if(m_Success && !m_DecodedFrames.m_vFrames.empty() && State() != IJob::STATE_ABORTED)
+		{
+			const CImageInfo &ArtImage = m_DecodedFrames.m_vFrames.front().m_Image;
+			m_Analysis = AnalyzeArtworkBaseColor(ArtImage);
+			m_Accent = SelectMusicPlayerAccent(m_Analysis);
+			m_Palette = BuildPaletteFromAccent(m_Accent);
+			m_CoverTints = ExtractCoverTints(ArtImage, MUSIC_PLAYER_MAX_VISUALIZER_BARS);
+			m_HasAnalysis = true;
 		}
 
 		if(State() == IJob::STATE_ABORTED)
@@ -2594,6 +2621,11 @@ public:
 
 	bool Success() const { return m_Success; }
 	SMediaDecodedFrames &DecodedFrames() { return m_DecodedFrames; }
+	bool HasAnalysis() const { return m_HasAnalysis; }
+	const SArtworkColorAnalysis &Analysis() const { return m_Analysis; }
+	const SCoverTintResult &CoverTints() const { return m_CoverTints; }
+	const ColorRGBA &Accent() const { return m_Accent; }
+	const SMusicPlayerPalette &Palette() const { return m_Palette; }
 };
 
 struct SVisualizerLevelInput
@@ -3371,7 +3403,21 @@ public:
 				m_ArtAnimated = false;
 				m_ArtAnimationStart = 0;
 
-				if(!m_OptArtDecodedFrames->m_vFrames.empty())
+				if(m_pArtDecodeJob->HasAnalysis())
+				{
+					m_LastArtAnalysis = m_pArtDecodeJob->Analysis();
+					m_Accent = m_pArtDecodeJob->Accent();
+					m_Palette = m_pArtDecodeJob->Palette();
+
+					const SCoverTintResult &Result = m_pArtDecodeJob->CoverTints();
+					m_CoverTint = Result.m_CoverTint;
+					m_aCoverBarTint = Result.m_aBarTint;
+					m_CoverTintBarCount = Result.m_BarCount;
+					m_HasCoverTint = Result.m_HasCoverTint;
+					m_HasCoverBarTint = Result.m_HasBarTint;
+					m_VisualizerBarColorsInitialized = false;
+				}
+				else if(!m_OptArtDecodedFrames->m_vFrames.empty())
 				{
 					const CImageInfo &ArtImage = m_OptArtDecodedFrames->m_vFrames.front().m_Image;
 					const SArtworkColorAnalysis Analysis = AnalyzeArtworkBaseColor(ArtImage);
@@ -3427,6 +3473,10 @@ public:
 			if(ElapsedUs >= MUSIC_ART_TEXTURE_UPLOAD_BUDGET_US)
 				break;
 
+			if(m_ArtUploadIndex == 0 && !m_vArtFrames.empty())
+			{
+				MediaDecoder::UnloadFrames(pOwner->Graphics(), m_vArtFrames);
+			}
 			SMediaRawFrame &RawFrame = DecodedFrames.m_vFrames[m_ArtUploadIndex];
 			SMediaFrame Frame;
 			Frame.m_DurationMs = RawFrame.m_DurationMs;
@@ -3511,7 +3561,18 @@ public:
 			return;
 		}
 
-		ClearLoadedArtwork(pOwner);
+		if(m_pArtRequest)
+		{
+			m_pArtRequest->Abort();
+			m_pArtRequest.reset();
+		}
+		if(m_pArtDecodeJob)
+		{
+			m_pArtDecodeJob->Abort();
+			m_pArtDecodeJob = nullptr;
+		}
+		m_OptArtDecodedFrames.reset();
+		m_ArtUploadIndex = 0;
 		m_LastArtKey = m_Snapshot.m_Art.m_Key;
 
 		if(m_Snapshot.m_Art.m_Type == SMusicArt::EType::BYTES)
