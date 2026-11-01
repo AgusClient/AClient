@@ -136,6 +136,7 @@ MACRO_CONFIG_STR(ClGameskinDownloadUrl, cl_gameskin_download_url, 128, "https://
 MACRO_CONFIG_STR(AcPresenceUrl, ac_presence_url, 128, "https://hmrgihzjynnnappzbvdd.supabase.co", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Presence relay server URL")
 
 // AClient Authentication & HWID
+MACRO_CONFIG_INT(ClAuthRequired, cl_auth_required, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Requerir inicio de sesion con modal al iniciar (0: apagado, 1: encendido)")
 MACRO_CONFIG_STR(ClAuthUser, cl_auth_user, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "AClient authentication username")
 MACRO_CONFIG_STR(ClAuthPass, cl_auth_pass, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "AClient authentication password")
 MACRO_CONFIG_INT(ClAuthRemember, cl_auth_remember, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Remember AClient login credentials")

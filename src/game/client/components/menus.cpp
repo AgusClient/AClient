@@ -1051,6 +1051,13 @@ void CMenus::Render()
 
 	CUIRect Screen = *Ui()->Screen();
 
+	// Modal de inicio de sesion (apagado por defecto via cl_auth_required = 0)
+	if(GameClient()->m_AClientAuth.IsRequired() && !GameClient()->m_AClientAuth.IsAuthenticated())
+	{
+		GameClient()->m_AClientAuth.RenderAuthModal(*Ui()->Screen());
+		return;
+	}
+
 	if(Client()->State() != IClient::STATE_DEMOPLAYBACK || m_Popup != POPUP_NONE)
 	{
 		Screen.Margin(10.0f, &Screen);
