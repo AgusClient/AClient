@@ -210,6 +210,7 @@ void CAClientGameSkins::StartDownload(const char *pSkinName)
 	m_pDownloadRequest = HttpGetFile(aUrl, Storage(), aDest, IStorage::TYPE_SAVE);
 	m_pDownloadRequest->Timeout(CTimeout{8000, 8000, 500, 8});
 	m_pDownloadRequest->IpResolve(IPRESOLVE::V4);
+	m_pDownloadRequest->LogProgress(HTTPLOG::NONE);
 	m_pDownloadRequest->Header("User-Agent: AClient");
 	m_DownloadingSkinName = pSkinName;
 	Http()->Run(m_pDownloadRequest);
@@ -377,6 +378,7 @@ void CAClientGameSkins::RefreshPresence()
 		std::shared_ptr<IHttpRequest> pPost = HttpPostJson(aPostUrl, aPayload);
 		pPost->Timeout(CTimeout{3000, 3000, 500, 3});
 		pPost->IpResolve(IPRESOLVE::V4);
+		pPost->LogProgress(HTTPLOG::NONE);
 		pPost->Header(AClientBackend::USER_AGENT_HEADER);
 		pPost->Header(AClientBackend::API_KEY_HEADER);
 		pPost->Header(AClientBackend::AUTH_BEARER_HEADER);
@@ -405,6 +407,7 @@ void CAClientGameSkins::RefreshPresence()
 	m_pPresenceRequest = HttpGet(aGetUrl);
 	m_pPresenceRequest->Timeout(CTimeout{4000, 4000, 500, 4});
 	m_pPresenceRequest->IpResolve(IPRESOLVE::V4);
+	m_pPresenceRequest->LogProgress(HTTPLOG::NONE);
 	m_pPresenceRequest->Header(AClientBackend::USER_AGENT_HEADER);
 	m_pPresenceRequest->Header(AClientBackend::API_KEY_HEADER);
 	m_pPresenceRequest->Header(AClientBackend::AUTH_BEARER_HEADER);

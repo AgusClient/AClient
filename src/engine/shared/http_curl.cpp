@@ -234,7 +234,7 @@ void CHttpRequestCurl::OnCompletionInternal(CURL *pHandle, CURLcode Code)
 	EHttpState State;
 	if(Code != CURLE_OK)
 	{
-		if(g_Config.m_DbgHttp || m_LogProgress >= HTTPLOG::FAILURE)
+		if(m_LogProgress != HTTPLOG::NONE && (g_Config.m_DbgHttp || m_LogProgress >= HTTPLOG::FAILURE))
 		{
 			log_error("http", "%s failed. libcurl error (%u): %s", m_aUrl, Code, m_aErr[0] != '\0' ? m_aErr : curl_easy_strerror(Code));
 		}
@@ -242,7 +242,7 @@ void CHttpRequestCurl::OnCompletionInternal(CURL *pHandle, CURLcode Code)
 	}
 	else
 	{
-		if(g_Config.m_DbgHttp || m_LogProgress >= HTTPLOG::ALL)
+		if(m_LogProgress != HTTPLOG::NONE && (g_Config.m_DbgHttp || m_LogProgress >= HTTPLOG::ALL))
 		{
 			log_info("http", "task done: %s", m_aUrl);
 		}
