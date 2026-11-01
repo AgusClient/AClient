@@ -660,6 +660,8 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 				}
 			}
 
+			const bool IsFirstDDTeamRow = DDTeam != TEAM_FLOCK && PrevDDTeam != DDTeam;
+
 			CUIRect RowAndSpacing, Row;
 			Scoreboard.HSplitTop(LineHeight + Spacing, &RowAndSpacing, &Scoreboard);
 			RowAndSpacing.HSplitTop(LineHeight, &Row, nullptr);
@@ -755,6 +757,43 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 			ScorePosition.y = Row.y;
 			ScorePosition.h = Row.h;
 
+			const bool ShowClientIndicator = pInfo->m_ClientId >= 0 && GameClient()->m_AClientGameSkins.IsPlayerAClient(pInfo->m_ClientId);
+			const bool TeamNumberVisible = NumPlayers > 8 && IsFirstDDTeamRow;
+			const bool ShiftIndicatorForTeamTime = ShowClientIndicator && UseTime && TeamNumberVisible;
+			const float IndicatorIconSize = FontSize * 0.95f;
+			const float IndicatorIconSpacing = 4.0f;
+			float IndicatorIconPosX = 0.0f;
+			if(ShowClientIndicator)
+			{
+				if(ShiftIndicatorForTeamTime)
+				{
+					const float TeamFontSize = FontSize / 1.5f;
+					char aTeamWidthBuf[64];
+					if(DDTeam == GameClient()->m_Teams.TeamSuper())
+						str_copy(aTeamWidthBuf, Localize("Super"));
+					else
+						str_format(aTeamWidthBuf, sizeof(aTeamWidthBuf), "%d", DDTeam);
+					const float TeamNumberWidth = TextRender()->TextWidth(TeamFontSize, aTeamWidthBuf);
+					IndicatorIconPosX = Row.x + TeamNumberWidth + IndicatorIconSpacing;
+					ScorePosition.x += IndicatorIconSize * 0.5f;
+				}
+				else
+				{
+					const float IconOffsetRight = 10.0f;
+					IndicatorIconPosX = ScoreOffset - IndicatorIconSize - IndicatorIconSpacing + IconOffsetRight;
+					if(TeamNumberVisible)
+					{
+						const float TeamFontSize = FontSize / 1.5f;
+						char aTeamWidthBuf[64];
+						str_format(aTeamWidthBuf, sizeof(aTeamWidthBuf), "%d", DDTeam);
+						float TeamLabelWidth = TextRender()->TextWidth(TeamFontSize, aTeamWidthBuf);
+						str_format(aTeamWidthBuf, sizeof(aTeamWidthBuf), "(%d/%d)", MaxTeamSize, MaxTeamSize);
+						TeamLabelWidth = std::max(TeamLabelWidth, TextRender()->TextWidth(TeamFontSize, aTeamWidthBuf));
+						IndicatorIconPosX += TeamLabelWidth + 4.0f;
+					}
+				}
+			}
+
 			if(Race7)
 			{
 				Ui()->RenderTime(ScorePosition, FontSize, pInfo->m_Score / 1000, pInfo->m_Score == protocol7::FinishTime::NOT_FINISHED, pInfo->m_Score % 1000, true,
@@ -775,6 +814,16 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 				str_format(aBuf, sizeof(aBuf), "%d", std::clamp(pInfo->m_Score, -999, 99999));
 				Player.m_Score.Update(TextRender(), aBuf, FontSize);
 				Player.m_Score.Render(TextRender(), vec2(ScoreOffset + ScoreLength - Player.m_Score.Width(), ScorePosition.y + (Row.h - FontSize) / 2.0f), TextColor);
+			}
+
+			if(ShowClientIndicator)
+			{
+				const CUIRect IconRect = {
+					IndicatorIconPosX,
+					Row.y + (Row.h - IndicatorIconSize) / 2.0f,
+					IndicatorIconSize,
+					IndicatorIconSize};
+				Ui()->DoLabel(&IconRect, "x", FontSize, TEXTALIGN_MC);
 			}
 
 			// CTF flag

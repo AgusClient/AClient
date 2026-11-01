@@ -15,11 +15,13 @@
 
 CAClientGameSkins::CAClientGameSkins() :
 	m_PendingAnnounce(false),
+	m_LastActivePlayerCount(0),
 	m_LastPresenceRefreshTime(0),
 	m_LastRenderCheckTime(0)
 {
 	m_aLastServerAddress[0] = '\0';
 	m_aLastAnnouncedPlayer[0] = '\0';
+	m_aLastAnnouncedDummy[0] = '\0';
 	m_aLastAnnouncedSkin[0] = '\0';
 }
 
@@ -58,6 +60,7 @@ void CAClientGameSkins::OnReset()
 	}
 	m_DownloadingSkinName.clear();
 	m_mRemotePlayerGameSkins.clear();
+	m_sRemoteAClientPlayers.clear();
 
 	for(int i = 0; i < MAX_CLIENTS; ++i)
 	{
@@ -70,7 +73,9 @@ void CAClientGameSkins::OnReset()
 	m_PendingAnnounce = false;
 	m_aLastServerAddress[0] = '\0';
 	m_aLastAnnouncedPlayer[0] = '\0';
+	m_aLastAnnouncedDummy[0] = '\0';
 	m_aLastAnnouncedSkin[0] = '\0';
+	m_LastActivePlayerCount = 0;
 	m_LastPresenceRefreshTime = 0;
 	m_LastRenderCheckTime = 0;
 }
@@ -271,6 +276,22 @@ const SClientGameSkin *CAClientGameSkins::GetOrLoadGameSkin(const char *pName)
 	return &Skin;
 }
 
+bool CAClientGameSkins::IsPlayerAClient(int ClientId) const
+{
+	if(ClientId < 0 || ClientId >= MAX_CLIENTS)
+		return false;
+	if(!GameClient()->m_aClients[ClientId].m_Active)
+		return false;
+	if(ClientId == GameClient()->m_aLocalIds[0])
+		return true;
+	if(Client()->DummyConnected() && ClientId == GameClient()->m_aLocalIds[1])
+		return true;
+	const char *pName = GameClient()->m_aClients[ClientId].m_aName;
+	if(!pName || !pName[0])
+		return false;
+	return m_sRemoteAClientPlayers.find(pName) != m_sRemoteAClientPlayers.end();
+}
+
 void CAClientGameSkins::RefreshPresence()
 {
 	if(Client()->State() != IClient::STATE_ONLINE)
@@ -281,30 +302,35 @@ void CAClientGameSkins::RefreshPresence()
 	if(!aServerAddr[0])
 		return;
 
+	const char *pDummyName = (Client()->DummyConnected() && g_Config.m_ClDummyName[0] != '\0') ? g_Config.m_ClDummyName : "";
+	const char *pAssetGame = g_Config.m_ClAssetGame[0] != '\0' ? g_Config.m_ClAssetGame : "default";
+
 	str_copy(m_aLastServerAddress, aServerAddr);
 	str_copy(m_aLastAnnouncedPlayer, g_Config.m_PlayerName);
+	str_copy(m_aLastAnnouncedDummy, pDummyName);
 	str_copy(m_aLastAnnouncedSkin, g_Config.m_ClAssetGame);
 	m_LastPresenceRefreshTime = time_get();
 
 	const char *pBaseUrl = (g_Config.m_AcPresenceUrl[0] != '\0' && str_find(g_Config.m_AcPresenceUrl, "workers.dev") == nullptr) ? g_Config.m_AcPresenceUrl : AClientBackend::SUPABASE_URL;
 
+	char aEscSkin[128];
+	char aEscServer[128];
+	EscapeJson(aEscSkin, sizeof(aEscSkin), pAssetGame);
+	EscapeJson(aEscServer, sizeof(aEscServer), aServerAddr);
+
+	char aPostUrl[512];
+	str_format(aPostUrl, sizeof(aPostUrl), "%s/rest/v1/rpc/aclient_presence", pBaseUrl);
+
 	// 1. Announce own presence via POST RPC
 	if(g_Config.m_PlayerName[0] != '\0')
 	{
 		char aEscPlayer[128];
-		char aEscSkin[128];
-		char aEscServer[128];
 		EscapeJson(aEscPlayer, sizeof(aEscPlayer), g_Config.m_PlayerName);
-		EscapeJson(aEscSkin, sizeof(aEscSkin), g_Config.m_ClAssetGame);
-		EscapeJson(aEscServer, sizeof(aEscServer), aServerAddr);
 
 		char aPayload[512];
 		str_format(aPayload, sizeof(aPayload),
 			"{\"p_server\":\"%s\",\"p_player\":\"%s\",\"p_asset_game\":\"%s\"}",
 			aEscServer, aEscPlayer, aEscSkin);
-
-		char aPostUrl[512];
-		str_format(aPostUrl, sizeof(aPostUrl), "%s/rest/v1/rpc/aclient_presence", pBaseUrl);
 
 		std::shared_ptr<IHttpRequest> pPost = HttpPostJson(aPostUrl, aPayload);
 		pPost->Timeout(CTimeout{3000, 3000, 500, 3});
@@ -315,7 +341,27 @@ void CAClientGameSkins::RefreshPresence()
 		Http()->Run(pPost);
 	}
 
-	// 2. Fetch remote gameskins via GET
+	// 1b. Also announce dummy presence if connected
+	if(pDummyName[0] != '\0' && str_comp(pDummyName, g_Config.m_PlayerName) != 0)
+	{
+		char aEscDummy[128];
+		EscapeJson(aEscDummy, sizeof(aEscDummy), pDummyName);
+
+		char aPayload[512];
+		str_format(aPayload, sizeof(aPayload),
+			"{\"p_server\":\"%s\",\"p_player\":\"%s\",\"p_asset_game\":\"%s\"}",
+			aEscServer, aEscDummy, aEscSkin);
+
+		std::shared_ptr<IHttpRequest> pPostDummy = HttpPostJson(aPostUrl, aPayload);
+		pPostDummy->Timeout(CTimeout{3000, 3000, 500, 3});
+		pPostDummy->IpResolve(IPRESOLVE::V4);
+		pPostDummy->Header(AClientBackend::USER_AGENT_HEADER);
+		pPostDummy->Header(AClientBackend::API_KEY_HEADER);
+		pPostDummy->Header(AClientBackend::AUTH_BEARER_HEADER);
+		Http()->Run(pPostDummy);
+	}
+
+	// 2. Fetch remote gameskins and AClient presence via GET
 	if(m_pPresenceRequest && !m_pPresenceRequest->Done())
 	{
 		m_pPresenceRequest->Abort();
@@ -373,14 +419,26 @@ void CAClientGameSkins::OnRender()
 			RefreshPresence();
 		}
 	}
-	else if(Client()->State() == IClient::STATE_ONLINE && g_Config.m_AcShowRemoteGameSkins)
+	else if(Client()->State() == IClient::STATE_ONLINE)
 	{
 		int64_t Now = time_get();
+		const char *pDummyName = (Client()->DummyConnected() && g_Config.m_ClDummyName[0] != '\0') ? g_Config.m_ClDummyName : "";
 		bool SkinChanged = str_comp(m_aLastAnnouncedSkin, g_Config.m_ClAssetGame) != 0;
 		bool NameChanged = str_comp(m_aLastAnnouncedPlayer, g_Config.m_PlayerName) != 0;
-		bool PeriodicRefresh = (m_LastPresenceRefreshTime == 0) || ((Now - m_LastPresenceRefreshTime) > time_freq() * 45);
+		bool DummyChanged = str_comp(m_aLastAnnouncedDummy, pDummyName) != 0;
+		bool PeriodicRefresh = (m_LastPresenceRefreshTime == 0) || ((Now - m_LastPresenceRefreshTime) > time_freq() * 25);
 
-		if(SkinChanged || NameChanged || PeriodicRefresh)
+		int ActivePlayerCount = 0;
+		for(int i = 0; i < MAX_CLIENTS; ++i)
+		{
+			if(GameClient()->m_aClients[i].m_Active)
+				ActivePlayerCount++;
+		}
+		bool NewPlayerJoined = ActivePlayerCount > m_LastActivePlayerCount && (Now - m_LastPresenceRefreshTime) > time_freq() * 4;
+		if(NewPlayerJoined || ActivePlayerCount < m_LastActivePlayerCount)
+			m_LastActivePlayerCount = ActivePlayerCount;
+
+		if(SkinChanged || NameChanged || DummyChanged || PeriodicRefresh || NewPlayerJoined)
 		{
 			RefreshPresence();
 		}
@@ -406,6 +464,7 @@ void CAClientGameSkins::OnRender()
 				if(pArr)
 				{
 					std::map<std::string, std::string> NewSkins;
+					std::set<std::string> NewAClientPlayers;
 					int Len = json_array_length(pArr);
 					for(int i = 0; i < Len; ++i)
 					{
@@ -414,19 +473,24 @@ void CAClientGameSkins::OnRender()
 							continue;
 						const json_value *pPl = json_object_get(pItem, "player");
 						const json_value *pAs = json_object_get(pItem, "asset_game");
-						if(pPl && pAs)
+						if(pPl && pPl->type == json_string)
 						{
 							const char *pPlName = json_string_get(pPl);
-							const char *pSkinName = json_string_get(pAs);
-							if(pPlName && pSkinName && pPlName[0] && pSkinName[0])
+							if(pPlName && pPlName[0])
 							{
-								if(str_comp(pPlName, g_Config.m_PlayerName) != 0)
+								NewAClientPlayers.insert(pPlName);
+								if(pAs && pAs->type == json_string)
 								{
-									NewSkins[pPlName] = pSkinName;
+									const char *pSkinName = json_string_get(pAs);
+									if(pSkinName && pSkinName[0] && str_comp(pPlName, g_Config.m_PlayerName) != 0)
+									{
+										NewSkins[pPlName] = pSkinName;
+									}
 								}
 							}
 						}
 					}
+					m_sRemoteAClientPlayers = std::move(NewAClientPlayers);
 					m_mRemotePlayerGameSkins = std::move(NewSkins);
 					UpdateAllPlayerSkins();
 				}

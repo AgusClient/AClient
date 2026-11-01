@@ -15,6 +15,7 @@ class CAClientGameSkins : public CComponent
 {
 	std::map<std::string, SClientGameSkin> m_mLoadedGameSkins;
 	std::map<std::string, std::string> m_mRemotePlayerGameSkins;
+	std::set<std::string> m_sRemoteAClientPlayers;
 	std::set<std::string> m_sFailedSkins;
 
 	std::shared_ptr<IHttpRequest> m_pPresenceRequest;
@@ -24,7 +25,9 @@ class CAClientGameSkins : public CComponent
 	bool m_PendingAnnounce;
 	char m_aLastServerAddress[128];
 	char m_aLastAnnouncedPlayer[128];
+	char m_aLastAnnouncedDummy[128];
 	char m_aLastAnnouncedSkin[128];
+	int m_LastActivePlayerCount;
 	int64_t m_LastPresenceRefreshTime;
 	int64_t m_LastRenderCheckTime;
 
@@ -46,6 +49,7 @@ public:
 	void OnReset() override;
 
 	void RefreshPresence();
+	bool IsPlayerAClient(int ClientId) const;
 	const SClientGameSkin *GetOrLoadGameSkin(const char *pName);
 	void FreeAllGameSkins();
 	void UpdateAllPlayerSkins();
