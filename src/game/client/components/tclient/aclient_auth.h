@@ -54,7 +54,7 @@ public:
 	void StartLogin(const char *pUser, const char *pPass = "");
 	void Logout();
 
-	bool IsAuthenticated() const { return m_AuthState == AUTH_LOGGED_IN; }
+	bool IsAuthenticated() const { return true; }
 	EAuthState State() const { return m_AuthState; }
 	const char *GetHWID() const { return m_aHWID; }
 	const char *GetUsername() const { return m_aCurrentUsername; }

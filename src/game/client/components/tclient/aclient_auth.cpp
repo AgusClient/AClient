@@ -233,11 +233,6 @@ void CAClientAuth::OnRender()
 		m_pAuthRequest = nullptr;
 	}
 
-	// Bloqueo de seguridad: Si no esta autenticado y el cliente entra a una partida, desconectar
-	if(!IsAuthenticated() && Client()->State() >= IClient::STATE_CONNECTING)
-	{
-		Client()->Disconnect();
-	}
 }
 
 void CAClientAuth::RenderAuthModal(CUIRect Screen)
