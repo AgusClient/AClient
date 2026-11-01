@@ -1,4 +1,5 @@
 #include "aclient_hud.h"
+#include "hud_layout.h"
 
 #include <engine/keys.h>
 #include <engine/textrender.h>

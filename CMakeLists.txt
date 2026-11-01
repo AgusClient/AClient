@@ -2920,6 +2920,10 @@ if(CLIENT)
     components/tclient/scripting/impl.h
     components/tclient/skinprofiles.cpp
     components/tclient/skinprofiles.h
+    components/tclient/hud_editor.cpp
+    components/tclient/hud_editor.h
+    components/tclient/hud_layout.cpp
+    components/tclient/hud_layout.h
     components/tclient/snap_tap.cpp
     components/tclient/snap_tap.h
     components/tclient/statusbar.cpp

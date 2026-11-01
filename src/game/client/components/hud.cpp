@@ -6,6 +6,7 @@
 #include "camera.h"
 #include "controls.h"
 #include "voting.h"
+#include "tclient/hud_layout.h"
 
 #include <base/color.h>
 #include <base/time.h>
@@ -550,50 +551,92 @@ void CHud::RenderTextInfo()
 	if(IVideo::Current())
 		Showfps = 0;
 #endif
-	if(Showfps)
+	if(Showfps && HudLayout::IsEnabled(HudLayout::MODULE_FPS))
 	{
 		char aBuf[16];
 		const int FramesPerSecond = round_to_int(1.0f / Client()->FrameTimeAverage());
 		str_format(aBuf, sizeof(aBuf), "%d", FramesPerSecond);
 
-		static float s_TextWidth0 = TextRender()->TextWidth(12.f, "0", -1, -1.0f);
-		static float s_TextWidth00 = TextRender()->TextWidth(12.f, "00", -1, -1.0f);
-		static float s_TextWidth000 = TextRender()->TextWidth(12.f, "000", -1, -1.0f);
-		static float s_TextWidth0000 = TextRender()->TextWidth(12.f, "0000", -1, -1.0f);
-		static float s_TextWidth00000 = TextRender()->TextWidth(12.f, "00000", -1, -1.0f);
-		static const float s_aTextWidth[5] = {s_TextWidth0, s_TextWidth00, s_TextWidth000, s_TextWidth0000, s_TextWidth00000};
+		const auto Layout = HudLayout::Get(HudLayout::MODULE_FPS, m_Width, m_Height);
+		const float Scale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
+		const float FontSize = 12.0f * Scale;
+		const float Alpha = HudLayout::AlphaFactor(HudLayout::MODULE_FPS);
 
-		int DigitIndex = GetDigitsIndex(FramesPerSecond, 4);
-
-		CTextCursor Cursor;
-		Cursor.SetPosition(vec2(m_Width - 10 - s_aTextWidth[DigitIndex], 5));
-		Cursor.m_FontSize = 12.0f;
-		auto OldFlags = TextRender()->GetRenderFlags();
-		TextRender()->SetRenderFlags(OldFlags | TEXT_RENDER_FLAG_ONE_TIME_USE);
-		if(m_FPSTextContainerIndex.Valid())
-			TextRender()->RecreateTextContainerSoft(m_FPSTextContainerIndex, &Cursor, aBuf);
-		else
-			TextRender()->CreateTextContainer(m_FPSTextContainerIndex, &Cursor, "0");
-		TextRender()->SetRenderFlags(OldFlags);
-		if(m_FPSTextContainerIndex.Valid())
+		if(HudLayout::HasPositionOverride(HudLayout::MODULE_FPS))
 		{
-			TextRender()->RenderTextContainer(m_FPSTextContainerIndex, TextRender()->DefaultTextColor(), TextRender()->DefaultTextOutlineColor());
+			TextRender()->TextColor(ColorRGBA(1.0f, 1.0f, 1.0f, Alpha));
+			TextRender()->Text(Layout.m_X, Layout.m_Y, FontSize, aBuf, -1.0f);
+			TextRender()->TextColor(TextRender()->DefaultTextColor());
+		}
+		else
+		{
+			static float s_TextWidth0 = TextRender()->TextWidth(12.f, "0", -1, -1.0f);
+			static float s_TextWidth00 = TextRender()->TextWidth(12.f, "00", -1, -1.0f);
+			static float s_TextWidth000 = TextRender()->TextWidth(12.f, "000", -1, -1.0f);
+			static float s_TextWidth0000 = TextRender()->TextWidth(12.f, "0000", -1, -1.0f);
+			static float s_TextWidth00000 = TextRender()->TextWidth(12.f, "00000", -1, -1.0f);
+			static const float s_aTextWidth[5] = {s_TextWidth0, s_TextWidth00, s_TextWidth000, s_TextWidth0000, s_TextWidth00000};
+
+			int DigitIndex = GetDigitsIndex(FramesPerSecond, 4);
+
+			CTextCursor Cursor;
+			Cursor.SetPosition(vec2(m_Width - 10 - s_aTextWidth[DigitIndex] * Scale, 5));
+			Cursor.m_FontSize = FontSize;
+			auto OldFlags = TextRender()->GetRenderFlags();
+			TextRender()->SetRenderFlags(OldFlags | TEXT_RENDER_FLAG_ONE_TIME_USE);
+			if(m_FPSTextContainerIndex.Valid())
+				TextRender()->RecreateTextContainerSoft(m_FPSTextContainerIndex, &Cursor, aBuf);
+			else
+				TextRender()->CreateTextContainer(m_FPSTextContainerIndex, &Cursor, "0");
+			TextRender()->SetRenderFlags(OldFlags);
+			if(m_FPSTextContainerIndex.Valid())
+			{
+				TextRender()->RenderTextContainer(m_FPSTextContainerIndex, ColorRGBA(1.0f, 1.0f, 1.0f, Alpha), TextRender()->DefaultTextOutlineColor().WithAlpha(Alpha));
+			}
 		}
 	}
 	float NextY = Showfps ? 20.0f : 5.0f;
-	if(g_Config.m_ClShowpred && Client()->State() != IClient::STATE_DEMOPLAYBACK)
+	if(g_Config.m_ClShowpred && Client()->State() != IClient::STATE_DEMOPLAYBACK && HudLayout::IsEnabled(HudLayout::MODULE_PING))
 	{
 		char aBuf[64];
 		str_format(aBuf, sizeof(aBuf), "%d", Client()->GetPredictionTime());
-		TextRender()->Text(m_Width - 10 - TextRender()->TextWidth(12, aBuf, -1, -1.0f), NextY, 12, aBuf, -1.0f);
-		NextY += 15.0f;
+		const auto Layout = HudLayout::Get(HudLayout::MODULE_PING, m_Width, m_Height);
+		const float Scale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
+		const float FontSize = 12.0f * Scale;
+		const float Alpha = HudLayout::AlphaFactor(HudLayout::MODULE_PING);
+
+		TextRender()->TextColor(ColorRGBA(1.0f, 1.0f, 1.0f, Alpha));
+		if(HudLayout::HasPositionOverride(HudLayout::MODULE_PING))
+		{
+			TextRender()->Text(Layout.m_X, Layout.m_Y, FontSize, aBuf, -1.0f);
+		}
+		else
+		{
+			TextRender()->Text(m_Width - 10 - TextRender()->TextWidth(FontSize, aBuf, -1, -1.0f), NextY, FontSize, aBuf, -1.0f);
+			NextY += 15.0f * Scale;
+		}
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
 	}
-	if(g_Config.m_AcShowFrametime)
+	if(g_Config.m_AcShowFrametime && HudLayout::IsEnabled(HudLayout::MODULE_FRAMETIME))
 	{
 		char aBuf[64];
 		const float FrameTimeMs = Client()->FrameTimeAverage() * 1000.0f;
 		str_format(aBuf, sizeof(aBuf), "%.1f", FrameTimeMs);
-		TextRender()->Text(m_Width - 10 - TextRender()->TextWidth(12, aBuf, -1, -1.0f), NextY, 12, aBuf, -1.0f);
+		const auto Layout = HudLayout::Get(HudLayout::MODULE_FRAMETIME, m_Width, m_Height);
+		const float Scale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
+		const float FontSize = 12.0f * Scale;
+		const float Alpha = HudLayout::AlphaFactor(HudLayout::MODULE_FRAMETIME);
+
+		TextRender()->TextColor(ColorRGBA(1.0f, 1.0f, 1.0f, Alpha));
+		if(HudLayout::HasPositionOverride(HudLayout::MODULE_FRAMETIME))
+		{
+			TextRender()->Text(Layout.m_X, Layout.m_Y, FontSize, aBuf, -1.0f);
+		}
+		else
+		{
+			TextRender()->Text(m_Width - 10 - TextRender()->TextWidth(FontSize, aBuf, -1, -1.0f), NextY, FontSize, aBuf, -1.0f);
+		}
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
 	}
 
 	if(g_Config.m_TcMiniDebug)
