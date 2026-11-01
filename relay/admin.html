@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AClient - Panel de Administracion de Cuentas</title>
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --card-bg: #151b28;
+      --card-hover: #1a2233;
+      --border: #232b3e;
+      --border-focus: #3b82f6;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --success: #10b981;
+      --success-bg: rgba(16, 185, 129, 0.12);
+      --warning: #f59e0b;
+      --warning-bg: rgba(245, 158, 11, 0.12);
+      --danger: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.12);
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    header {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .header-title h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .badge-status {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.2rem 0.55rem;
+      border-radius: 9999px;
+      background: var(--success-bg);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    /* Container */
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      flex: 1;
+    }
+
+    /* Auth Screen */
+    #auth-screen {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 60vh;
+    }
+    .auth-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    }
+    .auth-card h2 {
+      font-size: 1.35rem;
+      margin-bottom: 0.5rem;
+    }
+    .auth-card p {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin-bottom: 1.5rem;
+    }
+
+    /* Metrics Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .metric-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .metric-label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+    .metric-value {
+      font-size: 1.75rem;
+      font-weight: 700;
+    }
+
+    /* Toolbar */
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .search-input {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.6rem 0.85rem;
+      color: var(--text);
+      font-size: 0.875rem;
+      min-width: 260px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .search-input:focus {
+      border-color: var(--border-focus);
+    }
+    .toolbar-buttons {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      padding: 0.55rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s ease-in-out;
+      text-decoration: none;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+    .btn-outline {
+      background: transparent;
+      border-color: var(--border);
+      color: var(--text);
+    }
+    .btn-outline:hover {
+      background: var(--card-hover);
+      border-color: var(--border-focus);
+    }
+    .btn-warning {
+      background: var(--warning-bg);
+      border-color: rgba(245, 158, 11, 0.3);
+      color: var(--warning);
+    }
+    .btn-warning:hover {
+      background: rgba(245, 158, 11, 0.22);
+    }
+    .btn-danger {
+      background: var(--danger-bg);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: var(--danger);
+    }
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.22);
+    }
+    .btn-sm {
+      padding: 0.35rem 0.65rem;
+      font-size: 0.775rem;
+      border-radius: 6px;
+    }
+
+    /* Table */
+    .table-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    th {
+      background: rgba(11, 15, 23, 0.5);
+      padding: 0.85rem 1rem;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+    }
+    td {
+      padding: 0.9rem 1rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.875rem;
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--card-hover); }
+
+    .user-pill {
+      font-family: monospace;
+      font-weight: 700;
+      color: #38bdf8;
+      font-size: 0.95rem;
+    }
+    .pass-cell {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: monospace;
+    }
+    .pass-hidden {
+      color: var(--text-muted);
+      letter-spacing: 0.15em;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .status-badge.bound {
+      background: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    .status-badge.unbound {
+      background: var(--success-bg);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .status-badge.active {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+    .status-badge.suspended {
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+
+    .table-actions {
+      display: flex;
+      gap: 0.4rem;
+      align-items: center;
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .modal {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    .modal h3 {
+      font-size: 1.15rem;
+      margin-bottom: 1rem;
+    }
+    .form-group {
+      margin-bottom: 1rem;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .form-input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.65rem 0.85rem;
+      color: var(--text);
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .form-input:focus { border-color: var(--border-focus); }
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.6rem;
+      margin-top: 1.5rem;
+    }
+
+    /* Toast */
+    #toast-container {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      z-index: 2000;
+    }
+    .toast {
+      background: #1e293b;
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 0.75rem 1.1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      animation: slideIn 0.2s ease-out;
+    }
+    .toast.success { border-color: var(--success); }
+    .toast.error { border-color: var(--danger); }
+    @keyframes slideIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    /* Empty state */
+    .empty-state {
+      padding: 3rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-title">
+      <h1>AClient Accounts Manager</h1>
+      <span class="badge-status">Cloudflare KV</span>
+    </div>
+    <div class="header-actions" id="header-actions" style="display: none;">
+      <button class="btn btn-outline btn-sm" onclick="promptChangeKey()">Cambiar Clave</button>
+      <button class="btn btn-outline btn-sm" onclick="logoutAdmin()">Cerrar Sesion</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- Pantalla de Login con Clave Admin -->
+    <div id="auth-screen">
+      <div class="auth-card">
+        <h2>Panel de Administracion</h2>
+        <p>Ingresa tu clave de administrador para gestionar las cuentas de AClient.</p>
+        <div class="form-group">
+          <label>Clave Maestra</label>
+          <input type="password" id="admin-key-input" class="form-input" placeholder="Clave secreta" autofocus onkeydown="if(event.key==='Enter') loginAdmin()">
+        </div>
+        <button class="btn btn-primary" style="width: 100%;" onclick="loginAdmin()">Ingresar al Panel</button>
+      </div>
+    </div>
+
+    <!-- Pantalla Principal del Dashboard -->
+    <div id="dashboard-screen" style="display: none;">
+      
+      <!-- Metricas -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <span class="metric-label">Total Cuentas</span>
+          <span class="metric-value" id="metric-total">0</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Cuentas Activas</span>
+          <span class="metric-value" style="color: var(--success);" id="metric-active">0</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">HWIDs Vinculados</span>
+          <span class="metric-value" style="color: #60a5fa;" id="metric-bound">0</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">HWIDs Libres</span>
+          <span class="metric-value" style="color: var(--warning);" id="metric-unbound">0</span>
+        </div>
+      </div>
+
+      <!-- Barra de herramientas -->
+      <div class="toolbar">
+        <input type="text" id="search-input" class="search-input" placeholder="Buscar por usuario..." oninput="filterUsers()">
+        <div class="toolbar-buttons">
+          <button class="btn btn-primary" onclick="openCreateModal()">+ Nueva Cuenta</button>
+          <button class="btn btn-warning" onclick="resetAllHwids()">Blanquear Todos los HWIDs</button>
+          <button class="btn btn-outline" onclick="loadUsers()">Refrescar</button>
+        </div>
+      </div>
+
+      <!-- Tabla de Cuentas -->
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              <th>Contrasena</th>
+              <th>Estado HWID</th>
+              <th>Acceso</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="users-tbody">
+            <tr>
+              <td colspan="5" class="empty-state">Cargando cuentas...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modal Crear/Editar Usuario -->
+  <div class="modal-backdrop" id="user-modal">
+    <div class="modal">
+      <h3 id="modal-title">Nueva Cuenta</h3>
+      <div class="form-group">
+        <label>Usuario</label>
+        <input type="text" id="modal-user" class="form-input" placeholder="Ej: agus">
+      </div>
+      <div class="form-group">
+        <label>Contrasena</label>
+        <input type="text" id="modal-pass" class="form-input" placeholder="Ej: 123">
+      </div>
+      <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem;">
+        <input type="checkbox" id="modal-active" checked style="width: 1.1rem; height: 1.1rem; accent-color: var(--primary);">
+        <label for="modal-active" style="margin: 0; cursor: pointer; text-transform: none; font-size: 0.9rem;">Cuenta Activa (permitir acceso)</label>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeUserModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveUser()">Guardar Cuenta</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script>
+    // URL base del backend Cloudflare Worker
+    const API_BASE = window.location.origin.includes('workers.dev') 
+      ? window.location.origin 
+      : 'https://dry-water-e748.agus-maya52.workers.dev';
+
+    let g_AdminKey = localStorage.getItem('aclient_admin_key') || '';
+    let g_Users = [];
+    let g_IsEditing = false;
+
+    // Inicializacion
+    window.addEventListener('DOMContentLoaded', () => {
+      if (g_AdminKey) {
+        verifyAndLoad();
+      }
+    });
+
+    function showToast(message, type = 'success') {
+      const c = document.getElementById('toast-container');
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.innerText = message;
+      c.appendChild(t);
+      setTimeout(() => {
+        t.style.opacity = '0';
+        setTimeout(() => t.remove(), 200);
+      }, 3000);
+    }
+
+    function loginAdmin() {
+      const input = document.getElementById('admin-key-input');
+      const key = input.value.trim();
+      if (!key) return;
+      g_AdminKey = key;
+      localStorage.setItem('aclient_admin_key', g_AdminKey);
+      verifyAndLoad();
+    }
+
+    function logoutAdmin() {
+      localStorage.removeItem('aclient_admin_key');
+      g_AdminKey = '';
+      document.getElementById('auth-screen').style.display = 'flex';
+      document.getElementById('dashboard-screen').style.display = 'none';
+      document.getElementById('header-actions').style.display = 'none';
+      document.getElementById('admin-key-input').value = '';
+    }
+
+    function promptChangeKey() {
+      const n = prompt('Ingresa la nueva clave de administrador:', g_AdminKey);
+      if (n !== null && n.trim() !== '') {
+        g_AdminKey = n.trim();
+        localStorage.setItem('aclient_admin_key', g_AdminKey);
+        loadUsers();
+      }
+    }
+
+    async function verifyAndLoad() {
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/users`, {
+          headers: { 'X-Admin-Key': g_AdminKey }
+        });
+        if (res.status === 401) {
+          showToast('Clave de administrador incorrecta', 'error');
+          logoutAdmin();
+          return;
+        }
+        const data = await res.json();
+        if (data.status === 'ok') {
+          document.getElementById('auth-screen').style.display = 'none';
+          document.getElementById('dashboard-screen').style.display = 'block';
+          document.getElementById('header-actions').style.display = 'flex';
+          renderUsers(data.users || []);
+        } else {
+          showToast(data.message || 'Error al conectar', 'error');
+        }
+      } catch (e) {
+        showToast('Error conectando al servidor Cloudflare', 'error');
+      }
+    }
+
+    async function loadUsers() {
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/users`, {
+          headers: { 'X-Admin-Key': g_AdminKey }
+        });
+        const data = await res.json();
+        if (data.status === 'ok') {
+          renderUsers(data.users || []);
+        } else {
+          showToast(data.message, 'error');
+        }
+      } catch (e) {
+        showToast('Error al recargar usuarios', 'error');
+      }
+    }
+
+    function renderUsers(users) {
+      g_Users = users;
+      updateMetrics();
+      filterUsers();
+    }
+
+    function updateMetrics() {
+      document.getElementById('metric-total').innerText = g_Users.length;
+      document.getElementById('metric-active').innerText = g_Users.filter(u => u.active !== false).length;
+      document.getElementById('metric-bound').innerText = g_Users.filter(u => u.hwid).length;
+      document.getElementById('metric-unbound').innerText = g_Users.filter(u => !u.hwid).length;
+    }
+
+    function filterUsers() {
+      const q = document.getElementById('search-input').value.toLowerCase().trim();
+      const filtered = g_Users.filter(u => u.user.toLowerCase().includes(q));
+      const tbody = document.getElementById('users-tbody');
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No se encontraron cuentas</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(u => {
+        const isBound = Boolean(u.hwid);
+        const isActive = u.active !== false;
+        const hwidTooltip = isBound ? `HWID: ${u.hwid.substring(0, 16)}...` : 'Sin vincular';
+
+        return `
+          <tr>
+            <td>
+              <span class="user-pill">${escapeHtml(u.user)}</span>
+            </td>
+            <td>
+              <div class="pass-cell">
+                <span id="pass-${escapeHtml(u.user)}" class="pass-hidden">••••••••</span>
+                <button class="btn btn-outline btn-sm" onclick="togglePass('${escapeHtml(u.user)}', '${escapeHtml(u.password)}')">Ver</button>
+                <button class="btn btn-outline btn-sm" onclick="copyText('${escapeHtml(u.password)}')">Copiar</button>
+              </div>
+            </td>
+            <td>
+              <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+                <span class="status-badge ${isBound ? 'bound' : 'unbound'}" title="${hwidTooltip}">
+                  ${isBound ? 'Vinculado' : 'Libre / Pendiente'}
+                </span>
+                ${isBound ? `<button class="btn btn-warning btn-sm" onclick="resetUserHwid('${escapeHtml(u.user)}')">Resetear HWID</button>` : ''}
+              </div>
+            </td>
+            <td>
+              <button class="btn btn-sm ${isActive ? 'btn-outline' : 'btn-danger'}" onclick="toggleActive('${escapeHtml(u.user)}', ${!isActive})">
+                ${isActive ? 'Activo' : 'Suspendido'}
+              </button>
+            </td>
+            <td>
+              <div class="table-actions">
+                <button class="btn btn-outline btn-sm" onclick="openEditModal('${escapeHtml(u.user)}', '${escapeHtml(u.password)}', ${isActive})">Editar</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteUser('${escapeHtml(u.user)}')">Eliminar</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function togglePass(username, plainPass) {
+      const el = document.getElementById(`pass-${username}`);
+      if (el.innerText === '••••••••') {
+        el.innerText = plainPass;
+        el.classList.remove('pass-hidden');
+      } else {
+        el.innerText = '••••••••';
+        el.classList.add('pass-hidden');
+      }
+    }
+
+    function copyText(txt) {
+      navigator.clipboard.writeText(txt);
+      showToast('Copiado al portapapeles');
+    }
+
+    // Modal Crear / Editar
+    function openCreateModal() {
+      g_IsEditing = false;
+      document.getElementById('modal-title').innerText = 'Nueva Cuenta';
+      document.getElementById('modal-user').value = '';
+      document.getElementById('modal-user').disabled = false;
+      document.getElementById('modal-pass').value = '123';
+      document.getElementById('modal-active').checked = true;
+      document.getElementById('user-modal').classList.add('open');
+      setTimeout(() => document.getElementById('modal-user').focus(), 50);
+    }
+
+    function openEditModal(user, pass, active) {
+      g_IsEditing = true;
+      document.getElementById('modal-title').innerText = `Editar Cuenta: ${user}`;
+      document.getElementById('modal-user').value = user;
+      document.getElementById('modal-user').disabled = true;
+      document.getElementById('modal-pass').value = pass;
+      document.getElementById('modal-active').checked = active;
+      document.getElementById('user-modal').classList.add('open');
+      setTimeout(() => document.getElementById('modal-pass').focus(), 50);
+    }
+
+    function closeUserModal() {
+      document.getElementById('user-modal').classList.remove('open');
+    }
+
+    async function saveUser() {
+      const user = document.getElementById('modal-user').value.trim();
+      const password = document.getElementById('modal-pass').value.trim();
+      const active = document.getElementById('modal-active').checked;
+
+      if (!user || !password) {
+        showToast('Completa usuario y contrasena', 'error');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/user`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Admin-Key': g_AdminKey
+          },
+          body: JSON.stringify({ user, password, active })
+        });
+        const data = await res.json();
+        if (data.status === 'ok') {
+          showToast(data.message);
+          closeUserModal();
+          loadUsers();
+        } else {
+          showToast(data.message, 'error');
+        }
+      } catch (e) {
+        showToast('Error al guardar usuario', 'error');
+      }
+    }
+
+    async function resetUserHwid(user) {
+      if (!confirm(`Deseas resetear el HWID de "${user}"?\n\nAl resetearlo, podra iniciar sesion desde una nueva computadora y se vinculara a la misma.`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/reset-hwid`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Admin-Key': g_AdminKey
+          },
+          body: JSON.stringify({ user })
+        });
+        const data = await res.json();
+        if (data.status === 'ok') {
+          showToast(`HWID de "${user}" reseteado con exito`);
+          loadUsers();
+        } else {
+          showToast(data.message, 'error');
+        }
+      } catch (e) {
+        showToast('Error al resetear HWID', 'error');
+      }
+    }
+
+    async function resetAllHwids() {
+      if (!confirm('ATENCION: Deseas blanquear el HWID de TODAS las cuentas registradas?\n\nTodas las cuentas pasaran a estado "Libre" y se revincularan automaticamente a la PC desde la que inicien sesion la proxima vez.')) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/reset-hwid`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Admin-Key': g_AdminKey
+          },
+          body: JSON.stringify({ all: true })
+        });
+        const data = await res.json();
+        if (data.status === 'ok') {
+          showToast(data.message);
+          loadUsers();
+        } else {
+          showToast(data.message, 'error');
+        }
+      } catch (e) {
+        showToast('Error al blanquear HWIDs', 'error');
+      }
+    }
+
+    async function toggleActive(user, newActiveState) {
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/toggle-active`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Admin-Key': g_AdminKey
+          },
+          body: JSON.stringify({ user, active: newActiveState })
+        });
+        const data = await res.json();
+        if (data.status === 'ok') {
+          showToast(data.message);
+          loadUsers();
+        } else {
+          showToast(data.message, 'error');
+        }
+      } catch (e) {
+        showToast('Error al cambiar estado de cuenta', 'error');
+      }
+    }
+
+    async function deleteUser(user) {
+      if (!confirm(`Seguro que deseas eliminar definitivamente la cuenta "${user}"?`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/delete-user`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Admin-Key': g_AdminKey
+          },
+          body: JSON.stringify({ user })
+        });
+        const data = await res.json();
+        if (data.status === 'ok') {
+          showToast(`Cuenta "${user}" eliminada`);
+          loadUsers();
+        } else {
+          showToast(data.message, 'error');
+        }
+      } catch (e) {
+        showToast('Error al eliminar usuario', 'error');
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+  </script>
+</body>
+</html>

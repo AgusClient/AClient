@@ -3,6 +3,8 @@
 
 const http = require('http');
 const url = require('url');
+const fs = require('fs');
+const path = require('path');
 
 const PORT = process.env.PORT || 3000;
 const TTL_MS = 5 * 60 * 1000; // 5 minutos de inactividad
@@ -39,7 +41,7 @@ const server = http.createServer((req, res) => {
   // Encabezados CORS y tipo de respuesta
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, User-Agent');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, User-Agent, X-Admin-Key');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -48,6 +50,136 @@ const server = http.createServer((req, res) => {
   }
 
   const parsedUrl = url.parse(req.url, true);
+
+  // ==========================================
+  // PANEL WEB DE ADMINISTRACION & API
+  // ==========================================
+  if (parsedUrl.pathname === '/admin' || parsedUrl.pathname === '/admin.html') {
+    const adminHtmlPath = path.join(__dirname, 'admin.html');
+    if (fs.existsSync(adminHtmlPath)) {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(fs.readFileSync(adminHtmlPath));
+      return;
+    }
+  }
+
+  if (parsedUrl.pathname.startsWith('/api/admin/')) {
+    const adminKey = req.headers['x-admin-key'] || parsedUrl.query.admin_key;
+    const expectedKey = process.env.ADMIN_KEY || 'agus2026';
+
+    if (!adminKey || adminKey !== expectedKey) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'error', message: 'No autorizado. Clave de administrador incorrecta.' }));
+      return;
+    }
+
+    if (parsedUrl.pathname === '/api/admin/users' && req.method === 'GET') {
+      const list = [];
+      for (const [name, data] of users.entries()) {
+        list.push({
+          user: name,
+          password: data.password || '',
+          hwid: data.hwid || null,
+          active: data.active !== false,
+          activated_at: data.activated_at || null,
+        });
+      }
+      list.sort((a, b) => a.user.localeCompare(b.user));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'ok', users: list }));
+      return;
+    }
+
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk;
+      if (body.length > 1e6) req.destroy();
+    });
+
+    req.on('end', () => {
+      try {
+        const payload = body ? JSON.parse(body) : {};
+
+        if (parsedUrl.pathname === '/api/admin/user' && req.method === 'POST') {
+          const { user, password, active, hwid } = payload;
+          if (!user || !user.trim()) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ status: 'error', message: 'El usuario es obligatorio' }));
+            return;
+          }
+          const norm = user.trim().toLowerCase();
+          const existing = users.get(norm) || {};
+          users.set(norm, {
+            ...existing,
+            password: password !== undefined ? String(password).trim() : (existing.password || '123'),
+            active: active !== undefined ? active : (existing.active !== false),
+            hwid: hwid !== undefined ? hwid : existing.hwid,
+          });
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: 'ok', message: `Usuario "${norm}" guardado`, user: norm }));
+          return;
+        }
+
+        if (parsedUrl.pathname === '/api/admin/reset-hwid' && req.method === 'POST') {
+          const { user, all } = payload;
+          if (all) {
+            let count = 0;
+            for (const [name, data] of users.entries()) {
+              data.hwid = null;
+              data.activated_at = null;
+              count++;
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ status: 'ok', message: `Se blanquearon los HWIDs de ${count} cuentas`, count }));
+            return;
+          }
+          const norm = user ? user.trim().toLowerCase() : '';
+          const data = users.get(norm);
+          if (!data) {
+            res.writeHead(404, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ status: 'error', message: 'Usuario no encontrado' }));
+            return;
+          }
+          data.hwid = null;
+          data.activated_at = null;
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: 'ok', message: `HWID de "${norm}" reseteado con exito` }));
+          return;
+        }
+
+        if (parsedUrl.pathname === '/api/admin/toggle-active' && req.method === 'POST') {
+          const { user, active } = payload;
+          const norm = user ? user.trim().toLowerCase() : '';
+          const data = users.get(norm);
+          if (!data) {
+            res.writeHead(404, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ status: 'error', message: 'Usuario no encontrado' }));
+            return;
+          }
+          data.active = Boolean(active);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: 'ok', message: `Estado de "${norm}" cambiado a ${data.active ? 'Activo' : 'Suspendido'}` }));
+          return;
+        }
+
+        if (parsedUrl.pathname === '/api/admin/delete-user' && req.method === 'POST') {
+          const { user } = payload;
+          const norm = user ? user.trim().toLowerCase() : '';
+          users.delete(norm);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: 'ok', message: `Cuenta "${norm}" eliminada` }));
+          return;
+        }
+
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'error', message: 'Endpoint no encontrado' }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'error', message: 'Payload invalido' }));
+      }
+    });
+    return;
+  }
 
   // ==========================================
   // AUTENTICACION HWID & LOGIN
