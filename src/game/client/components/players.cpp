@@ -9,8 +9,10 @@
 
 #include <engine/client/enums.h>
 #include <engine/demo.h>
+#include <engine/font_icons.h>
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
+#include <engine/textrender.h>
 
 #include <generated/client_data.h>
 #include <generated/client_data7.h>
@@ -1096,6 +1098,37 @@ void CPlayers::RenderPlayer(
 	if(ClientId < 0)
 		return;
 
+	if(!RenderGhost && (Player.m_PlayerFlags & PLAYERFLAG_IN_MENU))
+	{
+		if(!m_InMenuTextContainerIndex.Valid())
+		{
+			const unsigned OldRenderFlags = TextRender()->GetRenderFlags();
+			const ColorRGBA OldOutlineColor = TextRender()->GetTextOutlineColor();
+			TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+			TextRender()->SetRenderFlags(ETextRenderFlags::TEXT_RENDER_FLAG_ONLY_ADVANCE_WIDTH);
+			TextRender()->TextOutlineColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+			CTextCursor Cursor;
+			Cursor.m_FontSize = 20.0f;
+			TextRender()->CreateOrAppendTextContainer(m_InMenuTextContainerIndex, &Cursor, FontIcon::GEAR);
+			m_InMenuTextWidth = TextRender()->GetBoundingBoxTextContainer(m_InMenuTextContainerIndex).m_W;
+
+			TextRender()->TextOutlineColor(OldOutlineColor);
+			TextRender()->SetRenderFlags(OldRenderFlags);
+			TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+		}
+
+		if(m_InMenuTextContainerIndex.Valid())
+		{
+			TextRender()->RenderTextContainer(
+				m_InMenuTextContainerIndex,
+				ColorRGBA(1.0f, 1.0f, 1.0f, Alpha),
+				ColorRGBA(0.0f, 0.0f, 0.0f, Alpha),
+				Position.x - m_InMenuTextWidth * 0.5f,
+				Position.y - 76.0f);
+		}
+	}
+
 	int QuadOffsetToEmoticon = NUM_WEAPONS * 2 + 2 + 2;
 	if((Player.m_PlayerFlags & PLAYERFLAG_CHATTING) && !GameClient()->m_aClients[ClientId].m_Afk && !g_Config.m_AcHideOthersChatBubbles)
 	{
@@ -1430,4 +1463,9 @@ void CPlayers::OnInit()
 
 	CreateNinjaTeeRenderInfo();
 	CreateSpectatorTeeRenderInfo();
+}
+
+void CPlayers::OnWindowResize()
+{
+	TextRender()->DeleteTextContainer(m_InMenuTextContainerIndex);
 }
