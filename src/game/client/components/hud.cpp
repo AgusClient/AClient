@@ -592,7 +592,7 @@ void CHud::RenderTextInfo()
 	{
 		char aBuf[64];
 		const float FrameTimeMs = Client()->FrameTimeAverage() * 1000.0f;
-		str_format(aBuf, sizeof(aBuf), "%.1f ms", FrameTimeMs);
+		str_format(aBuf, sizeof(aBuf), "%.1f", FrameTimeMs);
 		TextRender()->Text(m_Width - 10 - TextRender()->TextWidth(12, aBuf, -1, -1.0f), NextY, 12, aBuf, -1.0f);
 	}
 
