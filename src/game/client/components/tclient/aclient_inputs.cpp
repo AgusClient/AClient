@@ -71,22 +71,6 @@ namespace
 		return RawAmount / 100.0f;
 	}
 
-	float AClientModeOffsetTicks(bool ForOthers)
-	{
-		const int RawAmount = ForOthers ? g_Config.m_AcAClientInputOthersAmount : g_Config.m_AcAClientInputAmount;
-		if(RawAmount <= 0)
-			return 0.0f;
-
-		float Offset = RawAmount / 100.0f;
-
-		if(g_Config.m_AcAClientInputLatencyComp > 0)
-			Offset *= 1.0f + (g_Config.m_AcAClientInputLatencyComp / 100.0f);
-
-		return Offset;
-	}
-
-
-
 	float AX30ModeOffsetTicks(bool ForOthers)
 	{
 		const int RawAmount = ForOthers ? g_Config.m_AcAX30OthersAmount : g_Config.m_AcAX30InputAmount;
@@ -115,7 +99,6 @@ float AcInputs::EffectiveOffsetTicks(bool ForOthers)
 	case AC_INPUTS_DELTA: return DeltaModeOffsetTicks(ForOthers);
 	case AC_INPUTS_F: return FModeOffsetTicks(ForOthers);
 	case AC_INPUTS_CLOUD: return CloudModeOffsetTicks(ForOthers);
-	case AC_INPUTS_ACLIENT: return AClientModeOffsetTicks(ForOthers);
 	case AC_INPUTS_AX30: return AX30ModeOffsetTicks(ForOthers);
 	case AC_INPUTS_OFF:
 	default:
@@ -160,7 +143,7 @@ float AcInputs::BestInterpolationAmount(float Fraction, float DeltaLength, bool 
 	const float T = std::clamp(Fraction, 0.0f, 1.0f);
 	const float T2 = T * T;
 	const float CubicT = 3.0f * T2 - 2.0f * T2 * T;
-	const int InterpMode = (g_Config.m_AcInputs == AC_INPUTS_ACLIENT) ? g_Config.m_AcAClientInputInterpolation : g_Config.m_AcBestInputInterpolation;
+	const int InterpMode = g_Config.m_AcBestInputInterpolation;
 	switch(std::clamp(InterpMode, 1, 3))
 	{
 	case 2:
@@ -213,11 +196,6 @@ bool AcInputs::CloudOthers()
 	return g_Config.m_AcInputs == AC_INPUTS_CLOUD && g_Config.m_AcCloudInputOthers != 0;
 }
 
-bool AcInputs::AClientOthers()
-{
-	return g_Config.m_AcInputs == AC_INPUTS_ACLIENT && g_Config.m_AcAClientInputOthers != 0;
-}
-
 bool AcInputs::AX30Others()
 {
 	return g_Config.m_AcInputs == AC_INPUTS_AX30 && g_Config.m_AcAX30Others != 0;
@@ -225,12 +203,12 @@ bool AcInputs::AX30Others()
 
 bool AcInputs::AnyOthers()
 {
-	return FastOthers() || BestOthers() || SaikoOthers() || DeltaOthers() || FOthers() || CloudOthers() || AClientOthers() || AX30Others();
+	return FastOthers() || BestOthers() || SaikoOthers() || DeltaOthers() || FOthers() || CloudOthers() || AX30Others();
 }
 
 bool AcInputs::ImmediateOthers()
 {
-	return BestOthers() || SaikoOthers() || DeltaOthers() || AClientOthers() || AX30Others();
+	return BestOthers() || SaikoOthers() || DeltaOthers() || AX30Others();
 }
 
 vec2 AcInputs::AX30_EvaluateTrajectory(vec2 P_prev, vec2 P0, vec2 P1, vec2 P_next, float Fraction, int Mode)

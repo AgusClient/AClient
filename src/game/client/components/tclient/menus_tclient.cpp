@@ -3946,17 +3946,17 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	Column.HSplitTop(LineSize, &Button, &Column);
 	{
-		static CButtonContainer s_aInputButtons[9];
-		static const char *s_apInputNames[] = {"Off", "AClient", "aX30", "Fast", "Best", "Saiko", "Delta", "F", "Cloud"};
-		static const int s_aInputValues[] = {AC_INPUTS_OFF, AC_INPUTS_ACLIENT, AC_INPUTS_AX30, AC_INPUTS_FAST, AC_INPUTS_BEST, AC_INPUTS_SAIKO, AC_INPUTS_DELTA, AC_INPUTS_F, AC_INPUTS_CLOUD};
+		static CButtonContainer s_aInputButtons[8];
+		static const char *s_apInputNames[] = {"Off", "aX30", "Fast", "Best", "Saiko", "Delta", "F", "Cloud"};
+		static const int s_aInputValues[] = {AC_INPUTS_OFF, AC_INPUTS_AX30, AC_INPUTS_FAST, AC_INPUTS_BEST, AC_INPUTS_SAIKO, AC_INPUTS_DELTA, AC_INPUTS_F, AC_INPUTS_CLOUD};
 
 		CUIRect ButtonsRect = Button;
 		const float Spacing = 2.0f;
-		const float ModeButtonWidth = (ButtonsRect.w - Spacing * 8.0f) / 9.0f;
-		for(int i = 0; i < 9; ++i)
+		const float ModeButtonWidth = (ButtonsRect.w - Spacing * 7.0f) / 8.0f;
+		for(int i = 0; i < 8; ++i)
 		{
 			CUIRect ModeButton;
-			if(i < 8)
+			if(i < 7)
 			{
 				ButtonsRect.VSplitLeft(ModeButtonWidth, &ModeButton, &ButtonsRect);
 				ButtonsRect.VSplitLeft(Spacing, nullptr, &ButtonsRect);
@@ -3964,7 +3964,7 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 			else
 				ModeButton = ButtonsRect;
 
-			int Corners = (i == 0) ? IGraphics::CORNER_L : ((i == 8) ? IGraphics::CORNER_R : IGraphics::CORNER_NONE);
+			int Corners = (i == 0) ? IGraphics::CORNER_L : ((i == 7) ? IGraphics::CORNER_R : IGraphics::CORNER_NONE);
 
 			if(DoButton_Menu(&s_aInputButtons[i], TCLocalize(s_apInputNames[i]), g_Config.m_AcInputs == s_aInputValues[i], &ModeButton, BUTTONFLAG_LEFT, nullptr, Corners))
 			{
@@ -4023,56 +4023,6 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		{
 			Column.HSplitTop(LineSize, &Button, &Column);
 			DoTickAmountSlider(&g_Config.m_AcAX30OthersAmount, &Button, TCLocalize("Others offset"), 0, 1000);
-			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcFastInputOthersOnlyFrozen, TCLocalize("Only when frozen"), &g_Config.m_AcFastInputOthersOnlyFrozen, &Column, LineSize);
-		}
-	}
-	else if(g_Config.m_AcInputs == AC_INPUTS_ACLIENT)
-	{
-		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		Column.HSplitTop(LineSize, &Button, &Column);
-		DoTickAmountSlider(&g_Config.m_AcAClientInputAmount, &Button, TCLocalize("Prediction offset"), 0, 1000);
-
-		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		Column.HSplitTop(LineSize, &Button, &Column);
-		Ui()->DoScrollbarOption(&g_Config.m_AcAClientInputLatencyComp, &g_Config.m_AcAClientInputLatencyComp, &Button, TCLocalize("Latency compensation"), 0, 50, &CUi::ms_LinearScrollbarScale, 0, "%");
-
-		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		Column.HSplitTop(LineSize, &Label, &Column);
-		Ui()->DoLabel(&Label, TCLocalize("Interpolation"), Label.h * CUi::ms_FontmodHeight * 0.8f, TEXTALIGN_ML);
-
-		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		Column.HSplitTop(LineSize, &Button, &Column);
-		{
-			static CButtonContainer s_aAClientInterpolationButtons[3];
-			static const char *s_apInterpolationNames[] = {"Linear", "Cubic", "Smooth"};
-			static const int s_aInterpolationValues[] = {1, 2, 3};
-
-			CUIRect ButtonsRect = Button;
-			const float Spacing = 2.0f;
-			const float InterpWidth = (ButtonsRect.w - Spacing * 2.0f) / 3.0f;
-			for(int i = 0; i < 3; ++i)
-			{
-				CUIRect InterpButton;
-				if(i < 2)
-				{
-					ButtonsRect.VSplitLeft(InterpWidth, &InterpButton, &ButtonsRect);
-					ButtonsRect.VSplitLeft(Spacing, nullptr, &ButtonsRect);
-				}
-				else
-					InterpButton = ButtonsRect;
-
-				int Corners = (i == 0) ? IGraphics::CORNER_L : ((i == 2) ? IGraphics::CORNER_R : IGraphics::CORNER_NONE);
-				if(DoButton_Menu(&s_aAClientInterpolationButtons[i], TCLocalize(s_apInterpolationNames[i]), g_Config.m_AcAClientInputInterpolation == s_aInterpolationValues[i], &InterpButton, BUTTONFLAG_LEFT, nullptr, Corners))
-					g_Config.m_AcAClientInputInterpolation = s_aInterpolationValues[i];
-			}
-		}
-
-		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcAClientInputOthers, TCLocalize("AClient input others"), &g_Config.m_AcAClientInputOthers, &Column, LineSize);
-		if(g_Config.m_AcAClientInputOthers)
-		{
-			Column.HSplitTop(LineSize, &Button, &Column);
-			DoTickAmountSlider(&g_Config.m_AcAClientInputOthersAmount, &Button, TCLocalize("Others offset"), 0, 1000);
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcFastInputOthersOnlyFrozen, TCLocalize("Only when frozen"), &g_Config.m_AcFastInputOthersOnlyFrozen, &Column, LineSize);
 		}
 	}
@@ -4907,6 +4857,16 @@ void CMenus::RenderSettingsAClientMod(CUIRect MainView)
 
 	DoCheckboxWithHelp(&g_Config.m_ClModRecordOnPunish, TCLocalize("Auto-record 3-min demo on punish (Kick/Ban)"), TCLocalize("Automatically saves the last 3 minutes of gameplay via rolling buffer to demos/replays/ when a kick or ban is confirmed."), &g_Config.m_ClModRecordOnPunish, &Column, LineSize);
 	DoCheckboxWithHelp(&g_Config.m_ClModAllowTargetDummy, TCLocalize("Allow moderating local dummy (testing)"), TCLocalize("Enables kick, ban, and mute buttons against your own dummy on Scoreboard so you can test moderation actions locally."), &g_Config.m_ClModAllowTargetDummy, &Column, LineSize);
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize + 4.0f, &Button, &Column);
+	static CButtonContainer s_BtnOpenDiscordModChannel;
+	ColorRGBA DiscordColor = ColorRGBA(0.35f, 0.40f, 0.95f, 0.75f * Ui()->ButtonColorMul(&s_BtnOpenDiscordModChannel));
+	if(DoButton_Menu(&s_BtnOpenDiscordModChannel, TCLocalize("Abrir Canal en Discord (App)"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, DiscordColor))
+	{
+		if(!Client()->ViewLink("discord://-/channels/342003344476471296/channel-browser"))
+			Client()->ViewLink("https://discord.com/channels/342003344476471296/channel-browser");
+	}
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	s_SectionBoxesMod.back().h = Column.y - s_SectionBoxesMod.back().y;
