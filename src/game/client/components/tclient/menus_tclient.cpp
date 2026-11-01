@@ -3833,6 +3833,8 @@ void CMenus::RenderSettingsAClientCommands(CUIRect MainView)
 	DrawCommandCard(Column, "ac_notify_unfreeze [0|1]", TCLocalize("Alert when unfreezing while tabbed out / minimized."));
 	DrawCommandCard(Column, "ac_change_tile_notification [0|1]", TCLocalize("Alert when moved or tile changes while tabbed out."));
 	DrawCommandCard(Column, "ac_notify_sound / flash / desktop", TCLocalize("Independent alert channels (Sound, Taskbar flash, Toast)."));
+	DrawCommandCard(Column, "cl_shownotifications [0|1]", TCLocalize("Desktop notifications on chat mentions and alerts."));
+	DrawCommandCard(Column, "/notifications / /notif [0|1]", TCLocalize("Toggle desktop notifications on or off directly from chat."));
 	s_SectionBoxesCmds.back().h = Column.y - s_SectionBoxesCmds.back().y;
 
 	// 5. Fast Practice (Ghost Mode)
@@ -4482,6 +4484,8 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	{
 		g_Config.m_AcShowChatClient = g_Config.m_AcShowChatClient;
 	}
+
+	DoCheckboxWithHelp(&g_Config.m_ClShowNotifications, TCLocalize("Desktop notifications (Chat mentions & Alerts)"), TCLocalize("Shows a Windows desktop toast notification banner when someone mentions your name in chat or on vote alerts while the game is minimized or inactive."), &g_Config.m_ClShowNotifications, &Column, LineSize);
 
 	if(DoCheckboxWithHelp(&g_Config.m_AcSilentTyping, TCLocalize("Silent typing (Hide 3-dots bubble when typing)"), TCLocalize("Prevents the 3-dots bubble (...) from appearing above your Tee when the chat is open."), &g_Config.m_AcSilentTyping, &Column, LineSize))
 	{

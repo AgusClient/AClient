@@ -89,6 +89,12 @@ void CMenus::RenderSettingsGeneral(CUIRect MainView)
 		if(DoButton_CheckBox(&g_Config.m_ClSkipStartMenu, Localize("Skip the main menu"), g_Config.m_ClSkipStartMenu, &Button))
 			g_Config.m_ClSkipStartMenu ^= 1;
 
+		Left.HSplitTop(5.0f, nullptr, &Left);
+		Left.HSplitTop(20.0f, &Button, &Left);
+		if(DoButton_CheckBox(&g_Config.m_ClShowNotifications, TCLocalize("Show desktop notifications"), g_Config.m_ClShowNotifications, &Button))
+			g_Config.m_ClShowNotifications ^= 1;
+		GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClShowNotifications, &Button, TCLocalize("Show desktop notifications when mentioned in chat or alerted while minimized"));
+
 		Left.HSplitTop(10.0f, nullptr, &Left);
 		Left.HSplitTop(20.0f, &Button, &Left);
 		str_copy(aBuf, " ");
