@@ -1,4 +1,5 @@
 #include "aclient_inputs.h"
+#include "ax30/ax30.h"
 
 #include <base/math.h>
 #include <engine/shared/config.h>
@@ -84,9 +85,7 @@ namespace
 		return Offset;
 	}
 
-	static int s_aPingHistory[16] = {0};
-	static int s_PingHistoryIndex = 0;
-	static int s_PingHistoryCount = 0;
+
 
 	float AX30ModeOffsetTicks(bool ForOthers)
 	{
@@ -247,38 +246,12 @@ vec2 AcInputs::AX30_EvaluateTrajectory(vec2 P_prev, vec2 P0, vec2 P1, vec2 P_nex
 
 void AcInputs::UpdatePingSample(int PingMs)
 {
-	if(PingMs <= 0 || PingMs > 2000)
-		return;
-	s_aPingHistory[s_PingHistoryIndex] = PingMs;
-	s_PingHistoryIndex = (s_PingHistoryIndex + 1) % 16;
-	if(s_PingHistoryCount < 16)
-		s_PingHistoryCount++;
+	aX30::UpdatePingSample(PingMs);
 }
 
 float AcInputs::AX30_GetAdaptiveLatencyOffset()
 {
-	if(s_PingHistoryCount < 4)
-		return 0.0f;
-
-	float sum = 0.0f;
-	for(int i = 0; i < s_PingHistoryCount; ++i)
-		sum += (float)s_aPingHistory[i];
-
-	const float inv = 1.0f / (float)s_PingHistoryCount;
-	const float avg = sum * inv;
-
-	float var_sum = 0.0f;
-	for(int i = 0; i < s_PingHistoryCount; ++i)
-	{
-		const float d = (float)s_aPingHistory[i] - avg;
-		var_sum += d * d;
-	}
-
-	const float delta = std::sqrt(std::max(0.0f, var_sum * inv));
-	if(std::isnan(delta) || std::isinf(delta))
-		return 0.0f;
-
-	return std::clamp(delta * 0.05f, 0.0f, 0.35f);
+	return aX30::GetAdaptiveLatencyOffset();
 }
 
 vec2 AcInputs::AX30_FilterBoundary(vec2 P0, vec2 TargetPos, const ::CCollision *pCollision)

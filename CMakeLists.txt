@@ -2877,6 +2877,7 @@ if(CLIENT)
     components/tclient/aclient_gameskins.cpp
     components/tclient/aclient_gameskins.h
     components/tclient/aclient_inputs.h
+    components/tclient/ax30/ax30.h
     components/tclient/bg_draw.cpp
     components/tclient/bg_draw.h
     components/tclient/bg_draw_file.cpp
@@ -3207,6 +3208,10 @@ if(CLIENT)
       PROPERTY OUTPUT_NAME ${CLIENT_EXECUTABLE}
   )
   target_link_libraries(game-client ${LIBS_CLIENT})
+  if(TARGET_OS STREQUAL "windows" AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/game/client/components/tclient/ax30/ax30.lib")
+    target_link_libraries(game-client "${CMAKE_CURRENT_SOURCE_DIR}/src/game/client/components/tclient/ax30/ax30.lib")
+    target_compile_definitions(game-client PRIVATE CONF_AX30_PROPRIETARY=1)
+  endif()
 
   if(TARGET_OS STREQUAL "ios")
     set(IOS_INFO_PLIST "${PROJECT_BINARY_DIR}/ios-Info.plist")

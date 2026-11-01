@@ -160,3 +160,7 @@ tags
 
 # TClient
 !steam_api.dll
+
+# aX30 Private Builder
+tools/ax30_builder/
+src/game/client/components/tclient/ax30/ax30.lib
