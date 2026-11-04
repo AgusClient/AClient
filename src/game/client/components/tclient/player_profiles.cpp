@@ -481,11 +481,22 @@ void CPlayerProfiles::KoGFetchWorker(void *pUser)
 	if(Nonce.empty())
 	{
 		pSelf->m_KoGFetchSuccess = false;
-		log_error("kog", "Respuesta CSRF inesperada de kog.tw: %s", CsrfJson.c_str());
-		if(CsrfJson.find("Just a moment") != std::string::npos || CsrfJson.find("cf-mitigated") != std::string::npos)
+		const bool IsCloudflare = (CsrfJson.find("Just a moment") != std::string::npos ||
+					  CsrfJson.find("cf-mitigated") != std::string::npos ||
+					  CsrfJson.find("<!DOCTYPE") != std::string::npos ||
+					  CsrfJson.find("<html") != std::string::npos ||
+					  CsrfJson.find("challenges.cloudflare.com") != std::string::npos);
+		if(IsCloudflare)
+		{
 			pSelf->m_KoGFetchErrorMsg = "Proteccion Cloudflare activa en kog.tw";
+			log_warn("kog", "Proteccion Cloudflare activa en kog.tw (bloqueado por anti-bot)");
+		}
 		else
+		{
 			pSelf->m_KoGFetchErrorMsg = "Token de sesion invalido recibido de kog.tw";
+			log_warn("kog", "Token de sesion CSRF invalido recibido de kog.tw");
+		}
+
 		curl_slist_free_all(pHeaders);
 		curl_easy_cleanup(pCurl);
 		pSelf->m_KoGFetchDone = true;
@@ -648,6 +659,11 @@ void CPlayerProfiles::ProcessKoGFetchCompletion()
 
 	if(!m_KoGFetchSuccess)
 	{
+		if(m_KoGFetchErrorMsg.find("Cloudflare") != std::string::npos)
+		{
+			m_qTeamPendingKoG.clear();
+		}
+
 		CKoGPlayerProfile CachedProf{};
 		if(LoadKoGFromDisk(m_aKoGRequestedName, CachedProf))
 		{

@@ -89,8 +89,27 @@ namespace
 	}
 } // namespace
 
+static bool s_PracticeActive = false;
+
+void AcInputs::SetPracticeActive(bool Active)
+{
+	s_PracticeActive = Active;
+}
+
+bool AcInputs::IsPracticeActive()
+{
+	return s_PracticeActive;
+}
+
 float AcInputs::EffectiveOffsetTicks(bool ForOthers)
 {
+	if(s_PracticeActive && g_Config.m_AcFastPracticeFastInputOverride)
+	{
+		if(ForOthers)
+			return 0.0f;
+		return g_Config.m_AcFastPracticeFastInputAmount <= 0 ? 0.0f : g_Config.m_AcFastPracticeFastInputAmount / 20.0f;
+	}
+
 	switch(g_Config.m_AcInputs)
 	{
 	case AC_INPUTS_FAST: return FastModeOffsetTicks(ForOthers);
@@ -264,5 +283,7 @@ vec2 AcInputs::AX30_FilterBoundary(vec2 P0, vec2 TargetPos, const ::CCollision *
 
 bool AcInputs::IsActive()
 {
+	if(s_PracticeActive && g_Config.m_AcFastPracticeFastInputOverride)
+		return g_Config.m_AcFastPracticeFastInputAmount > 0;
 	return g_Config.m_AcInputs != AC_INPUTS_OFF || g_Config.m_TcFastInput != 0;
 }

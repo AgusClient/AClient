@@ -441,10 +441,24 @@ void CTranslate::ConTranslateId(IConsole::IResult *pResult, void *pUserData)
 	pThis->Translate(pResult->GetInteger(0));
 }
 
+void CTranslate::ConTranslateAuto(IConsole::IResult *pResult, void *pUserData)
+{
+	CTranslate *pThis = static_cast<CTranslate *>(pUserData);
+	if(pResult->NumArguments() > 0)
+		g_Config.m_TcTranslateAuto = pResult->GetInteger(0) ? 1 : 0;
+	else
+	{
+		char aBuf[64];
+		str_format(aBuf, sizeof(aBuf), "Value: %d", g_Config.m_TcTranslateAuto);
+		pThis->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "translate", aBuf);
+	}
+}
+
 void CTranslate::OnConsoleInit()
 {
 	Console()->Register("translate", "?r[name]", CFGFLAG_CLIENT, ConTranslate, this, "Translate last message (of a given name)");
 	Console()->Register("translate_id", "v[id]", CFGFLAG_CLIENT, ConTranslateId, this, "Translate last message of the person with this id");
+	Console()->Register("translate_auto", "?i[value]", CFGFLAG_CLIENT, ConTranslateAuto, this, "Toggle or set automatically translating incoming messages (alias for tc_translate_auto)");
 }
 
 void CTranslate::Translate(int Id, bool ShowProgress)

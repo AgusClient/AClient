@@ -3851,6 +3851,8 @@ void CMenus::RenderSettingsAClientCommands(CUIRect MainView)
 	DrawCommandCard(Column, "/tp & /tc", TCLocalize("Teleports to cursor (/tp) or toggles telecursor aim (/tc)."));
 	DrawCommandCard(Column, "/invincible & /weapons", TCLocalize("Local freeze invincibility and all weapons in practice."));
 	DrawCommandCard(Column, "/save & /load", TCLocalize("Saves and loads local practice positions to repeat map parts."));
+	DrawCommandCard(Column, "/fastinput [0-40|off]", TCLocalize("Configures Fast Input prediction offset in ms for practice."));
+	DrawCommandCard(Column, "ac_fast_practice_fast_input_amount [0-40]", TCLocalize("Fast input prediction offset in ms while in Fast Practice."));
 	s_SectionBoxesCmds.back().h = Column.y - s_SectionBoxesCmds.back().y;
 
 	RightView = Column; // Guarda la posición final de la columna derecha
@@ -4182,6 +4184,12 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcFastPracticeShowText, TCLocalize("Show practice mode text (/tc /invincible)"), &g_Config.m_AcFastPracticeShowText, &Column, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcFastPracticeSpecOriginal, TCLocalize("Put original in spec on practice start (/spec)"), &g_Config.m_AcFastPracticeSpecOriginal, &Column, LineSize);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcFastPracticeFastInputOverride, TCLocalize("Override Fast Input in Practice"), &g_Config.m_AcFastPracticeFastInputOverride, &Column, LineSize);
+	if(g_Config.m_AcFastPracticeFastInputOverride)
+	{
+		Column.HSplitTop(LineSize, &Button, &Column);
+		DoSliderWithScaledValue(&g_Config.m_AcFastPracticeFastInputAmount, &g_Config.m_AcFastPracticeFastInputAmount, &Button, TCLocalize("Practice Fast Input"), 0, 40, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "ms");
+	}
 
 	Column.HSplitTop(LineSize, &Button, &Column);
 	Ui()->DoScrollbarOption(&g_Config.m_AcFastPracticeGhostAlpha, &g_Config.m_AcFastPracticeGhostAlpha, &Button, TCLocalize("Ghost transparency"), 0, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
@@ -4189,7 +4197,7 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	Column.HSplitTop(16.0f, &Label, &Column);
 	TextRender()->TextColor(0.55f, 0.9f, 1.0f, 1.0f);
-	Ui()->DoLabel(&Label, TCLocalize("Practice commands: /tp  /tc  /invincible  /weapons  /save  /load"), 11.5f, TEXTALIGN_ML);
+	Ui()->DoLabel(&Label, TCLocalize("Practice commands: /tp  /tc  /invincible  /weapons  /save  /load  /fastinput"), 11.5f, TEXTALIGN_ML);
 	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 
 	if(Client()->State() == IClient::STATE_ONLINE)

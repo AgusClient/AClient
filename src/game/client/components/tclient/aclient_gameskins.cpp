@@ -385,7 +385,7 @@ void CAClientGameSkins::RefreshPresence()
 		}
 	}
 
-	const char *pAssetGame = g_Config.m_ClAssetGame[0] != '\0' ? g_Config.m_ClAssetGame : "default";
+	const char *pAssetGame = (!g_Config.m_AcShowRemoteGameSkins || g_Config.m_ClAssetGame[0] == '\0') ? "default" : g_Config.m_ClAssetGame;
 
 	// If server address changed, send leave for previous server
 	if(m_aLastServerAddress[0] != '\0' && str_comp(m_aLastServerAddress, aServerAddr) != 0)
@@ -408,7 +408,7 @@ void CAClientGameSkins::RefreshPresence()
 	str_copy(m_aLastServerAddress, aServerAddr);
 	str_copy(m_aLastAnnouncedPlayer, aPrimaryPlayer);
 	str_copy(m_aLastAnnouncedDummy, aPrimaryDummy);
-	str_copy(m_aLastAnnouncedSkin, g_Config.m_ClAssetGame);
+	str_copy(m_aLastAnnouncedSkin, pAssetGame);
 	m_LastPresenceRefreshTime = time_get();
 
 	const char *pBaseUrl = (g_Config.m_AcPresenceUrl[0] != '\0' && str_find(g_Config.m_AcPresenceUrl, "workers.dev") == nullptr) ? g_Config.m_AcPresenceUrl : AClientBackend::SUPABASE_URL;
@@ -455,7 +455,9 @@ void CAClientGameSkins::RefreshPresence()
 		m_pPresenceRequest->Abort();
 	}
 
-	char aEscapedServer[256];
+	if(g_Config.m_AcShowRemoteGameSkins)
+	{
+		char aEscapedServer[256];
 	EscapeUrl(aEscapedServer, sizeof(aEscapedServer), aServerAddr);
 
 	int64_t NowEpochMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -471,7 +473,13 @@ void CAClientGameSkins::RefreshPresence()
 	m_pPresenceRequest->Header(AClientBackend::USER_AGENT_HEADER);
 	m_pPresenceRequest->Header(AClientBackend::API_KEY_HEADER);
 	m_pPresenceRequest->Header(AClientBackend::AUTH_BEARER_HEADER);
-	Http()->Run(m_pPresenceRequest);
+		Http()->Run(m_pPresenceRequest);
+	}
+	else if(!m_mRemotePlayerGameSkins.empty())
+	{
+		m_mRemotePlayerGameSkins.clear();
+		UpdateAllPlayerSkins();
+	}
 }
 
 void CAClientGameSkins::UpdateAllPlayerSkins()
@@ -538,7 +546,8 @@ void CAClientGameSkins::OnRender()
 				}
 			}
 
-			bool SkinChanged = str_comp(m_aLastAnnouncedSkin, g_Config.m_ClAssetGame) != 0;
+			const char *pEffectiveSkin = (!g_Config.m_AcShowRemoteGameSkins || g_Config.m_ClAssetGame[0] == '\0') ? "default" : g_Config.m_ClAssetGame;
+			bool SkinChanged = str_comp(m_aLastAnnouncedSkin, pEffectiveSkin) != 0;
 			bool NameChanged = aCurrentPlayer[0] != '\0' && str_comp(m_aLastAnnouncedPlayer, aCurrentPlayer) != 0;
 			bool DummyChanged = str_comp(m_aLastAnnouncedDummy, aCurrentDummy) != 0;
 			bool PeriodicRefresh = (m_LastPresenceRefreshTime == 0) || ((Now - m_LastPresenceRefreshTime) > time_freq() * 10);

@@ -156,7 +156,9 @@ void CFastPractice::ConFastPracticeToggle(IConsole::IResult *pResult, void *pUse
 }
 
 void CFastPractice::ResetPracticeState()
+
 {
+	AcInputs::SetPracticeActive(false);
 	m_Enabled = false;
 	m_Ready = false;
 	m_NeedsRebuild = false;
@@ -994,6 +996,7 @@ void CFastPractice::Enable()
 	}
 
 	m_Enabled = true;
+	AcInputs::SetPracticeActive(true);
 	if(g_Config.m_AcFastPracticeSpecOriginal)
 		SendSpecOriginal();
 	GameClient()->m_PredictedDummyId = CurrentPracticeDummyId();
@@ -2932,6 +2935,40 @@ bool CFastPractice::ExecutePracticeCommand(int LocalClientId, CCharacter *pChar,
 		return true;
 	if(Cmd == "hitothers")
 		return ExecutePracticeHitOthersCommand(pChar, vArgs);
+	if(Cmd == "fastinput" || Cmd == "fi")
+	{
+		if(vArgs.size() > 1)
+		{
+			if(vArgs[1] == "off" || vArgs[1] == "disable")
+			{
+				g_Config.m_AcFastPracticeFastInputOverride = 0;
+				EchoPractice("Fast Practice input override disabled (using global settings)");
+				return true;
+			}
+			int Val = 0;
+			try
+			{
+				Val = std::clamp(std::stoi(vArgs[1]), 0, 40);
+			}
+			catch(...)
+			{
+				EchoPractice("Usage: /fastinput <0-40|off>");
+				return true;
+			}
+			g_Config.m_AcFastPracticeFastInputOverride = 1;
+			g_Config.m_AcFastPracticeFastInputAmount = Val;
+			if(Val == 0)
+				EchoPractice("Fast Practice input set to 0 ms (1:1 pure local, no overrun)");
+			else
+				EchoPractice("Fast Practice input set to %d ms", Val);
+			return true;
+		}
+		if(g_Config.m_AcFastPracticeFastInputOverride)
+			EchoPractice("Fast Practice input is %d ms (override ON)", g_Config.m_AcFastPracticeFastInputAmount);
+		else
+			EchoPractice("Fast Practice input override is OFF (using global settings)");
+		return true;
+	}
 	return false;
 }
 

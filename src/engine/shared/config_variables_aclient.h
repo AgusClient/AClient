@@ -15,7 +15,7 @@ MACRO_CONFIG_INT(AcHideOthersChatBubbles, ac_hide_others_chat_bubbles, 0, 0, 1, 
 MACRO_CONFIG_INT(AcHideStartMessages, ac_hide_start_messages, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hide start line and team start warning messages in chat")
 
 // RaceStats (Mini Statboard)
-MACRO_CONFIG_INT(AcMiniStatboard, ac_mini_statboard, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show compact team stats in HUD")
+MACRO_CONFIG_INT(AcMiniStatboard, ac_mini_statboard, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show compact team stats in HUD")
 MACRO_CONFIG_INT(AcMiniStatboardColumns, ac_mini_statboard_columns, 255, 0, 255, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Visible columns bitmask: 1=Freezes, 2=Saves, 4=Lasts, 8=Eff, 16=Deaths, 32=Net, 64=Time, 128=Hook")
 MACRO_CONFIG_INT(AcMiniStatboardSort, ac_mini_statboard_sort, 0, 0, 8, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Sort mini statboard by stat (0=Default, 1=Saves, 2=Deaths, 3=Freezes, 4=Efficiency, 5=Net, 6=Time, 7=Hook, 8=Lasts)")
 MACRO_CONFIG_INT(AcMiniStatboardAnim, ac_mini_statboard_anim, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable smooth F1-style ladder animation when ranks change in mini statboard")
@@ -40,17 +40,19 @@ MACRO_CONFIG_INT(AcMiniStatboardY, ac_mini_statboard_y, 50, 0, 100, CFGFLAG_CLIE
 MACRO_CONFIG_INT(AcFastPracticeGhostAlpha, ac_fast_practice_ghost_alpha, 45, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Ghost transparency percentage in Fast Practice mode")
 MACRO_CONFIG_INT(AcFastPracticeShowText, ac_fast_practice_show_text, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show top practice mode text (/tc /invincible) in Fast Practice")
 MACRO_CONFIG_INT(AcFastPracticeSpecOriginal, ac_fast_practice_spec_original, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Put original tee in spectator mode (/spec) when activating Fast Practice")
+MACRO_CONFIG_INT(AcFastPracticeFastInputOverride, ac_fast_practice_fast_input_override, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Override Fast Input prediction amount while in Fast Practice")
+MACRO_CONFIG_INT(AcFastPracticeFastInputAmount, ac_fast_practice_fast_input_amount, 20, 0, 40, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Fast input prediction offset in ms while in Fast Practice")
 
 // Auto Team Lock
 MACRO_CONFIG_INT(AcAutoTeamLock, ac_auto_team_lock, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Automatically lock team (/lock 1) after joining a team")
 MACRO_CONFIG_INT(AcAutoTeamLockDelay, ac_auto_team_lock_delay, 1, 0, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Delay in seconds before sending /lock 1 after joining a team")
 
 // Background Notifications
-MACRO_CONFIG_INT(AcNotifyUnfreeze, ac_notify_unfreeze, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Notify when unfreezing while tabbed out")
-MACRO_CONFIG_INT(AcChangeTileNotification, ac_change_tile_notification, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Notify when moved or tile changes while tabbed out")
-MACRO_CONFIG_INT(AcNotifySound, ac_notify_sound, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Play sound on background notification")
-MACRO_CONFIG_INT(AcNotifyFlash, ac_notify_flash, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Flash taskbar on background notification")
-MACRO_CONFIG_INT(AcNotifyDesktop, ac_notify_desktop, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show desktop notification banner on background notification")
+MACRO_CONFIG_INT(AcNotifyUnfreeze, ac_notify_unfreeze, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Notify when unfreezing while tabbed out")
+MACRO_CONFIG_INT(AcChangeTileNotification, ac_change_tile_notification, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Notify when moved or tile changes while tabbed out")
+MACRO_CONFIG_INT(AcNotifySound, ac_notify_sound, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Play sound on background notification")
+MACRO_CONFIG_INT(AcNotifyFlash, ac_notify_flash, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Flash taskbar on background notification")
+MACRO_CONFIG_INT(AcNotifyDesktop, ac_notify_desktop, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show desktop notification banner on background notification")
 
 // Frametime HUD
 MACRO_CONFIG_INT(AcShowFrametime, ac_show_frametime, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show frametime in milliseconds in top-right HUD")
@@ -147,7 +149,7 @@ MACRO_CONFIG_INT(AcGreetWhisperMode, ac_greet_whisper_mode, 1, 0, 1, CFGFLAG_CLI
 MACRO_CONFIG_INT(AcAfkAutoReply, ac_afk_auto_reply, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Auto-responder si te taggean mientras el juego esta tabulado (AFK)")
 MACRO_CONFIG_STR(AcAfkAutoReplyMsg, ac_afk_auto_reply_msg, 128, "Estoy tabulado / afk", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mensaje de auto-respuesta cuando estas tabulado y te taggean")
 MACRO_CONFIG_INT(AcAfkAutoReplyCooldown, ac_afk_auto_reply_cooldown, 30, 5, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Cooldown en segundos para no repetir auto-respuesta al mismo jugador")
-MACRO_CONFIG_INT(AcAfkNotifyOnReturn, ac_afk_notify_on_return, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Avisar en chat local al volver al juego si alguien te taggeo mientras estabas tabulado")
+MACRO_CONFIG_INT(AcAfkNotifyOnReturn, ac_afk_notify_on_return, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Avisar en chat local al volver al juego si alguien te taggeo mientras estabas tabulado")
 
 // Sound Packs
 MACRO_CONFIG_STR(AcSoundPack, ac_sound_pack, 128, "default", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Current sound pack / audio theme")

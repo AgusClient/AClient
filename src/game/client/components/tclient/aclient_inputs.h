@@ -7,6 +7,9 @@ class CCollision;
 
 namespace AcInputs
 {
+	void SetPracticeActive(bool Active);
+	bool IsPracticeActive();
+
 	float EffectiveOffsetTicks(bool ForOthers = false);
 
 	int PredictionTicks(float OffsetTicks);

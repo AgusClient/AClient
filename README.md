@@ -116,8 +116,8 @@ Suite de predicción de entrada diseñada para eliminar el retardo entre la acci
 ## Descarga e Instalacion
 
 1. Dirígete a la sección de **[Releases Oficiales](https://github.com/AgusClient/AClient/releases/latest)**.
-2. Descarga el ejecutable **`DDNet.exe`**.
-3. Reemplaza o coloca el archivo en tu carpeta de instalación de DDNet o AClient.
+2. Descarga el paquete portátil **`AClient-windows.zip`**.
+3. Descomprime el archivo en cualquier carpeta de tu preferencia.
 4. Ejecuta **`DDNet.exe`**.
 
 ---
@@ -192,7 +192,7 @@ Suite de predicción de entrada diseñada para eliminar el retardo entre la acci
 ### RaceStats & Mini Statboard
 | Comando / Variable | Valor por Defecto | Descripcion |
 | :--- | :---: | :--- |
-| `ac_mini_statboard` | `1` | Activa o desactiva el overlay de Race Stats en pantalla |
+| `ac_mini_statboard` | `0` | Activa o desactiva el overlay de Race Stats en pantalla |
 | `ac_mini_statboard_sort` | `0` | Orden del ranking (0: Default, 1: Saves, 2: Muertes, 3: Freezes, 4: Eficiencia, 5: Net, 6: Tiempo, 7: Hook, 8: Lasts) |
 | `ac_mini_statboard_anim` | `1` | Activa la animación suave estilo F1 ante adelantamientos |
 | `ac_mini_statboard_show_tees` | `1` | Muestra las miniaturas de los tees en la tabla |
@@ -222,13 +222,19 @@ Suite de predicción de entrada diseñada para eliminar el retardo entre la acci
 ### Notificaciones de Escritorio y Segundo Plano
 | Comando / Variable | Valor por Defecto | Descripcion |
 | :--- | :---: | :--- |
-| `cl_shownotifications` | `1` | Habilita o silencia las notificaciones emergentes de Windows |
+| `cl_shownotifications` | `0` | Habilita o silencia las notificaciones emergentes de Windows |
 | `/notif` o `/notifications` | - | Comando de chat rápido para alternar o fijar notificaciones (`/notif 0` o `/notif 1`) |
-| `ac_notify_unfreeze` | `1` | Alerta al descongelarse mientras el juego está minimizado |
-| `ac_change_tile_notification` | `1` | Alerta al moverse o cambiar de casilla estando tabulado |
-| `ac_notify_sound` | `1` | Reproduce sonido de notificación en segundo plano |
-| `ac_notify_flash` | `1` | Hace parpadear la barra de tareas al recibir un evento |
-| `ac_notify_desktop` | `1` | Muestra banner emergente en el escritorio |
+| `ac_notify_unfreeze` | `0` | Alerta al descongelarse mientras el juego está minimizado |
+| `ac_change_tile_notification` | `0` | Alerta al moverse o cambiar de casilla estando tabulado |
+| `ac_notify_sound` | `0` | Reproduce sonido de notificación en segundo plano |
+| `ac_notify_flash` | `0` | Hace parpadear la barra de tareas al recibir un evento |
+| `ac_notify_desktop` | `0` | Muestra banner emergente en el escritorio |
+
+### Traduccion Automatica
+| Comando / Variable | Valor por Defecto | Descripcion |
+| :--- | :---: | :--- |
+| `translate_auto` / `tc_translate_auto` | `0` | Traduce automáticamente los mensajes entrantes del chat |
+| `tc_translate_target` | `"en"` | Idioma destino para la traducción de mensajes |
 
 ### Utilidades, Chat & AFK
 | Comando / Variable | Valor por Defecto | Descripcion |
@@ -240,6 +246,7 @@ Suite de predicción de entrada diseñada para eliminar el retardo entre la acci
 | `ac_afk_auto_reply_cooldown` | `30` | Cooldown en segundos para no repetir auto-respuesta al mismo jugador |
 | `ac_greet_message` | `"wenas"` | Mensaje enviado al presionar la tecla de saludo al último tag |
 | `ac_greet_whisper_mode` | `1` | Responde por susurro si el último tag recibido fue por susurro |
+| `ac_afk_notify_on_return` | `0` | Avisar en chat local al volver al juego si alguien te taggeo mientras estabas tabulado |
 | `ac_silent_typing` | `0` | Oculta la burbuja de escritura sobre tu propio tee |
 | `ac_hide_others_chat_bubbles` | `0` | Oculta las burbujas de escritura de los demás jugadores |
 | `ac_hide_start_messages` | `1` | Oculta los mensajes de línea de salida y avisos de equipo en el chat |

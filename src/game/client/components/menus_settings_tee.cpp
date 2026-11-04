@@ -145,6 +145,7 @@ void CMenus::RenderSettingsTee(CUIRect MainView)
 	if(DoButton_CheckBox(&g_Config.m_AcShowRemoteGameSkins, Localize("Mostrar gameskins de otros"), g_Config.m_AcShowRemoteGameSkins, &Button))
 	{
 		g_Config.m_AcShowRemoteGameSkins ^= 1;
+		GameClient()->m_AClientGameSkins.RefreshPresence();
 	}
 
 	Checkboxes.HSplitTop(20.0f, &Button, &Checkboxes);
