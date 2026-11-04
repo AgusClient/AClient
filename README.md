@@ -116,9 +116,9 @@ Suite de predicción de entrada diseñada para eliminar el retardo entre la acci
 ## Descarga e Instalacion
 
 1. Dirígete a la sección de **[Releases Oficiales](https://github.com/AgusClient/AClient/releases/latest)**.
-2. Descarga el paquete portátil **`AClient-windows.zip`**.
-3. Descomprime el archivo en cualquier carpeta de tu preferencia.
-4. Ejecuta **`DDNet.exe`**.
+2. Selecciona tu método preferido de descarga:
+   * **Paquete Completo Portable (`AClient-windows.zip`)**: Recomendado para una instalación limpia con todas las dependencias y recursos listos para jugar. Descomprime y ejecuta `DDNet.exe`.
+   * **Solo Ejecutable (`DDNet.exe`)**: Ideal para actualizar una instalación previa reemplazando el binario directamente en la carpeta del juego.
 
 ---
 
