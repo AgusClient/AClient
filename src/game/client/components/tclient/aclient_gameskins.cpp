@@ -39,7 +39,10 @@ CAClientGameSkins::CAClientGameSkins() :
 	m_PendingAnnounce(false),
 	m_LastActivePlayerCount(0),
 	m_LastPresenceRefreshTime(0),
-	m_LastRenderCheckTime(0)
+	m_LastRenderCheckTime(0),
+	m_ServerJoinTime(0),
+	m_InitialDownloadPhase(false),
+	m_WasFrozen(false)
 {
 	m_aLastServerAddress[0] = '\0';
 	m_aLastAnnouncedPlayer[0] = '\0';
@@ -61,6 +64,9 @@ void CAClientGameSkins::OnStateChange(int NewState, int OldState)
 	if(NewState == IClient::STATE_ONLINE)
 	{
 		m_PendingAnnounce = true;
+		m_ServerJoinTime = time_get();
+		m_InitialDownloadPhase = true;
+		m_WasFrozen = false;
 	}
 	else if(NewState < IClient::STATE_ONLINE)
 	{
@@ -107,6 +113,9 @@ void CAClientGameSkins::OnReset()
 	m_LastActivePlayerCount = 0;
 	m_LastPresenceRefreshTime = 0;
 	m_LastRenderCheckTime = 0;
+	m_ServerJoinTime = 0;
+	m_InitialDownloadPhase = false;
+	m_WasFrozen = false;
 }
 
 void CAClientGameSkins::UnloadSkin(SClientGameSkin &Skin)
@@ -194,9 +203,57 @@ bool CAClientGameSkins::FindGameSkinFile(const char *pName, char *pOutPath, int 
 	return false;
 }
 
-void CAClientGameSkins::StartDownload(const char *pSkinName)
+bool CAClientGameSkins::IsLocalPlayerFrozen() const
+{
+	if(!GameClient())
+		return false;
+	const int LocalId = GameClient()->m_Snap.m_LocalClientId;
+	if(LocalId < 0 || LocalId >= MAX_CLIENTS)
+		return false;
+	return GameClient()->IsPlayerFrozen(LocalId);
+}
+
+bool CAClientGameSkins::CanDownloadGameskins() const
 {
 	if(!g_Config.m_ClDownloadGameskins)
+		return false;
+	if(Client()->State() != IClient::STATE_ONLINE)
+		return false;
+
+	const bool OptInitial = g_Config.m_AcGameskinDownloadInitial != 0;
+	const bool OptFrozen = g_Config.m_AcGameskinDownloadFrozen != 0;
+
+	if(!OptInitial && !OptFrozen)
+		return true;
+
+	bool InInitial = false;
+	if(OptInitial && m_InitialDownloadPhase)
+	{
+		if(m_ServerJoinTime > 0 && (time_get() - m_ServerJoinTime) < time_freq() * 20)
+			InInitial = true;
+		else
+			const_cast<CAClientGameSkins *>(this)->m_InitialDownloadPhase = false;
+	}
+
+	bool IsFrozen = false;
+	if(OptFrozen)
+	{
+		IsFrozen = IsLocalPlayerFrozen();
+	}
+
+	if(OptInitial && OptFrozen)
+		return InInitial || IsFrozen;
+	if(OptInitial)
+		return InInitial;
+	if(OptFrozen)
+		return IsFrozen;
+
+	return true;
+}
+
+void CAClientGameSkins::StartDownload(const char *pSkinName)
+{
+	if(!CanDownloadGameskins())
 		return;
 	if(m_pDownloadRequest)
 		return;
@@ -223,6 +280,13 @@ void CAClientGameSkins::StartDownload(const char *pSkinName)
 	m_pDownloadRequest->Header("User-Agent: AClient");
 	m_DownloadingSkinName = pSkinName;
 	Http()->Run(m_pDownloadRequest);
+
+	if(g_Config.m_AcGameskinDownloadEcho && GameClient())
+	{
+		char aBuf[256];
+		str_format(aBuf, sizeof(aBuf), "[AClient] Descargando gameskin '%s'...", pSkinName);
+		GameClient()->m_Chat.Echo(aBuf);
+	}
 }
 
 const SClientGameSkin *CAClientGameSkins::GetOrLoadGameSkin(const char *pName)
@@ -649,6 +713,12 @@ void CAClientGameSkins::OnRender()
 		{
 			if(!m_DownloadingSkinName.empty())
 			{
+				if(g_Config.m_AcGameskinDownloadEcho && GameClient())
+				{
+					char aBuf[256];
+					str_format(aBuf, sizeof(aBuf), "[AClient] Gameskin '%s' descargado.", m_DownloadingSkinName.c_str());
+					GameClient()->m_Chat.Echo(aBuf);
+				}
 				GetOrLoadGameSkin(m_DownloadingSkinName.c_str());
 				UpdateAllPlayerSkins();
 			}
@@ -656,10 +726,26 @@ void CAClientGameSkins::OnRender()
 		else
 		{
 			if(!m_DownloadingSkinName.empty())
+			{
+				if(g_Config.m_AcGameskinDownloadEcho && GameClient())
+				{
+					char aBuf[256];
+					str_format(aBuf, sizeof(aBuf), "[AClient] Error al descargar gameskin '%s'.", m_DownloadingSkinName.c_str());
+					GameClient()->m_Chat.Echo(aBuf);
+				}
 				m_sFailedSkins.insert(m_DownloadingSkinName);
+			}
 		}
 		m_pDownloadRequest = nullptr;
 		m_DownloadingSkinName.clear();
+	}
+
+	bool CurrentlyFrozen = IsLocalPlayerFrozen();
+	bool JustGotFrozen = CurrentlyFrozen && !m_WasFrozen;
+	m_WasFrozen = CurrentlyFrozen;
+	if(JustGotFrozen && m_pDownloadRequest == nullptr)
+	{
+		m_LastRenderCheckTime = 0;
 	}
 
 	int64_t Now = time_get();
@@ -699,11 +785,19 @@ void CAClientGameSkins::OnRender()
 	}
 }
 
+void CAClientGameSkins::TriggerManualReload()
+{
+	m_ServerJoinTime = time_get();
+	m_InitialDownloadPhase = true;
+	RefreshPresence();
+}
+
 void CAClientGameSkins::ConReloadRemoteGameSkins(IConsole::IResult *pResult, void *pUserData)
 {
 	CAClientGameSkins *pSelf = (CAClientGameSkins *)pUserData;
-	pSelf->RefreshPresence();
+	pSelf->TriggerManualReload();
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "aclient", "Consultando gameskins remotos...");
+	return;
 }
 
 void CAClientGameSkins::ConSetPlayerGameSkin(IConsole::IResult *pResult, void *pUserData)

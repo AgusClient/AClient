@@ -30,6 +30,12 @@ class CAClientGameSkins : public CComponent
 	int m_LastActivePlayerCount;
 	int64_t m_LastPresenceRefreshTime;
 	int64_t m_LastRenderCheckTime;
+	int64_t m_ServerJoinTime;
+	bool m_InitialDownloadPhase;
+	bool m_WasFrozen;
+
+	bool CanDownloadGameskins() const;
+	bool IsLocalPlayerFrozen() const;
 
 	bool FindGameSkinFile(const char *pName, char *pOutPath, int OutPathSize);
 	void UnloadSkin(SClientGameSkin &Skin);
@@ -54,6 +60,7 @@ public:
 	const SClientGameSkin *GetOrLoadGameSkin(const char *pName);
 	void FreeAllGameSkins();
 	void UpdateAllPlayerSkins();
+	void TriggerManualReload();
 };
 
 #endif // GAME_CLIENT_COMPONENTS_TCLIENT_ACLIENT_GAMESKINS_H

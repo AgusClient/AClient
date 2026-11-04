@@ -69,6 +69,14 @@ MACRO_CONFIG_INT(AcAX30Interpolation, ac_ax30_interpolation, 1, 1, 3, CFGFLAG_CL
 MACRO_CONFIG_INT(AcAX30Others, ac_ax30_others, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply aX30 to other players")
 MACRO_CONFIG_INT(AcAX30OthersAmount, ac_ax30_others_amount, 100, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aX30 prediction offset for other players in 0.01 ticks")
 
+// aX30 Build Verification Status
+#if defined(CONF_AX30_PROPRIETARY)
+#define AX30_PROPRIETARY_BUILD_VAL 1
+#else
+#define AX30_PROPRIETARY_BUILD_VAL 0
+#endif
+MACRO_CONFIG_INT(AcAX30Proprietary, ac_ax30_proprietary, AX30_PROPRIETARY_BUILD_VAL, 0, 1, CFGFLAG_CLIENT, "aX30 engine proprietary build status (1: Proprietary, 0: Public)")
+
 // Fast Mode
 MACRO_CONFIG_INT(AcFastInputAmount, ac_fast_input_amount, 20, 1, 40, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Fast input prediction offset in ms")
 MACRO_CONFIG_INT(AcFastInputOthers, ac_fast_input_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply fast input to other tees")
@@ -131,6 +139,9 @@ MACRO_CONFIG_INT(AcProfileViewMode, ac_profile_view_mode, 0, 0, 1, CFGFLAG_CLIEN
 // Custom Gameskin Sharing & Downloads
 MACRO_CONFIG_INT(AcShowRemoteGameSkins, ac_show_remote_gameskins, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show other AClient players' custom gameskins")
 MACRO_CONFIG_INT(ClDownloadGameskins, cl_download_gameskins, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Download gameskins on-the-fly")
+MACRO_CONFIG_INT(AcGameskinDownloadInitial, ac_gameskin_download_initial, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Download remote gameskins upon joining the server")
+MACRO_CONFIG_INT(AcGameskinDownloadFrozen, ac_gameskin_download_frozen, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Download remote gameskins when player is frozen")
+MACRO_CONFIG_INT(AcGameskinDownloadEcho, ac_gameskin_download_echo, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show chat echo notification when downloading gameskins")
 MACRO_CONFIG_STR(ClGameskinDownloadUrl, cl_gameskin_download_url, 128, "https://raw.githubusercontent.com/AgusClient/gameskins/main/", CFGFLAG_CLIENT | CFGFLAG_SAVE, "URL used to download gameskins")
 MACRO_CONFIG_STR(AcPresenceUrl, ac_presence_url, 128, "", CFGFLAG_CLIENT, "Presence relay server URL")
 

@@ -414,6 +414,16 @@ void CTClient::ConCalc(IConsole::IResult *pResult, void *pUserData)
 		log_info("tclient", "Calc result: %lf", Out);
 }
 
+void CTClient::ConAx30Status(IConsole::IResult *pResult, void *pUserData)
+{
+	CTClient *pSelf = (CTClient *)pUserData;
+#if defined(CONF_AX30_PROPRIETARY)
+	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "ax30", "aX30 Engine: PROPIETARIO -> Estado: 1 [ACTIVO]");
+#else
+	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "ax30", "aX30 Engine: PUBLICO -> Estado: 0 [FALLBACK]");
+#endif
+}
+
 void CTClient::OnConsoleInit()
 {
 	Console()->Register("calc", "r[expression]", CFGFLAG_CLIENT, ConCalc, this, "Evaluate an expression");
@@ -425,6 +435,8 @@ void CTClient::OnConsoleInit()
 	Console()->Register("spec_id", "v[id]", CFGFLAG_CLIENT, ConSpecId, this, "Spectate a player by Id");
 
 	Console()->Register("emote_cycle", "", CFGFLAG_CLIENT, ConEmoteCycle, this, "Cycle through emotes");
+	Console()->Register("ax30_status", "", CFGFLAG_CLIENT, ConAx30Status, this, "Check aX30 engine status (1: Proprietary, 0: Public)");
+
 
 	Console()->Chain(
 		"tc_allow_any_res", [](IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData) {

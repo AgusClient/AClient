@@ -92,7 +92,7 @@ void CMenus::RenderSettingsTee(CUIRect MainView)
 	const float EyeButtonSize = 40.0f;
 	const bool RenderEyesBelow = MainView.w < 750.0f;
 	CUIRect YourSkin, Checkboxes, SkinPrefix, Eyes, Button, Label;
-	MainView.HSplitTop(150.0f, &YourSkin, &MainView);
+	MainView.HSplitTop(205.0f, &YourSkin, &MainView);
 	if(RenderEyesBelow)
 	{
 		YourSkin.VSplitLeft(MainView.w * 0.45f, &YourSkin, &Checkboxes);
@@ -154,12 +154,37 @@ void CMenus::RenderSettingsTee(CUIRect MainView)
 		g_Config.m_ClDownloadGameskins ^= 1;
 	}
 
+	if(g_Config.m_ClDownloadGameskins)
+	{
+		CUIRect SubButton;
+		Checkboxes.HSplitTop(18.0f, &Button, &Checkboxes);
+		Button.VSplitLeft(12.0f, nullptr, &SubButton);
+		if(DoButton_CheckBox(&g_Config.m_AcGameskinDownloadInitial, Localize("Al inicio del servidor"), g_Config.m_AcGameskinDownloadInitial, &SubButton))
+		{
+			g_Config.m_AcGameskinDownloadInitial ^= 1;
+		}
+
+		Checkboxes.HSplitTop(18.0f, &Button, &Checkboxes);
+		Button.VSplitLeft(12.0f, nullptr, &SubButton);
+		if(DoButton_CheckBox(&g_Config.m_AcGameskinDownloadFrozen, Localize("Cuando estoy freezeado"), g_Config.m_AcGameskinDownloadFrozen, &SubButton))
+		{
+			g_Config.m_AcGameskinDownloadFrozen ^= 1;
+		}
+
+		Checkboxes.HSplitTop(18.0f, &Button, &Checkboxes);
+		Button.VSplitLeft(12.0f, nullptr, &SubButton);
+		if(DoButton_CheckBox(&g_Config.m_AcGameskinDownloadEcho, Localize("Aviso de descarga en chat"), g_Config.m_AcGameskinDownloadEcho, &SubButton))
+		{
+			g_Config.m_AcGameskinDownloadEcho ^= 1;
+		}
+	}
+
 	static CButtonContainer s_BtnReloadGameSkins;
 	Checkboxes.HSplitTop(20.0f, &Button, &Checkboxes);
 	Button.HMargin(1.0f, &Button);
 	if(DoButton_Menu(&s_BtnReloadGameSkins, Localize("Recargar gameskins"), 0, &Button))
 	{
-		GameClient()->m_AClientGameSkins.RefreshPresence();
+		GameClient()->m_AClientGameSkins.TriggerManualReload();
 	}
 
 	// Skin prefix
