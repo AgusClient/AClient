@@ -16,82 +16,86 @@
 
 #include <vector>
 
-void CMenus::RenderSettingsPlayer(CUIRect MainView)
+void CMenus::RenderSettingsTeeIdentity(CUIRect MainView)
 {
-	CUIRect TabBar, PlayerTab, DummyTab, ChangeInfo, QuickSearch;
-	MainView.HSplitTop(20.0f, &TabBar, &MainView);
-	TabBar.VSplitMid(&TabBar, &ChangeInfo, 20.f);
-	TabBar.VSplitMid(&PlayerTab, &DummyTab);
-	MainView.HSplitTop(10.0f, nullptr, &MainView);
-
-	static CButtonContainer s_PlayerTabButton;
-	if(DoButton_MenuTab(&s_PlayerTabButton, Localize("Player"), !m_Dummy, &PlayerTab, IGraphics::CORNER_L, nullptr, nullptr, nullptr, nullptr, 4.0f))
-	{
-		m_Dummy = false;
-	}
-
-	static CButtonContainer s_DummyTabButton;
-	if(DoButton_MenuTab(&s_DummyTabButton, Localize("Dummy"), m_Dummy, &DummyTab, IGraphics::CORNER_R, nullptr, nullptr, nullptr, nullptr, 4.0f))
-	{
-		m_Dummy = true;
-	}
-
-	if(Client()->State() == IClient::STATE_ONLINE &&
-		GameClient()->m_aNextChangeInfo[m_Dummy] > Client()->GameTick(m_Dummy))
-	{
-		char aChangeInfo[128], aTimeLeft[32];
-		str_format(aTimeLeft, sizeof(aTimeLeft), Localize("%ds left"), (GameClient()->m_aNextChangeInfo[m_Dummy] - Client()->GameTick(m_Dummy) + Client()->GameTickSpeed() - 1) / Client()->GameTickSpeed());
-		str_format(aChangeInfo, sizeof(aChangeInfo), "%s: %s", Localize("Player info change cooldown"), aTimeLeft);
-		Ui()->DoLabel(&ChangeInfo, aChangeInfo, 10.f, TEXTALIGN_ML);
-	}
-
 	static CLineInput s_NameInput;
 	static CLineInput s_ClanInput;
-
+	char *pName;
+	char *pClan;
 	int *pCountry;
+	const char *pCurrentName;
 	if(!m_Dummy)
 	{
+		pName = g_Config.m_PlayerName;
+		pClan = g_Config.m_PlayerClan;
 		pCountry = &g_Config.m_PlayerCountry;
-		s_NameInput.SetBuffer(g_Config.m_PlayerName, sizeof(g_Config.m_PlayerName));
-		s_NameInput.SetEmptyText(Client()->PlayerName());
-		s_ClanInput.SetBuffer(g_Config.m_PlayerClan, sizeof(g_Config.m_PlayerClan));
+		pCurrentName = Client()->PlayerName();
 	}
 	else
 	{
+		pName = g_Config.m_ClDummyName;
+		pClan = g_Config.m_ClDummyClan;
 		pCountry = &g_Config.m_ClDummyCountry;
-		s_NameInput.SetBuffer(g_Config.m_ClDummyName, sizeof(g_Config.m_ClDummyName));
-		s_NameInput.SetEmptyText(Client()->DummyName());
-		s_ClanInput.SetBuffer(g_Config.m_ClDummyClan, sizeof(g_Config.m_ClDummyClan));
+		pCurrentName = Client()->DummyName();
 	}
 
-	// player name
-	CUIRect Button, Label;
-	MainView.HSplitTop(20.0f, &Button, &MainView);
-	Button.VSplitLeft(80.0f, &Label, &Button);
-	Button.VSplitLeft(150.0f, &Button, nullptr);
-	char aBuf[128];
-	str_format(aBuf, sizeof(aBuf), "%s:", Localize("Name"));
-	Ui()->DoLabel(&Label, aBuf, 14.0f, TEXTALIGN_ML);
-	if(Ui()->DoEditBox(&s_NameInput, &Button, 14.0f))
-	{
+	s_NameInput.SetBuffer(pName, sizeof(g_Config.m_PlayerName));
+	s_NameInput.SetEmptyText(pCurrentName);
+	s_ClanInput.SetBuffer(pClan, sizeof(g_Config.m_PlayerClan));
+
+	CUIRect NameRow, NameLabel, NameInput;
+	MainView.HSplitTop(20.0f, &NameRow, &MainView);
+	NameRow.VSplitLeft(55.0f, &NameLabel, &NameInput);
+	if(NameInput.w > 220.0f)
+		NameInput.w = 220.0f;
+	char aLabel[64];
+	str_format(aLabel, sizeof(aLabel), "%s:", Localize("Name"));
+	Ui()->DoLabel(&NameLabel, aLabel, 14.0f, TEXTALIGN_ML);
+	if(Ui()->DoEditBox(&s_NameInput, &NameInput, 14.0f) && !Client()->IsSixup())
 		SetNeedSendInfo();
-	}
 
-	// player clan
-	MainView.HSplitTop(5.0f, nullptr, &MainView);
-	MainView.HSplitTop(20.0f, &Button, &MainView);
-	Button.VSplitLeft(80.0f, &Label, &Button);
-	Button.VSplitLeft(150.0f, &Button, nullptr);
-	str_format(aBuf, sizeof(aBuf), "%s:", Localize("Clan"));
-	Ui()->DoLabel(&Label, aBuf, 14.0f, TEXTALIGN_ML);
-	if(Ui()->DoEditBox(&s_ClanInput, &Button, 14.0f))
-	{
+	MainView.HSplitTop(4.0f, nullptr, &MainView);
+	CUIRect ClanRow, ClanLabel, ClanInput;
+	MainView.HSplitTop(20.0f, &ClanRow, &MainView);
+	ClanRow.VSplitLeft(55.0f, &ClanLabel, &ClanInput);
+	if(ClanInput.w > 170.0f)
+		ClanInput.w = 170.0f;
+	str_format(aLabel, sizeof(aLabel), "%s:", Localize("Clan"));
+	Ui()->DoLabel(&ClanLabel, aLabel, 14.0f, TEXTALIGN_ML);
+	if(Ui()->DoEditBox(&s_ClanInput, &ClanInput, 14.0f) && !Client()->IsSixup())
 		SetNeedSendInfo();
-	}
 
-	// country flag selector
+	MainView.HSplitTop(4.0f, nullptr, &MainView);
+	CUIRect CountryRow, CountryLabel, CountryButton;
+	MainView.HSplitTop(20.0f, &CountryRow, &MainView);
+	CountryRow.VSplitLeft(55.0f, &CountryLabel, &CountryButton);
+	str_format(aLabel, sizeof(aLabel), "%s:", Localize("Country"));
+	Ui()->DoLabel(&CountryLabel, aLabel, 14.0f, TEXTALIGN_ML);
+	CountryButton.VSplitLeft(72.0f, &CountryButton, nullptr);
+	static CButtonContainer s_CountryButton;
+	if(DoButton_Menu(&s_CountryButton, "", 0, &CountryButton))
+		m_Popup = POPUP_COUNTRY;
+	CUIRect FlagRect;
+	CountryButton.Margin(3.0f, &FlagRect);
+	const float OldFlagWidth = FlagRect.w;
+	FlagRect.w = FlagRect.h * 2.0f;
+	FlagRect.x += (OldFlagWidth - FlagRect.w) / 2.0f;
+	GameClient()->m_CountryFlags.Render(*pCountry, ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f), FlagRect.x, FlagRect.y, FlagRect.w, FlagRect.h);
+	GameClient()->m_Tooltips.DoToolTip(&s_CountryButton, &CountryButton, Localize("Select country"));
+
+	if(Client()->IsSixup() && Client()->State() == IClient::STATE_ONLINE)
+	{
+		MainView.HSplitTop(4.0f, nullptr, &MainView);
+		CUIRect Notice;
+		MainView.HSplitTop(18.0f, &Notice, &MainView);
+		Ui()->DoLabel(&Notice, Localize("Name, clan and country changes apply after reconnecting."), 12.0f, TEXTALIGN_ML);
+	}
+}
+
+bool CMenus::RenderCountrySelection(CUIRect MainView)
+{
+	int *pCountry = m_Dummy ? &g_Config.m_ClDummyCountry : &g_Config.m_PlayerCountry;
 	static CLineInputBuffered<25> s_FlagFilterInput;
-
 	class CCountryFlagEntry
 	{
 	public:
@@ -107,17 +111,13 @@ void CMenus::RenderSettingsPlayer(CUIRect MainView)
 			const char *pNameMatchEnd;
 			const char *pNameMatchStart = str_utf8_find_nocase(Entry.m_aCountryCodeString, s_FlagFilterInput.GetString(), &pNameMatchEnd);
 			if(pNameMatchStart != nullptr)
-			{
 				vFilteredFlags.emplace_back(&Entry, std::make_pair<int, int>(pNameMatchStart - Entry.m_aCountryCodeString, pNameMatchEnd - pNameMatchStart));
-			}
 		}
 		else
-		{
 			vFilteredFlags.emplace_back(&Entry, std::nullopt);
-		}
 	}
 
-	MainView.HSplitTop(10.0f, nullptr, &MainView);
+	CUIRect QuickSearch;
 	MainView.HSplitBottom(20.0f, &MainView, &QuickSearch);
 	MainView.HSplitBottom(5.0f, &MainView, nullptr);
 	QuickSearch.VSplitLeft(220.0f, &QuickSearch, nullptr);
@@ -125,11 +125,9 @@ void CMenus::RenderSettingsPlayer(CUIRect MainView)
 	int OldSelected = -1;
 	static CListBox s_ListBox;
 	s_ListBox.DoStart(48.0f, vFilteredFlags.size(), 10, 3, OldSelected, &MainView);
-
-	for(size_t i = 0; i < vFilteredFlags.size(); i++)
+	for(size_t i = 0; i < vFilteredFlags.size(); ++i)
 	{
 		const CCountryFlagEntry &Entry = vFilteredFlags[i];
-
 		if(Entry.m_pFlag->m_CountryCode == *pCountry)
 			OldSelected = i;
 
@@ -137,49 +135,41 @@ void CMenus::RenderSettingsPlayer(CUIRect MainView)
 		if(!Item.m_Visible)
 			continue;
 
-		CUIRect FlagRect;
+		CUIRect FlagRect, Label;
 		Item.m_Rect.Margin(5.0f, &FlagRect);
 		FlagRect.HSplitBottom(12.0f, &FlagRect, &Label);
 		Label.HSplitTop(2.0f, nullptr, &Label);
 		const float OldWidth = FlagRect.w;
-		FlagRect.w = FlagRect.h * 2;
+		FlagRect.w = FlagRect.h * 2.0f;
 		FlagRect.x += (OldWidth - FlagRect.w) / 2.0f;
 		GameClient()->m_CountryFlags.Render(Entry.m_pFlag->m_CountryCode, ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f), FlagRect.x, FlagRect.y, FlagRect.w, FlagRect.h);
 
-		if(Entry.m_pFlag->m_Texture.IsValid() || Entry.m_pFlag->m_CountryCode == CountryCode::DEFAULT)
+		SLabelProperties Props;
+		Props.m_MaxWidth = Label.w - 5.0f;
+		if(Entry.m_NameMatch.has_value())
 		{
-			SLabelProperties Props;
-			Props.m_MaxWidth = Label.w - 5.0f;
-			if(Entry.m_NameMatch.has_value())
-			{
-				const auto [MatchStart, MatchLength] = Entry.m_NameMatch.value();
-				Props.m_vColorSplits.emplace_back(MatchStart, MatchLength, ColorRGBA(0.4f, 0.4f, 1.0f, 1.0f));
-			}
-			Ui()->DoLabel(&Label, Entry.m_pFlag->m_aCountryCodeString, 10.0f, TEXTALIGN_MC, Props);
+			const auto [MatchStart, MatchLength] = Entry.m_NameMatch.value();
+			Props.m_vColorSplits.emplace_back(MatchStart, MatchLength, ColorRGBA(0.4f, 0.4f, 1.0f, 1.0f));
 		}
+		Ui()->DoLabel(&Label, Entry.m_pFlag->m_aCountryCodeString, 10.0f, TEXTALIGN_MC, Props);
 	}
 
 	const int NewSelected = s_ListBox.DoEnd();
-	if(OldSelected != NewSelected)
+	if(NewSelected >= 0 && (s_ListBox.WasItemSelected() || s_ListBox.WasItemActivated()))
 	{
 		*pCountry = vFilteredFlags[NewSelected].m_pFlag->m_CountryCode;
-		SetNeedSendInfo();
+		if(!Client()->IsSixup())
+			SetNeedSendInfo();
+		return true;
 	}
 
 	if(GameClient()->m_CountryFlags.Num() > 0 && vFilteredFlags.empty())
 	{
-		CUIRect FilterLabel, ResetButton;
-		MainView.HMargin((MainView.h - (16.0f + 18.0f + 8.0f)) / 2.0f, &FilterLabel);
-		FilterLabel.HSplitTop(16.0f, &FilterLabel, &ResetButton);
-		ResetButton.HSplitTop(8.0f, nullptr, &ResetButton);
-		ResetButton.VMargin((ResetButton.w - 200.0f) / 2.0f, &ResetButton);
+		CUIRect FilterLabel;
+		MainView.HMargin((MainView.h - 16.0f) / 2.0f, &FilterLabel);
 		Ui()->DoLabel(&FilterLabel, Localize("No country flags match your filter criteria"), 16.0f, TEXTALIGN_MC);
-		static CButtonContainer s_ResetButton;
-		if(DoButton_Menu(&s_ResetButton, Localize("Reset filter"), 0, &ResetButton))
-		{
-			s_FlagFilterInput.Clear();
-		}
 	}
 
 	Ui()->DoEditBox_Search(&s_FlagFilterInput, &QuickSearch, 14.0f, !Ui()->IsPopupOpen() && !GameClient()->m_GameConsole.IsActive());
+	return false;
 }

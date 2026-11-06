@@ -35,7 +35,8 @@ void CMenus::RenderSettingsTee7(CUIRect MainView)
 	Buttons.VSplitLeft(220.0f, &QuickSearch, &Buttons);
 	Buttons.VSplitLeft(10.0f, nullptr, &Buttons);
 	Buttons.VSplitLeft(120.0f, &SaveDeleteButton, &Buttons);
-	MainView.HSplitTop(50.0f, &TabBars, &MainView);
+	const float IdentityHeight = Client()->IsSixup() && Client()->State() == IClient::STATE_ONLINE ? 90.0f : 68.0f;
+	MainView.HSplitTop(50.0f + IdentityHeight, &TabBars, &MainView);
 	MainView.HSplitTop(10.0f, nullptr, &MainView);
 	TabBars.VSplitMid(&TabBars, &SkinPreview, 20.0f);
 
@@ -88,6 +89,10 @@ void CMenus::RenderSettingsTee7(CUIRect MainView)
 				m_SkinNameInput.Set(m_pSelectedSkin->m_aName);
 		}
 	}
+
+	CUIRect IdentityView;
+	TabBars.HSplitTop(IdentityHeight, &IdentityView, &TabBars);
+	RenderSettingsTeeIdentity(IdentityView);
 
 	// validate skin parts for solo mode
 	char aSkinParts[protocol7::NUM_SKINPARTS][protocol7::MAX_SKIN_ARRAY_SIZE];

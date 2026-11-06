@@ -602,7 +602,8 @@ protected:
 	bool RenderLanguageSelection(CUIRect MainView);
 
 	// found in menus_settings_player.cpp
-	void RenderSettingsPlayer(CUIRect MainView);
+	void RenderSettingsTeeIdentity(CUIRect MainView);
+	bool RenderCountrySelection(CUIRect MainView);
 
 	// found in menus_settings_sound.cpp
 	void RenderSettingsSound(CUIRect MainView);
@@ -721,7 +722,6 @@ public:
 		SETTINGS_GENERAL = 0,
 		SETTINGS_LANGUAGE = SETTINGS_GENERAL,
 
-		SETTINGS_PLAYER,
 		SETTINGS_TEE,
 		SETTINGS_APPEARANCE,
 		SETTINGS_CONTROLS,
@@ -860,6 +860,7 @@ public:
 		POPUP_RESTART,
 		POPUP_WARNING,
 		POPUP_SAVE_SKIN,
+		POPUP_COUNTRY,
 	};
 
 	enum

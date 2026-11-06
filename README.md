@@ -64,7 +64,7 @@ Suite de predicción de entrada diseñada para eliminar el retardo entre la acci
   * `4: Delta` - Algoritmo de interpolación delta (`ac_delta_input_amount`).
   * `5: F` - Motor F con cálculo en micro-ticks (`ac_f_input_amount`).
   * `6: Cloud` - Predicción de entrada Cloud (`ac_cloud_input_amount`).
-  * `8: aX30` - Motor insignia de AClient con compensación adaptativa de jitter (`ac_ax30_adaptive_jitter`) y filtro de seguridad perimetral de colisión (`ac_ax30_collision_clamp`).
+  * `8: aX30` - Motor insignia de AClient
 * **Configuración Individual por Motor**: Cada algoritmo cuenta con sus propios valores ajustables tanto para el jugador local como para otros jugadores en el servidor.
 * **Predicción para Otros Jugadores**: Opciones dedicadas (`ac_ax30_others`, `ac_fast_input_others`, etc.) para aplicar predicción de movimiento sobre los demás tees en pantalla.
 * **Filtro Only When Frozen (`ac_fast_input_others_only_frozen`)**: Permite aplicar la predicción sobre los demás jugadores exclusivamente cuando se encuentren congelados (freeze), manteniendo su posición normal mientras se mueven libremente.

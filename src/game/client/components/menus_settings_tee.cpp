@@ -92,7 +92,7 @@ void CMenus::RenderSettingsTee(CUIRect MainView)
 	const float EyeButtonSize = 40.0f;
 	const bool RenderEyesBelow = MainView.w < 750.0f;
 	CUIRect YourSkin, Checkboxes, SkinPrefix, Eyes, Button, Label;
-	MainView.HSplitTop(205.0f, &YourSkin, &MainView);
+	MainView.HSplitTop(232.0f, &YourSkin, &MainView);
 	if(RenderEyesBelow)
 	{
 		YourSkin.VSplitLeft(MainView.w * 0.45f, &YourSkin, &Checkboxes);
@@ -111,6 +111,10 @@ void CMenus::RenderSettingsTee(CUIRect MainView)
 	}
 	YourSkin.VSplitRight(20.0f, &YourSkin, nullptr);
 	Checkboxes.VSplitRight(20.0f, &Checkboxes, nullptr);
+	CUIRect IdentityView;
+	YourSkin.HSplitTop(68.0f, &IdentityView, &YourSkin);
+	RenderSettingsTeeIdentity(IdentityView);
+	YourSkin.HSplitTop(5.0f, nullptr, &YourSkin);
 
 	// Checkboxes
 	bool ShouldRefresh = false;

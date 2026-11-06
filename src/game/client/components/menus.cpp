@@ -1297,12 +1297,17 @@ void CMenus::RenderPopupFullscreen(CUIRect Screen)
 		pTitle = Localize("Save skin");
 		pExtraText = Localize("Are you sure you want to save your skin? If a skin with this name already exists, it will be replaced.");
 	}
+	else if(m_Popup == POPUP_COUNTRY)
+	{
+		pTitle = Localize("Select country");
+		pExtraText = Localize("Choose a country flag.");
+	}
 
 	CUIRect Box, Part;
 	Box = Screen;
 	if(m_Popup != POPUP_FIRST_LAUNCH)
 	{
-		Box.Margin(150.0f, &Box);
+		Box.Margin(m_Popup == POPUP_COUNTRY ? 70.0f : 150.0f, &Box);
 	}
 
 	// Background
@@ -1377,6 +1382,20 @@ void CMenus::RenderPopupFullscreen(CUIRect Screen)
 				(this->*m_aPopupButtons[BUTTON_CONFIRM].m_pfnCallback)();
 			}
 		}
+	}
+	else if(m_Popup == POPUP_COUNTRY)
+	{
+		CUIRect ButtonBar;
+		Box.HSplitBottom(20.0f, &Box, nullptr);
+		Box.HSplitBottom(24.0f, &Box, &ButtonBar);
+		ButtonBar.VMargin(100.0f, &ButtonBar);
+
+		if(RenderCountrySelection(Box))
+			m_Popup = POPUP_NONE;
+
+		static CButtonContainer s_CancelCountrySelection;
+		if(m_Popup == POPUP_COUNTRY && (DoButton_Menu(&s_CancelCountrySelection, Localize("Cancel"), 0, &ButtonBar) || Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE)))
+			m_Popup = POPUP_NONE;
 	}
 	else if(m_Popup == POPUP_QUIT || m_Popup == POPUP_RESTART)
 	{

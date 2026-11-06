@@ -150,6 +150,9 @@ private:
 	// In-memory cache for KoG
 	std::map<std::string, CKoGPlayerProfile> m_mKoGProfilesCache;
 	std::deque<std::string> m_dKoGCacheOrder;
+	int64_t m_KoGCloudflareCooldown = 0;
+	std::map<std::string, int64_t> m_mFailedFetchesKoG;
+	std::map<std::string, int64_t> m_mFailedFetchesDDNet;
 
 	// Thread management for background KoG fetch
 	void *m_pKoGThread = nullptr;
