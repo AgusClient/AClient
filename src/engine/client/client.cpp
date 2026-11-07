@@ -5301,7 +5301,11 @@ int main(int argc, const char **argv)
 	{
 		g_Config.m_ClDownloadGameskins = 1;
 	}
-	g_Config.m_AcConfigVersion = 2;
+	if(g_Config.m_AcConfigVersion < 3)
+	{
+		g_Config.m_AcOptimizerFpsFogRenderRect = 0;
+	}
+	g_Config.m_AcConfigVersion = 3;
 	if(g_Config.m_AcInputs == 7)
 		g_Config.m_AcInputs = AC_INPUTS_AX30;
 

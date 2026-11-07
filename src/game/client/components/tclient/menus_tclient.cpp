@@ -4431,7 +4431,20 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		}
 
 		DoCheckboxWithHelp(&g_Config.m_AcOptimizerFpsFogCullMapTiles, TCLocalize("Cull map tiles outside radius"), TCLocalize("Drastically reduces tile vertices and draw operations outside the focused view area."), &g_Config.m_AcOptimizerFpsFogCullMapTiles, &Column, LineSize);
-		DoCheckboxWithHelp(&g_Config.m_AcOptimizerFpsFogRenderRect, TCLocalize("Show FPS Fog boundary box (debug)"), TCLocalize("Draws a visible outline showing the active rendering bounding box."), &g_Config.m_AcOptimizerFpsFogRenderRect, &Column, LineSize);
+
+		Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		{
+			CUIRect LabelRect, ToggleRect, OffBtn, OnBtn;
+			Button.VSplitRight(120.0f, &LabelRect, &ToggleRect);
+			Ui()->DoLabel(&LabelRect, TCLocalize("Mostrar bordes del FPS Fog"), FontSize, TEXTALIGN_ML);
+			ToggleRect.VSplitMid(&OffBtn, &OnBtn, 2.0f);
+			static CButtonContainer s_aFogBorderBtns[2];
+			if(DoButton_Menu(&s_aFogBorderBtns[0], "OFF", g_Config.m_AcOptimizerFpsFogRenderRect == 0, &OffBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+				g_Config.m_AcOptimizerFpsFogRenderRect = 0;
+			if(DoButton_Menu(&s_aFogBorderBtns[1], "ON", g_Config.m_AcOptimizerFpsFogRenderRect == 1, &OnBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+				g_Config.m_AcOptimizerFpsFogRenderRect = 1;
+		}
 	}
 
 	DoCheckboxWithHelp(&g_Config.m_AcOptimizerHighPriority, TCLocalize("High process priority (Windows)"), TCLocalize("Automatically assigns High priority to DDNet in Windows to reduce background process micro-stutters."), &g_Config.m_AcOptimizerHighPriority, &Column, LineSize);
