@@ -378,7 +378,15 @@ bool CMenus::AssetsEditorResolvePath(int Category, const char *pName, char *pOut
 	if(Accept(aPath))
 		return true;
 	str_format(aPath, sizeof(aPath), "assets/%s/%s/%s.png", pFolder, pName, pFolder);
-	return Accept(aPath);
+	if(Accept(aPath))
+		return true;
+	if(Category == ASSETS_EDITOR_CAT_GAME)
+	{
+		str_format(aPath, sizeof(aPath), "downloaded_gameskins/%s.png", pName);
+		if(Accept(aPath))
+			return true;
+	}
+	return false;
 }
 
 bool CMenus::AssetsEditorLoadImage(int Category, const char *pName, SAssetsEditorImage &Out)

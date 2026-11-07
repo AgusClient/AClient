@@ -89,6 +89,7 @@ public:
 
 		char m_aName[50];
 		bool m_Deletable = false;
+		bool m_LoadFailed = false;
 		CButtonContainer m_DeleteButtonId;
 
 		bool operator<(const SCustomItem &Other) const { return str_comp(m_aName, Other.m_aName) < 0; }
@@ -126,6 +127,7 @@ public:
 protected:
 	std::vector<SCustomEntities> m_vEntitiesList;
 	std::vector<SCustomGame> m_vGameList;
+	std::vector<SCustomGame> m_vDownloadedGameList;
 	std::vector<SCustomEmoticon> m_vEmoticonList;
 	std::vector<SCustomParticle> m_vParticlesList;
 	std::vector<SCustomHud> m_vHudList;
@@ -137,6 +139,7 @@ protected:
 	static int EntitiesScan(const char *pName, int IsDir, int DirType, void *pUser);
 
 	static int GameScan(const char *pName, int IsDir, int DirType, void *pUser);
+	static int DownloadedGameScan(const char *pName, int IsDir, int DirType, void *pUser);
 	static int EmoticonsScan(const char *pName, int IsDir, int DirType, void *pUser);
 	static int ParticlesScan(const char *pName, int IsDir, int DirType, void *pUser);
 	static int HudScan(const char *pName, int IsDir, int DirType, void *pUser);

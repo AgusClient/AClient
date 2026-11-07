@@ -5259,6 +5259,11 @@ CGameClient::CImageAsset CGameClient::LoadAssetFromPath(const char *pPath, bool 
 	}
 
 	Graphics()->LoadPng(LoadedAsset.m_ImageInfo, LoadedAsset.m_aPath, IStorage::TYPE_ALL);
+	if(!LoadedAsset.IsLoaded() && !LoadedAsset.m_IsDefault && !AsDir && AssetId == IMAGE_GAME)
+	{
+		str_format(LoadedAsset.m_aPath, sizeof(LoadedAsset.m_aPath), "downloaded_gameskins/%s.png", pPath);
+		Graphics()->LoadPng(LoadedAsset.m_ImageInfo, LoadedAsset.m_aPath, IStorage::TYPE_SAVE);
+	}
 
 	if(!LoadedAsset.m_IsDefault && LoadedAsset.IsLoaded())
 	{

@@ -34,7 +34,8 @@ enum
 	ASSETS_TAB_PARTICLES = 3,
 	ASSETS_TAB_HUD = 4,
 	ASSETS_TAB_EXTRAS = 5,
-	NUMBER_OF_ASSETS_TABS = 6,
+	ASSETS_TAB_DOWNLOADED_GAME = 6,
+	NUMBER_OF_ASSETS_TABS = 7,
 };
 
 void CMenus::LoadEntities(SCustomEntities *pEntitiesItem, void *pUser)
@@ -179,6 +180,31 @@ int CMenus::GameScan(const char *pName, int IsDir, int DirType, void *pUser)
 	return AssetScan(pName, IsDir, DirType, pThis->m_vGameList, "game", pGraphics, pUser);
 }
 
+int CMenus::DownloadedGameScan(const char *pName, int IsDir, int DirType, void *pUser)
+{
+	if(IsDir || !pName || !pName[0])
+		return 0;
+
+	if(!str_endswith(pName, ".png") && !str_endswith(pName, ".PNG"))
+		return 0;
+
+	char aName[IO_MAX_PATH_LENGTH];
+	str_truncate(aName, sizeof(aName), pName, str_length(pName) - 4);
+	if(aName[0] == '\0' || str_comp(aName, "default") == 0)
+		return 0;
+
+	auto *pRealUser = (SMenuAssetScanUser *)pUser;
+	auto *pThis = (CMenus *)pRealUser->m_pUser;
+
+	SCustomGame AssetItem;
+	str_copy(AssetItem.m_aName, aName, sizeof(AssetItem.m_aName));
+	AssetItem.m_Deletable = true;
+	pThis->m_vDownloadedGameList.push_back(AssetItem);
+
+	pRealUser->m_LoadedFunc();
+	return 0;
+}
+
 int CMenus::EmoticonsScan(const char *pName, int IsDir, int DirType, void *pUser)
 {
 	auto *pRealUser = (SMenuAssetScanUser *)pUser;
@@ -213,6 +239,7 @@ int CMenus::ExtrasScan(const char *pName, int IsDir, int DirType, void *pUser)
 
 static std::vector<const CMenus::SCustomEntities *> gs_vpSearchEntitiesList;
 static std::vector<const CMenus::SCustomGame *> gs_vpSearchGamesList;
+static std::vector<const CMenus::SCustomGame *> gs_vpSearchDownloadedGamesList;
 static std::vector<const CMenus::SCustomEmoticon *> gs_vpSearchEmoticonsList;
 static std::vector<const CMenus::SCustomParticle *> gs_vpSearchParticlesList;
 static std::vector<const CMenus::SCustomHud *> gs_vpSearchHudList;
@@ -236,6 +263,8 @@ static const CMenus::SCustomItem *GetCustomItem(int CurTab, size_t Index)
 		return gs_vpSearchEntitiesList[Index];
 	else if(CurTab == ASSETS_TAB_GAME)
 		return gs_vpSearchGamesList[Index];
+	else if(CurTab == ASSETS_TAB_DOWNLOADED_GAME)
+		return gs_vpSearchDownloadedGamesList[Index];
 	else if(CurTab == ASSETS_TAB_EMOTICONS)
 		return gs_vpSearchEmoticonsList[Index];
 	else if(CurTab == ASSETS_TAB_PARTICLES)
@@ -276,6 +305,13 @@ void CMenus::ClearCustomItems(int CurTab)
 	else if(CurTab == ASSETS_TAB_GAME)
 	{
 		ClearAssetList(m_vGameList, Graphics());
+
+		// reload current game skin
+		GameClient()->LoadGameSkin(g_Config.m_ClAssetGame);
+	}
+	else if(CurTab == ASSETS_TAB_DOWNLOADED_GAME)
+	{
+		ClearAssetList(m_vDownloadedGameList, Graphics());
 
 		// reload current game skin
 		GameClient()->LoadGameSkin(g_Config.m_ClAssetGame);
@@ -370,6 +406,12 @@ static void AssetsGetRelativePaths(int Tab, const char *pName, char *pFilePath, 
 	if(pFilePath && FilePathSize > 0) pFilePath[0] = '\0';
 	if(pFolderPath && FolderPathSize > 0) pFolderPath[0] = '\0';
 	if(pName == nullptr || pName[0] == '\0') return;
+	if(Tab == ASSETS_TAB_DOWNLOADED_GAME)
+	{
+		if(pFilePath && FilePathSize > 0)
+			str_format(pFilePath, FilePathSize, "downloaded_gameskins/%s.png", pName);
+		return;
+	}
 	const char *pFolder = AssetsGetTabFolder(Tab);
 	if(pFilePath && FilePathSize > 0)
 		str_format(pFilePath, FilePathSize, "assets/%s/%s.png", pFolder, pName);
@@ -475,7 +517,7 @@ static void AssetsResetSelectedToDefault(int Tab)
 {
 	if(Tab == ASSETS_TAB_ENTITIES)
 		str_copy(g_Config.m_ClAssetsEntities, "default");
-	else if(Tab == ASSETS_TAB_GAME)
+	else if(Tab == ASSETS_TAB_GAME || Tab == ASSETS_TAB_DOWNLOADED_GAME)
 		str_copy(g_Config.m_ClAssetGame, "default");
 	else if(Tab == ASSETS_TAB_EMOTICONS)
 		str_copy(g_Config.m_ClAssetEmoticons, "default");
@@ -491,7 +533,7 @@ static bool AssetsIsCurrentlySelected(int Tab, const char *pName)
 {
 	if(Tab == ASSETS_TAB_ENTITIES)
 		return str_comp(pName, g_Config.m_ClAssetsEntities) == 0;
-	if(Tab == ASSETS_TAB_GAME)
+	if(Tab == ASSETS_TAB_GAME || Tab == ASSETS_TAB_DOWNLOADED_GAME)
 		return str_comp(pName, g_Config.m_ClAssetGame) == 0;
 	if(Tab == ASSETS_TAB_EMOTICONS)
 		return str_comp(pName, g_Config.m_ClAssetEmoticons) == 0;
@@ -559,6 +601,8 @@ void CMenus::RemoveCustomAssetFromList(int Tab, const char *pName)
 	}
 	else if(Tab == ASSETS_TAB_GAME)
 		AssetsEraseNamedPreview(m_vGameList, Graphics(), pName);
+	else if(Tab == ASSETS_TAB_DOWNLOADED_GAME)
+		AssetsEraseNamedPreview(m_vDownloadedGameList, Graphics(), pName);
 	else if(Tab == ASSETS_TAB_EMOTICONS)
 		AssetsEraseNamedPreview(m_vEmoticonList, Graphics(), pName);
 	else if(Tab == ASSETS_TAB_PARTICLES)
@@ -595,7 +639,7 @@ void CMenus::PopupConfirmDeleteAsset()
 	{
 		if(Tab == ASSETS_TAB_ENTITIES)
 			GameClient()->m_MapImages.ChangeEntitiesPath(g_Config.m_ClAssetsEntities);
-		else if(Tab == ASSETS_TAB_GAME)
+		else if(Tab == ASSETS_TAB_GAME || Tab == ASSETS_TAB_DOWNLOADED_GAME)
 			GameClient()->LoadGameSkin(g_Config.m_ClAssetGame);
 		else if(Tab == ASSETS_TAB_EMOTICONS)
 			GameClient()->LoadEmoticonsSkin(g_Config.m_ClAssetEmoticons);
@@ -646,7 +690,8 @@ void CMenus::RenderSettingsAssets(CUIRect MainView)
 		Localize("Emoticons"),
 		Localize("Particles"),
 		Localize("HUD"),
-		Localize("Extras")};
+		Localize("Extras"),
+		Localize("Descargas")};
 
 	for(int Tab = ASSETS_TAB_ENTITIES; Tab < NUMBER_OF_ASSETS_TABS; ++Tab)
 	{
@@ -718,6 +763,26 @@ void CMenus::RenderSettingsAssets(CUIRect MainView)
 		if(WasEmpty)
 			MarkCustomAssetsDeletable(ASSETS_TAB_EXTRAS);
 	}
+	else if(s_CurCustomTab == ASSETS_TAB_DOWNLOADED_GAME)
+	{
+		if(m_vDownloadedGameList.empty())
+		{
+			SCustomGame AssetItem;
+			str_copy(AssetItem.m_aName, "default");
+			LoadAsset(&AssetItem, "game", Graphics());
+			AssetItem.m_Deletable = false;
+			m_vDownloadedGameList.push_back(AssetItem);
+
+			Storage()->ListDirectory(IStorage::TYPE_SAVE, "downloaded_gameskins", DownloadedGameScan, &User);
+			std::sort(m_vDownloadedGameList.begin() + 1, m_vDownloadedGameList.end());
+			auto Last = std::unique(m_vDownloadedGameList.begin() + 1, m_vDownloadedGameList.end(), [](const SCustomGame &a, const SCustomGame &b) {
+				return str_comp(a.m_aName, b.m_aName) == 0;
+			});
+			m_vDownloadedGameList.erase(Last, m_vDownloadedGameList.end());
+		}
+		if(m_vDownloadedGameList.size() != gs_aCustomListSize[s_CurCustomTab])
+			gs_aInitCustomList[s_CurCustomTab] = true;
+	}
 	else
 	{
 		dbg_assert_failed("Invalid s_CurCustomTab: %d", s_CurCustomTab);
@@ -765,6 +830,10 @@ void CMenus::RenderSettingsAssets(CUIRect MainView)
 		{
 			ListSize = InitSearchList(gs_vpSearchExtrasList, m_vExtrasList);
 		}
+		else if(s_CurCustomTab == ASSETS_TAB_DOWNLOADED_GAME)
+		{
+			ListSize = InitSearchList(gs_vpSearchDownloadedGamesList, m_vDownloadedGameList);
+		}
 		gs_aInitCustomList[s_CurCustomTab] = false;
 		gs_aCustomListSize[s_CurCustomTab] = ListSize;
 	}
@@ -780,9 +849,9 @@ void CMenus::RenderSettingsAssets(CUIRect MainView)
 	{
 		SearchListSize = gs_vpSearchEntitiesList.size();
 	}
-	else if(s_CurCustomTab == ASSETS_TAB_GAME)
+	else if(s_CurCustomTab == ASSETS_TAB_GAME || s_CurCustomTab == ASSETS_TAB_DOWNLOADED_GAME)
 	{
-		SearchListSize = gs_vpSearchGamesList.size();
+		SearchListSize = (s_CurCustomTab == ASSETS_TAB_GAME) ? gs_vpSearchGamesList.size() : gs_vpSearchDownloadedGamesList.size();
 		TextureHeight = 75;
 	}
 	else if(s_CurCustomTab == ASSETS_TAB_EMOTICONS)
@@ -805,6 +874,7 @@ void CMenus::RenderSettingsAssets(CUIRect MainView)
 	static CListBox s_ListBox;
 	s_ListBox.DoStart(TextureHeight + 15.0f + 10.0f + Margin, SearchListSize, CustomList.w / (Margin + TextureWidth), 1, OldSelected, &CustomList, false);
 	bool SkipSelectionBecauseDelete = false;
+	int DownloadedLoadedThisFrame = 0;
 	for(size_t i = 0; i < SearchListSize; ++i)
 	{
 		const SCustomItem *pItem = GetCustomItem(s_CurCustomTab, i);
@@ -816,7 +886,7 @@ void CMenus::RenderSettingsAssets(CUIRect MainView)
 			if(str_comp(pItem->m_aName, g_Config.m_ClAssetsEntities) == 0)
 				OldSelected = i;
 		}
-		else if(s_CurCustomTab == ASSETS_TAB_GAME)
+		else if(s_CurCustomTab == ASSETS_TAB_GAME || s_CurCustomTab == ASSETS_TAB_DOWNLOADED_GAME)
 		{
 			if(str_comp(pItem->m_aName, g_Config.m_ClAssetGame) == 0)
 				OldSelected = i;
@@ -858,6 +928,25 @@ void CMenus::RenderSettingsAssets(CUIRect MainView)
 		ItemRect.HSplitTop(15, &ItemRect, &TextureRect);
 		TextureRect.HSplitTop(10, nullptr, &TextureRect);
 		Ui()->DoLabel(&ItemRect, pItem->m_aName, ItemRect.h - 2, TEXTALIGN_MC);
+
+		if(s_CurCustomTab == ASSETS_TAB_DOWNLOADED_GAME && !pItem->m_RenderTexture.IsValid() && !pItem->m_LoadFailed && DownloadedLoadedThisFrame < 2)
+		{
+			SCustomItem *pMutableItem = const_cast<SCustomItem *>(pItem);
+			if(str_comp(pItem->m_aName, "default") == 0)
+			{
+				pMutableItem->m_RenderTexture = Graphics()->LoadTexture("game.png", IStorage::TYPE_ALL);
+			}
+			else
+			{
+				char aPath[IO_MAX_PATH_LENGTH];
+				str_format(aPath, sizeof(aPath), "downloaded_gameskins/%s.png", pItem->m_aName);
+				pMutableItem->m_RenderTexture = Graphics()->LoadTexture(aPath, IStorage::TYPE_SAVE);
+			}
+			if(!pMutableItem->m_RenderTexture.IsValid() || pMutableItem->m_RenderTexture.IsNullTexture())
+				pMutableItem->m_LoadFailed = true;
+			DownloadedLoadedThisFrame++;
+		}
+
 		if(pItem->m_RenderTexture.IsValid())
 		{
 			Graphics()->WrapClamp();
@@ -906,7 +995,10 @@ void CMenus::RenderSettingsAssets(CUIRect MainView)
 	{
 		const SCustomItem *pPicked = GetCustomItem(s_CurCustomTab, NewSelected);
 		if(pPicked != nullptr && pPicked->m_aName[0] != '\0')
-			AssetsEditorAssignPickedAsset(m_AssetsEditorState.m_ExploreSide, s_CurCustomTab, pPicked->m_aName);
+		{
+			const int EditorCat = (s_CurCustomTab == ASSETS_TAB_DOWNLOADED_GAME) ? ASSETS_TAB_GAME : s_CurCustomTab;
+			AssetsEditorAssignPickedAsset(m_AssetsEditorState.m_ExploreSide, EditorCat, pPicked->m_aName);
+		}
 	}
 	else if(!EditorPick && OldSelected != NewSelected && !SkipSelectionBecauseDelete)
 	{
@@ -917,7 +1009,7 @@ void CMenus::RenderSettingsAssets(CUIRect MainView)
 				str_copy(g_Config.m_ClAssetsEntities, GetCustomItem(s_CurCustomTab, NewSelected)->m_aName);
 				GameClient()->m_MapImages.ChangeEntitiesPath(GetCustomItem(s_CurCustomTab, NewSelected)->m_aName);
 			}
-			else if(s_CurCustomTab == ASSETS_TAB_GAME)
+			else if(s_CurCustomTab == ASSETS_TAB_GAME || s_CurCustomTab == ASSETS_TAB_DOWNLOADED_GAME)
 			{
 				str_copy(g_Config.m_ClAssetGame, GetCustomItem(s_CurCustomTab, NewSelected)->m_aName);
 				GameClient()->LoadGameSkin(g_Config.m_ClAssetGame);
@@ -993,6 +1085,8 @@ void CMenus::RenderSettingsAssets(CUIRect MainView)
 			str_copy(aBufFull, "assets/hud");
 		else if(s_CurCustomTab == ASSETS_TAB_EXTRAS)
 			str_copy(aBufFull, "assets/extras");
+		else if(s_CurCustomTab == ASSETS_TAB_DOWNLOADED_GAME)
+			str_copy(aBufFull, "downloaded_gameskins");
 		Storage()->GetCompletePath(IStorage::TYPE_SAVE, aBufFull, aBuf, sizeof(aBuf));
 		Storage()->CreateFolder("assets", IStorage::TYPE_SAVE);
 		Storage()->CreateFolder(aBufFull, IStorage::TYPE_SAVE);
