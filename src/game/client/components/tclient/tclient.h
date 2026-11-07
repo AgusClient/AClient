@@ -18,6 +18,7 @@ struct CAClientRelease
 	char m_aName[128] = "";
 	char m_aPublishedAt[32] = "";
 	std::string m_Body;
+	bool m_IsPrerelease = false;
 };
 
 class CTClient : public CComponent

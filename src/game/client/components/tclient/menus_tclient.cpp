@@ -4899,13 +4899,23 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		s_vpReleaseNames.clear();
 		s_vReleaseNames.reserve(vReleases.size());
 		s_vpReleaseNames.reserve(vReleases.size());
+		bool FoundLatestOfficial = false;
 		for(size_t i = 0; i < vReleases.size(); ++i)
 		{
 			char aTabLabel[64];
-			if(i == 0)
+			if(vReleases[i].m_IsPrerelease)
+			{
+				str_format(aTabLabel, sizeof(aTabLabel), "%s (Pre-release)", vReleases[i].m_aTag);
+			}
+			else if(!FoundLatestOfficial)
+			{
+				FoundLatestOfficial = true;
 				str_format(aTabLabel, sizeof(aTabLabel), "%s (Reciente)", vReleases[i].m_aTag);
+			}
 			else
+			{
 				str_copy(aTabLabel, vReleases[i].m_aTag, sizeof(aTabLabel));
+			}
 			s_vReleaseNames.emplace_back(aTabLabel);
 		}
 		for(const auto &Str : s_vReleaseNames) 

@@ -755,7 +755,17 @@ void CTClient::FinishTClientInfo()
 	std::vector<CAClientRelease> vNewReleases;
 
 	auto ParseReleaseObject = [&](const json_value &Rel, bool IsLatest) {
+		const json_value &Draft = Rel["draft"];
+		bool IsDraft = (Draft.type == json_boolean && Draft.u.boolean);
+		if(IsDraft)
+			return;
+
+		const json_value &Prerelease = Rel["prerelease"];
+		bool IsPrerelease = (Prerelease.type == json_boolean && Prerelease.u.boolean);
+
 		CAClientRelease Entry;
+		Entry.m_IsPrerelease = IsPrerelease;
+
 		const json_value &TagName = Rel["tag_name"];
 		const json_value &Name = Rel["name"];
 		const json_value &Body = Rel["body"];
@@ -846,18 +856,56 @@ void CTClient::FinishTClientInfo()
 		}
 	};
 
+	bool FoundLatestOfficial = false;
+
 	if(Json.type == json_array)
 	{
 		for(unsigned int i = 0; i < Json.u.array.length && i < 15; ++i)
 		{
 			const json_value &Rel = *Json.u.array.values[i];
 			if(Rel.type == json_object)
-				ParseReleaseObject(Rel, i == 0);
+			{
+				const json_value &Draft = Rel["draft"];
+				bool IsDraft = (Draft.type == json_boolean && Draft.u.boolean);
+				if(IsDraft)
+					continue;
+
+				const json_value &Prerelease = Rel["prerelease"];
+				bool IsPrerelease = (Prerelease.type == json_boolean && Prerelease.u.boolean);
+
+				bool IsLatestCandidate = false;
+				if(!FoundLatestOfficial && !IsPrerelease)
+				{
+					IsLatestCandidate = true;
+					FoundLatestOfficial = true;
+				}
+
+				ParseReleaseObject(Rel, IsLatestCandidate);
+			}
 		}
 	}
 	else if(Json.type == json_object)
 	{
-		ParseReleaseObject(Json, true);
+		const json_value &Draft = Json["draft"];
+		bool IsDraft = (Draft.type == json_boolean && Draft.u.boolean);
+		const json_value &Prerelease = Json["prerelease"];
+		bool IsPrerelease = (Prerelease.type == json_boolean && Prerelease.u.boolean);
+
+		bool IsLatestCandidate = !IsDraft && !IsPrerelease;
+		if(IsLatestCandidate)
+			FoundLatestOfficial = true;
+
+		ParseReleaseObject(Json, IsLatestCandidate);
+	}
+
+	if(!FoundLatestOfficial)
+	{
+		m_aVersionStr[0] = '0';
+		m_aVersionStr[1] = '\0';
+		str_copy(m_aLatestVersion, ACLIENT_VERSION, sizeof(m_aLatestVersion));
+		m_UpdateState = UPDATE_STATE_IDLE;
+		str_copy(m_aUpdateStatus, "Cliente al dia", sizeof(m_aUpdateStatus));
+		m_FetchedTClientInfo = true;
 	}
 
 	if(!vNewReleases.empty())
