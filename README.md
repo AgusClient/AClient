@@ -64,6 +64,7 @@ Seguimiento analítico en tiempo real de tu equipo durante cualquier mapa de DDN
 * **Animación Dinámica Estilo F1 (`ac_mini_statboard_anim`):** Las posiciones en la tabla efectúan una transición fluida con destellos verdes (adelantamiento) o rojos cuando cambia el orden de rendimiento.
 * **Miniaturas de Skins (`ac_mini_statboard_show_tees`):** Visualización del avatar exacto de cada jugador en la lista.
 * **Persistencia Inteligente:** Posibilidad de mantener las estadísticas acumuladas tras morir con `/kill` (`ac_statboard_keep_on_death`) y autoguardado en el historial de carreras (`ac_statboard_auto_save`).
+* **Optimización de Cálculo (`ac_statboard_background_calc`):** El procesamiento per-tick de métricas (freezes, hammer saves, muertes) se pausa de inmediato cuando el overlay está desactivado para evitar sobrecarga en segundo plano, con opción de mantener el seguimiento activo si se prefiere.
 * **Visualización Modular:** Máscara de columnas personalizable por bitmask, escala y opacidad configurables.
 
 ---
@@ -157,6 +158,7 @@ Herramientas avanzadas para administradores y moderadores de servidores:
 | Variable / Comando | Defecto | Descripción |
 | :--- | :---: | :--- |
 | `ac_mini_statboard` | `0` | Activa o desactiva el overlay de RaceStats en el HUD |
+| `ac_statboard_background_calc` | `0` | Calcula estadísticas en segundo plano aunque el overlay esté oculto |
 | `ac_mini_statboard_anim` | `1` | Animación fluida de posiciones estilo F1 |
 | `ac_statboard_keep_on_death` | `0` | Mantiene las estadísticas tras morir con `/kill` |
 | `ac_hud_keystrokes` | `0` | Muestra el panel en pantalla de teclas pulsadas |

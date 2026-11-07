@@ -3274,6 +3274,7 @@ void CMenus::RenderSettingsTClientRaceStats(CUIRect MainView)
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcStatboardAutoSave, TCLocalize("Auto-save before reset (/kill or /team)"), &g_Config.m_AcStatboardAutoSave, &LeftView, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcRaceStatsSaveOnFinish, TCLocalize("Auto-save on map finish"), &g_Config.m_AcRaceStatsSaveOnFinish, &LeftView, LineSize);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcRaceStatsSaveOnlyOnFinish, TCLocalize("Save ONLY on map finish"), &g_Config.m_AcRaceStatsSaveOnlyOnFinish, &LeftView, LineSize);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcStatboardBackgroundCalc, TCLocalize("Calculate stats in background"), &g_Config.m_AcStatboardBackgroundCalc, &LeftView, LineSize);
 
 	LeftView.HSplitTop(MarginSmall, nullptr, &LeftView);
 	CUIRect DurationSlider, MaxLogsSlider;
@@ -3784,6 +3785,7 @@ void CMenus::RenderSettingsAClientCommands(CUIRect MainView)
 	DrawCommandCard(Column, "ac_mini_statboard_anim [0|1]", TCLocalize("Toggle smooth F1-style ladder animation when ranks change."));
 	DrawCommandCard(Column, "ac_mini_statboard_anim_speed [3-30]", TCLocalize("Speed of F1 ladder rank transitions (default: 10)."));
 	DrawCommandCard(Column, "ac_mini_statboard_show_tees [0|1]", TCLocalize("Show mini Tee skins next to names in overlay (default: 1)."));
+	DrawCommandCard(Column, "ac_statboard_background_calc [0|1]", TCLocalize("Calculate stats in background even when overlay is hidden."));
 	DrawCommandCard(Column, "ac_statboard_keep_on_death [0|1]", TCLocalize("Keep accumulated stats on death/kill (do not reset)."));
 	DrawCommandCard(Column, "ac_statboard_reset_on_team_kill [0|1]", TCLocalize("Reset stats when all team dies or you switch team."));
 	DrawCommandCard(Column, "ac_statboard_auto_save [0|1]", TCLocalize("Auto-save stats before resetting on kill or team switch."));
@@ -4285,6 +4287,7 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
 	DoCheckboxWithHelp(&g_Config.m_AcMiniStatboard, TCLocalize("Enable Mini Statboard HUD"), TCLocalize("Shows the compact live team statistics table on your screen during the game."), &g_Config.m_AcMiniStatboard, &Column, LineSize);
+	DoCheckboxWithHelp(&g_Config.m_AcStatboardBackgroundCalc, TCLocalize("Calculate stats in background"), TCLocalize("Keep tracking freezes, hammer saves and deaths even when the overlay is hidden."), &g_Config.m_AcStatboardBackgroundCalc, &Column, LineSize);
 	DoCheckboxWithHelp(&g_Config.m_AcStatboardKeepOnDeath, TCLocalize("Keep stats on death (do not reset on /kill)"), TCLocalize("Keeps your accumulated statistics intact even if you or a teammate dies or uses /kill."), &g_Config.m_AcStatboardKeepOnDeath, &Column, LineSize);
 	DoCheckboxWithHelp(&g_Config.m_AcStatboardResetOnTeamKill, TCLocalize("Reset stats on /kill or /team change"), TCLocalize("Automatically resets statistics whenever the team dies or you switch rooms (/team)."), &g_Config.m_AcStatboardResetOnTeamKill, &Column, LineSize);
 	DoCheckboxWithHelp(&g_Config.m_AcStatboardAutoSave, TCLocalize("Auto-save stats before reset (/kill or /team)"), TCLocalize("Automatically saves current run stats to RaceStats history file before resetting."), &g_Config.m_AcStatboardAutoSave, &Column, LineSize);

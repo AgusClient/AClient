@@ -23,6 +23,7 @@ MACRO_CONFIG_INT(AcMiniStatboardAnimSpeed, ac_mini_statboard_anim_speed, 10, 3, 
 MACRO_CONFIG_INT(AcMiniStatboardRankUpColor, ac_mini_statboard_rank_up_color, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show green flash color when gaining rank in mini statboard")
 MACRO_CONFIG_INT(AcMiniStatboardRankDownColor, ac_mini_statboard_rank_down_color, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show red flash color when losing rank in mini statboard")
 MACRO_CONFIG_INT(AcMiniStatboardShowTees, ac_mini_statboard_show_tees, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show mini Tee skins in stats overlay (default: 1)")
+MACRO_CONFIG_INT(AcStatboardBackgroundCalc, ac_statboard_background_calc, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Calculate RaceStats overlay metrics in background even when overlay is hidden")
 MACRO_CONFIG_INT(AcStatboardKeepOnDeath, ac_statboard_keep_on_death, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Keep overlay stats on /kill (do not reset on death)")
 MACRO_CONFIG_INT(AcStatboardResetOnTeamKill, ac_statboard_reset_on_team_kill, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Reset live stats on /kill or team change")
 MACRO_CONFIG_INT(AcStatboardAutoSave, ac_statboard_auto_save, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Auto-save race stats to history before resetting on /kill or /team")

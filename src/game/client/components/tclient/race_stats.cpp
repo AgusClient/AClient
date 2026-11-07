@@ -124,6 +124,13 @@ void CRaceStats::OnReset()
 	m_RunFinishedSaved = false;
 	m_RunFinishedSaved = false;
 	m_LastFinishSaveTime = 0;
+	m_WasCalculating = false;
+}
+
+bool CRaceStats::ShouldCalculate() const
+{
+	bool OverlayVisible = (g_Config.m_AcMiniStatboard != 0 || m_Active);
+	return OverlayVisible || (g_Config.m_AcStatboardBackgroundCalc != 0);
 }
 
 bool CRaceStats::HasCurrentTeamActivity() const
@@ -517,6 +524,9 @@ void CRaceStats::OnMessage(int MsgType, void *pRawMsg)
 	if(LocalClientId < 0 || LocalClientId >= MAX_CLIENTS)
 		return;
 
+	if(!ShouldCalculate())
+		return;
+
 	int LocalTeam = GameClient()->m_Teams.Team(LocalClientId);
 
 	if(MsgType == NETMSGTYPE_SV_KILLMSG)
@@ -626,9 +636,38 @@ void CRaceStats::OnRender()
 	if(LocalClientId < 0 || LocalClientId >= MAX_CLIENTS)
 		return;
 
+	const bool ShouldCalc = ShouldCalculate();
+	if(!ShouldCalc)
+	{
+		m_WasCalculating = false;
+		return;
+	}
+
 	int CurrentTick = Client()->GameTick(g_Config.m_ClDummy);
 	if(m_RunStartTick <= 0)
 		m_RunStartTick = CurrentTick;
+
+	// Si recién empezamos a calcular (ej: se activó el overlay o background calc en pleno juego),
+	// sincronizamos el estado base para evitar registrar falsas descongelaciones ni ataques antiguos
+	if(!m_WasCalculating)
+	{
+		m_WasCalculating = true;
+		m_LastStatsTick = CurrentTick;
+		for(int i = 0; i < MAX_CLIENTS; i++)
+		{
+			if(!GameClient()->m_Snap.m_apPlayerInfos[i] || !GameClient()->m_Snap.m_aCharacters[i].m_Active)
+			{
+				m_aPlayerStats[i].m_WasFrozen = false;
+				continue;
+			}
+			const auto &ClientData = GameClient()->m_aClients[i];
+			m_aPlayerStats[i].m_WasFrozen = (ClientData.m_FreezeEnd != 0 || ClientData.m_DeepFrozen || ClientData.m_LiveFrozen);
+			m_aPlayerStats[i].m_LastAttackTick = GameClient()->m_Snap.m_aCharacters[i].m_Cur.m_AttackTick;
+			m_aPlayerStats[i].m_LastHookState = GameClient()->m_Snap.m_aCharacters[i].m_Cur.m_HookState;
+			m_aPlayerStats[i].m_SoleSurvivorTicks = 0;
+			m_aPlayerStats[i].m_WasSoleSurvivor = false;
+		}
+	}
 
 	// Detectar cambio de equipo (/team 1, /team 0, etc.)
 	int CurrentTeam = GameClient()->m_Teams.Team(LocalClientId);

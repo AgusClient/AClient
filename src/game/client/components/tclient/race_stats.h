@@ -218,7 +218,9 @@ public:
 	int m_LastCacheTeam = -1;
 	int m_LastCacheLocalClientId = -1;
 	bool m_CacheValid = false;
+	bool m_WasCalculating = false;
 
+	bool ShouldCalculate() const;
 	void UpdateMiniStatboardCache();
 
 	void OnInit() override;
