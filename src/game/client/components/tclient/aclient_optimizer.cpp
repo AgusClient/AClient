@@ -4,6 +4,8 @@
 #include <game/aclient_fog.h>
 #include <game/client/gameclient.h>
 
+#include <algorithm>
+
 #if defined(CONF_FAMILY_WINDOWS)
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -39,6 +41,8 @@ void CAcOptimizer::OnRender()
 
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
+	if(GameClient()->m_Menus.IsActive())
+		return;
 
 	if(IsAcFpsFogActive() && g_Config.m_AcOptimizerFpsFogRenderRect)
 	{
@@ -55,20 +59,30 @@ void CAcOptimizer::OnRender()
 
 		const float X0 = FogRect.m_TopLeft.x;
 		const float Y0 = FogRect.m_TopLeft.y;
-		const float X1 = FogRect.m_BottomRight.x;
-		const float Y1 = FogRect.m_BottomRight.y;
+		const float W = FogRect.Width();
+		const float H = FogRect.Height();
+		const vec2 ViewportSize = Graphics()->ActiveViewportSize();
+		const float ViewportW = std::max(1.0f, ViewportSize.x);
+		const float ViewportH = std::max(1.0f, ViewportSize.y);
+		const float ThicknessX = std::min(2.0f * (WorldScreen.Width() / ViewportW), W * 0.5f);
+		const float ThicknessY = std::min(2.0f * (WorldScreen.Height() / ViewportH), H * 0.5f);
 
-		const IGraphics::CLineItem aLines[4] = {
-			{X0, Y0, X1, Y0},
-			{X1, Y0, X1, Y1},
-			{X1, Y1, X0, Y1},
-			{X0, Y1, X0, Y0}};
+		if(W > 0.0f && H > 0.0f && ThicknessX > 0.0f && ThicknessY > 0.0f)
+		{
+			const float InnerH = std::max(0.0f, H - 2.0f * ThicknessY);
+			const IGraphics::CQuadItem aBorderQuads[4] = {
+				IGraphics::CQuadItem(X0, Y0, W, ThicknessY),
+				IGraphics::CQuadItem(X0, Y0 + H - ThicknessY, W, ThicknessY),
+				IGraphics::CQuadItem(X0, Y0 + ThicknessY, ThicknessX, InnerH),
+				IGraphics::CQuadItem(X0 + W - ThicknessX, Y0 + ThicknessY, ThicknessX, InnerH),
+			};
 
-		Graphics()->TextureClear();
-		Graphics()->LinesBegin();
-		Graphics()->SetColor(0.2f, 0.8f, 1.0f, 0.75f);
-		Graphics()->LinesDraw(aLines, 4);
-		Graphics()->LinesEnd();
+			Graphics()->TextureClear();
+			Graphics()->QuadsBegin();
+			Graphics()->SetColor(0.2f, 0.8f, 1.0f, 0.75f);
+			Graphics()->QuadsDrawTL(aBorderQuads, 4);
+			Graphics()->QuadsEnd();
+		}
 
 		Graphics()->MapScreen(PrevScreen);
 	}

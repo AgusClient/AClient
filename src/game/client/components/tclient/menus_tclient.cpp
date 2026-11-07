@@ -4422,7 +4422,7 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		if(g_Config.m_AcOptimizerFpsFogMode == 1)
 		{
 			Column.HSplitTop(LineSize, &Button, &Column);
-			Ui()->DoScrollbarOption(&g_Config.m_AcOptimizerFpsFogZoomPercent, &g_Config.m_AcOptimizerFpsFogZoomPercent, &Button, TCLocalize("FPS Fog Zoom Area"), 20, 120, &CUi::ms_LinearScrollbarScale, 0, "%");
+			Ui()->DoScrollbarOption(&g_Config.m_AcOptimizerFpsFogZoomPercent, &g_Config.m_AcOptimizerFpsFogZoomPercent, &Button, TCLocalize("FPS Fog Zoom Area"), 20, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
 		}
 		else
 		{

@@ -66,7 +66,7 @@ MACRO_CONFIG_INT(AcOptimizerDisableHighDetail, ac_optimizer_disable_high_detail,
 MACRO_CONFIG_INT(AcOptimizerFpsFog, ac_optimizer_fps_fog, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Limit map and entities rendering to a focused camera radius")
 MACRO_CONFIG_INT(AcOptimizerFpsFogMode, ac_optimizer_fps_fog_mode, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "FPS Fog mode (0 = fixed tile radius, 1 = zoom percentage)")
 MACRO_CONFIG_INT(AcOptimizerFpsFogRadiusTiles, ac_optimizer_fps_fog_radius_tiles, 35, 10, 120, CFGFLAG_CLIENT | CFGFLAG_SAVE, "FPS Fog view radius in tiles (1 tile = 32 units)")
-MACRO_CONFIG_INT(AcOptimizerFpsFogZoomPercent, ac_optimizer_fps_fog_zoom_percent, 75, 20, 120, CFGFLAG_CLIENT | CFGFLAG_SAVE, "FPS Fog visible screen percentage when mode is 1 (20-120%)")
+MACRO_CONFIG_INT(AcOptimizerFpsFogZoomPercent, ac_optimizer_fps_fog_zoom_percent, 75, 20, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "FPS Fog visible screen percentage when mode is 1 (20-100%)")
 MACRO_CONFIG_INT(AcOptimizerFpsFogCullMapTiles, ac_optimizer_fps_fog_cull_map_tiles, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Cull map tiles outside the FPS Fog radius")
 MACRO_CONFIG_INT(AcOptimizerFpsFogRenderRect, ac_optimizer_fps_fog_render_rect, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draw outline box showing the FPS Fog area (debug)")
 MACRO_CONFIG_INT(AcOptimizerHighPriority, ac_optimizer_high_priority, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Set DDNet process priority to High in Windows")

@@ -30,7 +30,7 @@ inline CScreenRect ComputeAcFogScreenRect(const CScreenRect &BaseScreenRect, flo
 	float HalfH = 0.0f;
 	if(g_Config.m_AcOptimizerFpsFogMode == 1)
 	{
-		const float Scale = std::clamp(g_Config.m_AcOptimizerFpsFogZoomPercent, 20, 120) / 100.0f;
+		const float Scale = std::clamp(g_Config.m_AcOptimizerFpsFogZoomPercent, 20, 100) / 100.0f;
 		HalfW = BaseScreenRect.Width() * 0.5f * Scale;
 		HalfH = BaseScreenRect.Height() * 0.5f * Scale;
 	}
