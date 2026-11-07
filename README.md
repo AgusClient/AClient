@@ -1,4 +1,4 @@
-# AClient 🚀
+# AClient
 
 [![Release](https://img.shields.io/github/v/release/agusx30/AClient-Dev?color=orange&logo=github)](https://github.com/agusx30/AClient-Dev/releases/latest)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20x64-blue?logo=windows)](https://github.com/agusx30/AClient-Dev/releases/latest)
@@ -12,10 +12,10 @@ Se distribuye como ejecutable nativo de 64 bits optimizado con librerías modern
 
 ---
 
-## 📑 Tabla de Contenidos
+## Tabla de Contenidos
 
-- [Novedades y Arquitectura](#-novedades-y-arquitectura)
-- [Suite de Funcionalidades Principales](#-suite-de-funcionalidades-principales)
+- [Novedades y Arquitectura](#novedades-y-arquitectura)
+- [Suite de Funcionalidades Principales](#suite-de-funcionalidades-principales)
   - [1. Motores Fast Input y Predicción de Movimiento](#1-motores-fast-input-y-predicción-de-movimiento)
   - [2. RaceStats y Mini Statboard HUD en Vivo](#2-racestats-y-mini-statboard-hud-en-vivo)
   - [3. Perfiles de Jugador KoG y DDNet](#3-perfiles-de-jugador-kog-y-ddnet)
@@ -25,14 +25,14 @@ Se distribuye como ejecutable nativo de 64 bits optimizado con librerías modern
   - [7. HUD Modular, Keystrokes y Frametime](#7-hud-modular-keystrokes-y-frametime)
   - [8. Automatizaciones, Chat QoL y Notificaciones AFK](#8-automatizaciones-chat-qol-y-notificaciones-afk)
   - [9. Traducción Automática y Binds Avanzados](#9-traducción-automática-y-binds-avanzados)
-- [Descarga e Instalación](#-descarga-e-instalación)
-- [Guía Rápida de Comandos y Variables (cvars)](#-guía-rápida-de-comandos-y-variables-cvars)
-- [Compilación desde el Código Fuente](#-compilación-desde-el-código-fuente)
-- [Créditos y Licencia](#-créditos-y-licencia)
+- [Descarga e Instalación](#descarga-e-instalación)
+- [Guía Rápida de Comandos y Variables (cvars)](#guía-rápida-de-comandos-y-variables-cvars)
+- [Compilación desde el Código Fuente](#compilación-desde-el-código-fuente)
+- [Créditos y Licencia](#créditos-y-licencia)
 
 ---
 
-## 🌟 Novedades y Arquitectura
+## Novedades y Arquitectura
 
 * **Pipeline Híbrido C++ / Rust:** Integra rutinas en Rust para tareas auxiliares críticas, gestión de memoria segura e IPC sin penalizar el framerate.
 * **Reducción de Latencia Perceptual:** Algoritmos dedicados que desacoplan la cadencia de entrada del jugador del tickrate estándar del servidor.
@@ -41,7 +41,7 @@ Se distribuye como ejecutable nativo de 64 bits optimizado con librerías modern
 
 ---
 
-## ⚡ Suite de Funcionalidades Principales
+## Suite de Funcionalidades Principales
 
 ### 1. Motores Fast Input y Predicción de Movimiento
 AClient cuenta con **8 motores seleccionables** de compensación y predicción de entrada (`ac_inputs`):
@@ -81,7 +81,7 @@ Consulta estadísticas completas dentro del juego sin necesidad de abrir un nave
 ### 4. Gameskins Compartidos en la Nube y Editor de Assets
 * **Presencia en Tiempo Real con Backend Cloud:** Visualiza las armas, ganchos y skins personalizadas de todos los usuarios de AClient en el servidor.
 * **Descarga Automática en Caliente (`cl_download_gameskins`):** Los assets se sincronizan y descargan directamente desde el repositorio oficial de skins sin necesidad de reiniciar el juego.
-* **Pooling de Texturas en GPU:** El motor reutiliza las texturas cargadas en VRAM para tees que compartan apariencias, eliminando micro-tirones (*stuttering*) o duplicación de memoria.
+* **Pooling de Texturas en GPU:** El motor reutiliza las texturas cargadas en VRAM para tees que compartan apariencias, eliminando micro-tirones (stuttering) o duplicación de memoria.
 * **Editor Integrado de Assets:** Herramienta interactiva para previsualizar, recortar y ajustar texturas de juego en vivo.
 
 ---
@@ -130,7 +130,7 @@ Herramientas avanzadas para administradores y moderadores de servidores:
 
 ---
 
-## 📦 Descarga e Instalación
+## Descarga e Instalación
 
 ### Windows x64 (Binario Precompilado)
 1. Ve a la sección de **[Últimas Releases](https://github.com/agusx30/AClient-Dev/releases/latest)**.
@@ -140,9 +140,9 @@ Herramientas avanzadas para administradores y moderadores de servidores:
 
 ---
 
-## 🛠️ Guía Rápida de Comandos y Variables (cvars)
+## Guía Rápida de Comandos y Variables (cvars)
 
-### Fast Input & Predicción
+### Fast Input y Predicción
 | Variable / Comando | Defecto | Descripción |
 | :--- | :---: | :--- |
 | `ac_inputs` | `8` | Modo de entrada: `0` Off, `1` Fast, `2` Best, `3` Saiko, `4` Delta, `5` F, `6` Cloud, `8` aX30 |
@@ -153,7 +153,7 @@ Herramientas avanzadas para administradores y moderadores de servidores:
 | `ac_fast_input_others_only_frozen` | `0` | Predice a otros jugadores solo si están congelados |
 | `ac_fast_input_repredict_hook` | `0` | Repredice la trayectoria del gancho ante giros rápidos |
 
-### RaceStats & HUD
+### RaceStats y HUD
 | Variable / Comando | Defecto | Descripción |
 | :--- | :---: | :--- |
 | `ac_mini_statboard` | `0` | Activa o desactiva el overlay de RaceStats en el HUD |
@@ -163,7 +163,7 @@ Herramientas avanzadas para administradores y moderadores de servidores:
 | `ac_hud_speedometer` | `0` | Muestra el velocímetro digital |
 | `ac_show_frametime` | `0` | Monitor numérico de frametime en la esquina superior |
 
-### Perfiles & Moderación
+### Perfiles y Moderación
 | Variable / Comando | Defecto | Descripción |
 | :--- | :---: | :--- |
 | `profile <nombre>` | - | Abre el panel de perfil del jugador indicado |
@@ -174,7 +174,7 @@ Herramientas avanzadas para administradores y moderadores de servidores:
 
 ---
 
-## 💻 Compilación desde el Código Fuente
+## Compilación desde el Código Fuente
 
 ### Requisitos Previos
 * **CMake** 3.16 o superior.
@@ -202,7 +202,7 @@ El ejecutable resultante estará en `build/release/DDNet.exe` (o `build/Release/
 
 ---
 
-## 🤝 Créditos y Licencia
+## Créditos y Licencia
 
 * **[DDraceNetwork (DDNet)](https://ddnet.org):** Base de código abierta mantenida por Dennis Felsing (`def-`) y la comunidad de DDNet.
 * **[Teeworlds](https://teeworlds.com):** Juego original creado por Magnus Auvinen (`matricks`).
