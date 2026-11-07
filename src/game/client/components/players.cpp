@@ -1098,7 +1098,10 @@ void CPlayers::RenderPlayer(
 	if(ClientId < 0)
 		return;
 
-	if(!RenderGhost && (Player.m_PlayerFlags & PLAYERFLAG_IN_MENU))
+	const bool IsLocalPlayer = (Local || ClientId == GameClient()->m_aLocalIds[0] || (GameClient()->m_aLocalIds[1] >= 0 && ClientId == GameClient()->m_aLocalIds[1]));
+	const bool InMenu = ((Player.m_PlayerFlags & PLAYERFLAG_IN_MENU) || (IsLocalPlayer && GameClient()->m_Menus.IsActive())) && g_Config.m_AcShowInMenuIcon;
+
+	if(!RenderGhost && InMenu)
 	{
 		if(!m_InMenuTextContainerIndex.Valid())
 		{

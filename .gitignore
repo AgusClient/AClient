@@ -164,3 +164,10 @@ tags
 # aX30 Private Builder
 tools/ax30_builder/
 src/game/client/components/tclient/ax30/ax30.lib
+
+# Local artifacts & scratch
+.clinerules/
+CAMBIOS_REALIZADOS.txt
+memory-bank/
+scratch/
+data/assets/audio/

@@ -190,7 +190,7 @@ int CControls::SnapInput(int *pData)
 	if(GameClient()->m_Chat.IsActive())
 		m_aInputData[g_Config.m_ClDummy].m_PlayerFlags = PLAYERFLAG_CHATTING;
 	else if(GameClient()->m_Menus.IsActive())
-		m_aInputData[g_Config.m_ClDummy].m_PlayerFlags = PLAYERFLAG_IN_MENU;
+		m_aInputData[g_Config.m_ClDummy].m_PlayerFlags = g_Config.m_AcShowInMenuIcon ? PLAYERFLAG_IN_MENU : PLAYERFLAG_PLAYING;
 	else
 		m_aInputData[g_Config.m_ClDummy].m_PlayerFlags = PLAYERFLAG_PLAYING;
 

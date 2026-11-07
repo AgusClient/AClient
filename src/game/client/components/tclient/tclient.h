@@ -9,6 +9,16 @@
 #include <game/client/component.h>
 
 #include <deque>
+#include <string>
+#include <vector>
+
+struct CAClientRelease
+{
+	char m_aTag[32] = "";
+	char m_aName[128] = "";
+	char m_aPublishedAt[32] = "";
+	std::string m_Body;
+};
 
 class CTClient : public CComponent
 {
@@ -94,6 +104,16 @@ public:
 	bool InfoTaskDone() { return m_pTClientInfoTask && m_pTClientInfoTask->State() == EHttpState::DONE; }
 	bool m_FetchedTClientInfo = false;
 	char m_aVersionStr[32] = "0";
+
+	std::vector<CAClientRelease> m_vReleases;
+	int m_SelectedRelease = 0;
+	const std::vector<CAClientRelease> &GetReleases() const { return m_vReleases; }
+	int GetSelectedRelease() const { return m_SelectedRelease; }
+	void SetSelectedRelease(int Index)
+	{
+		if(Index >= 0 && Index < (int)m_vReleases.size())
+			m_SelectedRelease = Index;
+	}
 
 	Regex m_RegexChatIgnore;
 };

@@ -454,7 +454,27 @@ void CMenus::RenderSettingsTClientSettings(CUIRect MainView)
 		Section.x -= Padding * 0.5f;
 		Section.y -= Padding * 0.5f;
 		Section.y -= s_PrevScrollOffset - ScrollOffset;
-		Section.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 10.0f);
+		if(Section.x < MainView.x + 1.0f)
+		{
+			float Diff = (MainView.x + 1.0f) - Section.x;
+			Section.x += Diff;
+			Section.w -= Diff;
+		}
+		if(Section.x + Section.w > MainView.x + MainView.w - 1.0f)
+		{
+			Section.w = (MainView.x + MainView.w - 1.0f) - Section.x;
+		}
+		if(g_Config.m_AcModernUi)
+		{
+			Section.Draw(GetColorBorder(0.40f), IGraphics::CORNER_ALL, 10.0f);
+			CUIRect Inner = Section;
+			Inner.Margin(1.0f, &Inner);
+			Inner.Draw(GetColorBg(), IGraphics::CORNER_ALL, 9.0f);
+		}
+		else
+		{
+			Section.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 10.0f);
+		}
 	}
 	s_PrevScrollOffset = ScrollOffset;
 	s_SectionBoxes.clear();
@@ -1568,7 +1588,27 @@ void CMenus::RenderSettingsTClientChatBinds(CUIRect MainView)
 		Section.x -= Padding * 0.5f;
 		Section.y -= Padding * 0.5f;
 		Section.y -= s_PrevScrollOffset - ScrollOffset;
-		Section.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 10.0f);
+		if(Section.x < MainView.x + 1.0f)
+		{
+			float Diff = (MainView.x + 1.0f) - Section.x;
+			Section.x += Diff;
+			Section.w -= Diff;
+		}
+		if(Section.x + Section.w > MainView.x + MainView.w - 1.0f)
+		{
+			Section.w = (MainView.x + MainView.w - 1.0f) - Section.x;
+		}
+		if(g_Config.m_AcModernUi)
+		{
+			Section.Draw(GetColorBorder(0.40f), IGraphics::CORNER_ALL, 10.0f);
+			CUIRect Inner = Section;
+			Inner.Margin(1.0f, &Inner);
+			Inner.Draw(GetColorBg(), IGraphics::CORNER_ALL, 9.0f);
+		}
+		else
+		{
+			Section.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 10.0f);
+		}
 	}
 	s_PrevScrollOffset = ScrollOffset;
 	s_SectionBoxes.clear();
@@ -3728,7 +3768,27 @@ void CMenus::RenderSettingsAClientCommands(CUIRect MainView)
 		Section.x -= Padding * 0.5f;
 		Section.y -= Padding * 0.5f;
 		Section.y -= s_PrevScrollOffsetCmds - ScrollOffset;
-		Section.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 10.0f);
+		if(Section.x < MainView.x + 1.0f)
+		{
+			float Diff = (MainView.x + 1.0f) - Section.x;
+			Section.x += Diff;
+			Section.w -= Diff;
+		}
+		if(Section.x + Section.w > MainView.x + MainView.w - 1.0f)
+		{
+			Section.w = (MainView.x + MainView.w - 1.0f) - Section.x;
+		}
+		if(g_Config.m_AcModernUi)
+		{
+			Section.Draw(GetColorBorder(0.40f), IGraphics::CORNER_ALL, 10.0f);
+			CUIRect Inner = Section;
+			Inner.Margin(1.0f, &Inner);
+			Inner.Draw(GetColorBg(), IGraphics::CORNER_ALL, 9.0f);
+		}
+		else
+		{
+			Section.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 10.0f);
+		}
 	}
 	s_PrevScrollOffsetCmds = ScrollOffset;
 	s_SectionBoxesCmds.clear();
@@ -3896,7 +3956,27 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		Section.x -= Padding * 0.5f;
 		Section.y -= Padding * 0.5f;
 		Section.y -= s_PrevScrollOffsetAc - ScrollOffset;
-		Section.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 10.0f);
+		if(Section.x < MainView.x + 1.0f)
+		{
+			float Diff = (MainView.x + 1.0f) - Section.x;
+			Section.x += Diff;
+			Section.w -= Diff;
+		}
+		if(Section.x + Section.w > MainView.x + MainView.w - 1.0f)
+		{
+			Section.w = (MainView.x + MainView.w - 1.0f) - Section.x;
+		}
+		if(g_Config.m_AcModernUi)
+		{
+			Section.Draw(GetColorBorder(0.40f), IGraphics::CORNER_ALL, 10.0f);
+			CUIRect Inner = Section;
+			Inner.Margin(1.0f, &Inner);
+			Inner.Draw(GetColorBg(), IGraphics::CORNER_ALL, 9.0f);
+		}
+		else
+		{
+			Section.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 10.0f);
+		}
 	}
 	s_PrevScrollOffsetAc = ScrollOffset;
 	s_SectionBoxesAc.clear();
@@ -3916,16 +3996,6 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 
 	static CButtonContainer s_ReaderButtonAntiPingAc, s_ClearButtonAntiPingAc;
 	DoLine_KeyReader(Column, s_ReaderButtonAntiPingAc, s_ClearButtonAntiPingAc, TCLocalize("Toggle Anti-Ping key"), "toggle_antiping");
-
-	Column.HSplitTop(MarginSmall, nullptr, &Column);
-	Column.HSplitTop(LineSize + 4.0f, &Button, &Column);
-	static CButtonContainer s_BtnToggleAntiPingNow;
-	char aAntiPingBtn[64];
-	str_format(aAntiPingBtn, sizeof(aAntiPingBtn), "%s: %s", TCLocalize("Toggle Anti-Ping Now"), g_Config.m_ClAntiPing ? "ON" : "OFF");
-	if(DoButton_Menu(&s_BtnToggleAntiPingNow, aAntiPingBtn, g_Config.m_ClAntiPing ? 1 : 0, &Button))
-	{
-		Console()->ExecuteLine("toggle_antiping", IConsole::CLIENT_ID_UNSPECIFIED);
-	}
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
@@ -4272,6 +4342,27 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
 
+	// ***** AClient Theme & UI ***** //
+	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	s_SectionBoxesAc.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("AClient Theme & UI"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	DoCheckboxWithHelp(&g_Config.m_AcModernUi, TCLocalize("Modern Dark-Glass & Accent Hover"), TCLocalize("Estilo estetico moderno oscuro con transparencias y acentos personalizables."), &g_Config.m_AcModernUi, &Column, LineSize);
+
+	static CButtonContainer s_ColorXReset;
+	DoLine_ColorPicker(&s_ColorXReset, LineSize, 12.0f, MarginSmall, &Column, TCLocalize("Color de la X (ON / OFF)"), (unsigned int *)&g_Config.m_AcColorX, color_cast<ColorRGBA>(ColorHSLA(12050856)), false);
+
+	static CButtonContainer s_ColorBorderReset;
+	DoLine_ColorPicker(&s_ColorBorderReset, LineSize, 12.0f, MarginSmall, &Column, TCLocalize("Color del borde"), (unsigned int *)&g_Config.m_AcColorBorder, color_cast<ColorRGBA>(ColorHSLA(12050856)), false);
+
+	static CButtonContainer s_ColorBgReset;
+	DoLine_ColorPicker(&s_ColorBgReset, LineSize, 12.0f, MarginSmall, &Column, TCLocalize("Color del fondo"), (unsigned int *)&g_Config.m_AcColorBg, color_cast<ColorRGBA>(ColorHSLA(3215086858, true)), false, nullptr, true);
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
+
 
 	// ***** Right Column: HUD, Social, Chat & Alerts ***** //
 	LeftView = Column;
@@ -4452,6 +4543,8 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	}
 
 	DoCheckboxWithHelp(&g_Config.m_AcHideOthersChatBubbles, TCLocalize("Hide typing bubbles of other players"), TCLocalize("Hides the 3-dots typing bubble of other players on your screen when they are typing."), &g_Config.m_AcHideOthersChatBubbles, &Column, LineSize);
+
+	DoCheckboxWithHelp(&g_Config.m_AcShowInMenuIcon, TCLocalize("Mostrar logo arriba del Tee en Escape / Opciones"), TCLocalize("Muestra el logo de opciones (engranaje) arriba de tu Tee al tocar Escape o abrir el menu."), &g_Config.m_AcShowInMenuIcon, &Column, LineSize);
 
 	DoCheckboxWithHelp(&g_Config.m_AcHideStartMessages, TCLocalize("Hide start line messages in chat"), TCLocalize("Hides team start warnings and team started notifications when touching the start line."), &g_Config.m_AcHideStartMessages, &Column, LineSize);
 
@@ -4766,7 +4859,7 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	LeftView.y = UpdateSection.y + MarginSmall;
 	RightView.y = UpdateSection.y + MarginSmall;
 
-	// ***** Bloque Inferior: Novedades de AClient ***** //
+	// ***** Bloque Inferior: Noticias y Novedades de Versiones ***** //
 	CUIRect BottomWhatsNew;
 	BottomWhatsNew.x = LeftView.x;
 	BottomWhatsNew.y = std::max(LeftView.y, RightView.y) + MarginBetweenSections;
@@ -4777,32 +4870,293 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 
 	BottomWhatsNew.HSplitTop(HeadlineHeight, &Label, &BottomWhatsNew);
 	TextRender()->TextColor(1.0f, 0.88f, 0.35f, 1.0f);
-	Ui()->DoLabel(&Label, TCLocalize("What's New in AClient (Quick Summary)"), HeadlineFontSize, TEXTALIGN_ML);
+	Ui()->DoLabel(&Label, TCLocalize("Noticias y Notas de Versiones de AClient"), HeadlineFontSize, TEXTALIGN_ML);
 	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 	BottomWhatsNew.HSplitTop(MarginSmall, nullptr, &BottomWhatsNew);
 
-	auto AddNewsLine = [&](const char *pTitle, const char *pDetail) {
-		CUIRect LineRect;
-		BottomWhatsNew.HSplitTop(18.0f, &LineRect, &BottomWhatsNew);
-		TextRender()->TextColor(0.45f, 0.92f, 1.0f, 1.0f);
-		float TitleW = TextRender()->TextWidth(12.5f, pTitle) + 6.0f;
-		CUIRect TitleRect, DetailRect;
-		LineRect.VSplitLeft(TitleW, &TitleRect, &DetailRect);
-		Ui()->DoLabel(&TitleRect, pTitle, 12.5f, TEXTALIGN_ML);
-		TextRender()->TextColor(0.88f, 0.90f, 0.95f, 0.95f);
-		Ui()->DoLabel(&DetailRect, pDetail, 12.0f, TEXTALIGN_ML);
+	const auto &vReleases = GameClient()->m_TClient.GetReleases();
+	int CurSelected = GameClient()->m_TClient.GetSelectedRelease();
+	if(CurSelected < 0 || CurSelected >= (int)vReleases.size())
+		CurSelected = 0;
+
+	if(vReleases.empty())
+	{
+		CUIRect EmptyRect;
+		BottomWhatsNew.HSplitTop(22.0f, &EmptyRect, &BottomWhatsNew);
+		TextRender()->TextColor(0.75f, 0.75f, 0.85f, 0.9f);
+		Ui()->DoLabel(&EmptyRect, TCLocalize("Obteniendo versiones desde GitHub Releases..."), 12.0f, TEXTALIGN_ML);
 		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
-	};
+	}
+	else
+	{
+		static std::vector<std::string> s_vReleaseNames;
+		static std::vector<const char *> s_vpReleaseNames;
+		static CUi::SDropDownState s_ReleaseDropDownState;
+		static CScrollRegion s_ReleaseDropDownScrollRegion;
+		s_ReleaseDropDownState.m_SelectionPopupContext.m_pScrollRegion = &s_ReleaseDropDownScrollRegion;
 
-	AddNewsLine(TCLocalize("* Race Stats HUD & History:"), TCLocalize("Live stats (Freezes, Saves, Deaths, Dynamic % Eff, Net +/-, Frozen time, Hook accuracy) & auto-saved log."));
-	AddNewsLine(TCLocalize("* Background Alerts (Tabbed out):"), TCLocalize("Granular alerts (sound, taskbar flash, desktop banner) on unfreeze or when moved/hooked."));
-	AddNewsLine(TCLocalize("* Skin Stealer:"), TCLocalize("Instantly copy skins and colors by aiming with cursor bind, via Scoreboard (Tab) or /stealskin [name]."));
-	AddNewsLine(TCLocalize("* Fast Practice (Ghost Mode):"), TCLocalize("Practice any map part with /tp, /tc, /invincible, /weapons, /save & /load without losing your real run."));
-	AddNewsLine(TCLocalize("* Client Echo Control:"), TCLocalize("Enable or silence local client notices ([AClient], copied skin notices, invites, command echoes)."));
-	AddNewsLine(TCLocalize("* Auto Team Lock (up to 5m):"), TCLocalize("Automatically locks team (/lock 1) after configured delay (up to 5 minutes) when joining."));
-	AddNewsLine(TCLocalize("* Auto-Invite Friends:"), TCLocalize("Invite all online friends to your team with /invite friends, with anti-flood queue and Tab auto-complete."));
+		s_vReleaseNames.clear();
+		s_vpReleaseNames.clear();
+		s_vReleaseNames.reserve(vReleases.size());
+		s_vpReleaseNames.reserve(vReleases.size());
+		for(size_t i = 0; i < vReleases.size(); ++i)
+		{
+			char aTabLabel[64];
+			if(i == 0)
+				str_format(aTabLabel, sizeof(aTabLabel), "%s (Reciente)", vReleases[i].m_aTag);
+			else
+				str_copy(aTabLabel, vReleases[i].m_aTag, sizeof(aTabLabel));
+			s_vReleaseNames.emplace_back(aTabLabel);
+		}
+		for(const auto &Str : s_vReleaseNames) 
+			s_vpReleaseNames.push_back(Str.c_str());
 
-	BottomWhatsNew.HSplitTop(MarginExtraSmall, nullptr, &BottomWhatsNew);
+		// Fila del dropdown selector de versiones
+		CUIRect VersionSelectRow;
+		BottomWhatsNew.HSplitTop(22.0f, &VersionSelectRow, &BottomWhatsNew);
+
+		CUIRect VerLabel, DropDownRect, DateRect;
+		VersionSelectRow.VSplitLeft(140.0f, &VerLabel, &VersionSelectRow);
+		VersionSelectRow.VSplitLeft(200.0f, &DropDownRect, &VersionSelectRow);
+		VersionSelectRow.VSplitRight(160.0f, &VersionSelectRow, &DateRect);
+
+		Ui()->DoLabel(&VerLabel, TCLocalize("Seleccionar versión:"), 12.0f, TEXTALIGN_ML);
+
+		const int NewSelected = Ui()->DoDropDown(&DropDownRect, CurSelected, s_vpReleaseNames.data(), s_vpReleaseNames.size(), s_ReleaseDropDownState);
+		if(NewSelected != CurSelected && NewSelected >= 0 && NewSelected < (int)vReleases.size())
+		{
+			GameClient()->m_TClient.SetSelectedRelease(NewSelected);
+			CurSelected = NewSelected;
+		}
+
+		const CAClientRelease &Rel = vReleases[CurSelected];
+
+		if(Rel.m_aPublishedAt[0] != '\0')
+		{
+			char aDateStr[64];
+			str_format(aDateStr, sizeof(aDateStr), "Fecha: %s", Rel.m_aPublishedAt);
+			TextRender()->TextColor(0.70f, 0.72f, 0.82f, 0.85f);
+			Ui()->DoLabel(&DateRect, aDateStr, 11.5f, TEXTALIGN_MR);
+			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+		}
+
+		BottomWhatsNew.HSplitTop(MarginSmall, nullptr, &BottomWhatsNew);
+
+		// Linea divisoria estetica
+		CUIRect Divider;
+		BottomWhatsNew.HSplitTop(1.0f, &Divider, &BottomWhatsNew);
+		Divider.Draw(GetThemeColor(0.35f), 0, 0.0f);
+		BottomWhatsNew.HSplitTop(MarginSmall, nullptr, &BottomWhatsNew);
+
+		// Encabezado de la release seleccionada
+		CUIRect RelHeader;
+		BottomWhatsNew.HSplitTop(20.0f, &RelHeader, &BottomWhatsNew);
+
+		char aHeaderTitle[128];
+		if(Rel.m_aName[0] != '\0' && str_comp(Rel.m_aName, Rel.m_aTag) != 0)
+			str_format(aHeaderTitle, sizeof(aHeaderTitle), "%s: %s", Rel.m_aTag, Rel.m_aName);
+		else
+			str_format(aHeaderTitle, sizeof(aHeaderTitle), "%s", Rel.m_aTag);
+
+		TextRender()->TextColor(0.45f, 0.92f, 1.0f, 1.0f);
+		Ui()->DoLabel(&RelHeader, aHeaderTitle, 13.0f, TEXTALIGN_ML);
+		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+		BottomWhatsNew.HSplitTop(MarginSmall, nullptr, &BottomWhatsNew);
+
+		// Renderizar cuerpo de la release (Markdown interpretado)
+		if(Rel.m_Body.empty())
+		{
+			CUIRect EmptyRect;
+			BottomWhatsNew.HSplitTop(20.0f, &EmptyRect, &BottomWhatsNew);
+			TextRender()->TextColor(0.70f, 0.70f, 0.80f, 0.8f);
+			Ui()->DoLabel(&EmptyRect, TCLocalize("No hay descripcion detallada para esta version."), 12.0f, TEXTALIGN_ML);
+			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+		}
+		else
+		{
+			const char *pBody = Rel.m_Body.c_str();
+			while(*pBody)
+			{
+				const char *pNext = strchr(pBody, '\n');
+				std::string Line;
+				if(pNext)
+				{
+					Line.assign(pBody, pNext - pBody);
+					pBody = pNext + 1;
+				}
+				else
+				{
+					Line.assign(pBody);
+					pBody += Line.size();
+				}
+				if(!Line.empty() && Line.back() == '\r')
+					Line.pop_back();
+
+				// Limpiar links markdown [Texto](URL) -> Texto
+				size_t LinkStart = 0;
+				while((LinkStart = Line.find('[', LinkStart)) != std::string::npos)
+				{
+					size_t LinkMid = Line.find("](", LinkStart);
+					if(LinkMid != std::string::npos)
+					{
+						size_t LinkEnd = Line.find(')', LinkMid + 2);
+						if(LinkEnd != std::string::npos)
+						{
+							std::string Label = Line.substr(LinkStart + 1, LinkMid - LinkStart - 1);
+							Line.replace(LinkStart, LinkEnd - LinkStart + 1, Label);
+							LinkStart += Label.length();
+							continue;
+						}
+					}
+					LinkStart++;
+				}
+
+				// Limpiar acentos graves `
+				size_t Tick = 0;
+				while((Tick = Line.find('`', Tick)) != std::string::npos)
+					Line.erase(Tick, 1);
+
+				// Trim derecho
+				while(!Line.empty() && (Line.back() == ' ' || Line.back() == '\t'))
+					Line.pop_back();
+
+				// Indentacion
+				int IndentSpaces = 0;
+				while(IndentSpaces < (int)Line.size() && Line[IndentSpaces] == ' ')
+					IndentSpaces++;
+
+				std::string TrimmedLine = (IndentSpaces > 0) ? Line.substr(IndentSpaces) : Line;
+
+				if(TrimmedLine.empty())
+				{
+					BottomWhatsNew.HSplitTop(4.0f, nullptr, &BottomWhatsNew);
+					continue;
+				}
+
+				if(TrimmedLine.starts_with("## "))
+				{
+					std::string Heading = TrimmedLine.substr(3);
+					CUIRect LineRect;
+					BottomWhatsNew.HSplitTop(20.0f, &LineRect, &BottomWhatsNew);
+					TextRender()->TextColor(1.0f, 0.88f, 0.35f, 1.0f);
+					Ui()->DoLabel(&LineRect, Heading.c_str(), 13.0f, TEXTALIGN_ML);
+					TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+					BottomWhatsNew.HSplitTop(2.0f, nullptr, &BottomWhatsNew);
+				}
+				else if(TrimmedLine.starts_with("### "))
+				{
+					std::string SubHeading = TrimmedLine.substr(4);
+					CUIRect LineRect;
+					BottomWhatsNew.HSplitTop(18.0f, &LineRect, &BottomWhatsNew);
+					TextRender()->TextColor(0.80f, 0.65f, 1.0f, 1.0f);
+					Ui()->DoLabel(&LineRect, SubHeading.c_str(), 12.0f, TEXTALIGN_ML);
+					TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+					BottomWhatsNew.HSplitTop(2.0f, nullptr, &BottomWhatsNew);
+				}
+				else if(TrimmedLine.starts_with("- ") || TrimmedLine.starts_with("* "))
+				{
+					std::string Bullet = TrimmedLine.substr(2);
+					size_t BoldStart = Bullet.find("**");
+					size_t BoldEnd = (BoldStart != std::string::npos) ? Bullet.find("**", BoldStart + 2) : std::string::npos;
+
+					float IndentOffset = (IndentSpaces >= 2) ? 14.0f : 0.0f;
+					CUIRect BulletArea = BottomWhatsNew;
+					if(IndentOffset > 0.0f)
+						BulletArea.VSplitLeft(IndentOffset, nullptr, &BulletArea);
+
+					if(BoldStart == 0 && BoldEnd != std::string::npos)
+					{
+						std::string Title = Bullet.substr(2, BoldEnd - 2);
+						std::string Rest = Bullet.substr(BoldEnd + 2);
+						if(Rest.starts_with(": "))
+							Rest = Rest.substr(2);
+						else if(Rest.starts_with(":"))
+							Rest = Rest.substr(1);
+
+						size_t Ast = 0;
+						while((Ast = Rest.find("**", Ast)) != std::string::npos)
+							Rest.erase(Ast, 2);
+
+						std::string BulletTitle = "* " + Title + ": ";
+						float TitleW = TextRender()->TextWidth(12.0f, BulletTitle.c_str()) + 4.0f;
+						float AvailableW = BulletArea.w - TitleW - 6.0f;
+
+						if(AvailableW > 120.0f)
+						{
+							STextBoundingBox Box = TextRender()->TextBoundingBox(11.5f, Rest.c_str(), -1, AvailableW);
+							float LineH = std::max(18.0f, Box.m_H + 3.0f);
+							CUIRect LineRect;
+							BottomWhatsNew.HSplitTop(LineH, &LineRect, &BottomWhatsNew);
+							if(IndentOffset > 0.0f)
+								LineRect.VSplitLeft(IndentOffset, nullptr, &LineRect);
+
+							CUIRect TitleBox, DetailBox;
+							LineRect.VSplitLeft(TitleW, &TitleBox, &DetailBox);
+
+							TextRender()->TextColor(0.45f, 0.92f, 1.0f, 1.0f);
+							Ui()->DoLabel(&TitleBox, BulletTitle.c_str(), 12.0f, TEXTALIGN_TL);
+
+							TextRender()->TextColor(0.88f, 0.90f, 0.95f, 0.95f);
+							TextRender()->Text(DetailBox.x, DetailBox.y + 1.0f, 11.5f, Rest.c_str(), AvailableW);
+							TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+						}
+						else
+						{
+							std::string Combined = BulletTitle + Rest;
+							STextBoundingBox Box = TextRender()->TextBoundingBox(11.5f, Combined.c_str(), -1, BulletArea.w);
+							float LineH = std::max(18.0f, Box.m_H + 3.0f);
+							CUIRect LineRect;
+							BottomWhatsNew.HSplitTop(LineH, &LineRect, &BottomWhatsNew);
+							if(IndentOffset > 0.0f)
+								LineRect.VSplitLeft(IndentOffset, nullptr, &LineRect);
+
+							TextRender()->TextColor(0.88f, 0.90f, 0.95f, 0.95f);
+							TextRender()->Text(LineRect.x, LineRect.y + 1.0f, 11.5f, Combined.c_str(), BulletArea.w);
+							TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+						}
+					}
+					else
+					{
+						std::string BulletText = "* " + Bullet;
+						size_t Ast = 0;
+						while((Ast = BulletText.find("**", Ast)) != std::string::npos)
+							BulletText.erase(Ast, 2);
+
+						STextBoundingBox Box = TextRender()->TextBoundingBox(11.5f, BulletText.c_str(), -1, BulletArea.w);
+						float LineH = std::max(16.0f, Box.m_H + 3.0f);
+						CUIRect LineRect;
+						BottomWhatsNew.HSplitTop(LineH, &LineRect, &BottomWhatsNew);
+						if(IndentOffset > 0.0f)
+							LineRect.VSplitLeft(IndentOffset, nullptr, &LineRect);
+
+						TextRender()->TextColor(0.88f, 0.90f, 0.95f, 0.95f);
+						TextRender()->Text(LineRect.x, LineRect.y + 1.0f, 11.5f, BulletText.c_str(), BulletArea.w);
+						TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+					}
+					BottomWhatsNew.HSplitTop(2.0f, nullptr, &BottomWhatsNew);
+				}
+				else
+				{
+					std::string Clean = TrimmedLine;
+					size_t Ast = 0;
+					while((Ast = Clean.find("**", Ast)) != std::string::npos)
+						Clean.erase(Ast, 2);
+
+					STextBoundingBox Box = TextRender()->TextBoundingBox(12.0f, Clean.c_str(), -1, BottomWhatsNew.w);
+					float LineH = std::max(16.0f, Box.m_H + 3.0f);
+					CUIRect LineRect;
+					BottomWhatsNew.HSplitTop(LineH, &LineRect, &BottomWhatsNew);
+					TextRender()->TextColor(0.85f, 0.88f, 0.95f, 0.9f);
+					TextRender()->Text(LineRect.x, LineRect.y + 1.0f, 12.0f, Clean.c_str(), BottomWhatsNew.w);
+					TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+					BottomWhatsNew.HSplitTop(2.0f, nullptr, &BottomWhatsNew);
+				}
+			}
+		}
+	}
+
+	BottomWhatsNew.HSplitTop(MarginSmall, nullptr, &BottomWhatsNew);
 	s_SectionBoxesAc.back().h = BottomWhatsNew.y - s_SectionBoxesAc.back().y;
 
 	LeftView.y = BottomWhatsNew.y;
@@ -4848,7 +5202,27 @@ void CMenus::RenderSettingsAClientMod(CUIRect MainView)
 		Section.x -= Padding * 0.5f;
 		Section.y -= Padding * 0.5f;
 		Section.y -= s_PrevScrollOffsetMod - ScrollOffset;
-		Section.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 10.0f);
+		if(Section.x < MainView.x + 1.0f)
+		{
+			float Diff = (MainView.x + 1.0f) - Section.x;
+			Section.x += Diff;
+			Section.w -= Diff;
+		}
+		if(Section.x + Section.w > MainView.x + MainView.w - 1.0f)
+		{
+			Section.w = (MainView.x + MainView.w - 1.0f) - Section.x;
+		}
+		if(g_Config.m_AcModernUi)
+		{
+			Section.Draw(GetColorBorder(0.40f), IGraphics::CORNER_ALL, 10.0f);
+			CUIRect Inner = Section;
+			Inner.Margin(1.0f, &Inner);
+			Inner.Draw(GetColorBg(), IGraphics::CORNER_ALL, 9.0f);
+		}
+		else
+		{
+			Section.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 10.0f);
+		}
 	}
 	s_PrevScrollOffsetMod = ScrollOffset;
 	s_SectionBoxesMod.clear();

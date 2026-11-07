@@ -123,7 +123,7 @@ CSkins::CSkinContainer::EState CSkins::CSkinContainer::DetermineInitialState() c
 		return EState::PENDING;
 	}
 	else if((g_Config.m_ClVanillaSkinsOnly && !m_Vanilla) ||
-		(m_Type == EType::DOWNLOAD && !g_Config.m_ClDownloadSkins))
+		(m_Type == EType::DOWNLOAD && !g_Config.m_ClDownloadSkins && !g_Config.m_AcDownloadSkinsFrozen))
 	{
 		// Fail immediately if it shouldn't be loaded
 		return EState::NOT_FOUND;
@@ -609,8 +609,25 @@ void CSkins::UpdateStartLoading(CSkinLoadingStats &Stats)
 			pSkinContainer->m_pLoadJob = std::make_shared<CSkinLoadJob>(this, pSkinContainer->Name(), pSkinContainer->StorageType());
 			break;
 		case CSkinContainer::EType::DOWNLOAD:
+		{
+			if(g_Config.m_AcDownloadSkinsFrozen && Client()->State() == IClient::STATE_ONLINE)
+			{
+				bool IsFrozen = false;
+				if(GameClient())
+				{
+					const int LocalId = GameClient()->m_Snap.m_LocalClientId;
+					if(LocalId >= 0 && LocalId < MAX_CLIENTS)
+						IsFrozen = GameClient()->IsPlayerFrozen(LocalId);
+				}
+				if(!IsFrozen)
+				{
+					// Delay starting skin download until local player is frozen
+					continue;
+				}
+			}
 			pSkinContainer->m_pLoadJob = std::make_shared<CSkinDownloadJob>(this, pSkinContainer->Name());
 			break;
+		}
 		default:
 			dbg_assert_failed("pSkinContainer->Type() invalid");
 		}
@@ -995,7 +1012,8 @@ bool CSkins::CSkinDownloadJob::Abort()
 
 void CSkins::CSkinDownloadJob::Run()
 {
-	const char *pBaseUrl = g_Config.m_ClDownloadCommunitySkins != 0 ? g_Config.m_ClSkinCommunityDownloadUrl : g_Config.m_ClSkinDownloadUrl;
+	const char *pBaseUrl = (g_Config.m_ClDownloadCommunitySkins != 0 || g_Config.m_AcDownloadSkinsFrozen != 0) ? g_Config.m_ClSkinCommunityDownloadUrl : g_Config.m_ClSkinDownloadUrl;
+	const char *pAltUrl = (pBaseUrl == g_Config.m_ClSkinCommunityDownloadUrl) ? g_Config.m_ClSkinDownloadUrl : g_Config.m_ClSkinCommunityDownloadUrl;
 
 	char aEscapedName[256];
 	EscapeUrl(aEscapedName, m_aName);
@@ -1044,6 +1062,29 @@ void CSkins::CSkinDownloadJob::Run()
 		const CLockScope LockScope(m_Lock);
 		m_pGetRequest = nullptr;
 	}
+
+	// AClient: If 404 on primary URL, try fallback URL (e.g. community skin like greyfox or vice versa)
+	if(pGet->State() == EHttpState::DONE && pGet->StatusCode() == 404 && pAltUrl && pAltUrl[0])
+	{
+		str_format(aUrl, sizeof(aUrl), "%s%s.png", pAltUrl, aEscapedName);
+		pGet = HttpGetBoth(aUrl, m_pSkins->Storage(), aPathReal, IStorage::TYPE_SAVE);
+		pGet->Timeout(Timeout);
+		pGet->MaxResponseSize(MaxResponseSize);
+		pGet->ValidateBeforeOverwrite(true);
+		pGet->LogProgress(HTTPLOG::NONE);
+		pGet->FailOnErrorStatus(false);
+		{
+			const CLockScope LockScope(m_Lock);
+			m_pGetRequest = pGet;
+		}
+		m_pSkins->Http()->Run(pGet);
+		pGet->Wait();
+		{
+			const CLockScope LockScope(m_Lock);
+			m_pGetRequest = nullptr;
+		}
+	}
+
 	if(pGet->State() != EHttpState::DONE || State() == IJob::STATE_ABORTED || pGet->StatusCode() >= 400)
 	{
 		m_NotFound = pGet->State() == EHttpState::DONE && pGet->StatusCode() == 404; // 404 Not Found
