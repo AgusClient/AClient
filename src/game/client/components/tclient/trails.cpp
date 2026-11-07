@@ -5,6 +5,7 @@
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
 
+#include <game/aclient_fog.h>
 #include <game/client/animstate.h>
 #include <game/client/gameclient.h>
 #include <game/client/render.h>
@@ -47,6 +48,9 @@ void CTrails::OnRender()
 		return;
 
 	Graphics()->TextureClear();
+
+	const CScreenRect TrailCullRect = ComputeAcFogScreenRect(Graphics()->GetScreen(), IsAcFpsFogActive() ? 64.0f : 256.0f);
+	const int SpecId = GameClient()->m_Snap.m_SpecInfo.m_Active ? GameClient()->m_Snap.m_SpecInfo.m_SpectatorId : -1;
 
 	for(int ClientId = 0; ClientId < MAX_CLIENTS; ClientId++)
 	{
@@ -101,6 +105,9 @@ void CTrails::OnRender()
 			mix(PrevServerPos, CurServerPos, IntraTick),
 			GameTick,
 		};
+
+		if(!Local && ClientId != SpecId && !TrailCullRect.Inside(GameClient()->m_aClients[ClientId].m_RenderPos))
+			continue;
 
 		// // NOTE: this is kind of a hack to fix 25tps. This fixes flickering when using the speed mode
 		// m_History[ClientId][(GameTick + 1) % 200] = m_History[ClientId][GameTick % 200];

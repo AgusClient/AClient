@@ -297,6 +297,7 @@ private:
 
 	void ProcessEvents();
 	void UpdatePositions();
+	float ComputeTargetCustomAspect() const;
 
 	int m_EditorMovementDelay = 5;
 	void UpdateEditorIngameMoved();

@@ -11,6 +11,7 @@
 
 #include <generated/client_data.h>
 
+#include <game/aclient_fog.h>
 #include <game/client/gameclient.h>
 
 CParticles::CParticles()
@@ -42,6 +43,11 @@ void CParticles::OnReset()
 
 void CParticles::Add(int Group, CParticle *pPart, float TimePassed)
 {
+	if(g_Config.m_AcOptimizer && g_Config.m_AcOptimizerDisableParticles)
+	{
+		return;
+	}
+
 	if(GameClient()->IsWorldPaused() || GameClient()->IsDemoPlaybackPaused())
 	{
 		return;
@@ -144,7 +150,18 @@ void CParticles::OnRender()
 		return;
 
 	if(g_Config.m_AcOptimizer && g_Config.m_AcOptimizerDisableParticles)
+	{
+		for(int FirstPart : m_aFirstPart)
+		{
+			if(FirstPart != -1)
+			{
+				OnReset();
+				break;
+			}
+		}
+		m_LastRenderTime = time();
 		return;
+	}
 
 	set_new_tick();
 	const int64_t Now = time();
@@ -179,15 +196,13 @@ void CParticles::OnInit()
 
 bool CParticles::ParticleIsVisibleOnScreen(const vec2 &CurPos, float CurSize) const
 {
-	CScreenRect ScreenRect = Graphics()->GetScreen();
-
 	// for simplicity assume the worst case rotation, that increases the bounding box around the particle by its diagonal
 	const float SqrtOf2 = std::sqrt(2);
 	CurSize = SqrtOf2 * CurSize;
 
 	// always uses the mid of the particle
-	float SizeHalf = CurSize / 2;
-	ScreenRect.Expand(SizeHalf);
+	const float SizeHalf = CurSize / 2;
+	const CScreenRect ScreenRect = ComputeAcFogScreenRect(Graphics()->GetScreen(), SizeHalf);
 
 	return ScreenRect.Inside(CurPos);
 }

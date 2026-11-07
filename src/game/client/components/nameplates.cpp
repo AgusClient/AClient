@@ -10,6 +10,7 @@
 
 #include <generated/client_data.h>
 
+#include <game/aclient_fog.h>
 #include <game/client/animstate.h>
 #include <game/client/gameclient.h>
 #include <game/client/prediction/entities/character.h>
@@ -1095,27 +1096,25 @@ void CNamePlates::OnRender()
 	if(!g_Config.m_ClNamePlates && !g_Config.m_ClNamePlatesOwn && ShowDirection == 0)
 		return;
 
+	const bool CullFog = IsAcFpsFogActive();
+	const CScreenRect FogRect = CullFog ? ComputeAcFogScreenRect(Graphics()->GetScreen(), 48.0f) : CScreenRect(0.0f, 0.0f, 0.0f, 0.0f);
+	const int LocalClientId = GameClient()->m_Snap.m_LocalClientId;
+	const int SpecId = GameClient()->m_Snap.m_SpecInfo.m_Active ? GameClient()->m_Snap.m_SpecInfo.m_SpectatorId : -1;
+
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
 		const CNetObj_PlayerInfo *pInfo = GameClient()->m_Snap.m_apPlayerInfos[i];
 		if(!pInfo)
 			continue;
 
-		if(g_Config.m_AcOptimizer && g_Config.m_AcOptimizerFpsFog && i != GameClient()->m_Snap.m_LocalClientId)
-		{
-			float MaxDist = (float)g_Config.m_AcOptimizerFpsFogRadiusTiles * 32.0f;
-			vec2 CamCenter = GameClient()->m_Camera.m_Center;
-			if(GameClient()->m_aClients[i].m_SpecCharPresent && distance(GameClient()->m_aClients[i].m_SpecChar, CamCenter) > MaxDist)
-				continue;
-			if(GameClient()->m_Snap.m_aCharacters[i].m_Active && distance(GameClient()->m_aClients[i].m_RenderPos, CamCenter) > MaxDist)
-				continue;
-		}
+		const bool AlwaysShow = (i == LocalClientId || i == SpecId);
 
 		// Each player can also have a spectator char whose name plate is displayed independently
 		if(GameClient()->m_aClients[i].m_SpecCharPresent)
 		{
 			const vec2 RenderPos = GameClient()->m_aClients[i].m_SpecChar;
-			RenderNamePlateGame(RenderPos, pInfo, 0.4f);
+			if(!CullFog || AlwaysShow || FogRect.Inside(RenderPos))
+				RenderNamePlateGame(RenderPos, pInfo, 0.4f);
 		}
 		// Only render name plates for active characters
 		if(GameClient()->m_Snap.m_aCharacters[i].m_Active)
@@ -1126,7 +1125,8 @@ void CNamePlates::OnRender()
 			// if(g_Config.m_TcRenderNameplateSpec > 0)
 			//	continue;
 			const vec2 RenderPos = GameClient()->m_aClients[i].m_RenderPos;
-			RenderNamePlateGame(RenderPos, pInfo, 1.0f);
+			if(!CullFog || AlwaysShow || FogRect.Inside(RenderPos))
+				RenderNamePlateGame(RenderPos, pInfo, 1.0f);
 		}
 	}
 }

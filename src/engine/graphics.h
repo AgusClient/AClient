@@ -248,6 +248,9 @@ protected:
 	int m_ScreenRefreshRate;
 	float m_ScreenHiDPIScale;
 	ivec2 m_DesktopSize;
+	float m_CustomAspectOverride = 0.0f;
+	int m_ActiveViewportWidth = 0;
+	int m_ActiveViewportHeight = 0;
 
 public:
 	enum
@@ -277,7 +280,16 @@ public:
 	int ScreenWidth() const { return m_ScreenWidth; }
 	int ScreenHeight() const { return m_ScreenHeight; }
 	vec2 ScreenSize() const { return vec2(m_ScreenWidth, m_ScreenHeight); }
-	float ScreenAspect() const { return (float)ScreenWidth() / (float)ScreenHeight(); }
+	float NativeScreenAspect() const { return (float)ScreenWidth() / (float)ScreenHeight(); }
+	float ScreenAspect() const { return m_CustomAspectOverride > 0.0f ? m_CustomAspectOverride : NativeScreenAspect(); }
+	void SetCustomAspectOverride(float Aspect) { m_CustomAspectOverride = Aspect; }
+	float CustomAspectOverride() const { return m_CustomAspectOverride; }
+	void SetActiveViewportSize(int W, int H)
+	{
+		m_ActiveViewportWidth = W;
+		m_ActiveViewportHeight = H;
+	}
+	vec2 ActiveViewportSize() const { return (m_ActiveViewportWidth > 0 && m_ActiveViewportHeight > 0) ? vec2(m_ActiveViewportWidth, m_ActiveViewportHeight) : ScreenSize(); }
 	float ScreenHiDPIScale() const { return m_ScreenHiDPIScale; }
 	int WindowWidth() const { return m_ScreenWidth / m_ScreenHiDPIScale; }
 	int WindowHeight() const { return m_ScreenHeight / m_ScreenHiDPIScale; }

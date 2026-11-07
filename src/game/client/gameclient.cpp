@@ -493,8 +493,36 @@ void CGameClient::OnInit()
 	log_trace("gameclient", "initialization finished after %.2fms", (time_get() - OnInitStart) * 1000.0f / (float)time_freq());
 }
 
+float CGameClient::ComputeTargetCustomAspect() const
+{
+	if(!g_Config.m_AcCustomAspectRatio)
+		return 0.0f;
+	if(g_Config.m_AcCustomAspectRatioIngameOnly)
+	{
+		const int State = Client()->State();
+		if((State != IClient::STATE_ONLINE && State != IClient::STATE_DEMOPLAYBACK) || m_Menus.IsActive())
+			return 0.0f;
+	}
+	switch(g_Config.m_AcCustomAspectRatioMode)
+	{
+	case 0: return 4.0f / 3.0f;
+	case 1: return 16.0f / 10.0f;
+	case 2: return 5.0f / 4.0f;
+	case 3: return 16.0f / 9.0f;
+	case 4: return 21.0f / 9.0f;
+	default:
+	{
+		const int Num = std::clamp(g_Config.m_AcCustomAspectRatioNum, 1, 100);
+		const int Den = std::clamp(g_Config.m_AcCustomAspectRatioDen, 1, 100);
+		return std::clamp((float)Num / (float)Den, 0.5f, 4.0f);
+	}
+	}
+}
+
 void CGameClient::OnUpdate()
 {
+	Graphics()->SetCustomAspectOverride(ComputeTargetCustomAspect());
+
 	HandleLanguageChanged();
 
 	CUIElementBase::Init(Ui()); // update static pointer because game and editor use separate UI
@@ -827,8 +855,46 @@ void CGameClient::UpdatePositions()
 
 void CGameClient::OnRender()
 {
+	const float CustomAspect = ComputeTargetCustomAspect();
+	Graphics()->SetCustomAspectOverride(CustomAspect);
+
 	const ColorRGBA ClearColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClOverlayEntities ? g_Config.m_ClBackgroundEntitiesColor : g_Config.m_ClBackgroundColor));
 	Graphics()->Clear(ClearColor.r, ClearColor.g, ClearColor.b);
+
+	const int BaseVpX = Graphics()->ViewportX();
+	const int BaseW = Graphics()->ScreenWidth();
+	const int BaseH = Graphics()->ScreenHeight();
+	int SubVpOffsetX = 0;
+	int SubVpOffsetY = 0;
+	int SubVpW = BaseW;
+	int SubVpH = BaseH;
+	bool UseBlackBarsViewport = false;
+	if(CustomAspect > 0.0f && g_Config.m_AcCustomAspectRatioBlackBars && !m_MultiViewActivated && BaseW > 0 && BaseH > 0)
+	{
+		const float NativeAspect = (float)BaseW / (float)BaseH;
+		if(CustomAspect < NativeAspect - 0.001f)
+		{
+			SubVpW = std::clamp(round_to_int((float)BaseH * CustomAspect), 1, BaseW);
+			SubVpOffsetX = (BaseW - SubVpW) / 2;
+			UseBlackBarsViewport = (SubVpW < BaseW);
+		}
+		else if(CustomAspect > NativeAspect + 0.001f)
+		{
+			SubVpH = std::clamp(round_to_int((float)BaseW / CustomAspect), 1, BaseH);
+			SubVpOffsetY = (BaseH - SubVpH) / 2;
+			UseBlackBarsViewport = (SubVpH < BaseH);
+		}
+	}
+
+	if(UseBlackBarsViewport)
+	{
+		Graphics()->SetActiveViewportSize(SubVpW, SubVpH);
+		Graphics()->UpdateViewport(BaseVpX + SubVpOffsetX, SubVpOffsetY, SubVpW, SubVpH, false);
+	}
+	else
+	{
+		Graphics()->SetActiveViewportSize(0, 0);
+	}
 
 	// check if multi view got activated
 	if(!m_MultiView.m_IsInit && m_MultiViewActivated)
@@ -877,6 +943,39 @@ void CGameClient::OnRender()
 	Input()->Clear();
 
 	CLineInput::RenderCandidates();
+
+	if(UseBlackBarsViewport)
+	{
+		const CScreenRect PrevScreen = Graphics()->GetScreen();
+		Graphics()->ClipDisable();
+		Graphics()->SetActiveViewportSize(0, 0);
+		Graphics()->UpdateViewport(BaseVpX, 0, BaseW, BaseH, false);
+		Graphics()->MapScreen(CScreenRect(0.0f, 0.0f, (float)BaseW, (float)BaseH));
+		Graphics()->TextureClear();
+		Graphics()->BlendNormal();
+		Graphics()->QuadsBegin();
+		Graphics()->SetColor(0.0f, 0.0f, 0.0f, 1.0f);
+		IGraphics::CQuadItem aBlackBars[2];
+		int NumBars = 0;
+		if(SubVpOffsetX > 0)
+		{
+			aBlackBars[NumBars++] = IGraphics::CQuadItem(0.0f, 0.0f, (float)SubVpOffsetX, (float)BaseH);
+			const float RightX = (float)(SubVpOffsetX + SubVpW);
+			if(RightX < (float)BaseW)
+				aBlackBars[NumBars++] = IGraphics::CQuadItem(RightX, 0.0f, (float)BaseW - RightX, (float)BaseH);
+		}
+		else if(SubVpOffsetY > 0)
+		{
+			aBlackBars[NumBars++] = IGraphics::CQuadItem(0.0f, 0.0f, (float)BaseW, (float)SubVpOffsetY);
+			const float BottomY = (float)(SubVpOffsetY + SubVpH);
+			if(BottomY < (float)BaseH)
+				aBlackBars[NumBars++] = IGraphics::CQuadItem(0.0f, BottomY, (float)BaseW, (float)BaseH - BottomY);
+		}
+		if(NumBars > 0)
+			Graphics()->QuadsDrawTL(aBlackBars, NumBars);
+		Graphics()->QuadsEnd();
+		Graphics()->MapScreen(PrevScreen);
+	}
 
 	if(Client()->State() == IClient::STATE_ONLINE)
 	{

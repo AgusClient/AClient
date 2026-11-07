@@ -1244,6 +1244,8 @@ void CClient::Render()
 {
 	if(m_EditorActive)
 	{
+		m_pGraphics->SetCustomAspectOverride(0.0f);
+		m_pGraphics->SetActiveViewportSize(0, 0);
 		m_pEditor->OnRender();
 	}
 	else
@@ -2874,7 +2876,11 @@ void CClient::Update()
 
 	// update editor/gameclient, before input snapping
 	if(m_EditorActive)
+	{
+		m_pGraphics->SetCustomAspectOverride(0.0f);
+		m_pGraphics->SetActiveViewportSize(0, 0);
 		m_pEditor->OnUpdate();
+	}
 	else
 		GameClient()->OnUpdate();
 

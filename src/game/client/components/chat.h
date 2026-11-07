@@ -36,7 +36,7 @@ class CChat : public CComponent
 
 	enum
 	{
-		MAX_LINES = 64,
+		MAX_LINES = 512,
 	};
 
 	CLineInputBuffered<MAX_CHAT_LENGTH> m_Input;
@@ -66,6 +66,7 @@ class CChat : public CComponent
 		std::shared_ptr<CManagedTeeRenderInfo> m_pManagedTeeRenderInfo;
 
 		float m_TextYOffset;
+		int m_PreparedOffsetType;
 
 		int m_TimesRepeated;
 
@@ -77,6 +78,11 @@ class CChat : public CComponent
 
 	CLine m_aLines[MAX_LINES];
 	int m_CurrentLine;
+	int m_ChatHistoryScroll = 0;
+
+	int ActiveMaxLines() const { return std::clamp(g_Config.m_AcChatMaxLines, 64, (int)MAX_LINES); }
+	int CountInitializedLines() const;
+	void ClampChatHistoryScroll();
 
 	enum
 	{
@@ -191,6 +197,7 @@ class CChat : public CComponent
 	static void ConTcShowChatClient(IConsole::IResult *pResult, void *pUserData);
 	static void ConTcSilentTyping(IConsole::IResult *pResult, void *pUserData);
 	static void ConchainSilentTyping(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
+	static void ConchainChatMaxLines(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
 
 	bool LineShouldHighlight(const char *pLine, const char *pName);
 	void StoreSave(const char *pText);

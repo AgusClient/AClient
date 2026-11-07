@@ -5,6 +5,7 @@
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
 
+#include <game/aclient_fog.h>
 #include <game/client/animstate.h>
 #include <game/client/gameclient.h>
 #include <game/client/render.h>
@@ -147,7 +148,9 @@ void COutlines::OnRender()
 
 	const float Scale = 32.0f;
 
-	const CScreenRect ScreenRect = Graphics()->GetScreen();
+	CScreenRect ScreenRect = Graphics()->GetScreen();
+	if(IsAcFpsFogActive() && g_Config.m_AcOptimizerFpsFogCullMapTiles)
+		ScreenRect = ComputeAcFogScreenRect(ScreenRect, 0.0f);
 	int StartX = (int)(ScreenRect.m_TopLeft.x / Scale) - 1;
 	int StartY = (int)(ScreenRect.m_TopLeft.y / Scale) - 1;
 	int EndX = (int)(ScreenRect.m_BottomRight.x / Scale) + 1;

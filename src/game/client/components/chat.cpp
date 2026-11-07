@@ -35,6 +35,7 @@ CChat::CLine::CLine()
 {
 	m_TextContainerIndex.Reset();
 	m_QuadContainerIndex = -1;
+	m_PreparedOffsetType = -1;
 }
 
 void CChat::CLine::Reset(CChat &This)
@@ -46,6 +47,7 @@ void CChat::CLine::Reset(CChat &This)
 	m_aText[0] = '\0';
 	m_aName[0] = '\0';
 	m_Friend = false;
+	m_PreparedOffsetType = -1;
 	m_TimesRepeated = 0;
 	m_pManagedTeeRenderInfo = nullptr;
 	m_pTranslateResponse = nullptr;
@@ -126,7 +128,28 @@ void CChat::RebuildChat()
 		// recalculate sizes
 		Line.m_aYOffset[0] = -1.0f;
 		Line.m_aYOffset[1] = -1.0f;
+		Line.m_PreparedOffsetType = -1;
 	}
+}
+
+int CChat::CountInitializedLines() const
+{
+	const int Limit = ActiveMaxLines();
+	int Count = 0;
+	for(int i = 0; i < Limit; i++)
+	{
+		const CLine &Line = m_aLines[((m_CurrentLine - i) + MAX_LINES) % MAX_LINES];
+		if(!Line.m_Initialized)
+			break;
+		Count++;
+	}
+	return Count;
+}
+
+void CChat::ClampChatHistoryScroll()
+{
+	const int MaxScroll = std::max(0, CountInitializedLines() - 1);
+	m_ChatHistoryScroll = std::clamp(m_ChatHistoryScroll, 0, MaxScroll);
 }
 
 void CChat::ClearLines()
@@ -135,6 +158,7 @@ void CChat::ClearLines()
 		Line.Reset(*this);
 	m_PrevScoreBoardShowed = false;
 	m_PrevShowChat = false;
+	m_ChatHistoryScroll = 0;
 }
 
 void CChat::OnWindowResize()
@@ -156,6 +180,7 @@ void CChat::Reset()
 	m_PendingChatCounter = 0;
 	m_LastChatSend = 0;
 	m_CurrentLine = 0;
+	m_ChatHistoryScroll = 0;
 	m_IsInputCensored = false;
 	m_EditingNewLine = true;
 	m_ServerSupportsCommandInfo = false;
@@ -292,6 +317,20 @@ void CChat::ConchainSilentTyping(IConsole::IResult *pResult, void *pUserData, IC
 	}
 }
 
+void CChat::ConchainChatMaxLines(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData)
+{
+	pfnCallback(pResult, pCallbackUserData);
+	CChat *pSelf = (CChat *)pUserData;
+	const int Limit = pSelf->ActiveMaxLines();
+	for(int i = Limit; i < MAX_LINES; i++)
+	{
+		CLine &Line = pSelf->m_aLines[((pSelf->m_CurrentLine - i) + MAX_LINES) % MAX_LINES];
+		if(Line.m_Initialized)
+			Line.Reset(*pSelf);
+	}
+	pSelf->ClampChatHistoryScroll();
+}
+
 void CChat::Echo(const char *pString)
 {
 	AddLine(CLIENT_MSG, 0, pString);
@@ -327,12 +366,35 @@ void CChat::OnInit()
 	Console()->Chain("cl_chat_width", ConchainChatWidth, this);
 	Console()->Chain("ac_silent_typing", ConchainSilentTyping, this);
 	Console()->Chain("ac_hide_chat_bubbles", ConchainSilentTyping, this);
+	Console()->Chain("ac_chat_max_lines", ConchainChatMaxLines, this);
 }
 
 bool CChat::OnInput(const IInput::CEvent &Event)
 {
 	if(m_Mode == MODE_NONE)
 		return false;
+
+	if(Event.m_Key == KEY_MOUSE_WHEEL_UP || Event.m_Key == KEY_MOUSE_WHEEL_DOWN)
+	{
+		if(Event.m_Flags & IInput::FLAG_PRESS)
+		{
+			const int Step = Input()->ShiftIsPressed() ? 1 : 3;
+			m_ChatHistoryScroll += (Event.m_Key == KEY_MOUSE_WHEEL_UP) ? Step : -Step;
+			ClampChatHistoryScroll();
+		}
+		return true;
+	}
+	if(Event.m_Flags & IInput::FLAG_PRESS && (Event.m_Key == KEY_PAGEUP || Event.m_Key == KEY_PAGEDOWN))
+	{
+		m_ChatHistoryScroll += (Event.m_Key == KEY_PAGEUP) ? 8 : -8;
+		ClampChatHistoryScroll();
+		return true;
+	}
+	if(Event.m_Flags & IInput::FLAG_PRESS && Input()->ModifierIsPressed() && (Event.m_Key == KEY_HOME || Event.m_Key == KEY_END))
+	{
+		m_ChatHistoryScroll = (Event.m_Key == KEY_HOME) ? std::max(0, CountInitializedLines() - 1) : 0;
+		return true;
+	}
 
 	if(Event.m_Flags & IInput::FLAG_PRESS && Event.m_Key == KEY_ESCAPE)
 	{
@@ -704,6 +766,7 @@ void CChat::EnableMode(int Team)
 
 		m_CompletionChosen = -1;
 		m_CompletionUsed = false;
+		m_ChatHistoryScroll = 0;
 		m_Input.Activate(EInputPriority::CHAT);
 	}
 }
@@ -713,6 +776,7 @@ void CChat::DisableMode()
 	if(m_Mode != MODE_NONE)
 	{
 		m_Mode = MODE_NONE;
+		m_ChatHistoryScroll = 0;
 		m_Input.Deactivate();
 	}
 }
@@ -1016,12 +1080,25 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 		PreviousLine.m_Time = time();
 		PreviousLine.m_aYOffset[0] = -1.0f;
 		PreviousLine.m_aYOffset[1] = -1.0f;
+		PreviousLine.m_PreparedOffsetType = -1;
 
 		FChatMsgCheckAndPrint(PreviousLine);
 		return;
 	}
 
 	m_CurrentLine = (m_CurrentLine + 1) % MAX_LINES;
+
+	const int Limit = ActiveMaxLines();
+	if(Limit < MAX_LINES)
+	{
+		const int EvictIdx = ((m_CurrentLine - Limit) + MAX_LINES) % MAX_LINES;
+		if(m_aLines[EvictIdx].m_Initialized)
+			m_aLines[EvictIdx].Reset(*this);
+	}
+	if(m_Mode != MODE_NONE && m_ChatHistoryScroll > 0)
+	{
+		m_ChatHistoryScroll = std::min(m_ChatHistoryScroll + 1, std::max(0, Limit - 1));
+	}
 
 	CLine &CurrentLine = m_aLines[m_CurrentLine];
 	CurrentLine.Reset(*this);
@@ -1238,7 +1315,6 @@ void CChat::OnPrepareLines(float y)
 
 	const bool IsScoreBoardOpen = GameClient()->m_Scoreboard.IsActive() && (Graphics()->ScreenAspect() > 1.7f); // only assume scoreboard when screen ratio is widescreen(something around 16:9)
 	const bool ShowLargeArea = m_Show || (m_Mode != MODE_NONE && g_Config.m_ClShowChat == 1) || g_Config.m_ClShowChat == 2;
-	const bool ForceRecreate = IsScoreBoardOpen != m_PrevScoreBoardShowed || ShowLargeArea != m_PrevShowChat;
 	m_PrevScoreBoardShowed = IsScoreBoardOpen;
 	m_PrevShowChat = ShowLargeArea;
 
@@ -1262,7 +1338,11 @@ void CChat::OnPrepareLines(float y)
 	float TextBegin = Begin + RealMsgPaddingX / 2.0f;
 	int OffsetType = IsScoreBoardOpen ? 1 : 0;
 
-	for(int i = 0; i < MAX_LINES; i++)
+	ClampChatHistoryScroll();
+	const int Limit = ActiveMaxLines();
+	const int StartLine = (m_Mode != MODE_NONE) ? m_ChatHistoryScroll : 0;
+
+	for(int i = StartLine; i < Limit; i++)
 	{
 		CLine &Line = m_aLines[((m_CurrentLine - i) + MAX_LINES) % MAX_LINES];
 		if(!Line.m_Initialized)
@@ -1270,8 +1350,13 @@ void CChat::OnPrepareLines(float y)
 		if(Now > Line.m_Time + 16 * time_freq() && !m_PrevShowChat)
 			break;
 
-		if(Line.m_TextContainerIndex.Valid() && !ForceRecreate)
+		if(Line.m_TextContainerIndex.Valid() && Line.m_PreparedOffsetType == OffsetType && Line.m_aYOffset[OffsetType] >= 0.0f)
+		{
+			y -= Line.m_aYOffset[OffsetType];
+			if(y < HeightLimit)
+				break;
 			continue;
+		}
 
 		TextRender()->DeleteTextContainer(Line.m_TextContainerIndex);
 		Graphics()->DeleteQuadContainer(Line.m_QuadContainerIndex);
@@ -1554,7 +1639,10 @@ void CChat::OnPrepareLines(float y)
 
 		TextRender()->SetRenderFlags(CurRenderFlags);
 		if(Line.m_TextContainerIndex.Valid())
+		{
 			TextRender()->UploadTextContainer(Line.m_TextContainerIndex);
+			Line.m_PreparedOffsetType = OffsetType;
+		}
 	}
 
 	TextRender()->TextColor(TextRender()->DefaultTextColor());
@@ -1710,6 +1798,22 @@ void CChat::OnRender()
 
 	y -= ScaledFontSize;
 
+	ClampChatHistoryScroll();
+	if(m_Mode != MODE_NONE && m_ChatHistoryScroll > 0)
+	{
+		const float IndicatorFontSize = FontSize() * 0.95f;
+		y -= IndicatorFontSize + 2.0f;
+		char aScrollBuf[96];
+		str_format(aScrollBuf, sizeof(aScrollBuf), "[Historial: +%d msgs | Rueda / RePag / AvPag]", m_ChatHistoryScroll);
+		CTextCursor IndCursor;
+		IndCursor.SetPosition(vec2(x, y));
+		IndCursor.m_FontSize = IndicatorFontSize;
+		TextRender()->TextColor(0.75f, 0.88f, 1.0f, 0.9f);
+		TextRender()->TextEx(&IndCursor, aScrollBuf);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
+		y -= 2.0f;
+	}
+
 	OnPrepareLines(y);
 
 	bool IsScoreBoardOpen = GameClient()->m_Scoreboard.IsActive() && (Graphics()->ScreenAspect() > 1.7f); // only assume scoreboard when screen ratio is widescreen(something around 16:9)
@@ -1727,7 +1831,10 @@ void CChat::OnRender()
 		RealMsgPaddingY = 0;
 	}
 
-	for(int i = 0; i < MAX_LINES; i++)
+	const int Limit = ActiveMaxLines();
+	const int StartLine = (m_Mode != MODE_NONE) ? m_ChatHistoryScroll : 0;
+
+	for(int i = StartLine; i < Limit; i++)
 	{
 		CLine &Line = m_aLines[((m_CurrentLine - i) + MAX_LINES) % MAX_LINES];
 		if(!Line.m_Initialized)

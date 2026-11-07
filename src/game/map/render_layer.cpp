@@ -11,6 +11,7 @@
 #include <engine/shared/config.h>
 #include <engine/storage.h>
 
+#include <game/aclient_fog.h>
 #include <game/localization.h>
 #include <game/mapitems.h>
 
@@ -309,24 +310,16 @@ void CRenderLayerTile::RenderTileLayer(const ColorRGBA &Color, const CRenderLaye
 		return; // no visuals were created
 
 	CScreenRect ScreenRect = Graphics()->GetScreen();
+	if(IsAcFpsFogActive() && g_Config.m_AcOptimizerFpsFogCullMapTiles &&
+		Params.m_RenderType != ERenderType::RENDERTYPE_BACKGROUND && Params.m_RenderType != ERenderType::RENDERTYPE_BACKGROUND_FORCE)
+	{
+		ScreenRect = ComputeAcFogScreenRect(ScreenRect, 0.0f);
+	}
 
 	int ScreenRectY0 = std::floor(ScreenRect.m_TopLeft.y / 32);
 	int ScreenRectX0 = std::floor(ScreenRect.m_TopLeft.x / 32);
 	int ScreenRectY1 = std::ceil(ScreenRect.m_BottomRight.y / 32);
 	int ScreenRectX1 = std::ceil(ScreenRect.m_BottomRight.x / 32);
-
-	if(g_Config.m_AcOptimizer && g_Config.m_AcOptimizerFpsFog && g_Config.m_AcOptimizerFpsFogCullMapTiles &&
-	   Params.m_RenderType != ERenderType::RENDERTYPE_BACKGROUND && Params.m_RenderType != ERenderType::RENDERTYPE_BACKGROUND_FORCE)
-	{
-		int CenterTileX = (int)std::round(Params.m_Center.x / 32.0f);
-		int CenterTileY = (int)std::round(Params.m_Center.y / 32.0f);
-		int Radius = std::clamp((int)g_Config.m_AcOptimizerFpsFogRadiusTiles, 5, 120);
-
-		ScreenRectX0 = std::max(ScreenRectX0, CenterTileX - Radius);
-		ScreenRectX1 = std::min(ScreenRectX1, CenterTileX + Radius);
-		ScreenRectY0 = std::max(ScreenRectY0, CenterTileY - Radius);
-		ScreenRectY1 = std::min(ScreenRectY1, CenterTileY + Radius);
-	}
 
 	if(IsVisibleInClipRegion(m_LayerClip))
 	{
@@ -600,7 +593,7 @@ bool CRenderLayerTile::DoRender(const CRenderLayerParams &Params)
 		return false;
 
 	// skip rendering if detail layers if not wanted
-	if(m_Flags & LAYERFLAG_DETAIL && !g_Config.m_GfxHighDetail && Params.m_RenderType != ERenderType::RENDERTYPE_FULL_DESIGN) // detail but no details
+	if(m_Flags & LAYERFLAG_DETAIL && !IsAcHighDetailEnabled() && Params.m_RenderType != ERenderType::RENDERTYPE_FULL_DESIGN) // detail but no details
 		return false;
 	return true;
 }
@@ -1466,7 +1459,7 @@ bool CRenderLayerQuads::DoRender(const CRenderLayerParams &Params)
 		return false;
 
 	// skip rendering if detail layers if not wanted
-	if(m_Flags & LAYERFLAG_DETAIL && !g_Config.m_GfxHighDetail && Params.m_RenderType != ERenderType::RENDERTYPE_FULL_DESIGN) // detail but no details
+	if(m_Flags & LAYERFLAG_DETAIL && !IsAcHighDetailEnabled() && Params.m_RenderType != ERenderType::RENDERTYPE_FULL_DESIGN) // detail but no details
 		return false;
 
 	// this option only deactivates quads in the background

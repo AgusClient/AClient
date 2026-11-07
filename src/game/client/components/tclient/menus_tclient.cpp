@@ -4405,14 +4405,90 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 
 	if(g_Config.m_AcOptimizerFpsFog)
 	{
+		Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
 		Column.HSplitTop(LineSize, &Button, &Column);
-		Ui()->DoScrollbarOption(&g_Config.m_AcOptimizerFpsFogRadiusTiles, &g_Config.m_AcOptimizerFpsFogRadiusTiles, &Button, TCLocalize("FPS Fog Radius"), 15, 80, &CUi::ms_LinearScrollbarScale, 0, " tiles");
+		{
+			static CButtonContainer s_aFogModeButtons[2];
+			static const char *s_apFogModeNames[2] = {"Radio Fijo (Tiles)", "Dinamico (% Zoom)"};
+			CUIRect LeftBtn, RightBtn;
+			Button.VSplitMid(&LeftBtn, &RightBtn, 2.0f);
+			if(DoButton_Menu(&s_aFogModeButtons[0], TCLocalize(s_apFogModeNames[0]), g_Config.m_AcOptimizerFpsFogMode == 0, &LeftBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+				g_Config.m_AcOptimizerFpsFogMode = 0;
+			if(DoButton_Menu(&s_aFogModeButtons[1], TCLocalize(s_apFogModeNames[1]), g_Config.m_AcOptimizerFpsFogMode == 1, &RightBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+				g_Config.m_AcOptimizerFpsFogMode = 1;
+		}
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+		if(g_Config.m_AcOptimizerFpsFogMode == 1)
+		{
+			Column.HSplitTop(LineSize, &Button, &Column);
+			Ui()->DoScrollbarOption(&g_Config.m_AcOptimizerFpsFogZoomPercent, &g_Config.m_AcOptimizerFpsFogZoomPercent, &Button, TCLocalize("FPS Fog Zoom Area"), 20, 120, &CUi::ms_LinearScrollbarScale, 0, "%");
+		}
+		else
+		{
+			Column.HSplitTop(LineSize, &Button, &Column);
+			Ui()->DoScrollbarOption(&g_Config.m_AcOptimizerFpsFogRadiusTiles, &g_Config.m_AcOptimizerFpsFogRadiusTiles, &Button, TCLocalize("FPS Fog Radius"), 10, 120, &CUi::ms_LinearScrollbarScale, 0, " tiles");
+		}
 
 		DoCheckboxWithHelp(&g_Config.m_AcOptimizerFpsFogCullMapTiles, TCLocalize("Cull map tiles outside radius"), TCLocalize("Drastically reduces tile vertices and draw operations outside the focused view area."), &g_Config.m_AcOptimizerFpsFogCullMapTiles, &Column, LineSize);
 		DoCheckboxWithHelp(&g_Config.m_AcOptimizerFpsFogRenderRect, TCLocalize("Show FPS Fog boundary box (debug)"), TCLocalize("Draws a visible outline showing the active rendering bounding box."), &g_Config.m_AcOptimizerFpsFogRenderRect, &Column, LineSize);
 	}
 
 	DoCheckboxWithHelp(&g_Config.m_AcOptimizerHighPriority, TCLocalize("High process priority (Windows)"), TCLocalize("Automatically assigns High priority to DDNet in Windows to reduce background process micro-stutters."), &g_Config.m_AcOptimizerHighPriority, &Column, LineSize);
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
+
+	// ***** Custom Aspect Ratio & Black Bars ***** //
+	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	s_SectionBoxesAc.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("Relacion de Aspecto / Pantalla"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	DoCheckboxWithHelp(&g_Config.m_AcCustomAspectRatio, TCLocalize("Activar Relacion de Aspecto Personalizada"), TCLocalize("Permite jugar en 4:3, 16:10, 5:4, 21:9 o proporcion libre con Bandas Negras (Black Bars) o Estirado (Stretched) a resolucion nativa."), &g_Config.m_AcCustomAspectRatio, &Column, LineSize);
+
+	if(g_Config.m_AcCustomAspectRatio)
+	{
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		{
+			static CButtonContainer s_aAspectPresetBtns[6];
+			static const char *s_apAspectPresetNames[6] = {"4:3", "16:10", "5:4", "16:9", "21:9", "Custom"};
+			CUIRect Row = Button;
+			const float Spacing = 2.0f;
+			const float BtnW = (Row.w - Spacing * 5.0f) / 6.0f;
+			for(int i = 0; i < 6; ++i)
+			{
+				CUIRect ItemRect;
+				if(i < 5)
+				{
+					Row.VSplitLeft(BtnW, &ItemRect, &Row);
+					Row.VSplitLeft(Spacing, nullptr, &Row);
+				}
+				else
+				{
+					ItemRect = Row;
+				}
+				int Corners = (i == 0) ? IGraphics::CORNER_L : ((i == 5) ? IGraphics::CORNER_R : IGraphics::CORNER_NONE);
+				if(DoButton_Menu(&s_aAspectPresetBtns[i], TCLocalize(s_apAspectPresetNames[i]), g_Config.m_AcCustomAspectRatioMode == i, &ItemRect, BUTTONFLAG_LEFT, nullptr, Corners))
+					g_Config.m_AcCustomAspectRatioMode = i;
+			}
+		}
+
+		if(g_Config.m_AcCustomAspectRatioMode == 5)
+		{
+			Column.HSplitTop(MarginSmall, nullptr, &Column);
+			Column.HSplitTop(LineSize, &Button, &Column);
+			Ui()->DoScrollbarOption(&g_Config.m_AcCustomAspectRatioNum, &g_Config.m_AcCustomAspectRatioNum, &Button, TCLocalize("Ancho (Numerador)"), 1, 32);
+			Column.HSplitTop(LineSize, &Button, &Column);
+			Ui()->DoScrollbarOption(&g_Config.m_AcCustomAspectRatioDen, &g_Config.m_AcCustomAspectRatioDen, &Button, TCLocalize("Alto (Denominador)"), 1, 32);
+		}
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		DoCheckboxWithHelp(&g_Config.m_AcCustomAspectRatioBlackBars, TCLocalize("Bandas negras (Black Bars) en vez de estirado"), TCLocalize("Activa bandas negras laterales o superiores sin deformar la imagen. Desactivalo para estirar la imagen a pantalla completa (Stretched)."), &g_Config.m_AcCustomAspectRatioBlackBars, &Column, LineSize);
+		DoCheckboxWithHelp(&g_Config.m_AcCustomAspectRatioIngameOnly, TCLocalize("Solo dentro de partida (menus en pantalla completa)"), TCLocalize("Mantiene los menus y el editor de mapas en la relacion nativa del monitor sin recargar texturas al tocar Escape."), &g_Config.m_AcCustomAspectRatioIngameOnly, &Column, LineSize);
+	}
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
@@ -4602,6 +4678,16 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	DoCheckboxWithHelp(&g_Config.m_AcShowInMenuIcon, TCLocalize("Mostrar logo arriba del Tee en Escape / Opciones"), TCLocalize("Muestra el logo de opciones (engranaje) arriba de tu Tee al tocar Escape o abrir el menu."), &g_Config.m_AcShowInMenuIcon, &Column, LineSize);
 
 	DoCheckboxWithHelp(&g_Config.m_AcHideStartMessages, TCLocalize("Hide start line messages in chat"), TCLocalize("Hides team start warnings and team started notifications when touching the start line."), &g_Config.m_AcHideStartMessages, &Column, LineSize);
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize, &Button, &Column);
+	Ui()->DoScrollbarOption(&g_Config.m_AcChatMaxLines, &g_Config.m_AcChatMaxLines, &Button, TCLocalize("Max lineas de historial de chat"), 64, 512, &CUi::ms_LinearScrollbarScale, 0, " lineas");
+
+	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+	Column.HSplitTop(15.0f, &Label, &Column);
+	TextRender()->TextColor(0.65f, 0.85f, 1.0f, 0.95f);
+	Ui()->DoLabel(&Label, TCLocalize("Scroll en chat abierto (Enter / T / Y): Rueda del mouse, RePag/AvPag o Ctrl+Inicio"), 11.0f, TEXTALIGN_ML);
+	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	Column.HSplitTop(LineSize + 4.0f, &Button, &Column);

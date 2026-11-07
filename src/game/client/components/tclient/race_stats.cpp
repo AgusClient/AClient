@@ -122,7 +122,6 @@ void CRaceStats::OnReset()
 	m_CachedTotalTeamPlayers = 0;
 	m_StatsDirty = true;
 	m_RunFinishedSaved = false;
-	m_RunFinishedSaved = false;
 	m_LastFinishSaveTime = 0;
 	m_WasCalculating = false;
 }

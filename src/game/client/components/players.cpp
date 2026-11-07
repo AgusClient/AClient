@@ -18,6 +18,7 @@
 #include <generated/client_data7.h>
 #include <generated/protocol.h>
 
+#include <game/aclient_fog.h>
 #include <game/client/animstate.h>
 #include <game/client/components/controls.h>
 #include <game/client/components/effects.h>
@@ -500,13 +501,6 @@ void CPlayers::RenderHook(
 	if(pPlayerChar->m_HookState <= 0)
 		return;
 
-	if(g_Config.m_AcOptimizer && g_Config.m_AcOptimizerFpsFog && ClientId != GameClient()->m_Snap.m_LocalClientId)
-	{
-		float MaxDist = (float)g_Config.m_AcOptimizerFpsFogRadiusTiles * 32.0f;
-		if(distance(vec2(pPlayerChar->m_X, pPlayerChar->m_Y), GameClient()->m_Camera.m_Center) > MaxDist)
-			return;
-	}
-
 	CNetObj_Character Prev;
 	CNetObj_Character Player;
 	Prev = *pPrevChar;
@@ -662,15 +656,9 @@ void CPlayers::RenderPlayer(
 	else
 		Position = mix(vec2(Prev.m_X, Prev.m_Y), vec2(Player.m_X, Player.m_Y), Intra);
 
-	if(!ScreenRect.Inside(Position))
+	const bool IsSpectated = Spec && GameClient()->m_Snap.m_SpecInfo.m_SpectatorId == ClientId;
+	if(!Local && !IsSpectated && !ScreenRect.Inside(Position))
 		return;
-
-	if(g_Config.m_AcOptimizer && g_Config.m_AcOptimizerFpsFog && !Local)
-	{
-		float MaxDist = (float)g_Config.m_AcOptimizerFpsFogRadiusTiles * 32.0f;
-		if(distance(Position, GameClient()->m_Camera.m_Center) > MaxDist)
-			return;
-	}
 
 	CTeeRenderInfo RenderInfo = *pRenderInfo;
 
@@ -737,7 +725,8 @@ void CPlayers::RenderPlayer(
 		return;
 	}
 
-	GameClient()->m_Flow.Add(Position, Vel * 100.0f, 10.0f);
+	if(!(g_Config.m_AcOptimizer && g_Config.m_AcOptimizerDisableParticles))
+		GameClient()->m_Flow.Add(Position, Vel * 100.0f, 10.0f);
 
 	// TClient
 	if(!RenderGhost && ClientId >= 0 && GameClient()->m_aClients[ClientId].m_IsVolleyBall)
@@ -1309,13 +1298,13 @@ void CPlayers::OnRender()
 	}
 
 	// get screen edges to avoid rendering offscreen
-	CScreenRect ScreenRect = Graphics()->GetScreen();
+	const CScreenRect BaseScreenRect = Graphics()->GetScreen();
 	// expand the edges to prevent popping in/out onscreen
 	//
 	// it is assumed that the tee, all its weapons, and emotes fit into a 200x200 box centered on the tee
 	// this may need to be changed or calculated differently in the future
 	constexpr float PlayerBorderBuffer = 100.0f;
-	ScreenRect.Expand(PlayerBorderBuffer);
+	const CScreenRect ScreenRect = ComputeAcFogScreenRect(BaseScreenRect, IsAcFpsFogActive() ? 48.0f : PlayerBorderBuffer);
 
 	// render everyone else's hook, then our own
 	const int LocalClientId = GameClient()->m_Snap.m_LocalClientId;

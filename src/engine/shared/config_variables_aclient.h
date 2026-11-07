@@ -64,7 +64,9 @@ MACRO_CONFIG_INT(AcOptimizerDisableParticles, ac_optimizer_disable_particles, 1,
 MACRO_CONFIG_INT(AcOptimizerDisableQuads, ac_optimizer_disable_quads, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Disable map quads (clouds, lights, animated decorations) when optimizer is active")
 MACRO_CONFIG_INT(AcOptimizerDisableHighDetail, ac_optimizer_disable_high_detail, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Disable high detail map layers while optimizer is active")
 MACRO_CONFIG_INT(AcOptimizerFpsFog, ac_optimizer_fps_fog, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Limit map and entities rendering to a focused camera radius")
+MACRO_CONFIG_INT(AcOptimizerFpsFogMode, ac_optimizer_fps_fog_mode, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "FPS Fog mode (0 = fixed tile radius, 1 = zoom percentage)")
 MACRO_CONFIG_INT(AcOptimizerFpsFogRadiusTiles, ac_optimizer_fps_fog_radius_tiles, 35, 10, 120, CFGFLAG_CLIENT | CFGFLAG_SAVE, "FPS Fog view radius in tiles (1 tile = 32 units)")
+MACRO_CONFIG_INT(AcOptimizerFpsFogZoomPercent, ac_optimizer_fps_fog_zoom_percent, 75, 20, 120, CFGFLAG_CLIENT | CFGFLAG_SAVE, "FPS Fog visible screen percentage when mode is 1 (20-120%)")
 MACRO_CONFIG_INT(AcOptimizerFpsFogCullMapTiles, ac_optimizer_fps_fog_cull_map_tiles, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Cull map tiles outside the FPS Fog radius")
 MACRO_CONFIG_INT(AcOptimizerFpsFogRenderRect, ac_optimizer_fps_fog_render_rect, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draw outline box showing the FPS Fog area (debug)")
 MACRO_CONFIG_INT(AcOptimizerHighPriority, ac_optimizer_high_priority, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Set DDNet process priority to High in Windows")
@@ -186,3 +188,14 @@ MACRO_CONFIG_COL(AcColorBg, ac_color_bg, 3215086858, CFGFLAG_CLIENT | CFGFLAG_SA
 // Tee Skin Downloads
 MACRO_CONFIG_INT(AcDownloadSkinsFrozen, ac_download_skins_frozen, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Descargar skins del tee solo cuando estoy freezeado")
 MACRO_CONFIG_INT(AcShowInMenuIcon, ac_show_in_menu_icon, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mostrar logo/icono de opciones arriba del tee al presionar escape o abrir el menu")
+
+// Custom Aspect Ratio & Black Bars
+MACRO_CONFIG_INT(AcCustomAspectRatio, ac_custom_aspect_ratio, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable custom aspect ratio override")
+MACRO_CONFIG_INT(AcCustomAspectRatioMode, ac_custom_aspect_ratio_mode, 0, 0, 5, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Aspect ratio preset (0=4:3, 1=16:10, 2=5:4, 3=16:9, 4=21:9, 5=Custom)")
+MACRO_CONFIG_INT(AcCustomAspectRatioNum, ac_custom_aspect_ratio_num, 4, 1, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Custom aspect ratio width numerator")
+MACRO_CONFIG_INT(AcCustomAspectRatioDen, ac_custom_aspect_ratio_den, 3, 1, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Custom aspect ratio height denominator")
+MACRO_CONFIG_INT(AcCustomAspectRatioBlackBars, ac_custom_aspect_ratio_black_bars, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Render solid black bars instead of stretching custom aspect ratio")
+MACRO_CONFIG_INT(AcCustomAspectRatioIngameOnly, ac_custom_aspect_ratio_ingame_only, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply custom aspect ratio only while playing in-game")
+
+// Chat History & Scroll
+MACRO_CONFIG_INT(AcChatMaxLines, ac_chat_max_lines, 64, 64, 512, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Maximum number of chat lines stored in history (default 64, up to 512)")

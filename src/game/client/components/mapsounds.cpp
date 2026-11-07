@@ -6,6 +6,7 @@
 #include <engine/shared/config.h>
 #include <engine/sound.h>
 
+#include <game/aclient_fog.h>
 #include <game/client/components/camera.h>
 #include <game/client/components/sounds.h>
 #include <game/client/gameclient.h>
@@ -165,7 +166,7 @@ void CMapSounds::OnRender()
 				Client()->IntraGameTick(g_Config.m_ClDummy));
 		}
 		float Offset = s_Time - Source.m_pSource->m_TimeDelay;
-		if(!DemoPlayerPaused && Offset >= 0.0f && g_Config.m_SndEnable && (g_Config.m_GfxHighDetail || !Source.m_HighDetail))
+		if(!DemoPlayerPaused && Offset >= 0.0f && g_Config.m_SndEnable && (IsAcHighDetailEnabled() || !Source.m_HighDetail))
 		{
 			if(Source.m_Voice.IsValid())
 			{

@@ -25,6 +25,8 @@ Se distribuye como ejecutable nativo de 64 bits optimizado con librerías modern
   - [7. HUD Modular, Keystrokes y Frametime](#7-hud-modular-keystrokes-y-frametime)
   - [8. Automatizaciones, Chat QoL y Notificaciones AFK](#8-automatizaciones-chat-qol-y-notificaciones-afk)
   - [9. Traducción Automática y Binds Avanzados](#9-traducción-automática-y-binds-avanzados)
+  - [10. FPS Booster y Optimizador Gráfico](#10-fps-booster-y-optimizador-gráfico)
+  - [11. Relación de Aspecto Personalizada y Black Bars](#11-relación-de-aspecto-personalizada-y-black-bars)
 - [Descarga e Instalación](#descarga-e-instalación)
 - [Guía Rápida de Comandos y Variables (cvars)](#guía-rápida-de-comandos-y-variables-cvars)
 - [Compilación desde el Código Fuente](#compilación-desde-el-código-fuente)
@@ -119,6 +121,7 @@ Herramientas avanzadas para administradores y moderadores de servidores:
 * **Auto-Respuesta AFK (`ac_afk_auto_reply`):** Envía un mensaje configurable cuando alguien te menciona en el chat mientras tienes el juego minimizado o tabulado.
 * **Sistema de Saludo Rápido (`ac_greet_message`):** Bind configurable para saludar inmediatamente al último usuario que te mencionó o envió un susurro.
 * **Chat Silencioso (Silent Typing):** Oculta la animación de la burbuja de puntos sobre tu cabeza (`ac_silent_typing`) o las de otros jugadores (`ac_hide_others_chat_bubbles`).
+* **Scroll de Historial en Chat Abierto (`ac_chat_max_lines`):** Al abrir el chat con `Enter` o tus binds (`T`, `Y`), puedes desplazarte hacia mensajes anteriores con la rueda del ratón (`Shift + Rueda` para avance línea por línea), `RePág`/`AvPág` o `Ctrl+Inicio`/`Ctrl+Fin` sin cambiar de arma. Viene en `64` líneas por defecto y es ampliable hasta `512` líneas.
 * **Notificaciones de Escritorio en Segundo Plano:** Alertas de Windows (Toast), sonido o parpadeo en la barra de tareas al ser descongelado (`ac_notify_unfreeze`) o al cambiar de casilla (`ac_change_tile_notification`).
 
 ---
@@ -133,11 +136,18 @@ Herramientas avanzadas para administradores y moderadores de servidores:
 
 ### 10. FPS Booster y Optimizador Gráfico
 * **Interruptor Maestro (`ac_optimizer` / `ac_optimizer_toggle`):** Activa al instante un perfil de máximo rendimiento y menor latencia para computadoras de gama baja o monitores de altos hercios.
-* **Supresión de Partículas (`ac_optimizer_disable_particles`):** Desactiva las más de 1000 partículas simultáneas (humo, fuego, explosiones, estelas y estrellas de freeze) liberando ciclos vitales de CPU y GPU.
+* **Supresión Real de Partículas en CPU y GPU (`ac_optimizer_disable_particles`):** Corta de raíz la creación, simulación física, colisiones y flujos (`m_Flow`) de humo, explosiones, estelas y estrellas de freeze conservando intactos todos los sonidos del juego.
 * **Recorte de Quads Decorativos (`ac_optimizer_disable_quads`):** Saltea el dibujado de quads estéticos pesados colocados por los mappers (nubes animadas, fondos con luces y capas visuales no esenciales).
-* **Gestión Dinámica de Detalle (`ac_optimizer_disable_high_detail`):** Desactiva automáticamente el detalle alto al optimizar y restaura tu configuración previa al salir.
-* **FPS Fog y Culling de Visión (`ac_optimizer_fps_fog`):** Recorta los tiles del mapa, ganchos y jugadores distantes fuera de un radio focal alrededor de la cámara (`ac_optimizer_fps_fog_radius_tiles`), ahorrando miles de vértices y llamadas de texto por frame.
+* **Gestión No Destructiva de Detalle (`ac_optimizer_disable_high_detail`):** Omite en tiempo de renderizado las capas y sonidos ambientales de alto detalle sin sobrescribir tu variable `gfx_high_detail` en disco.
+* **FPS Fog por Radio Fijo o Porcentaje de Zoom (`ac_optimizer_fps_fog`):** Recorta tiles del mapa (respetando parallax), bordes de entidades, ganchos, tees, barras de freeze, estelas, proyectiles, láseres, pickups y nameplates mediante AABB sin raíces cuadradas. Soporta **Modo 0 (Radio fijo en tiles)** (`ac_optimizer_fps_fog_radius_tiles`) y **Modo 1 (Porcentaje dinámico de Zoom)** (`ac_optimizer_fps_fog_zoom_percent`) que escala automáticamente al alejar o acercar la cámara.
 * **Prioridad de Proceso en Windows (`ac_optimizer_high_priority`):** Asigna prioridad Alta al ejecutable en el sistema operativo para mitigar tirones causados por otras aplicaciones en segundo plano.
+
+---
+
+### 11. Relación de Aspecto Personalizada y Black Bars
+* **Presets Competitivos y Proporción Libre (`ac_custom_aspect_ratio`):** Permite jugar en `4:3`, `16:10`, `5:4`, `16:9`, `21:9` o cualquier relación `Ancho:Alto` personalizada manteniendo la resolución nativa nítida del monitor.
+* **Modo Black Bars o Estirado (`ac_custom_aspect_ratio_black_bars`):** Elige entre bandas negras sólidas laterales/superiores sin deformación de píxeles o imagen estirada a pantalla completa (`Stretched`).
+* **Solo en Partida sin Parpadeo (`ac_custom_aspect_ratio_ingame_only`):** Aplica la relación personalizada únicamente dentro de la partida y mantiene los menús (`Escape`) y el editor de mapas en pantalla completa nativa sin recrear el swapchain ni recargar texturas en OpenGL ni Vulkan 1.1.0.
 
 ---
 
@@ -146,7 +156,7 @@ Herramientas avanzadas para administradores y moderadores de servidores:
 ### Windows x64 (Binario Precompilado)
 1. Ve a la sección de **[Últimas Releases](https://github.com/agusx30/AClient-Dev/releases/latest)**.
 2. Descarga el paquete recomendado:
-   * **`AClient-windows-v2.6.5.zip` (Recomendado):** Incluye `DDNet.exe`, la carpeta [`data/`](data/) completa, todas las librerías dinámicas (`SDL2.dll`, `libcurl.dll`, `vulkan-1.dll`, etc.) y archivos de configuración iniciales. Simplemente descomprime y ejecuta `DDNet.exe`.
+   * **`AClient-windows-v2.6.7.zip` (Recomendado):** Incluye `DDNet.exe`, la carpeta [`data/`](data/) completa (incluyendo shaders `.spv` para Vulkan 1.1.0), todas las librerías dinámicas (`SDL2.dll`, `libcurl.dll`, `vulkan-1.dll`, etc.) y archivos de configuración iniciales. Simplemente descomprime y ejecuta `DDNet.exe`.
    * **`DDNet.exe`:** Solo el binario ejecutable para actualizar una instalación existente de DDNet/AClient.
 
 ---
@@ -192,10 +202,21 @@ Herramientas avanzadas para administradores y moderadores de servidores:
 | `ac_optimizer_disable_particles` | `1` | Desactiva renderizado y actualización de partículas |
 | `ac_optimizer_disable_quads` | `1` | Saltea el dibujo de quads decorativos de mapas |
 | `ac_optimizer_disable_high_detail` | `1` | Fuerza off las capas de alto detalle mientras esté activo |
-| `ac_optimizer_fps_fog` | `0` | Limita el renderizado al radio enfocado alrededor de la cámara |
-| `ac_optimizer_fps_fog_radius_tiles` | `35` | Radio en tiles para el recorte de visión de FPS Fog |
-| `ac_optimizer_fps_fog_cull_map_tiles` | `1` | Recorta tiles fuera del radio de visión |
+| `ac_optimizer_fps_fog` | `0` | Limita el renderizado al área enfocada alrededor de la cámara |
+| `ac_optimizer_fps_fog_mode` | `0` | Modo de FPS Fog (`0` Radio fijo en tiles, `1` % dinámico del zoom) |
+| `ac_optimizer_fps_fog_radius_tiles` | `35` | Radio en tiles cuando `ac_optimizer_fps_fog_mode` es `0` |
+| `ac_optimizer_fps_fog_zoom_percent` | `75` | Porcentaje visible del área de zoom cuando el modo es `1` |
+| `ac_optimizer_fps_fog_cull_map_tiles` | `1` | Recorta tiles y outlines fuera del área activa de FPS Fog |
 | `ac_optimizer_high_priority` | `0` | Asigna prioridad de proceso Alta a DDNet en Windows |
+
+### Relación de Aspecto y Historial de Chat
+| Variable / Comando | Defecto | Descripción |
+| :--- | :---: | :--- |
+| `ac_custom_aspect_ratio` | `0` | Activa la relación de aspecto personalizada |
+| `ac_custom_aspect_ratio_mode` | `0` | Preset (`0` 4:3, `1` 16:10, `2` 5:4, `3` 16:9, `4` 21:9, `5` Custom) |
+| `ac_custom_aspect_ratio_black_bars` | `1` | `1` Bandas negras sin deformar, `0` Estirado (Stretched) |
+| `ac_custom_aspect_ratio_ingame_only` | `1` | Aplica la relación personalizada solo dentro de la partida |
+| `ac_chat_max_lines` | `64` | Límite de líneas almacenadas en el historial de chat (`64` a `512`) |
 
 ---
 

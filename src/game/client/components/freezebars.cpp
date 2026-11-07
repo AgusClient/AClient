@@ -1,5 +1,6 @@
 #include "freezebars.h"
 
+#include <game/aclient_fog.h>
 #include <game/client/gameclient.h>
 
 void CFreezeBars::RenderFreezeBar(const int ClientId)
@@ -204,15 +205,16 @@ void CFreezeBars::OnRender()
 		return;
 	}
 	// get screen edges to avoid rendering offscreen
-	CScreenRect ScreenRect = Graphics()->GetScreen();
+	const CScreenRect BaseScreenRect = Graphics()->GetScreen();
 	// expand the edges to prevent popping in/out onscreen
 	//
 	// it is assumed that the tee with the freeze bar fit into a 240x240 box centered on the tee
 	// this may need to be changed or calculated differently in the future
 	constexpr float BorderBuffer = 120.0f;
-	ScreenRect.Expand(BorderBuffer);
+	const CScreenRect ScreenRect = ComputeAcFogScreenRect(BaseScreenRect, IsAcFpsFogActive() ? 48.0f : BorderBuffer);
 
-	int LocalClientId = GameClient()->m_Snap.m_LocalClientId;
+	const int LocalClientId = GameClient()->m_Snap.m_LocalClientId;
+	const int SpecId = GameClient()->m_Snap.m_SpecInfo.m_Active ? GameClient()->m_Snap.m_SpecInfo.m_SpectatorId : -1;
 
 	// render everyone else's freeze bar, then our own
 	for(int ClientId = 0; ClientId < MAX_CLIENTS; ClientId++)
@@ -223,7 +225,7 @@ void CFreezeBars::OnRender()
 		}
 
 		//don't render if the tee is offscreen
-		if(!ScreenRect.Inside(GameClient()->m_aClients[ClientId].m_RenderPos))
+		if(ClientId != SpecId && !ScreenRect.Inside(GameClient()->m_aClients[ClientId].m_RenderPos))
 		{
 			continue;
 		}

@@ -48,6 +48,8 @@ void CCommandProcessorFragment_OpenGL::Cmd_Update_Viewport(const CCommandBuffer:
 	// OpenGL places it relative to the bottom left.
 	m_ViewportX = pCommand->m_X;
 	m_ViewportY = pCommand->m_DrawableHeight - pCommand->m_Y - pCommand->m_Height;
+	m_ViewportWidth = (uint32_t)pCommand->m_Width;
+	m_ViewportHeight = (uint32_t)pCommand->m_Height;
 	if(pCommand->m_ByResize)
 	{
 		m_CanvasWidth = (uint32_t)pCommand->m_Width;
@@ -101,7 +103,18 @@ void CCommandProcessorFragment_OpenGL::SetState(const CCommandBuffer::SState &St
 	{
 		// The clip rectangle is relative to the viewport, whereas glScissor is
 		// relative to the drawable area.
-		glScissor(m_ViewportX + State.m_ClipX, m_ViewportY + State.m_ClipY, State.m_ClipW, State.m_ClipH);
+		int ClipX = State.m_ClipX;
+		int ClipY = State.m_ClipY;
+		int ClipW = State.m_ClipW;
+		int ClipH = State.m_ClipH;
+		if(m_CanvasWidth > 0 && m_CanvasHeight > 0 && (m_ViewportWidth != m_CanvasWidth || m_ViewportHeight != m_CanvasHeight))
+		{
+			ClipX = round_to_int(((float)ClipX / (float)m_CanvasWidth) * (float)m_ViewportWidth);
+			ClipY = round_to_int(((float)ClipY / (float)m_CanvasHeight) * (float)m_ViewportHeight);
+			ClipW = round_to_int(((float)ClipW / (float)m_CanvasWidth) * (float)m_ViewportWidth);
+			ClipH = round_to_int(((float)ClipH / (float)m_CanvasHeight) * (float)m_ViewportHeight);
+		}
+		glScissor(m_ViewportX + ClipX, m_ViewportY + ClipY, ClipW, ClipH);
 		glEnable(GL_SCISSOR_TEST);
 		m_LastClipEnable = true;
 	}
@@ -1196,7 +1209,18 @@ void CCommandProcessorFragment_OpenGL2::SetState(const CCommandBuffer::SState &S
 	{
 		// The clip rectangle is relative to the viewport, whereas glScissor is
 		// relative to the drawable area.
-		glScissor(m_ViewportX + State.m_ClipX, m_ViewportY + State.m_ClipY, State.m_ClipW, State.m_ClipH);
+		int ClipX = State.m_ClipX;
+		int ClipY = State.m_ClipY;
+		int ClipW = State.m_ClipW;
+		int ClipH = State.m_ClipH;
+		if(m_CanvasWidth > 0 && m_CanvasHeight > 0 && (m_ViewportWidth != m_CanvasWidth || m_ViewportHeight != m_CanvasHeight))
+		{
+			ClipX = round_to_int(((float)ClipX / (float)m_CanvasWidth) * (float)m_ViewportWidth);
+			ClipY = round_to_int(((float)ClipY / (float)m_CanvasHeight) * (float)m_ViewportHeight);
+			ClipW = round_to_int(((float)ClipW / (float)m_CanvasWidth) * (float)m_ViewportWidth);
+			ClipH = round_to_int(((float)ClipH / (float)m_CanvasHeight) * (float)m_ViewportHeight);
+		}
+		glScissor(m_ViewportX + ClipX, m_ViewportY + ClipY, ClipW, ClipH);
 		glEnable(GL_SCISSOR_TEST);
 		m_LastClipEnable = true;
 	}

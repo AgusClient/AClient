@@ -985,7 +985,9 @@ void CTClient::SetForcedAspect()
 	// TODO: Fix flashing on windows
 	int State = Client()->State();
 	bool Force = true;
-	if(g_Config.m_TcAllowAnyRes == 0)
+	if(g_Config.m_AcCustomAspectRatio)
+		Force = false;
+	else if(g_Config.m_TcAllowAnyRes == 0)
 		;
 	else if(State == CClient::EClientState::STATE_DEMOPLAYBACK)
 		Force = false;

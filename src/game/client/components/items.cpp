@@ -9,6 +9,7 @@
 #include <generated/client_data.h>
 #include <generated/protocol.h>
 
+#include <game/aclient_fog.h>
 #include <game/client/components/effects.h>
 #include <game/client/gameclient.h>
 #include <game/client/laser_data.h>
@@ -477,9 +478,10 @@ void CItems::OnRender()
 	bool UsePredicted = GameClient()->Predict() && GameClient()->AntiPingGunfire();
 	auto &aSwitchers = GameClient()->Switchers();
 
-	CScreenRect ScreenRectLaser = Graphics()->GetScreen();
-	CScreenRect ScreenRectProjectile = ScreenRectLaser;
-	CScreenRect ScreenRectPickup = ScreenRectLaser;
+	const CScreenRect BaseScreenRect = ComputeAcFogScreenRect(Graphics()->GetScreen(), 0.0f);
+	CScreenRect ScreenRectLaser = BaseScreenRect;
+	CScreenRect ScreenRectProjectile = BaseScreenRect;
+	CScreenRect ScreenRectPickup = BaseScreenRect;
 
 	constexpr float TileSize = 64.0f;
 	ScreenRectProjectile.Expand(TileSize);
@@ -522,6 +524,8 @@ void CItems::OnRender()
 		const auto &vSwitchers = GameClient()->m_FastPractice.Active() ? GameClient()->m_FastPractice.PracticeWorld().Switchers() : aSwitchers;
 		for(auto *pPickup = (CPickup *)PickupWorld.FindFirst(CGameWorld::ENTTYPE_PICKUP); pPickup; pPickup = (CPickup *)pPickup->NextEntity())
 		{
+			if(!ScreenRectPickup.Inside(pPickup->GetPos()))
+				continue;
 			if(!IsSuper && pPickup->m_Layer == LAYER_SWITCH && pPickup->m_Number > 0 && pPickup->m_Number < (int)vSwitchers.size() && !vSwitchers[pPickup->m_Number].m_aStatus[SwitcherTeam] && BlinkingPickup)
 				continue;
 			if(!pPickup->InDDNetTile() && !GameClient()->m_FastPractice.Active())
@@ -556,7 +560,8 @@ void CItems::OnRender()
 				if(auto *pProj = (CProjectile *)GameClient()->m_GameWorld.FindMatch(Item.m_Id, Item.m_Type, pData))
 				{
 					bool IsOtherTeam = GameClient()->IsOtherTeam(pProj->GetOwner());
-					if(pProj->m_LastRenderTick <= 0 && (pProj->m_Type != WEAPON_SHOTGUN || (!pProj->m_Freeze && !pProj->m_Explosive)) // skip ddrace shotgun bullets
+					if(!(g_Config.m_AcOptimizer && g_Config.m_AcOptimizerDisableParticles)
+						&& pProj->m_LastRenderTick <= 0 && (pProj->m_Type != WEAPON_SHOTGUN || (!pProj->m_Freeze && !pProj->m_Explosive)) // skip ddrace shotgun bullets
 						&& (pProj->m_Type == WEAPON_SHOTGUN || absolute(length(pProj->m_Direction) - 1.f) < 0.02f) // workaround to skip grenades on ball mod
 						&& (pProj->GetOwner() < 0 || !GameClient()->m_aClients[pProj->GetOwner()].m_IsPredictedLocal || IsOtherTeam) // skip locally predicted projectiles
 						&& !Client()->SnapFindItem(IClient::SNAP_PREV, Item.m_Type, Item.m_Id))
