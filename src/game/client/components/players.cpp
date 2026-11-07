@@ -500,6 +500,13 @@ void CPlayers::RenderHook(
 	if(pPlayerChar->m_HookState <= 0)
 		return;
 
+	if(g_Config.m_AcOptimizer && g_Config.m_AcOptimizerFpsFog && ClientId != GameClient()->m_Snap.m_LocalClientId)
+	{
+		float MaxDist = (float)g_Config.m_AcOptimizerFpsFogRadiusTiles * 32.0f;
+		if(distance(vec2(pPlayerChar->m_X, pPlayerChar->m_Y), GameClient()->m_Camera.m_Center) > MaxDist)
+			return;
+	}
+
 	CNetObj_Character Prev;
 	CNetObj_Character Player;
 	Prev = *pPrevChar;
@@ -657,6 +664,13 @@ void CPlayers::RenderPlayer(
 
 	if(!ScreenRect.Inside(Position))
 		return;
+
+	if(g_Config.m_AcOptimizer && g_Config.m_AcOptimizerFpsFog && !Local)
+	{
+		float MaxDist = (float)g_Config.m_AcOptimizerFpsFogRadiusTiles * 32.0f;
+		if(distance(Position, GameClient()->m_Camera.m_Center) > MaxDist)
+			return;
+	}
 
 	CTeeRenderInfo RenderInfo = *pRenderInfo;
 

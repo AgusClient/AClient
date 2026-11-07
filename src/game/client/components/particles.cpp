@@ -143,6 +143,9 @@ void CParticles::OnRender()
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
 
+	if(g_Config.m_AcOptimizer && g_Config.m_AcOptimizerDisableParticles)
+		return;
+
 	set_new_tick();
 	const int64_t Now = time();
 	Update((float)((Now - m_LastRenderTime) / (double)time_freq()) * GameClient()->GetAnimationPlaybackSpeed());
@@ -191,6 +194,9 @@ bool CParticles::ParticleIsVisibleOnScreen(const vec2 &CurPos, float CurSize) co
 
 void CParticles::RenderGroup(int Group)
 {
+	if(g_Config.m_AcOptimizer && g_Config.m_AcOptimizerDisableParticles)
+		return;
+
 	IGraphics::CTextureHandle *aParticles = GameClient()->m_ParticlesSkin.m_aSpriteParticles;
 	int FirstParticleOffset = SPRITE_PART_SLICE;
 	int ParticleQuadContainerIndex = m_ParticleQuadContainerIndex;

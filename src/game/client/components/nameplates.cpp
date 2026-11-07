@@ -1101,6 +1101,16 @@ void CNamePlates::OnRender()
 		if(!pInfo)
 			continue;
 
+		if(g_Config.m_AcOptimizer && g_Config.m_AcOptimizerFpsFog && i != GameClient()->m_Snap.m_LocalClientId)
+		{
+			float MaxDist = (float)g_Config.m_AcOptimizerFpsFogRadiusTiles * 32.0f;
+			vec2 CamCenter = GameClient()->m_Camera.m_Center;
+			if(GameClient()->m_aClients[i].m_SpecCharPresent && distance(GameClient()->m_aClients[i].m_SpecChar, CamCenter) > MaxDist)
+				continue;
+			if(GameClient()->m_Snap.m_aCharacters[i].m_Active && distance(GameClient()->m_aClients[i].m_RenderPos, CamCenter) > MaxDist)
+				continue;
+		}
+
 		// Each player can also have a spectator char whose name plate is displayed independently
 		if(GameClient()->m_aClients[i].m_SpecCharPresent)
 		{

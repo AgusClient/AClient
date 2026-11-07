@@ -315,6 +315,19 @@ void CRenderLayerTile::RenderTileLayer(const ColorRGBA &Color, const CRenderLaye
 	int ScreenRectY1 = std::ceil(ScreenRect.m_BottomRight.y / 32);
 	int ScreenRectX1 = std::ceil(ScreenRect.m_BottomRight.x / 32);
 
+	if(g_Config.m_AcOptimizer && g_Config.m_AcOptimizerFpsFog && g_Config.m_AcOptimizerFpsFogCullMapTiles &&
+	   Params.m_RenderType != ERenderType::RENDERTYPE_BACKGROUND && Params.m_RenderType != ERenderType::RENDERTYPE_BACKGROUND_FORCE)
+	{
+		int CenterTileX = (int)std::round(Params.m_Center.x / 32.0f);
+		int CenterTileY = (int)std::round(Params.m_Center.y / 32.0f);
+		int Radius = std::clamp((int)g_Config.m_AcOptimizerFpsFogRadiusTiles, 5, 120);
+
+		ScreenRectX0 = std::max(ScreenRectX0, CenterTileX - Radius);
+		ScreenRectX1 = std::min(ScreenRectX1, CenterTileX + Radius);
+		ScreenRectY0 = std::max(ScreenRectY0, CenterTileY - Radius);
+		ScreenRectY1 = std::min(ScreenRectY1, CenterTileY + Radius);
+	}
+
 	if(IsVisibleInClipRegion(m_LayerClip))
 	{
 		size_t X0 = std::max(ScreenRectX0, 0);
@@ -1445,6 +1458,9 @@ void CRenderLayerQuads::Render(const CRenderLayerParams &Params)
 
 bool CRenderLayerQuads::DoRender(const CRenderLayerParams &Params)
 {
+	if(g_Config.m_AcOptimizer && g_Config.m_AcOptimizerDisableQuads)
+		return false;
+
 	// skip rendering anything but entities if we only want to render entities
 	if(Params.m_EntityOverlayVal == 100 && Params.m_RenderType != ERenderType::RENDERTYPE_BACKGROUND_FORCE)
 		return false;

@@ -131,6 +131,16 @@ Herramientas avanzadas para administradores y moderadores de servidores:
 
 ---
 
+### 10. FPS Booster y Optimizador Gráfico
+* **Interruptor Maestro (`ac_optimizer` / `ac_optimizer_toggle`):** Activa al instante un perfil de máximo rendimiento y menor latencia para computadoras de gama baja o monitores de altos hercios.
+* **Supresión de Partículas (`ac_optimizer_disable_particles`):** Desactiva las más de 1000 partículas simultáneas (humo, fuego, explosiones, estelas y estrellas de freeze) liberando ciclos vitales de CPU y GPU.
+* **Recorte de Quads Decorativos (`ac_optimizer_disable_quads`):** Saltea el dibujado de quads estéticos pesados colocados por los mappers (nubes animadas, fondos con luces y capas visuales no esenciales).
+* **Gestión Dinámica de Detalle (`ac_optimizer_disable_high_detail`):** Desactiva automáticamente el detalle alto al optimizar y restaura tu configuración previa al salir.
+* **FPS Fog y Culling de Visión (`ac_optimizer_fps_fog`):** Recorta los tiles del mapa, ganchos y jugadores distantes fuera de un radio focal alrededor de la cámara (`ac_optimizer_fps_fog_radius_tiles`), ahorrando miles de vértices y llamadas de texto por frame.
+* **Prioridad de Proceso en Windows (`ac_optimizer_high_priority`):** Asigna prioridad Alta al ejecutable en el sistema operativo para mitigar tirones causados por otras aplicaciones en segundo plano.
+
+---
+
 ## Descarga e Instalación
 
 ### Windows x64 (Binario Precompilado)
@@ -173,6 +183,19 @@ Herramientas avanzadas para administradores y moderadores de servidores:
 | `ac_profile_view_mode` | `0` | Modo de visualización (`0` Individual, `1` Comparativa de equipo) |
 | `cl_mod_record_on_punish` | `1` | Guarda repetición de 3 minutos al sancionar (Kick/Ban) |
 | `tc_mod_weapon` | `0` | Dispara acciones de moderación apuntando con el arma |
+
+### FPS Booster y Optimizador Gráfico
+| Variable / Comando | Defecto | Descripción |
+| :--- | :---: | :--- |
+| `ac_optimizer` | `0` | Interruptor principal del optimizador / booster de FPS |
+| `ac_optimizer_toggle` | - | Alterna rápidamente el estado del optimizador (bindeable) |
+| `ac_optimizer_disable_particles` | `1` | Desactiva renderizado y actualización de partículas |
+| `ac_optimizer_disable_quads` | `1` | Saltea el dibujo de quads decorativos de mapas |
+| `ac_optimizer_disable_high_detail` | `1` | Fuerza off las capas de alto detalle mientras esté activo |
+| `ac_optimizer_fps_fog` | `0` | Limita el renderizado al radio enfocado alrededor de la cámara |
+| `ac_optimizer_fps_fog_radius_tiles` | `35` | Radio en tiles para el recorte de visión de FPS Fog |
+| `ac_optimizer_fps_fog_cull_map_tiles` | `1` | Recorta tiles fuera del radio de visión |
+| `ac_optimizer_high_priority` | `0` | Asigna prioridad de proceso Alta a DDNet en Windows |
 
 ---
 

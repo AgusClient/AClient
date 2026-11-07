@@ -2912,6 +2912,8 @@ if(CLIENT)
     components/tclient/race_stats.cpp
     components/tclient/race_stats.h
     components/tclient/race_stats_icons.h
+    components/tclient/aclient_optimizer.cpp
+    components/tclient/aclient_optimizer.h
     components/tclient/fast_practice.cpp
     components/tclient/fast_practice.h
     components/tclient/scripting.cpp

@@ -3797,6 +3797,25 @@ void CMenus::RenderSettingsAClientCommands(CUIRect MainView)
 
 	LeftView = Column; // Guarda la posición final de la columna izquierda
 
+	// 2.5 FPS Booster & Optimizer
+	Column.HSplitTop(Margin, nullptr, &Column);
+	s_SectionBoxesCmds.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("FPS Booster & Optimizer"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	DrawCommandCard(Column, "ac_optimizer [0|1] / ac_optimizer_toggle", TCLocalize("Toggle the master FPS Booster / Optimizer mode."));
+	DrawCommandCard(Column, "ac_optimizer_disable_particles [0|1]", TCLocalize("Disable updating and rendering all particle effects."));
+	DrawCommandCard(Column, "ac_optimizer_disable_quads [0|1]", TCLocalize("Skip decorative map quads (clouds, lights, art)."));
+	DrawCommandCard(Column, "ac_optimizer_disable_high_detail [0|1]", TCLocalize("Automatically force off high detail map layers."));
+	DrawCommandCard(Column, "ac_optimizer_fps_fog [0|1]", TCLocalize("Limit rendering to camera radius (FOV culling)."));
+	DrawCommandCard(Column, "ac_optimizer_fps_fog_radius_tiles [15-80]", TCLocalize("View radius in tiles for FPS Fog culling (default: 35)."));
+	DrawCommandCard(Column, "ac_optimizer_fps_fog_cull_map_tiles [0|1]", TCLocalize("Cull map tiles outside the FPS Fog radius."));
+	DrawCommandCard(Column, "ac_optimizer_high_priority [0|1]", TCLocalize("Automatically set Windows process priority to High."));
+	s_SectionBoxesCmds.back().h = Column.y - s_SectionBoxesCmds.back().y;
+
+	LeftView = Column;
+
 	// ==================== COLUMNA DERECHA ====================
 	// 3. Fast Input & Predicción
 	Column = RightView;
@@ -4270,6 +4289,39 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		Column.HSplitTop(LineSize, &Button, &Column);
 		Ui()->DoScrollbarOption(&g_Config.m_AcHudKeystrokesAlpha, &g_Config.m_AcHudKeystrokesAlpha, &Button, TCLocalize("HUD Opacity"), 20, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
 	}
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
+
+
+	// ***** FPS Booster / Optimizer ***** //
+	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	s_SectionBoxesAc.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("FPS Booster & Optimizer"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	DoCheckboxWithHelp(&g_Config.m_AcOptimizer, TCLocalize("Enable FPS Booster / Optimizer"), TCLocalize("Master switch that boosts framerates and reduces stuttering by trimming decorative graphics and background overhead."), &g_Config.m_AcOptimizer, &Column, LineSize);
+
+	static CButtonContainer s_ReaderButtonOptimizer, s_ClearButtonOptimizer;
+	DoLine_KeyReader(Column, s_ReaderButtonOptimizer, s_ClearButtonOptimizer, TCLocalize("Toggle Optimizer key"), "ac_optimizer_toggle");
+
+	DoCheckboxWithHelp(&g_Config.m_AcOptimizerDisableParticles, TCLocalize("Disable particles"), TCLocalize("Stops updating and drawing all particles (smoke, explosions, weapon trails, freeze stars) to maximize GPU/CPU efficiency."), &g_Config.m_AcOptimizerDisableParticles, &Column, LineSize);
+	DoCheckboxWithHelp(&g_Config.m_AcOptimizerDisableQuads, TCLocalize("Disable map quads (clouds & decorations)"), TCLocalize("Skips heavy decorative map quads like animated background clouds, dynamic lights, and mapper visual effects."), &g_Config.m_AcOptimizerDisableQuads, &Column, LineSize);
+	DoCheckboxWithHelp(&g_Config.m_AcOptimizerDisableHighDetail, TCLocalize("Disable high detail layers"), TCLocalize("Automatically forces off high detail layers while optimizer is active, restoring your setting when disabled."), &g_Config.m_AcOptimizerDisableHighDetail, &Column, LineSize);
+
+	DoCheckboxWithHelp(&g_Config.m_AcOptimizerFpsFog, TCLocalize("Limit FOV rendering (FPS Fog)"), TCLocalize("Limits map tiles, player hooks, tees and nameplates to a focused radius around the camera, culling off-screen and distant elements."), &g_Config.m_AcOptimizerFpsFog, &Column, LineSize);
+
+	if(g_Config.m_AcOptimizerFpsFog)
+	{
+		Column.HSplitTop(LineSize, &Button, &Column);
+		Ui()->DoScrollbarOption(&g_Config.m_AcOptimizerFpsFogRadiusTiles, &g_Config.m_AcOptimizerFpsFogRadiusTiles, &Button, TCLocalize("FPS Fog Radius"), 15, 80, &CUi::ms_LinearScrollbarScale, 0, " tiles");
+
+		DoCheckboxWithHelp(&g_Config.m_AcOptimizerFpsFogCullMapTiles, TCLocalize("Cull map tiles outside radius"), TCLocalize("Drastically reduces tile vertices and draw operations outside the focused view area."), &g_Config.m_AcOptimizerFpsFogCullMapTiles, &Column, LineSize);
+		DoCheckboxWithHelp(&g_Config.m_AcOptimizerFpsFogRenderRect, TCLocalize("Show FPS Fog boundary box (debug)"), TCLocalize("Draws a visible outline showing the active rendering bounding box."), &g_Config.m_AcOptimizerFpsFogRenderRect, &Column, LineSize);
+	}
+
+	DoCheckboxWithHelp(&g_Config.m_AcOptimizerHighPriority, TCLocalize("High process priority (Windows)"), TCLocalize("Automatically assigns High priority to DDNet in Windows to reduce background process micro-stutters."), &g_Config.m_AcOptimizerHighPriority, &Column, LineSize);
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;

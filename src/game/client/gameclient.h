@@ -82,6 +82,7 @@
 #include "components/tclient/rainbow.h"
 #include "components/tclient/race_stats.h"
 #include "components/tclient/aclient_hud.h"
+#include "components/tclient/aclient_optimizer.h"
 #include "components/tclient/aclient_auth.h"
 #include "components/tclient/aclient_gameskins.h"
 #include "components/tclient/fast_practice.h"
@@ -236,6 +237,7 @@ public:
 	CSkinProfiles m_SkinProfiles;
 	CStatusBar m_StatusBar;
 	CRaceStats m_RaceStats;
+	CAcOptimizer m_AcOptimizer;
 	CAClientHud m_AClientHud;
 	CAClientAuth m_AClientAuth;
 	CAClientGameSkins m_AClientGameSkins;

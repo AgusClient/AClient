@@ -58,6 +58,17 @@ MACRO_CONFIG_INT(AcNotifyDesktop, ac_notify_desktop, 0, 0, 1, CFGFLAG_CLIENT | C
 // Frametime HUD
 MACRO_CONFIG_INT(AcShowFrametime, ac_show_frametime, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show frametime in milliseconds in top-right HUD")
 
+// FPS Booster / Optimizer
+MACRO_CONFIG_INT(AcOptimizer, ac_optimizer, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable AClient FPS Booster / Optimizer mode")
+MACRO_CONFIG_INT(AcOptimizerDisableParticles, ac_optimizer_disable_particles, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Disable rendering and updating particles when optimizer is active")
+MACRO_CONFIG_INT(AcOptimizerDisableQuads, ac_optimizer_disable_quads, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Disable map quads (clouds, lights, animated decorations) when optimizer is active")
+MACRO_CONFIG_INT(AcOptimizerDisableHighDetail, ac_optimizer_disable_high_detail, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Disable high detail map layers while optimizer is active")
+MACRO_CONFIG_INT(AcOptimizerFpsFog, ac_optimizer_fps_fog, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Limit map and entities rendering to a focused camera radius")
+MACRO_CONFIG_INT(AcOptimizerFpsFogRadiusTiles, ac_optimizer_fps_fog_radius_tiles, 35, 10, 120, CFGFLAG_CLIENT | CFGFLAG_SAVE, "FPS Fog view radius in tiles (1 tile = 32 units)")
+MACRO_CONFIG_INT(AcOptimizerFpsFogCullMapTiles, ac_optimizer_fps_fog_cull_map_tiles, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Cull map tiles outside the FPS Fog radius")
+MACRO_CONFIG_INT(AcOptimizerFpsFogRenderRect, ac_optimizer_fps_fog_render_rect, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draw outline box showing the FPS Fog area (debug)")
+MACRO_CONFIG_INT(AcOptimizerHighPriority, ac_optimizer_high_priority, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Set DDNet process priority to High in Windows")
+
 // Fast Input Prediction Modes & Amounts
 MACRO_CONFIG_INT(AcConfigVersion, ac_config_version, 0, 0, 10, CFGFLAG_CLIENT | CFGFLAG_SAVE, "AClient default configuration version")
 MACRO_CONFIG_INT(AcInputs, ac_inputs, 8, 0, 8, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Input prediction mode (0 = off, 1 = fast, 2 = best, 3 = saiko, 4 = delta, 5 = f, 6 = cloud, 8 = ax30)")
