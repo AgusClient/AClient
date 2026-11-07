@@ -154,9 +154,9 @@ Herramientas avanzadas para administradores y moderadores de servidores:
 ## Descarga e Instalación
 
 ### Windows x64 (Binario Precompilado)
-1. Ve a la sección de **[Últimas Releases](https://github.com/agusx30/AClient-Dev/releases/latest)**.
+1. Ve a la sección de **[Últimas Releases](https://github.com/AgusClient/AClient/releases/latest)**.
 2. Descarga el paquete recomendado:
-   * **`AClient-windows-v2.6.7.zip` (Recomendado):** Incluye `DDNet.exe`, la carpeta [`data/`](data/) completa (incluyendo shaders `.spv` para Vulkan 1.1.0), todas las librerías dinámicas (`SDL2.dll`, `libcurl.dll`, `vulkan-1.dll`, etc.) y archivos de configuración iniciales. Simplemente descomprime y ejecuta `DDNet.exe`.
+   * **`AClient-windows-v2.6.8.zip` (Recomendado):** Incluye `DDNet.exe`, la carpeta [`data/`](data/) completa (incluyendo shaders `.spv` para Vulkan 1.1.0), todas las librerías dinámicas (`SDL2.dll`, `libcurl.dll`, `vulkan-1.dll`, etc.) y archivos de configuración iniciales. Simplemente descomprime y ejecuta `DDNet.exe`.
    * **`DDNet.exe`:** Solo el binario ejecutable para actualizar una instalación existente de DDNet/AClient.
 
 ---

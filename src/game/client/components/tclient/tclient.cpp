@@ -30,6 +30,31 @@ CTClient::CTClient()
 	OnReset();
 
 	// Fallback offline releases
+	CAClientRelease Rel268;
+	str_copy(Rel268.m_aTag, "v2.6.8", sizeof(Rel268.m_aTag));
+	str_copy(Rel268.m_aName, "AClient v2.6.8", sizeof(Rel268.m_aName));
+	str_copy(Rel268.m_aPublishedAt, "2026-11-07", sizeof(Rel268.m_aPublishedAt));
+	Rel268.m_Body =
+		"## Novedades de AClient v2.6.8\n\n"
+		"### Gestor de Skins Descargadas en Recursos (Assets)\n"
+		"- **Nueva pestaña Descargas**: Explora, equipa, previsualiza y elimina skins descargadas en vivo de otros jugadores desde Ajustes -> Recursos.\n"
+		"- **Carga Perezosa (Lazy Loading)**: Carga progresiva de miniaturas de hasta 2 skins por fotograma solo en casillas visibles, garantizando fluidez sin microcortes ni saturacion de VRAM.\n"
+		"- **Integracion total con Assets Editor**: Soporte completo para utilizar skins descargadas como base o donante en el editor interno.\n\n"
+		"### Suite FPS Booster & Optimizador\n"
+		"- **Fog Dinamico por Zoom**: Nuevo modo porcentual que adapta el area de renderizado util de forma proporcional al nivel de zoom de la camara.\n"
+		"- **Selector de Bordes de Fog**: Interruptor explicito OFF/ON con recuadro simetrico de 2px en Vulkan y OpenGL que se oculta al abrir menus.\n"
+		"- **Descarte AABB unificado**: Optimizacion de entidades, nameplates, freeze bars, estelas y proyectiles.\n\n"
+		"### Relacion de Aspecto Personalizada y Bandas Negras\n"
+		"- **Aspect Ratio & Black Bars**: Modos 4:3, 16:10, 5:4, 16:9, 21:9 y personalizados con bandas negras solidas y paridad en Vulkan y OpenGL.\n"
+		"- **Modo en partida**: Retorno automatico a pantalla completa nativa al pausar o abrir menus de configuracion.\n\n"
+		"### Historial de Chat y Desplazamiento\n"
+		"- **Scroll del Chat**: Desplazamiento comodo con la rueda del raton o teclas RePag/AvPag sin cambiar de arma.\n"
+		"- **Historial Ampliado**: Capacidad configurable desde 64 hasta 512 mensajes con liberacion de memoria inmediata.\n\n"
+		"### Motor y Rendimiento\n"
+		"- **Vulkan 1.1.0 por defecto**: Activado por defecto en Windows con renderizado de alto rendimiento.\n"
+		"- **RaceStats optimizado**: Pausa de calculos de carrera mientras el overlay permanezca oculto.";
+	m_vReleases.push_back(Rel268);
+
 	CAClientRelease Rel267;
 	str_copy(Rel267.m_aTag, "v2.6.7", sizeof(Rel267.m_aTag));
 	str_copy(Rel267.m_aName, "AClient v2.6.7", sizeof(Rel267.m_aName));
