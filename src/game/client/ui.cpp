@@ -117,6 +117,13 @@ void CUi::Init(IKernel *pKernel)
 	CUIElementBase::Init(this);
 }
 
+static inline ColorRGBA GetAcThemeColor(float Alpha = 1.0f)
+{
+	ColorRGBA Color = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_AcColorBorder));
+	Color.a = Alpha;
+	return Color;
+}
+
 CUi::CUi()
 {
 	m_Enabled = true;
@@ -1125,12 +1132,24 @@ int CUi::DoButton_Menu(CUIElement &UIElement, const CButtonContainer *pId, const
 			for(int i = 0; i < 3; ++i)
 			{
 				ColorRGBA Color = Props.m_Color;
-				if(i == 0)
-					Color.a *= ButtonColorMulActive();
-				else if(i == 1)
-					Color.a *= ButtonColorMulHot();
-				else if(i == 2)
-					Color.a *= ButtonColorMulDefault();
+				if(g_Config.m_AcModernUi)
+				{
+					if(i == 0)
+						Color = GetAcThemeColor(0.35f);
+					else if(i == 1)
+						Color = GetAcThemeColor(0.24f);
+					else
+						Color = ColorRGBA(0.04f, 0.05f, 0.08f, 0.50f);
+				}
+				else
+				{
+					if(i == 0)
+						Color.a *= ButtonColorMulActive();
+					else if(i == 1)
+						Color.a *= ButtonColorMulHot();
+					else if(i == 2)
+						Color.a *= ButtonColorMulDefault();
+				}
 				Graphics()->SetColor(Color);
 
 				CUIElement::SUIElementRect &NewRect = *UIElement.Rect(i);
@@ -1165,6 +1184,12 @@ int CUi::DoButton_Menu(CUIElement &UIElement, const CButtonContainer *pId, const
 		Index = 1;
 	Graphics()->TextureClear();
 	Graphics()->RenderQuadContainer(UIElement.Rect(Index)->m_UIRectQuadContainer, -1);
+	if(g_Config.m_AcModernUi && Index == 0)
+	{
+		CUIRect Accent;
+		pRect->HSplitBottom(2.0f, nullptr, &Accent);
+		Accent.Draw(GetAcThemeColor(0.85f), IGraphics::CORNER_B, Props.m_Rounding > 0.0f ? 1.5f : 0.0f);
+	}
 	if(Props.m_ShowDropDownIcon)
 	{
 		TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
@@ -1175,6 +1200,10 @@ int CUi::DoButton_Menu(CUIElement &UIElement, const CButtonContainer *pId, const
 	}
 	ColorRGBA ColorText(TextRender()->DefaultTextColor());
 	ColorRGBA ColorTextOutline(TextRender()->DefaultTextOutlineColor());
+	if(g_Config.m_AcModernUi && (Index == 0 || Index == 1))
+	{
+		ColorText = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
+	}
 	if(UIElement.Rect(0)->m_UITextContainer.Valid())
 		TextRender()->RenderTextContainer(UIElement.Rect(0)->m_UITextContainer, ColorText, ColorTextOutline);
 	return DoButtonLogic(pId, Props.m_Checked, pRect, Props.m_Flags);

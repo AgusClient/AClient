@@ -176,3 +176,13 @@ MACRO_CONFIG_INT(AcAfkNotifyOnReturn, ac_afk_notify_on_return, 0, 0, 1, CFGFLAG_
 
 // Sound Packs
 MACRO_CONFIG_STR(AcSoundPack, ac_sound_pack, 128, "default", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Current sound pack / audio theme")
+
+// Theme & UI Style
+MACRO_CONFIG_INT(AcModernUi, ac_modern_ui, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable AClient modern dark-glass UI with customizable accent")
+MACRO_CONFIG_COL(AcThemeColor, ac_theme_color, 12050856, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Color de acento del tema AClient (bordes, botones y marcas X)")
+MACRO_CONFIG_COL(AcColorX, ac_color_x, 12050856, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Color de la marca X en opciones ON/OFF")
+MACRO_CONFIG_COL(AcColorBorder, ac_color_border, 12050856, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Color de los bordes del bloque/tarjeta")
+MACRO_CONFIG_COL(AcColorBg, ac_color_bg, 3215086858, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color del fondo del bloque/tarjeta")
+// Tee Skin Downloads
+MACRO_CONFIG_INT(AcDownloadSkinsFrozen, ac_download_skins_frozen, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Descargar skins del tee solo cuando estoy freezeado")
+MACRO_CONFIG_INT(AcShowInMenuIcon, ac_show_in_menu_icon, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mostrar logo/icono de opciones arriba del tee al presionar escape o abrir el menu")

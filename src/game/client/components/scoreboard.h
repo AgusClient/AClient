@@ -39,6 +39,7 @@ class CScoreboard : public CComponent
 	bool m_Active;
 
 	IGraphics::CTextureHandle m_DeadTeeTexture;
+	IGraphics::CTextureHandle m_AClientBadgeTexture;
 
 	std::optional<vec2> m_LastMousePos;
 	bool m_MouseUnlocked = false;

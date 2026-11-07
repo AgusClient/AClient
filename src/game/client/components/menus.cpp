@@ -122,14 +122,54 @@ int CMenus::DoButton_Toggle(const void *pId, int Checked, const CUIRect *pRect, 
 	return Active ? Ui()->DoButtonLogic(pId, Checked, pRect, Flags) : 0;
 }
 
+ColorRGBA CMenus::GetColorX(float Alpha) const
+{
+	ColorRGBA Color = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_AcColorX));
+	Color.a = Alpha;
+	return Color;
+}
+
+ColorRGBA CMenus::GetColorBorder(float Alpha) const
+{
+	ColorRGBA Color = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_AcColorBorder));
+	Color.a = Alpha;
+	return Color;
+}
+
+ColorRGBA CMenus::GetColorBg(float Alpha) const
+{
+	ColorRGBA Color = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_AcColorBg, true));
+	if(Alpha >= 0.0f)
+		Color.a = Alpha;
+	return Color;
+}
+
+ColorRGBA CMenus::GetThemeColor(float Alpha) const
+{
+	return GetColorBorder(Alpha);
+}
+
 int CMenus::DoButton_Menu(CButtonContainer *pButtonContainer, const char *pText, int Checked, const CUIRect *pRect, const unsigned Flags, const char *pImageName, int Corners, float Rounding, float FontFactor, ColorRGBA Color)
 {
 	CUIRect Text = *pRect;
+	const bool MouseInside = Ui()->HotItem() == pButtonContainer;
 
-	if(Checked)
-		Color = ColorRGBA(0.6f, 0.6f, 0.6f, 0.5f);
-	else // TClient, why was this not here? ig they never use "checked" anywhere important
-		Color.a *= Ui()->ButtonColorMul(pButtonContainer);
+	if(g_Config.m_AcModernUi)
+	{
+		if(Checked)
+			Color = GetThemeColor(0.35f);
+		else if(MouseInside)
+			Color = GetThemeColor(0.24f);
+		else
+			Color = ColorRGBA(0.04f, 0.05f, 0.08f, 0.50f);
+	}
+	else
+	{
+		if(Checked)
+			Color = ColorRGBA(0.6f, 0.6f, 0.6f, 0.5f);
+		else // TClient, why was this not here? ig they never use "checked" anywhere important
+			Color.a *= Ui()->ButtonColorMul(pButtonContainer);
+	}
 
 	pRect->Draw(Color, Corners, Rounding);
 
@@ -155,7 +195,11 @@ int CMenus::DoButton_Menu(CButtonContainer *pButtonContainer, const char *pText,
 
 	Text.HMargin(pRect->h >= 20.0f ? 2.0f : 1.0f, &Text);
 	Text.HMargin((Text.h * FontFactor) / 2.0f, &Text);
+	if(g_Config.m_AcModernUi && (Checked || MouseInside))
+		TextRender()->TextColor(ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f));
 	Ui()->DoLabel(&Text, pText, Text.h * CUi::ms_FontmodHeight, TEXTALIGN_MC);
+	if(g_Config.m_AcModernUi && (Checked || MouseInside))
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
 
 	return Ui()->DoButtonLogic(pButtonContainer, Checked, pRect, Flags);
 }
@@ -190,6 +234,8 @@ int CMenus::DoButton_MenuTab(CButtonContainer *pButtonContainer, const char *pTe
 		pAnimator->m_Time = Time;
 	}
 
+	const bool IsVerticalSidebar = (Corners == IGraphics::CORNER_R && (pAnimator != nullptr || EdgeRounding >= 8.0f));
+
 	if(Checked)
 	{
 		ColorRGBA ColorMenuTab = ms_ColorTabbarActive;
@@ -197,6 +243,13 @@ int CMenus::DoButton_MenuTab(CButtonContainer *pButtonContainer, const char *pTe
 			ColorMenuTab = *pActiveColor;
 
 		Rect.Draw(ColorMenuTab, Corners, EdgeRounding);
+
+		if(g_Config.m_AcModernUi && !IsVerticalSidebar)
+		{
+			CUIRect Underline;
+			Rect.HSplitBottom(2.5f, nullptr, &Underline);
+			Underline.Draw(GetThemeColor(0.95f), IGraphics::CORNER_B, EdgeRounding > 0.0f ? 1.0f : 0.0f);
+		}
 	}
 	else
 	{
@@ -207,6 +260,13 @@ int CMenus::DoButton_MenuTab(CButtonContainer *pButtonContainer, const char *pTe
 				HoverColorMenuTab = *pHoverColor;
 
 			Rect.Draw(HoverColorMenuTab, Corners, EdgeRounding);
+
+			if(g_Config.m_AcModernUi && !IsVerticalSidebar)
+			{
+				CUIRect Underline;
+				Rect.HSplitBottom(2.0f, nullptr, &Underline);
+				Underline.Draw(GetThemeColor(0.65f), IGraphics::CORNER_B, EdgeRounding > 0.0f ? 1.0f : 0.0f);
+			}
 		}
 		else
 		{
@@ -243,7 +303,11 @@ int CMenus::DoButton_MenuTab(CButtonContainer *pButtonContainer, const char *pTe
 	{
 		CUIRect Label;
 		Rect.HMargin(2.0f, &Label);
+		if(g_Config.m_AcModernUi && (Checked || MouseInside))
+			TextRender()->TextColor(ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f));
 		Ui()->DoLabel(&Label, pText, Label.h * CUi::ms_FontmodHeight, TEXTALIGN_MC);
+		if(g_Config.m_AcModernUi && (Checked || MouseInside))
+			TextRender()->TextColor(TextRender()->DefaultTextColor());
 	}
 
 	return Ui()->DoButtonLogic(pButtonContainer, Checked, pRect, BUTTONFLAG_LEFT);
@@ -286,15 +350,28 @@ int CMenus::DoButton_CheckBox_Common(const void *pId, const char *pText, const c
 	pRect->VSplitLeft(pRect->h, &Box, &Label);
 	Label.VSplitLeft(5.0f, nullptr, &Label);
 
+	const bool MouseInside = Ui()->HotItem() == pId;
 	Box.Margin(2.0f, &Box);
-	Box.Draw(ColorRGBA(1, 1, 1, 0.25f * Ui()->ButtonColorMul(pId)), IGraphics::CORNER_ALL, 3.0f);
+	if(g_Config.m_AcModernUi)
+	{
+		Box.Draw(MouseInside ? GetColorBorder(0.35f) : GetColorBg(0.60f), IGraphics::CORNER_ALL, 3.0f);
+		Box.DrawOutline(MouseInside ? GetColorBorder(0.85f) : GetColorBorder(0.40f));
+	}
+	else
+	{
+		Box.Draw(ColorRGBA(1, 1, 1, 0.25f * Ui()->ButtonColorMul(pId)), IGraphics::CORNER_ALL, 3.0f);
+	}
 
 	const bool Checkable = *pBoxText == 'X';
 	if(Checkable)
 	{
 		TextRender()->SetRenderFlags(ETextRenderFlags::TEXT_RENDER_FLAG_ONLY_ADVANCE_WIDTH | ETextRenderFlags::TEXT_RENDER_FLAG_NO_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_Y_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_OVERSIZE | ETextRenderFlags::TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT);
 		TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+		if(g_Config.m_AcModernUi)
+			TextRender()->TextColor(GetColorX(1.0f));
 		Ui()->DoLabel(&Box, FontIcon::XMARK, Box.h * CUi::ms_FontmodHeight, TEXTALIGN_MC);
+		if(g_Config.m_AcModernUi)
+			TextRender()->TextColor(TextRender()->DefaultTextColor());
 		TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
 	}
 	else
@@ -303,7 +380,11 @@ int CMenus::DoButton_CheckBox_Common(const void *pId, const char *pText, const c
 	}
 
 	TextRender()->SetRenderFlags(0);
+	if(g_Config.m_AcModernUi && MouseInside)
+		TextRender()->TextColor(ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f));
 	Ui()->DoLabel(&Label, pText, Box.h * CUi::ms_FontmodHeight, TEXTALIGN_ML);
+	if(g_Config.m_AcModernUi && MouseInside)
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
 
 	return Ui()->DoButtonLogic(pId, 0, pRect, Flags);
 }
@@ -842,6 +923,14 @@ void CMenus::OnInit()
 	}
 	m_MenuPage = g_Config.m_UiPage;
 
+	if(g_Config.m_AcThemeColor != 12050856)
+	{
+		if(g_Config.m_AcColorBorder == 12050856)
+			g_Config.m_AcColorBorder = g_Config.m_AcThemeColor;
+		if(g_Config.m_AcColorX == 12050856)
+			g_Config.m_AcColorX = g_Config.m_AcThemeColor;
+	}
+
 	m_RefreshButton.Init(Ui(), -1);
 	m_ConnectButton.Init(Ui(), -1);
 
@@ -1297,12 +1386,17 @@ void CMenus::RenderPopupFullscreen(CUIRect Screen)
 		pTitle = Localize("Save skin");
 		pExtraText = Localize("Are you sure you want to save your skin? If a skin with this name already exists, it will be replaced.");
 	}
+	else if(m_Popup == POPUP_COUNTRY)
+	{
+		pTitle = Localize("Select country");
+		pExtraText = Localize("Choose a country flag.");
+	}
 
 	CUIRect Box, Part;
 	Box = Screen;
 	if(m_Popup != POPUP_FIRST_LAUNCH)
 	{
-		Box.Margin(150.0f, &Box);
+		Box.Margin(m_Popup == POPUP_COUNTRY ? 70.0f : 150.0f, &Box);
 	}
 
 	// Background
@@ -1377,6 +1471,20 @@ void CMenus::RenderPopupFullscreen(CUIRect Screen)
 				(this->*m_aPopupButtons[BUTTON_CONFIRM].m_pfnCallback)();
 			}
 		}
+	}
+	else if(m_Popup == POPUP_COUNTRY)
+	{
+		CUIRect ButtonBar;
+		Box.HSplitBottom(20.0f, &Box, nullptr);
+		Box.HSplitBottom(24.0f, &Box, &ButtonBar);
+		ButtonBar.VMargin(100.0f, &ButtonBar);
+
+		if(RenderCountrySelection(Box))
+			m_Popup = POPUP_NONE;
+
+		static CButtonContainer s_CancelCountrySelection;
+		if(m_Popup == POPUP_COUNTRY && (DoButton_Menu(&s_CancelCountrySelection, Localize("Cancel"), 0, &ButtonBar) || Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE)))
+			m_Popup = POPUP_NONE;
 	}
 	else if(m_Popup == POPUP_QUIT || m_Popup == POPUP_RESTART)
 	{
@@ -2456,26 +2564,40 @@ void CMenus::UpdateColors()
 {
 	ms_GuiColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_UiColor, true));
 
-	ms_ColorTabbarInactiveOutgame = ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f);
-	ms_ColorTabbarActiveOutgame = ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f);
-	ms_ColorTabbarHoverOutgame = ColorRGBA(1.0f, 1.0f, 1.0f, 0.25f);
+	if(g_Config.m_AcModernUi)
+	{
+		// AClient Modern Dark-Glass Theme: dark translucent glass with violet accent
+		ms_ColorTabbarInactiveOutgame = ColorRGBA(0.02f, 0.025f, 0.045f, 0.45f);
+		ms_ColorTabbarActiveOutgame = ColorRGBA(0.035f, 0.04f, 0.07f, 0.70f);
+		ms_ColorTabbarHoverOutgame = GetThemeColor(0.22f);
 
-	const float ColorIngameScaleI = 0.5f;
-	const float ColorIngameScaleA = 0.2f;
+		ms_ColorTabbarInactiveIngame = ColorRGBA(0.02f, 0.025f, 0.045f, 0.55f);
+		ms_ColorTabbarActiveIngame = ColorRGBA(0.035f, 0.04f, 0.07f, 0.80f);
+		ms_ColorTabbarHoverIngame = GetThemeColor(0.28f);
+	}
+	else
+	{
+		ms_ColorTabbarInactiveOutgame = ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f);
+		ms_ColorTabbarActiveOutgame = ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f);
+		ms_ColorTabbarHoverOutgame = ColorRGBA(1.0f, 1.0f, 1.0f, 0.25f);
 
-	ms_ColorTabbarInactiveIngame = ColorRGBA(
-		ms_GuiColor.r * ColorIngameScaleI,
-		ms_GuiColor.g * ColorIngameScaleI,
-		ms_GuiColor.b * ColorIngameScaleI,
-		ms_GuiColor.a * 0.8f);
+		const float ColorIngameScaleI = 0.5f;
+		const float ColorIngameScaleA = 0.2f;
 
-	ms_ColorTabbarActiveIngame = ColorRGBA(
-		ms_GuiColor.r * ColorIngameScaleA,
-		ms_GuiColor.g * ColorIngameScaleA,
-		ms_GuiColor.b * ColorIngameScaleA,
-		ms_GuiColor.a);
+		ms_ColorTabbarInactiveIngame = ColorRGBA(
+			ms_GuiColor.r * ColorIngameScaleI,
+			ms_GuiColor.g * ColorIngameScaleI,
+			ms_GuiColor.b * ColorIngameScaleI,
+			ms_GuiColor.a * 0.8f);
 
-	ms_ColorTabbarHoverIngame = ColorRGBA(1.0f, 1.0f, 1.0f, 0.75f);
+		ms_ColorTabbarActiveIngame = ColorRGBA(
+			ms_GuiColor.r * ColorIngameScaleA,
+			ms_GuiColor.g * ColorIngameScaleA,
+			ms_GuiColor.b * ColorIngameScaleA,
+			ms_GuiColor.a);
+
+		ms_ColorTabbarHoverIngame = ColorRGBA(1.0f, 1.0f, 1.0f, 0.75f);
+	}
 }
 
 void CMenus::RenderBackground()

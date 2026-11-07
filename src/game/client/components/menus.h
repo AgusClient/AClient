@@ -63,6 +63,10 @@ public:
 	bool DoEditBoxNumberWithLabel(CLineInputNumber *pLineInput, const CUIRect *pRect, const char *pLabel, int *pVal, int MinVal, int MaxVal);
 	bool DoLine_RadioMenu(CUIRect &View, const char *pLabel, std::vector<CButtonContainer> &vButtonContainers, const std::vector<const char *> &vLabels, const std::vector<int> &vValues, int &Value);
 	bool DoLine_KeyReader(CUIRect &View, CButtonContainer &ReaderButton, CButtonContainer &ClearButton, const char *pName, const char *pCommand);
+	ColorRGBA GetThemeColor(float Alpha = 1.0f) const;
+	ColorRGBA GetColorX(float Alpha = 1.0f) const;
+	ColorRGBA GetColorBorder(float Alpha = 1.0f) const;
+	ColorRGBA GetColorBg(float Alpha = -1.0f) const;
 
 private:
 	CUi::SColorPickerPopupContext m_ColorPickerPopupContext;
@@ -602,7 +606,7 @@ protected:
 	bool RenderLanguageSelection(CUIRect MainView);
 
 	// found in menus_settings_player.cpp
-	void RenderSettingsPlayer(CUIRect MainView);
+	void RenderSettingsTeeIdentity(CUIRect MainView);
 	bool RenderCountrySelection(CUIRect MainView);
 
 	// found in menus_settings_sound.cpp

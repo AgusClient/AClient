@@ -110,6 +110,7 @@ void CScoreboard::OnConsoleInit()
 void CScoreboard::OnInit()
 {
 	m_DeadTeeTexture = Graphics()->LoadTexture("deadtee.png", IStorage::TYPE_ALL);
+	m_AClientBadgeTexture = Graphics()->LoadTexture("tclient/aclient_tab_logo.png", IStorage::TYPE_ALL);
 }
 
 void CScoreboard::OnReset()
@@ -818,12 +819,27 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 
 			if(ShowClientIndicator)
 			{
+				const float BadgeSize = IndicatorIconSize * 1.25f;
 				const CUIRect IconRect = {
 					IndicatorIconPosX,
-					Row.y + (Row.h - IndicatorIconSize) / 2.0f,
-					IndicatorIconSize,
-					IndicatorIconSize};
-				Ui()->DoLabel(&IconRect, "x", FontSize, TEXTALIGN_MC);
+					Row.y + (Row.h - BadgeSize) / 2.0f,
+					BadgeSize,
+					BadgeSize};
+
+				if(m_AClientBadgeTexture.IsValid())
+				{
+					Graphics()->TextureSet(m_AClientBadgeTexture);
+					Graphics()->QuadsBegin();
+					ColorRGBA BadgeColor = ColorRGBA(1.0f, 1.0f, 1.0f, RenderDead ? 0.5f : 1.0f);
+					Graphics()->SetColor(BadgeColor);
+					IGraphics::CQuadItem QuadItem(IconRect.x, IconRect.y, IconRect.w, IconRect.h);
+					Graphics()->QuadsDrawTL(&QuadItem, 1);
+					Graphics()->QuadsEnd();
+				}
+				else
+				{
+					Ui()->DoLabel(&IconRect, "x", FontSize, TEXTALIGN_MC);
+				}
 			}
 
 			// CTF flag

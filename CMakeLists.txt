@@ -2110,6 +2110,7 @@ set(EXPECTED_DATA
   tclient/fonts/Nunito-Black.ttf
   tclient/fonts/Rubik-Regular.ttf
   tclient/fonts/minecraft_font.ttf
+  tclient/aclient_tab_logo.png
   tclient/gui_logo.png
   tclient/languages/arabic.txt
   tclient/languages/azerbaijani.txt

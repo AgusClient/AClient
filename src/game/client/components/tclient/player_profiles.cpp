@@ -236,9 +236,16 @@ void CPlayerProfiles::OnRender()
 
 	if(!m_KoGFetchRunning && !m_qTeamPendingKoG.empty())
 	{
-		std::string Next = m_qTeamPendingKoG.front();
-		m_qTeamPendingKoG.pop_front();
-		FetchKoGProfile(Next.c_str(), false);
+		if(time_get() >= m_KoGCloudflareCooldown)
+		{
+			std::string Next = m_qTeamPendingKoG.front();
+			m_qTeamPendingKoG.pop_front();
+			FetchKoGProfile(Next.c_str(), false);
+		}
+		else
+		{
+			m_qTeamPendingKoG.clear();
+		}
 	}
 
 	// 4. Check KoG maps metadata background download
@@ -256,6 +263,12 @@ void CPlayerProfiles::ProcessHttpResponse()
 	json_value *pJson = m_pHttpRequest->ResultJson();
 	if(!pJson)
 	{
+		char aLowerReq[MAX_NAME_LENGTH];
+		str_copy(aLowerReq, m_aRequestedName);
+		for(char *p = aLowerReq; *p; ++p)
+			*p = (char)tolower((unsigned char)*p);
+		m_mFailedFetchesDDNet[aLowerReq] = time_get() + time_freq() * 60;
+
 		if(m_pHttpRequest->StatusCode() == 404)
 		{
 			m_State = EProfileState::NOT_FOUND;
@@ -489,7 +502,12 @@ void CPlayerProfiles::KoGFetchWorker(void *pUser)
 		if(IsCloudflare)
 		{
 			pSelf->m_KoGFetchErrorMsg = "Proteccion Cloudflare activa en kog.tw";
-			log_warn("kog", "Proteccion Cloudflare activa en kog.tw (bloqueado por anti-bot)");
+			static int64_t s_LastWarnTime = 0;
+			if(time_get() > s_LastWarnTime + time_freq() * 60)
+			{
+				s_LastWarnTime = time_get();
+				log_warn("kog", "Proteccion Cloudflare activa en kog.tw (bloqueado por anti-bot)");
+			}
 		}
 		else
 		{
@@ -657,10 +675,18 @@ void CPlayerProfiles::ProcessKoGFetchCompletion()
 	m_KoGFetchRunning = false;
 	m_KoGFetchDone = false;
 
+	char aLowerKey[MAX_NAME_LENGTH];
+	str_copy(aLowerKey, m_aKoGRequestedName);
+	for(char *p = aLowerKey; *p; ++p)
+		*p = (char)tolower((unsigned char)*p);
+	std::string Key(aLowerKey);
+
 	if(!m_KoGFetchSuccess)
 	{
+		m_mFailedFetchesKoG[Key] = time_get() + time_freq() * 60;
 		if(m_KoGFetchErrorMsg.find("Cloudflare") != std::string::npos)
 		{
+			m_KoGCloudflareCooldown = time_get() + time_freq() * 60;
 			m_qTeamPendingKoG.clear();
 		}
 
@@ -991,6 +1017,27 @@ void CPlayerProfiles::FetchKoGProfile(const char *pPlayerName, bool ForceRefresh
 		return;
 	}
 
+	// If Cloudflare cooldown is active and not forcing refresh, don't query
+	if(!ForceRefresh && time_get() < m_KoGCloudflareCooldown)
+	{
+		m_KoGState = EProfileState::ERROR_NETWORK;
+		str_copy(m_aKoGStatusMsg, "KoG.tw en espera por proteccion Cloudflare");
+		return;
+	}
+
+	// Check if this player fetch recently failed
+	char aLowerPlayer[MAX_NAME_LENGTH];
+	str_copy(aLowerPlayer, pStart);
+	for(char *p = aLowerPlayer; *p; ++p)
+		*p = (char)tolower((unsigned char)*p);
+	auto itFail = m_mFailedFetchesKoG.find(aLowerPlayer);
+	if(!ForceRefresh && itFail != m_mFailedFetchesKoG.end() && time_get() < itFail->second)
+	{
+		m_KoGState = EProfileState::ERROR_NETWORK;
+		str_copy(m_aKoGStatusMsg, "KoG.tw: reintento en espera");
+		return;
+	}
+
 	// Network fetch in background thread
 	AbortKoGFetch();
 
@@ -1113,9 +1160,20 @@ void CPlayerProfiles::QueueTeamProfileFetch(const char *pName, bool IsKoG)
 	if(IsPlayerProfileLoaded(pName, IsKoG))
 		return;
 
+	char aLowerQ[MAX_NAME_LENGTH];
+	str_copy(aLowerQ, pName);
+	for(char *p = aLowerQ; *p; ++p)
+		*p = (char)tolower((unsigned char)*p);
+	std::string Key(aLowerQ);
+
 	std::string NameStr(pName);
 	if(IsKoG)
 	{
+		if(time_get() < m_KoGCloudflareCooldown)
+			return;
+		auto it = m_mFailedFetchesKoG.find(Key);
+		if(it != m_mFailedFetchesKoG.end() && time_get() < it->second)
+			return;
 		if(str_comp(m_aKoGFetchThreadPlayer, pName) == 0 && m_KoGFetchRunning)
 			return;
 		for(const auto &Pending : m_qTeamPendingKoG)
@@ -1127,6 +1185,9 @@ void CPlayerProfiles::QueueTeamProfileFetch(const char *pName, bool IsKoG)
 	}
 	else
 	{
+		auto it = m_mFailedFetchesDDNet.find(Key);
+		if(it != m_mFailedFetchesDDNet.end() && time_get() < it->second)
+			return;
 		if(str_comp(m_aRequestedName, pName) == 0 && m_pHttpRequest != nullptr)
 			return;
 		for(const auto &Pending : m_qTeamPendingDDNet)
@@ -1241,7 +1302,14 @@ void CPlayerProfiles::ComputeTeamCommonUnfinished()
 
 	if(!AllLoaded)
 	{
-		str_format(m_aTeamStatusMsg, sizeof(m_aTeamStatusMsg), "Cargando perfil de '%s'...", PendingName.c_str());
+		if(IsKoG && time_get() < m_KoGCloudflareCooldown)
+		{
+			str_copy(m_aTeamStatusMsg, "KoG.tw bloqueado por Cloudflare (en espera)");
+		}
+		else
+		{
+			str_format(m_aTeamStatusMsg, sizeof(m_aTeamStatusMsg), "Cargando perfil de '%s'...", PendingName.c_str());
+		}
 		return;
 	}
 

@@ -23,11 +23,68 @@
 #include <game/localization.h>
 #include <game/version.h>
 
-static constexpr const char *ACLIENT_LATEST_RELEASE_URL = "https://api.github.com/repos/AgusClient/AClient/releases/latest";
+static constexpr const char *ACLIENT_LATEST_RELEASE_URL = "https://api.github.com/repos/AgusClient/AClient/releases";
 
 CTClient::CTClient()
 {
 	OnReset();
+
+	// Fallback offline releases
+	CAClientRelease Rel267;
+	str_copy(Rel267.m_aTag, "v2.6.7", sizeof(Rel267.m_aTag));
+	str_copy(Rel267.m_aName, "AClient v2.6.7", sizeof(Rel267.m_aName));
+	str_copy(Rel267.m_aPublishedAt, "2026-11-07", sizeof(Rel267.m_aPublishedAt));
+	Rel267.m_Body =
+		"## Novedades de AClient v2.6.7\n\n"
+		"### Personalizacion de Tema y Colores (AClient Theme & UI)\n"
+		"- **Colores independientes**: Tres opciones separadas para personalizar el tema moderno: color de la marca X en opciones ON/OFF, color del borde de tarjetas y bloques, y color del fondo con control de transparencia (Alpha).\n"
+		"- **Correcciones de interfaz**: Corregidos los bordes redondeados y subrayados que sobresalian en las pestañas laterales del menu de ajustes.\n\n"
+		"### Insignia Oficial AC 30 en Marcador (TAB)\n"
+		"- **Nuevo logo en TAB**: Los jugadores que utilizan AClient ahora lucen la insignia oficial AC 30 en lugar de la marca x generica, con adaptacion de opacidad al morir.\n\n"
+		"### Visor de Novedades y Versiones\n"
+		"- **Desplegable de releases**: Selector interactivo en Configuracion -> AClient para explorar todas las actualizaciones publicadas y consultar sus notas de cambios completas.\n\n"
+		"### Opciones de Tee y Menu\n"
+		"- **Icono de opciones sobre el Tee**: Opcion configurable para mostrar el icono de menu sobre el personaje al presionar Escape o abrir ajustes.\n"
+		"- **Descarga condicional de skins**: Ajuste para descargar skins unicamente mientras se esta congelado.\n\n"
+		"### Distribucion\n"
+		"- **Paquete Portable Completo (AClient-windows.zip)**: Incluye ejecutable, librerias DLL y assets con shaders Vulkan.\n"
+		"- **Binario Independiente (DDNet.exe)**: Actualizacion directa del ejecutable.";
+	m_vReleases.push_back(Rel267);
+
+	CAClientRelease Rel266;
+	str_copy(Rel266.m_aTag, "v2.6.6", sizeof(Rel266.m_aTag));
+	str_copy(Rel266.m_aName, "AClient v2.6.6", sizeof(Rel266.m_aName));
+	str_copy(Rel266.m_aPublishedAt, "2026-11-06", sizeof(Rel266.m_aPublishedAt));
+	Rel266.m_Body =
+		"## Novedades de AClient v2.6.6\n\n"
+		"### Soporte de Vulkan por Defecto\n"
+		"- **Backend Vulkan habilitado por defecto en Windows**: Se corrigio la configuracion de CMake para que el backend grafico de Vulkan y sus 38 shaders SPIR-V (.spv) se encuentren compilados y enlazados de manera predeterminada.\n\n"
+		"### Correccion de Proteccion Cloudflare en KoG (Anti-Spam F1)\n"
+		"- **Eliminacion del bucle de reintentos infinitos**: Cuando la web de King of Gores (kog.tw) activa la proteccion anti-bot de Cloudflare, el cliente ya no satura la conexion ni inunda la consola F1 con advertencias continuas.\n"
+		"- **Cooldown inteligente**: Implementado un tiempo de espera de 60 segundos ante bloqueos de Cloudflare y registro temporal de jugadores fallidos para evitar re-consultas en cada fotograma mientras se esta en equipo.\n"
+		"- **Rate-limit de advertencias**: El mensaje en consola ahora se limita como maximo a una vez por minuto.\n\n"
+		"### Ajustes de Identidad en Tee y Descargas\n"
+		"- **Edicion integrada**: Nombre, clan y selector de pais/bandera (con modal y filtro) accesibles y unificados dentro del apartado Tee tanto para jugador como para dummy.\n"
+		"- **Descarga de skins solo al congelar**: Opcion para descargar skins de la comunidad unicamente mientras el Tee se encuentra congelado.\n\n"
+		"### Distribucion\n"
+		"- **Paquete Portable Completo (AClient-windows.zip)**: Incluye todas las librerias DLL, assets (data/) con shaders Vulkan compilados y el ejecutable oficial DDNet.exe.\n"
+		"- **Binario Independiente (DDNet.exe)**: Para actualizar directamente el ejecutable.";
+	m_vReleases.push_back(Rel266);
+
+	CAClientRelease Rel265;
+	str_copy(Rel265.m_aTag, "v2.6.5", sizeof(Rel265.m_aTag));
+	str_copy(Rel265.m_aName, "AClient v2.6.5", sizeof(Rel265.m_aName));
+	str_copy(Rel265.m_aPublishedAt, "2026-11-04", sizeof(Rel265.m_aPublishedAt));
+	Rel265.m_Body =
+		"## Novedades de AClient v2.6.5\n\n"
+		"### Descarga Condicional de Gameskins\n"
+		"- **Descargas configurables bajo demanda**: En Configuracion -> Tee, se incorporan opciones para controlar cuando se bajan los gameskins de otros jugadores.\n"
+		"- **Cuando estoy freezeado**: Realiza las descargas unicamente mientras tu Tee permanece inmovilizado/congelado, garantizando 0 micro-tirones mientras te mueves.\n"
+		"- **Aviso en Chat**: Notificacion visual local en el chat al iniciar y al finalizar la descarga de cada gameskin.\n\n"
+		"### Mejoras de Interfaz Moderna (UI)\n"
+		"- **Tema Dark-Glass & Violet Hover**: Nuevo diseno estetico moderno con bordes redondeados y efectos glassmorphism.\n"
+		"- **Fast Input Reordenado**: Priorizacion de configuraciones de red y prediccion al inicio del menu.";
+	m_vReleases.push_back(Rel265);
 }
 
 void CTClient::ConRandomTee(IConsole::IResult *pResult, void *pUserData) {}
@@ -687,7 +744,7 @@ void CTClient::FinishTClientInfo()
 	}
 
 	const json_value &Json = *pJson;
-	if(Json.type != json_object)
+	if(Json.type != json_array && Json.type != json_object)
 	{
 		json_value_free(pJson);
 		m_UpdateState = UPDATE_STATE_FAIL;
@@ -695,67 +752,167 @@ void CTClient::FinishTClientInfo()
 		return;
 	}
 
-	const json_value &TagName = Json["tag_name"];
-	if(TagName.type == json_string)
-	{
-		char aRemoteVersion[64];
-		str_copy(aRemoteVersion, (const char *)TagName, sizeof(aRemoteVersion));
+	std::vector<CAClientRelease> vNewReleases;
 
-		TVersion RemoteVer = ParseSemVer(aRemoteVersion);
-		TVersion LocalVer = ParseSemVer(ACLIENT_VERSION);
+	auto ParseReleaseObject = [&](const json_value &Rel, bool IsLatest) {
+		const json_value &Draft = Rel["draft"];
+		bool IsDraft = (Draft.type == json_boolean && Draft.u.boolean);
+		if(IsDraft)
+			return;
 
-		if(RemoteVer != gs_InvalidTCVersion && RemoteVer > LocalVer)
+		const json_value &Prerelease = Rel["prerelease"];
+		bool IsPrerelease = (Prerelease.type == json_boolean && Prerelease.u.boolean);
+
+		CAClientRelease Entry;
+		Entry.m_IsPrerelease = IsPrerelease;
+
+		const json_value &TagName = Rel["tag_name"];
+		const json_value &Name = Rel["name"];
+		const json_value &Body = Rel["body"];
+		const json_value &PublishedAt = Rel["published_at"];
+
+		if(TagName.type == json_string)
+			str_copy(Entry.m_aTag, (const char *)TagName, sizeof(Entry.m_aTag));
+		if(Name.type == json_string)
+			str_copy(Entry.m_aName, (const char *)Name, sizeof(Entry.m_aName));
+		else if(Entry.m_aTag[0])
+			str_copy(Entry.m_aName, Entry.m_aTag, sizeof(Entry.m_aName));
+
+		if(PublishedAt.type == json_string)
 		{
-			// Search for DDNet.exe asset in assets array
-			const json_value &Assets = Json["assets"];
-			bool FoundAsset = false;
-			if(Assets.type == json_array)
+			char aDate[32] = "";
+			str_copy(aDate, (const char *)PublishedAt, sizeof(aDate));
+			for(int d = 0; aDate[d] != '\0'; ++d)
 			{
-				for(unsigned int i = 0; i < Assets.u.array.length; ++i)
+				if(aDate[d] == 'T')
 				{
-					const json_value &Asset = *Assets.u.array.values[i];
-					const json_value &AssetName = Asset["name"];
-					const json_value &DownloadUrl = Asset["browser_download_url"];
+					aDate[d] = '\0';
+					break;
+				}
+			}
+			str_copy(Entry.m_aPublishedAt, aDate, sizeof(Entry.m_aPublishedAt));
+		}
 
-					if(AssetName.type == json_string && DownloadUrl.type == json_string)
+		if(Body.type == json_string)
+			Entry.m_Body = (const char *)Body;
+
+		if(Entry.m_aTag[0] != '\0')
+			vNewReleases.push_back(std::move(Entry));
+
+		if(IsLatest && TagName.type == json_string)
+		{
+			char aRemoteVersion[64];
+			str_copy(aRemoteVersion, (const char *)TagName, sizeof(aRemoteVersion));
+
+			TVersion RemoteVer = ParseSemVer(aRemoteVersion);
+			TVersion LocalVer = ParseSemVer(ACLIENT_VERSION);
+
+			if(RemoteVer != gs_InvalidTCVersion && RemoteVer > LocalVer)
+			{
+				const json_value &Assets = Rel["assets"];
+				bool FoundAsset = false;
+				if(Assets.type == json_array)
+				{
+					for(unsigned int i = 0; i < Assets.u.array.length; ++i)
 					{
-						if(str_comp_nocase((const char *)AssetName, "DDNet.exe") == 0)
+						const json_value &Asset = *Assets.u.array.values[i];
+						const json_value &AssetName = Asset["name"];
+						const json_value &DownloadUrl = Asset["browser_download_url"];
+
+						if(AssetName.type == json_string && DownloadUrl.type == json_string)
 						{
-							str_copy(m_aDownloadUrl, (const char *)DownloadUrl, sizeof(m_aDownloadUrl));
-							FoundAsset = true;
-							break;
+							if(str_comp_nocase((const char *)AssetName, "DDNet.exe") == 0)
+							{
+								str_copy(m_aDownloadUrl, (const char *)DownloadUrl, sizeof(m_aDownloadUrl));
+								FoundAsset = true;
+								break;
+							}
 						}
 					}
 				}
-			}
 
-			if(FoundAsset)
-			{
-				str_copy(m_aLatestVersion, aRemoteVersion, sizeof(m_aLatestVersion));
-				str_copy(m_aVersionStr, aRemoteVersion, sizeof(m_aVersionStr));
-				m_UpdateState = UPDATE_STATE_AVAILABLE;
-				str_format(m_aUpdateStatus, sizeof(m_aUpdateStatus), "Nueva version disponible: %s", aRemoteVersion);
+				if(FoundAsset)
+				{
+					str_copy(m_aLatestVersion, aRemoteVersion, sizeof(m_aLatestVersion));
+					str_copy(m_aVersionStr, aRemoteVersion, sizeof(m_aVersionStr));
+					m_UpdateState = UPDATE_STATE_AVAILABLE;
+					str_format(m_aUpdateStatus, sizeof(m_aUpdateStatus), "Nueva version disponible: %s", aRemoteVersion);
+				}
+				else
+				{
+					m_UpdateState = UPDATE_STATE_FAIL;
+					str_copy(m_aUpdateStatus, "Asset DDNet.exe no encontrado en release", sizeof(m_aUpdateStatus));
+				}
 			}
 			else
 			{
-				m_UpdateState = UPDATE_STATE_FAIL;
-				str_copy(m_aUpdateStatus, "Asset DDNet.exe no encontrado en release", sizeof(m_aUpdateStatus));
+				m_aVersionStr[0] = '0';
+				m_aVersionStr[1] = '\0';
+				str_copy(m_aLatestVersion, ACLIENT_VERSION, sizeof(m_aLatestVersion));
+				m_UpdateState = UPDATE_STATE_IDLE;
+				str_copy(m_aUpdateStatus, "Cliente al dia", sizeof(m_aUpdateStatus));
+			}
+			m_FetchedTClientInfo = true;
+		}
+	};
+
+	bool FoundLatestOfficial = false;
+
+	if(Json.type == json_array)
+	{
+		for(unsigned int i = 0; i < Json.u.array.length && i < 15; ++i)
+		{
+			const json_value &Rel = *Json.u.array.values[i];
+			if(Rel.type == json_object)
+			{
+				const json_value &Draft = Rel["draft"];
+				bool IsDraft = (Draft.type == json_boolean && Draft.u.boolean);
+				if(IsDraft)
+					continue;
+
+				const json_value &Prerelease = Rel["prerelease"];
+				bool IsPrerelease = (Prerelease.type == json_boolean && Prerelease.u.boolean);
+
+				bool IsLatestCandidate = false;
+				if(!FoundLatestOfficial && !IsPrerelease)
+				{
+					IsLatestCandidate = true;
+					FoundLatestOfficial = true;
+				}
+
+				ParseReleaseObject(Rel, IsLatestCandidate);
 			}
 		}
-		else
-		{
-			m_aVersionStr[0] = '0';
-			m_aVersionStr[1] = '\0';
-			str_copy(m_aLatestVersion, ACLIENT_VERSION, sizeof(m_aLatestVersion));
-			m_UpdateState = UPDATE_STATE_IDLE;
-			str_copy(m_aUpdateStatus, "Cliente al dia", sizeof(m_aUpdateStatus));
-		}
+	}
+	else if(Json.type == json_object)
+	{
+		const json_value &Draft = Json["draft"];
+		bool IsDraft = (Draft.type == json_boolean && Draft.u.boolean);
+		const json_value &Prerelease = Json["prerelease"];
+		bool IsPrerelease = (Prerelease.type == json_boolean && Prerelease.u.boolean);
+
+		bool IsLatestCandidate = !IsDraft && !IsPrerelease;
+		if(IsLatestCandidate)
+			FoundLatestOfficial = true;
+
+		ParseReleaseObject(Json, IsLatestCandidate);
+	}
+
+	if(!FoundLatestOfficial)
+	{
+		m_aVersionStr[0] = '0';
+		m_aVersionStr[1] = '\0';
+		str_copy(m_aLatestVersion, ACLIENT_VERSION, sizeof(m_aLatestVersion));
+		m_UpdateState = UPDATE_STATE_IDLE;
+		str_copy(m_aUpdateStatus, "Cliente al dia", sizeof(m_aUpdateStatus));
 		m_FetchedTClientInfo = true;
 	}
-	else
+
+	if(!vNewReleases.empty())
 	{
-		m_UpdateState = UPDATE_STATE_FAIL;
-		str_copy(m_aUpdateStatus, "Release sin tag valido", sizeof(m_aUpdateStatus));
+		m_vReleases = std::move(vNewReleases);
+		if(m_SelectedRelease >= (int)m_vReleases.size())
+			m_SelectedRelease = 0;
 	}
 
 	json_value_free(pJson);
