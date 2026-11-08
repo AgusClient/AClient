@@ -30,6 +30,13 @@ CTClient::CTClient()
 	OnReset();
 
 	// Fallback offline releases
+	CAClientRelease Rel269;
+	str_copy(Rel269.m_aTag, "v2.6.9", sizeof(Rel269.m_aTag));
+	str_copy(Rel269.m_aName, "AClient v2.6.9", sizeof(Rel269.m_aName));
+	str_copy(Rel269.m_aPublishedAt, "2026-11-07", sizeof(Rel269.m_aPublishedAt));
+	Rel269.m_Body = "";
+	m_vReleases.push_back(Rel269);
+
 	CAClientRelease Rel268;
 	str_copy(Rel268.m_aTag, "v2.6.8", sizeof(Rel268.m_aTag));
 	str_copy(Rel268.m_aName, "AClient v2.6.8", sizeof(Rel268.m_aName));
@@ -496,15 +503,6 @@ void CTClient::ConCalc(IConsole::IResult *pResult, void *pUserData)
 		log_info("tclient", "Calc result: %lf", Out);
 }
 
-void CTClient::ConAx30Status(IConsole::IResult *pResult, void *pUserData)
-{
-	CTClient *pSelf = (CTClient *)pUserData;
-#if defined(CONF_AX30_PROPRIETARY)
-	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "ax30", "aX30 Engine: PROPIETARIO -> Estado: 1 [ACTIVO]");
-#else
-	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "ax30", "aX30 Engine: PUBLICO -> Estado: 0 [FALLBACK]");
-#endif
-}
 
 void CTClient::OnConsoleInit()
 {
@@ -517,7 +515,6 @@ void CTClient::OnConsoleInit()
 	Console()->Register("spec_id", "v[id]", CFGFLAG_CLIENT, ConSpecId, this, "Spectate a player by Id");
 
 	Console()->Register("emote_cycle", "", CFGFLAG_CLIENT, ConEmoteCycle, this, "Cycle through emotes");
-	Console()->Register("ax30_status", "", CFGFLAG_CLIENT, ConAx30Status, this, "Check aX30 engine status (1: Proprietary, 0: Public)");
 
 
 	Console()->Chain(

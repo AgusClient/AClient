@@ -83,13 +83,6 @@ MACRO_CONFIG_INT(AcAX30Interpolation, ac_ax30_interpolation, 1, 1, 3, CFGFLAG_CL
 MACRO_CONFIG_INT(AcAX30Others, ac_ax30_others, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply aX30 to other players")
 MACRO_CONFIG_INT(AcAX30OthersAmount, ac_ax30_others_amount, 100, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aX30 prediction offset for other players in 0.01 ticks")
 
-// aX30 Build Verification Status
-#if defined(CONF_AX30_PROPRIETARY)
-#define AX30_PROPRIETARY_BUILD_VAL 1
-#else
-#define AX30_PROPRIETARY_BUILD_VAL 0
-#endif
-MACRO_CONFIG_INT(AcAX30Proprietary, ac_ax30_proprietary, AX30_PROPRIETARY_BUILD_VAL, 0, 1, CFGFLAG_CLIENT, "aX30 engine proprietary build status (1: Proprietary, 0: Public)")
 
 // Fast Mode
 MACRO_CONFIG_INT(AcFastInputAmount, ac_fast_input_amount, 20, 1, 40, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Fast input prediction offset in ms")
