@@ -2110,6 +2110,7 @@ set(EXPECTED_DATA
   tclient/fonts/Nunito-Black.ttf
   tclient/fonts/Rubik-Regular.ttf
   tclient/fonts/minecraft_font.ttf
+  tclient/aclient_logo.png
   tclient/aclient_tab_logo.png
   tclient/gui_logo.png
   tclient/languages/arabic.txt
@@ -2914,6 +2915,7 @@ if(CLIENT)
     components/tclient/race_stats.cpp
     components/tclient/race_stats.h
     components/tclient/race_stats_icons.h
+    components/tclient/aclient_tab_logo.h
     components/tclient/aclient_optimizer.cpp
     components/tclient/aclient_optimizer.h
     components/tclient/fast_practice.cpp

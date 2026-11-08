@@ -22,6 +22,7 @@
 #include <game/client/gameclient.h>
 #include <game/client/ui.h>
 #include <game/localization.h>
+#include <game/client/components/tclient/aclient_tab_logo.h>
 
 // Horizontal spacing of the scoreboard contents, both to its edges and between columns
 static constexpr float MARGIN = 10.0f;
@@ -111,6 +112,16 @@ void CScoreboard::OnInit()
 {
 	m_DeadTeeTexture = Graphics()->LoadTexture("deadtee.png", IStorage::TYPE_ALL);
 	m_AClientBadgeTexture = Graphics()->LoadTexture("tclient/aclient_tab_logo.png", IStorage::TYPE_ALL);
+	if(!m_AClientBadgeTexture.IsValid() || m_AClientBadgeTexture.IsNullTexture())
+		m_AClientBadgeTexture = Graphics()->LoadTexture("tclient/aclient_logo.png", IStorage::TYPE_ALL);
+	if(!m_AClientBadgeTexture.IsValid() || m_AClientBadgeTexture.IsNullTexture())
+	{
+		CImageInfo Img;
+		if(Graphics()->LoadPng(Img, gs_aAClientTabLogoPng, sizeof(gs_aAClientTabLogoPng), "aclient_tab_logo.png"))
+		{
+			m_AClientBadgeTexture = Graphics()->LoadTextureRawMove(Img, 0, "aclient_tab_logo.png");
+		}
+	}
 }
 
 void CScoreboard::OnReset()
@@ -826,7 +837,16 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 					BadgeSize,
 					BadgeSize};
 
-				if(m_AClientBadgeTexture.IsValid())
+				if(!m_AClientBadgeTexture.IsValid() || m_AClientBadgeTexture.IsNullTexture())
+				{
+					CImageInfo Img;
+					if(Graphics()->LoadPng(Img, gs_aAClientTabLogoPng, sizeof(gs_aAClientTabLogoPng), "aclient_tab_logo.png"))
+					{
+						m_AClientBadgeTexture = Graphics()->LoadTextureRawMove(Img, 0, "aclient_tab_logo.png");
+					}
+				}
+
+				if(m_AClientBadgeTexture.IsValid() && !m_AClientBadgeTexture.IsNullTexture())
 				{
 					Graphics()->TextureSet(m_AClientBadgeTexture);
 					Graphics()->QuadsBegin();
