@@ -41,8 +41,16 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 
 	CUIRect ExtMenu;
 	MainView.VSplitLeft(30.0f, nullptr, &ExtMenu);
-	ExtMenu.VSplitLeft(100.0f, &ExtMenu, nullptr);
+	ExtMenu.VSplitLeft(110.0f, &ExtMenu, nullptr);
 
+	ExtMenu.HSplitBottom(20.0f, &ExtMenu, &Button);
+	static CButtonContainer s_GitHubButton;
+	if(GameClient()->m_Menus.DoButton_Menu(&s_GitHubButton, TCLocalize("Código Abierto"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.15f, 0.5f, 0.85f, 0.35f)))
+	{
+		Client()->ViewLink("https://github.com/AgusClient/AClient");
+	}
+
+	ExtMenu.HSplitBottom(5.0f, &ExtMenu, nullptr); // little space
 	ExtMenu.HSplitBottom(20.0f, &ExtMenu, &Button);
 	static CButtonContainer s_DiscordButton;
 	if(GameClient()->m_Menus.DoButton_Menu(&s_DiscordButton, Localize("Discord"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
@@ -159,8 +167,8 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 	CUIRect TClientVersion;
 	MainView.HSplitTop(15.0f, &TClientVersion, &MainView);
 	TClientVersion.VSplitRight(40.0f, &TClientVersion, nullptr);
-	char aTBuf[64];
-	str_format(aTBuf, sizeof(aTBuf), CLIENT_NAME " %s", CLIENT_RELEASE_VERSION);
+	char aTBuf[96];
+	str_format(aTBuf, sizeof(aTBuf), CLIENT_NAME " %s - %s", CLIENT_RELEASE_VERSION, TCLocalize("Código Abierto"));
 	Ui()->DoLabel(&TClientVersion, aTBuf, 14.0f, TEXTALIGN_MR);
 	CUIRect UpdateToDateText;
 	MainView.HSplitTop(15.0f, &UpdateToDateText, nullptr);

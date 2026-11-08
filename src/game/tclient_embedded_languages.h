@@ -16,6 +16,7 @@ struct SEmbeddedTranslationEntry
 
 static const SEmbeddedTranslationEntry s_aEmbeddedTranslations[] = {
 	{"AClient", "AClient", "AClient", "AClient", "AClient", "AClient"},
+	{"Código Abierto", "Código Abierto", "Открытый исходный код", "Código Aberto", "开源", "Open Source"},
 	{"Settings & Tweaks", "Ajustes y Mejoras", "Настройки и твики", "Configurações e Ajustes", "设置与微调", "Paramètres et Ajustements"},
 	{"Language", "Idioma", "Язык", "Idioma", "语言", "Langue"},
 	{"AClient General Settings", "Ajustes Generales de AClient", "Общие настройки AClient", "Configurações Gerais do AClient", "AClient 常规设置", "Paramètres Généraux AClient"},
