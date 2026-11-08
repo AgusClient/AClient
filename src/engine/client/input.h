@@ -86,6 +86,7 @@ private:
 
 	// events
 	std::vector<CEvent> m_vInputEvents;
+	vec2 m_FrameMouseDelta = vec2(0.0f, 0.0f);
 	int64_t m_LastUpdate;
 	float m_UpdateTime;
 	void AddKeyEvent(int Key, int Flags);

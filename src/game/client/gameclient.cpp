@@ -527,6 +527,8 @@ void CGameClient::OnUpdate()
 
 	CUIElementBase::Init(Ui()); // update static pointer because game and editor use separate UI
 
+	m_Controls.BeginInputFrame();
+
 	// handle mouse movement
 	float x = 0.0f, y = 0.0f;
 	IInput::ECursorType CursorType = Input()->CursorRelative(&x, &y);
@@ -535,7 +537,11 @@ void CGameClient::OnUpdate()
 		for(auto &pComponent : m_vpInput)
 		{
 			if(pComponent->OnCursorMove(x, y, CursorType))
+			{
+				if(pComponent != &m_Controls)
+					m_Controls.CancelInputFrameRelativeBase();
 				break;
+			}
 		}
 	}
 
@@ -551,14 +557,10 @@ void CGameClient::OnUpdate()
 
 	// handle key presses
 	Input()->ConsumeEvents([&](const IInput::CEvent &Event) {
+		m_Controls.SetCurrentEventMouseDelta(Event.m_MouseDelta);
 		OnInput(Event);
 	});
-
-	if(g_Config.m_ClSubTickAiming && m_Binds.m_MouseOnAction)
-	{
-		m_Controls.m_aMousePosOnAction[g_Config.m_ClDummy] = m_Controls.m_aMousePos[g_Config.m_ClDummy];
-		m_Binds.m_MouseOnAction = false;
-	}
+	m_Controls.SetCurrentEventMouseDelta(vec2(0.0f, 0.0f));
 
 	for(auto &pComponent : m_vpAll)
 	{
@@ -707,6 +709,8 @@ void CGameClient::OnReset()
 	m_LastNotifPos = vec2(0.0f, 0.0f);
 	m_NotifInitialized = false;
 	m_LastNotifTime = 0;
+
+	AcInputs::AX30_Reset();
 
 	// m_aDDNetVersionStr is initialized once in OnInit
 
@@ -1927,6 +1931,12 @@ void CGameClient::OnNewSnapshot(bool DummySwapped)
 
 	m_NewTick = true;
 
+	if(!DummySwapped && Client()->State() == IClient::STATE_ONLINE)
+	{
+		const int TickDelta = Client()->GameTick(g_Config.m_ClDummy) - Client()->PrevGameTick(g_Config.m_ClDummy);
+		AcInputs::AX30_UpdateSnapshotArrival(time_get(), time_freq(), TickDelta, Client()->GameTickSpeed());
+	}
+
 	ProcessEvents();
 
 	if(g_Config.m_DbgStress)
@@ -3010,12 +3020,29 @@ void CGameClient::OnPredict()
 
 	int FinalTickSelf = FinalTickRegular + FastInputTicksSelf; // the final tick for just our local tee
 	int FinalTickOthers = FinalTickRegular + FastInputTicksOthers; // the final tick for all other tees
-	int FinalTickMax = std::max(FinalTickSelf, FinalTickOthers);
+	const int LookaheadTicksSelf = (g_Config.m_AcInputs == AC_INPUTS_AX30 && FastInputTicksSelf > 0) ? 1 : 0;
+	const int LookaheadTicksOthers = (g_Config.m_AcInputs == AC_INPUTS_AX30 && FastInputTicksOthers > 0) ? 1 : 0;
+	int FinalTickMax = std::max(FinalTickSelf + LookaheadTicksSelf, FinalTickOthers + LookaheadTicksOthers);
 
 	int LocalTee = g_Config.m_ClDummy ^ m_IsDummySwapping;
 	int DummyTee = LocalTee ^ 1;
 
-	for(int Tick = Client()->GameTick(g_Config.m_ClDummy) + 1; Tick <= FinalTickMax; Tick++)
+	const int StartTick = Client()->GameTick(g_Config.m_ClDummy);
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		if(CCharacter *pChar = m_PredictedWorld.GetCharacterById(i))
+		{
+			if(PracticeActive && m_FastPractice.IsPracticeParticipant(i))
+				continue;
+			m_aClients[i].m_aPredPos[StartTick % 200] = pChar->Core()->m_Pos;
+			m_aClients[i].m_aPredVel[StartTick % 200] = pChar->Core()->m_Vel;
+			m_aClients[i].m_aPredHookPos[StartTick % 200] = pChar->Core()->m_HookPos;
+			m_aClients[i].m_aPredHookState[StartTick % 200] = pChar->Core()->m_HookState;
+			m_aClients[i].m_aPredTick[StartTick % 200] = StartTick;
+		}
+	}
+
+	for(int Tick = StartTick + 1; Tick <= FinalTickMax; Tick++)
 	{
 		// fetch the previous characters
 		if(Tick == FinalTickSelf)
@@ -3135,6 +3162,9 @@ void CGameClient::OnPredict()
 				if(PracticeActive && m_FastPractice.IsPracticeParticipant(i))
 					continue;
 				m_aClients[i].m_aPredPos[Tick % 200] = pChar->Core()->m_Pos;
+				m_aClients[i].m_aPredVel[Tick % 200] = pChar->Core()->m_Vel;
+				m_aClients[i].m_aPredHookPos[Tick % 200] = pChar->Core()->m_HookPos;
+				m_aClients[i].m_aPredHookState[Tick % 200] = pChar->Core()->m_HookState;
 				m_aClients[i].m_aPredTick[Tick % 200] = Tick;
 			}
 
@@ -3166,7 +3196,7 @@ void CGameClient::OnPredict()
 		}
 
 		// check if we want to trigger predicted airjump for dummy
-		if(AntiPingPlayers() && pDummyChar && Tick > m_aLastNewPredictedTick[!Dummy])
+		if(AntiPingPlayers() && pDummyChar && Tick > m_aLastNewPredictedTick[!Dummy] && (Tick <= FinalTickRegular))
 		{
 			m_aLastNewPredictedTick[!Dummy] = Tick;
 			vec2 Pos = pDummyChar->Core()->m_Pos;
@@ -3771,6 +3801,9 @@ void CGameClient::CClientData::Reset()
 	std::fill(std::begin(m_aSmoothStart), std::end(m_aSmoothStart), 0);
 	std::fill(std::begin(m_aSmoothLen), std::end(m_aSmoothLen), 0);
 	std::fill(std::begin(m_aPredPos), std::end(m_aPredPos), vec2(0.0f, 0.0f));
+	std::fill(std::begin(m_aPredVel), std::end(m_aPredVel), vec2(0.0f, 0.0f));
+	std::fill(std::begin(m_aPredHookPos), std::end(m_aPredHookPos), vec2(0.0f, 0.0f));
+	std::fill(std::begin(m_aPredHookState), std::end(m_aPredHookState), 0);
 	std::fill(std::begin(m_aPredTick), std::end(m_aPredTick), 0);
 	m_SpecCharPresent = false;
 	m_SpecChar = vec2(0.0f, 0.0f);
@@ -4548,6 +4581,9 @@ void CGameClient::UpdatePrediction()
 					if(m_FastPractice.IsPracticeParticipant(i))
 						continue;
 					m_aClients[i].m_aPredPos[Tick % 200] = pChar->Core()->m_Pos;
+					m_aClients[i].m_aPredVel[Tick % 200] = pChar->Core()->m_Vel;
+					m_aClients[i].m_aPredHookPos[Tick % 200] = pChar->Core()->m_HookPos;
+					m_aClients[i].m_aPredHookState[Tick % 200] = pChar->Core()->m_HookState;
 					m_aClients[i].m_aPredTick[Tick % 200] = Tick;
 				}
 		}
@@ -4578,13 +4614,17 @@ void CGameClient::UpdatePrediction()
 		}
 	}
 
+	const int CurGameTick = Client()->GameTick(g_Config.m_ClDummy);
 	for(int i = 0; i < MAX_CLIENTS; i++)
 		if(CCharacter *pChar = m_GameWorld.GetCharacterById(i))
 		{
 			if(m_FastPractice.IsPracticeParticipant(i))
 				continue;
-			m_aClients[i].m_aPredPos[Client()->GameTick(g_Config.m_ClDummy) % 200] = pChar->Core()->m_Pos;
-			m_aClients[i].m_aPredTick[Client()->GameTick(g_Config.m_ClDummy) % 200] = Client()->GameTick(g_Config.m_ClDummy);
+			m_aClients[i].m_aPredPos[CurGameTick % 200] = pChar->Core()->m_Pos;
+			m_aClients[i].m_aPredVel[CurGameTick % 200] = pChar->Core()->m_Vel;
+			m_aClients[i].m_aPredHookPos[CurGameTick % 200] = pChar->Core()->m_HookPos;
+			m_aClients[i].m_aPredHookState[CurGameTick % 200] = pChar->Core()->m_HookState;
+			m_aClients[i].m_aPredTick[CurGameTick % 200] = CurGameTick;
 		}
 
 	// update the local gameworld with the new snapshot
@@ -4752,6 +4792,8 @@ void CGameClient::UpdateSpectatorCursor()
 
 void CGameClient::UpdateRenderedCharacters()
 {
+	AcInputs::AX30_AdvanceFrame(Client()->RenderFrameTime());
+
 	const bool PracticeActive = m_FastPractice.Active();
 	const int PracticeControlledId = PracticeActive ? m_FastPractice.ControlledPracticeId() : -1;
 	const int PracticePartnerId = PracticeActive ? m_FastPractice.PartnerPracticeId() : -1;
@@ -5095,6 +5137,8 @@ vec2 CGameClient::GetFastInputPos(int ClientId)
 	AcInputs::ApplyOffset(FastInputOffsetTicks, PredTick, PredIntraTick);
 
 	const int MaxTick = Client()->PredGameTick(g_Config.m_ClDummy) + FastInputTicks;
+	const int LookaheadTicks = (g_Config.m_AcInputs == AC_INPUTS_AX30 && FastInputTicks > 0) ? 1 : 0;
+	const int MaxLookaheadTick = MaxTick + LookaheadTicks;
 	if(PredTick > 0 && PredTick <= MaxTick &&
 		m_aClients[ClientId].m_aPredTick[(PredTick - 1) % 200] == PredTick - 1 &&
 		m_aClients[ClientId].m_aPredTick[PredTick % 200] == PredTick)
@@ -5103,12 +5147,14 @@ vec2 CGameClient::GetFastInputPos(int ClientId)
 		{
 			const vec2 P0 = m_aClients[ClientId].m_aPredPos[(PredTick - 1) % 200];
 			const vec2 P1 = m_aClients[ClientId].m_aPredPos[PredTick % 200];
+			const vec2 Vel0 = m_aClients[ClientId].m_aPredVel[(PredTick - 1) % 200];
+			const vec2 Vel1 = m_aClients[ClientId].m_aPredVel[PredTick % 200];
 			const vec2 P_prev = (PredTick >= 2 && m_aClients[ClientId].m_aPredTick[(PredTick - 2) % 200] == PredTick - 2) ?
 				m_aClients[ClientId].m_aPredPos[(PredTick - 2) % 200] : P0;
-			const vec2 P_next = (PredTick + 1 <= MaxTick && m_aClients[ClientId].m_aPredTick[(PredTick + 1) % 200] == PredTick + 1) ?
+			const vec2 P_next = (PredTick + 1 <= MaxLookaheadTick && m_aClients[ClientId].m_aPredTick[(PredTick + 1) % 200] == PredTick + 1) ?
 				m_aClients[ClientId].m_aPredPos[(PredTick + 1) % 200] : P1;
 
-			Pos = AcInputs::AX30_EvaluateTrajectory(P_prev, P0, P1, P_next, PredIntraTick, g_Config.m_AcAX30Interpolation);
+			Pos = AcInputs::AX30_EvaluateTrajectory(P_prev, P0, P1, P_next, Vel0, Vel1, true, PredIntraTick, g_Config.m_AcAX30Interpolation);
 
 			if(g_Config.m_AcAX30CollisionClamp)
 			{
@@ -5122,6 +5168,62 @@ vec2 CGameClient::GetFastInputPos(int ClientId)
 	}
 
 	return Pos;
+}
+
+bool CGameClient::GetFastInputHookPos(int ClientId, vec2 &OutHookPos, bool &OutHookActive)
+{
+	if(ClientId < 0 || ClientId >= MAX_CLIENTS || !m_aClients[ClientId].m_IsPredicted)
+		return false;
+
+	if(m_FastPractice.Active() && m_FastPractice.IsPracticeParticipant(ClientId))
+		return false;
+
+	const bool IsLocalForFastInput = ClientId == m_Snap.m_LocalClientId || (PredictDummy() && ClientId == m_aLocalIds[!g_Config.m_ClDummy]);
+	if(g_Config.m_TcRemoveAnti && (IsLocalForFastInput || m_pClient->m_IsLocalFrozen))
+		return false;
+
+	const bool AllowedOthers = !IsLocalForFastInput &&
+				   AcInputs::AnyOthers() &&
+				   (!g_Config.m_AcFastInputOthersOnlyFrozen || IsPlayerFrozen(ClientId)) &&
+				   (AcInputs::ImmediateOthers() || !g_Config.m_TcAntiPingImproved);
+	if(!IsLocalForFastInput && !AllowedOthers)
+		return false;
+
+	const float FastInputOffsetTicks = IsLocalForFastInput ? AcInputs::EffectiveOffsetTicks(false) : AcInputs::EffectiveOffsetTicks(true);
+	const int FastInputTicks = IsLocalForFastInput ? AcInputs::PredictionTicks(FastInputOffsetTicks) : AcInputs::PredictionTicksOthers(FastInputOffsetTicks);
+	if(FastInputTicks <= 0)
+		return false;
+
+	float PredIntraTick = Client()->PredIntraGameTick(g_Config.m_ClDummy);
+	int PredTick = Client()->PredGameTick(g_Config.m_ClDummy);
+	AcInputs::ApplyOffset(FastInputOffsetTicks, PredTick, PredIntraTick);
+
+	const int MaxTick = Client()->PredGameTick(g_Config.m_ClDummy) + FastInputTicks;
+	if(PredTick <= 0 || PredTick > MaxTick ||
+		m_aClients[ClientId].m_aPredTick[(PredTick - 1) % 200] != PredTick - 1 ||
+		m_aClients[ClientId].m_aPredTick[PredTick % 200] != PredTick)
+		return false;
+
+	const int State0 = m_aClients[ClientId].m_aPredHookState[(PredTick - 1) % 200];
+	const int State1 = m_aClients[ClientId].m_aPredHookState[PredTick % 200];
+	if(State0 <= 0 && State1 <= 0)
+	{
+		OutHookActive = false;
+		OutHookPos = m_aClients[ClientId].m_RenderPos;
+		return true;
+	}
+
+	OutHookActive = true;
+	const vec2 H0 = (State0 > 0) ? m_aClients[ClientId].m_aPredHookPos[(PredTick - 1) % 200] : m_aClients[ClientId].m_aPredPos[(PredTick - 1) % 200];
+	const vec2 H1 = (State1 > 0) ? m_aClients[ClientId].m_aPredHookPos[PredTick % 200] : m_aClients[ClientId].m_aPredPos[PredTick % 200];
+	if(distance(H0, H1) > 350.0f)
+	{
+		OutHookPos = H1;
+		return true;
+	}
+
+	OutHookPos = mix(H0, H1, std::clamp(PredIntraTick, 0.0f, 1.0f));
+	return true;
 }
 vec2 CGameClient::GetFreezePos(int ClientId)
 {
@@ -5179,11 +5281,31 @@ vec2 CGameClient::GetFreezePos(int ClientId)
 	}
 
 	const int MaxTick = Client()->PredGameTick(g_Config.m_ClDummy) + FastInputTicks;
+	const int LookaheadTicks = (g_Config.m_AcInputs == AC_INPUTS_AX30 && ApplyFastInput && FastInputTicks > 0) ? 1 : 0;
+	const int MaxLookaheadTick = MaxTick + LookaheadTicks;
 	if(SmoothTick > 0 && SmoothTick <= MaxTick &&
 		m_aClients[ClientId].m_aPredTick[(SmoothTick - 1) % 200] == SmoothTick - 1 &&
 		m_aClients[ClientId].m_aPredTick[SmoothTick % 200] == SmoothTick)
 	{
-		Pos = AcInputs::BestInterpolate(m_aClients[ClientId].m_aPredPos[(SmoothTick - 1) % 200], m_aClients[ClientId].m_aPredPos[SmoothTick % 200], SmoothIntra, BestInputInterpolationEnabled);
+		if(g_Config.m_AcInputs == AC_INPUTS_AX30 && ApplyFastInput)
+		{
+			const vec2 P0 = m_aClients[ClientId].m_aPredPos[(SmoothTick - 1) % 200];
+			const vec2 P1 = m_aClients[ClientId].m_aPredPos[SmoothTick % 200];
+			const vec2 Vel0 = m_aClients[ClientId].m_aPredVel[(SmoothTick - 1) % 200];
+			const vec2 Vel1 = m_aClients[ClientId].m_aPredVel[SmoothTick % 200];
+			const vec2 P_prev = (SmoothTick >= 2 && m_aClients[ClientId].m_aPredTick[(SmoothTick - 2) % 200] == SmoothTick - 2) ?
+				m_aClients[ClientId].m_aPredPos[(SmoothTick - 2) % 200] : P0;
+			const vec2 P_next = (SmoothTick + 1 <= MaxLookaheadTick && m_aClients[ClientId].m_aPredTick[(SmoothTick + 1) % 200] == SmoothTick + 1) ?
+				m_aClients[ClientId].m_aPredPos[(SmoothTick + 1) % 200] : P1;
+
+			Pos = AcInputs::AX30_EvaluateTrajectory(P_prev, P0, P1, P_next, Vel0, Vel1, true, SmoothIntra, g_Config.m_AcAX30Interpolation);
+			if(g_Config.m_AcAX30CollisionClamp)
+				Pos = AcInputs::AX30_FilterBoundary(P0, Pos, Collision());
+		}
+		else
+		{
+			Pos = AcInputs::BestInterpolate(m_aClients[ClientId].m_aPredPos[(SmoothTick - 1) % 200], m_aClients[ClientId].m_aPredPos[SmoothTick % 200], SmoothIntra, BestInputInterpolationEnabled);
+		}
 	}
 
 	return Pos;
@@ -6224,6 +6346,11 @@ void CGameClient::StoreSave(const char *pTeamMembers, const char *pGeneratedCode
 bool CGameClient::CheckNewInput()
 {
 	return m_Controls.CheckNewInput();
+}
+
+void CGameClient::OnInputTimingSample(float RttMs, float InputMarginMs)
+{
+	AcInputs::AX30_UpdateNetworkTiming(RttMs, InputMarginMs);
 }
 
 void CGameClient::SetConnectInfo(const NETADDR *pAddress)

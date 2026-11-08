@@ -68,8 +68,6 @@ public:
 		bool OnInput(const IInput::CEvent &Event) override;
 	};
 
-	bool m_MouseOnAction;
-
 	CBindsSpecial m_SpecialBinds;
 
 	void Bind(int KeyId, const char *pStr, bool FreeOnly = false, int ModifierCombination = KeyModifier::NONE);

@@ -24,6 +24,7 @@ public:
 		int m_Flags;
 		int m_Key;
 		uint32_t m_InputCount;
+		vec2 m_MouseDelta = vec2(0.0f, 0.0f);
 		char m_aText[32]; // SDL_TEXTINPUTEVENT_TEXT_SIZE
 	};
 

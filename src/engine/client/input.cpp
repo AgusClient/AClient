@@ -51,6 +51,7 @@ void CInput::AddKeyEvent(int Key, int Flags)
 	Event.m_Flags = Flags;
 	Event.m_aText[0] = '\0';
 	Event.m_InputCount = m_InputCounter;
+	Event.m_MouseDelta = m_FrameMouseDelta;
 	m_vInputEvents.emplace_back(Event);
 
 	if(Flags & IInput::FLAG_PRESS)
@@ -290,6 +291,7 @@ bool CInput::MouseRelative(float *pX, float *pY)
 void CInput::MouseModeAbsolute()
 {
 	m_InputGrabbed = false;
+	m_FrameMouseDelta = vec2(0.0f, 0.0f);
 	SDL_SetRelativeMouseMode(SDL_FALSE);
 	Graphics()->SetWindowGrab(false);
 }
@@ -297,6 +299,7 @@ void CInput::MouseModeAbsolute()
 void CInput::MouseModeRelative()
 {
 	m_InputGrabbed = true;
+	m_FrameMouseDelta = vec2(0.0f, 0.0f);
 	SDL_SetRelativeMouseMode(SDL_TRUE);
 	Graphics()->SetWindowGrab(true);
 	// Clear pending relative mouse motion
@@ -386,6 +389,7 @@ void CInput::Clear()
 {
 	std::fill(std::begin(m_aFrameKeyStates), std::end(m_aFrameKeyStates), false);
 	m_vInputEvents.clear();
+	m_FrameMouseDelta = vec2(0.0f, 0.0f);
 	ClearTouchDeltas();
 }
 
@@ -749,6 +753,8 @@ int CInput::Update()
 	}
 #endif
 
+	m_FrameMouseDelta = vec2(0.0f, 0.0f);
+
 	while(SDL_PollEvent(&Event))
 	{
 		switch(Event.type)
@@ -805,7 +811,15 @@ int CInput::Update()
 			HandleJoystickRemovedEvent(Event.jdevice);
 			break;
 
-		// handle mouse buttons
+		// handle mouse motion & buttons
+		case SDL_MOUSEMOTION:
+			if(m_MouseFocus && m_InputGrabbed)
+			{
+				m_FrameMouseDelta.x += (float)Event.motion.xrel;
+				m_FrameMouseDelta.y += (float)Event.motion.yrel;
+			}
+			break;
+
 		case SDL_MOUSEBUTTONDOWN:
 			AddKeyEventChecked(TranslateMouseButtonEventKey(Event.button), IInput::FLAG_PRESS);
 			break;
@@ -857,11 +871,13 @@ int CInput::Update()
 					// Clear pending relative mouse motion
 					SDL_GetRelativeMouseState(nullptr, nullptr);
 				}
+				m_FrameMouseDelta = vec2(0.0f, 0.0f);
 				m_MouseFocus = true;
 				IgnoreKeys = true;
 				break;
 			case SDL_WINDOWEVENT_FOCUS_LOST:
 				std::fill(std::begin(m_aCurrentKeyStates), std::end(m_aCurrentKeyStates), false);
+				m_FrameMouseDelta = vec2(0.0f, 0.0f);
 				m_MouseFocus = false;
 				IgnoreKeys = true;
 				if(m_InputGrabbed)

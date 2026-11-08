@@ -409,6 +409,7 @@ public:
 	// TClient
 	virtual bool CheckNewInput() = 0;
 	virtual void SetConnectInfo(const NETADDR *pAddress) = 0;
+	virtual void OnInputTimingSample(float RttMs, float InputMarginMs) = 0;
 
 	virtual void OnConsoleInit() = 0;
 

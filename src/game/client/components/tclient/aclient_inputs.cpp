@@ -87,6 +87,15 @@ namespace
 
 		return Offset;
 	}
+
+	bool IsFreezeTileAt(const ::CCollision *pCollision, vec2 Pos)
+	{
+		const int MapIndex = pCollision->GetPureMapIndex(Pos);
+		const int Tile = pCollision->GetTileIndex(MapIndex);
+		const int FrontTile = pCollision->GetFrontTileIndex(MapIndex);
+		return Tile == TILE_FREEZE || Tile == TILE_DFREEZE || Tile == TILE_LFREEZE ||
+		       FrontTile == TILE_FREEZE || FrontTile == TILE_DFREEZE || FrontTile == TILE_LFREEZE;
+	}
 } // namespace
 
 static bool s_PracticeActive = false;
@@ -230,15 +239,45 @@ bool AcInputs::ImmediateOthers()
 	return BestOthers() || SaikoOthers() || DeltaOthers() || AX30Others();
 }
 
-vec2 AcInputs::AX30_EvaluateTrajectory(vec2 P_prev, vec2 P0, vec2 P1, vec2 P_next, float Fraction, int Mode)
+void AcInputs::AX30_Reset()
+{
+	aX30::Reset();
+}
+
+vec2 AcInputs::AX30_EvaluateTrajectory(vec2 P_prev, vec2 P0, vec2 P1, vec2 P_next, vec2 Vel0, vec2 Vel1, bool HasVel, float Fraction, int Mode)
 {
 	const float t = std::clamp(Fraction, 0.0f, 1.0f);
+	if(distance(P0, P1) > 320.0f)
+		return P1;
 	if(Mode == 2)
 		return mix(P0, P1, t);
 	if(Mode == 3)
-		return BestInterpolate(P0, P1, t, true);
+	{
+		const float SmoothT = t * t * (3.0f - 2.0f * t);
+		return mix(P0, P1, SmoothT);
+	}
 
-	return aX30::EvaluateTrajectory(P_prev, P0, P1, P_next, Fraction);
+	return aX30::EvaluateTrajectory(P_prev, P0, P1, P_next, Vel0, Vel1, HasVel, Fraction);
+}
+
+vec2 AcInputs::AX30_EvaluateTrajectory(vec2 P_prev, vec2 P0, vec2 P1, vec2 P_next, float Fraction, int Mode)
+{
+	return AX30_EvaluateTrajectory(P_prev, P0, P1, P_next, vec2(0.0f, 0.0f), vec2(0.0f, 0.0f), false, Fraction, Mode);
+}
+
+void AcInputs::AX30_UpdateNetworkTiming(float RttMs, float InputMarginMs)
+{
+	aX30::UpdateNetworkTiming(RttMs, InputMarginMs);
+}
+
+void AcInputs::AX30_UpdateSnapshotArrival(int64_t NowTicks, int64_t Freq, int TickDelta, int TickSpeed)
+{
+	aX30::UpdateSnapshotArrival(NowTicks, Freq, TickDelta, TickSpeed);
+}
+
+void AcInputs::AX30_AdvanceFrame(float FrameDeltaSeconds)
+{
+	aX30::AdvanceFrame(FrameDeltaSeconds);
 }
 
 void AcInputs::UpdatePingSample(int PingMs)
@@ -253,7 +292,7 @@ float AcInputs::AX30_GetAdaptiveLatencyOffset()
 
 vec2 AcInputs::AX30_FilterBoundary(vec2 P0, vec2 TargetPos, const ::CCollision *pCollision)
 {
-	if(!pCollision)
+	if(!pCollision || !pCollision->GameLayer() || pCollision->GetWidth() <= 0 || pCollision->GetHeight() <= 0)
 		return TargetPos;
 
 	if(std::isnan(P0.x) || std::isnan(P0.y) || std::isnan(TargetPos.x) || std::isnan(TargetPos.y) ||
@@ -261,24 +300,51 @@ vec2 AcInputs::AX30_FilterBoundary(vec2 P0, vec2 TargetPos, const ::CCollision *
 		return P0;
 
 	const float Dist = distance(P0, TargetPos);
-	if(Dist < 1.0f || Dist > 300.0f)
+	if(Dist < 0.25f || Dist > 300.0f)
 		return TargetPos;
 
+	constexpr vec2 TeeBox(28.0f, 28.0f);
+	const bool P0Solid = pCollision->TestBox(P0, TeeBox);
+	const bool P0Frozen = IsFreezeTileAt(pCollision, P0);
+
+	// Fast-path: check center-line wall crossing first
+	vec2 Candidate = TargetPos;
 	vec2 OutCollision, OutBefore;
-	if(pCollision->IntersectLine(P0, TargetPos, &OutCollision, &OutBefore))
+	if(!P0Solid && pCollision->IntersectLine(P0, Candidate, &OutCollision, &OutBefore))
+		Candidate = OutBefore;
+
+	const auto IsUnsafe = [&](vec2 Pos) -> bool {
+		if(!P0Solid && pCollision->TestBox(Pos, TeeBox))
+			return true;
+		if(!P0Frozen && IsFreezeTileAt(pCollision, Pos))
+			return true;
+		return false;
+	};
+
+	if(!IsUnsafe(Candidate))
+		return Candidate;
+
+	// Binary search along [P0, Candidate] for the furthest safe subtick position
+	// instead of snapping abruptly all the way back to P0 on wall/freeze grazing.
+	float Low = 0.0f;
+	float High = 1.0f;
+	vec2 SafePos = P0;
+	for(int Step = 0; Step < 6; ++Step)
 	{
-		TargetPos = OutBefore;
+		const float Mid = 0.5f * (Low + High);
+		const vec2 Probe = mix(P0, Candidate, Mid);
+		if(IsUnsafe(Probe))
+		{
+			High = Mid;
+		}
+		else
+		{
+			SafePos = Probe;
+			Low = Mid;
+		}
 	}
 
-	const int Tile = pCollision->GetCollisionAt(TargetPos.x, TargetPos.y);
-	const int FrontTile = pCollision->GetFrontCollisionAt(TargetPos.x, TargetPos.y);
-	if(Tile == TILE_FREEZE || Tile == TILE_DFREEZE || Tile == TILE_LFREEZE ||
-	   FrontTile == TILE_FREEZE || FrontTile == TILE_DFREEZE || FrontTile == TILE_LFREEZE)
-	{
-		return P0;
-	}
-
-	return TargetPos;
+	return SafePos;
 }
 
 bool AcInputs::IsActive()

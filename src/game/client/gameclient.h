@@ -612,6 +612,9 @@ public:
 		int64_t m_aSmoothStart[2];
 		int64_t m_aSmoothLen[2];
 		vec2 m_aPredPos[200];
+		vec2 m_aPredVel[200];
+		vec2 m_aPredHookPos[200];
+		int m_aPredHookState[200];
 		int m_aPredTick[200];
 		bool m_SpecCharPresent;
 		vec2 m_SpecChar;
@@ -934,6 +937,7 @@ public:
 	vec2 GetSmoothPos(int ClientId);
 	vec2 GetFreezePos(int ClientId);
 	vec2 GetFastInputPos(int ClientId);
+	bool GetFastInputHookPos(int ClientId, vec2 &OutHookPos, bool &OutHookActive);
 	bool IsPlayerFrozen(int ClientId) const;
 
 	int m_MultiViewTeam;
@@ -1036,6 +1040,7 @@ public:
 	int m_SmoothTick = 0;
 	float m_SmoothIntraTick = 0;
 	bool CheckNewInput() override;
+	void OnInputTimingSample(float RttMs, float InputMarginMs) override;
 	std::optional<CServerInfo> m_ConnectServerInfo = std::nullopt;
 	void SetConnectInfo(const NETADDR *pAddress) override;
 

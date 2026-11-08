@@ -2134,6 +2134,11 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket, int Conn, bool Dummy)
 			{
 				if(m_aInputs[Conn][k].m_Tick == InputPredTick)
 				{
+					if(Conn == g_Config.m_ClDummy && GameClient())
+					{
+						const float RttMs = (float)((Now - m_aInputs[Conn][k].m_Time) * 1000.0 / (double)time_freq());
+						GameClient()->OnInputTimingSample(RttMs, (float)TimeLeft);
+					}
 					Target = m_aInputs[Conn][k].m_PredictedTime + (Now - m_aInputs[Conn][k].m_Time);
 					if(g_Config.m_TcSmoothPredictionMargin)
 						Target = Target - (int64_t)((TimeLeft / 1000.0f) * time_freq()) + m_aInputs[Conn][k].m_PredictionMargin;

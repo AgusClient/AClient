@@ -498,7 +498,12 @@ void CPlayers::RenderHook(
 	int ClientId,
 	float Intra)
 {
-	if(pPlayerChar->m_HookState <= 0)
+	bool FastHookActive = false;
+	vec2 FastHookPos = vec2(0.0f, 0.0f);
+	const bool HasFastHook = in_range(ClientId, MAX_CLIENTS - 1) &&
+				 pPlayerChar->m_HookedPlayer < 0 &&
+				 GameClient()->GetFastInputHookPos(ClientId, FastHookPos, FastHookActive);
+	if(HasFastHook ? !FastHookActive : (pPlayerChar->m_HookState <= 0))
 		return;
 
 	CNetObj_Character Prev;
@@ -561,6 +566,8 @@ void CPlayers::RenderHook(
 			}
 		}
 	}
+	else if(HasFastHook)
+		HookPos = FastHookPos;
 	else
 		HookPos = mix(vec2(Prev.m_HookX, Prev.m_HookY), vec2(Player.m_HookX, Player.m_HookY), Intra);
 

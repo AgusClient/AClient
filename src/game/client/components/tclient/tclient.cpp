@@ -30,6 +30,24 @@ CTClient::CTClient()
 	OnReset();
 
 	// Fallback offline releases
+	CAClientRelease Rel271;
+	str_copy(Rel271.m_aTag, "v2.7.1", sizeof(Rel271.m_aTag));
+	str_copy(Rel271.m_aName, "AClient v2.7.1", sizeof(Rel271.m_aName));
+	str_copy(Rel271.m_aPublishedAt, "2026-11-07", sizeof(Rel271.m_aPublishedAt));
+	Rel271.m_Body =
+		"## Novedades de AClient v2.7.1\n\n"
+		"### Motor de Prediccion aX30 2.0 (Subticks, Trayectoria y Red)\n"
+		"- **Lookahead Real de +1 Tick (P_next) y StartTick**: La simulacion predictiva calcula un tick adicional futuro y registra el estado base del snapshot para alimentar una curva autentica de 4 puntos sin degradarse a cuadratica.\n"
+		"- **Hermite Cubica Monotona con Velocidad Fisica (Fritsch-Carlson)**: Combina tangentes geometricas con `m_Vel` real de `CCharacterCore` y recorte monotono sin rebote fantasma (overshoot) al frenar contra muros o techos.\n"
+		"- **Compensacion Adaptativa de Jitter por RTT Real (`NETMSG_INPUTTIMING`)**: Mide el RTT en nanosegundos, el margen de llegada al servidor (`TimeLeft`) y el jitter de llegada de snapshots (~50 Hz) con suavizado exponencial (`tau = 250ms`) y limitador de pendiente.\n"
+		"- **Filtro Volumetrico de Contorno (`TestBox 28x28` + Biseccion)**: Sustituye el chequeo puntual por la caja real del tee y busqueda binaria de 6 pasos para rozar paredes y bordes de freeze sin tirones hacia atras.\n"
+		"- **Gancho Sincronizado en Subticks (`GetFastInputHookPos`)**: Interpola `m_HookPos` y `m_HookState` en el mismo subtick exacto que `m_RenderPos`, eliminando el retraso visual de la cuerda.\n\n"
+		"### Sub-Tick Aiming Cronologico y Fast Input\n"
+		"- **Captura Cronologica Pre-Click en SDL**: Asocia el delta acumulado de `SDL_MOUSEMOTION` previo al clic dentro del mismo fotograma en `IInput::CEvent`, eliminando la contaminacion post-clic a altos Hz de raton.\n"
+		"- **Soporte Universal para Binds Compuestos y Macros**: Captura el flanco de subida directamente en `ConKeyInputState` (`+hook`) y `ConKeyInputCounter` (`+fire`), funcionando con cualquier bind compuesto o alias y respetando macros de angulo.\n"
+		"- **Cuantizacion Unificada y `cl_fast_input_others` Consistente**: Alinea el redondeo `round_to_int` de `TargetX/TargetY` y restringe el bloqueo de punteria en `CheckNewInput` unicamente al paquete con flanco de subida pendiente.";
+	m_vReleases.push_back(Rel271);
+
 	CAClientRelease Rel270;
 	str_copy(Rel270.m_aTag, "v2.7.0", sizeof(Rel270.m_aTag));
 	str_copy(Rel270.m_aName, "AClient v2.7.0", sizeof(Rel270.m_aName));

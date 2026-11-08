@@ -134,13 +134,6 @@ bool CBinds::OnInput(const IInput::CEvent &Event)
 		{
 			const auto &&OnKeyPress = [&](int Mask) {
 				const char *pBind = m_aapKeyBindings[Mask][Event.m_Key];
-				if(g_Config.m_ClSubTickAiming)
-				{
-					if(str_comp("+fire", pBind) == 0 || str_comp("+hook", pBind) == 0)
-					{
-						m_MouseOnAction = true;
-					}
-				}
 				Console()->ExecuteLineStroked(1, pBind, IConsole::CLIENT_ID_UNSPECIFIED);
 				m_vActiveBinds.emplace_back(Event.m_Key, Mask);
 			};
