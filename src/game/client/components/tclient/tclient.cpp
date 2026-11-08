@@ -30,6 +30,13 @@ CTClient::CTClient()
 	OnReset();
 
 	// Fallback offline releases
+	CAClientRelease Rel270;
+	str_copy(Rel270.m_aTag, "v2.7.0", sizeof(Rel270.m_aTag));
+	str_copy(Rel270.m_aName, "AClient v2.7.0", sizeof(Rel270.m_aName));
+	str_copy(Rel270.m_aPublishedAt, "2026-11-07", sizeof(Rel270.m_aPublishedAt));
+	Rel270.m_Body = "";
+	m_vReleases.push_back(Rel270);
+
 	CAClientRelease Rel269;
 	str_copy(Rel269.m_aTag, "v2.6.9", sizeof(Rel269.m_aTag));
 	str_copy(Rel269.m_aName, "AClient v2.6.9", sizeof(Rel269.m_aName));
