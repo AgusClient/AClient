@@ -71,6 +71,20 @@ namespace
 		return RawAmount / 100.0f;
 	}
 
+	float AClientModeOffsetTicks(bool ForOthers)
+	{
+		const int RawAmount = ForOthers ? g_Config.m_AcAClientInputOthersAmount : g_Config.m_AcAClientInputAmount;
+		if(RawAmount <= 0)
+			return 0.0f;
+
+		float Offset = RawAmount / 100.0f;
+
+		if(g_Config.m_AcAClientInputLatencyComp > 0)
+			Offset *= 1.0f + (g_Config.m_AcAClientInputLatencyComp / 100.0f);
+
+		return Offset;
+	}
+
 	float AX30ModeOffsetTicks(bool ForOthers)
 	{
 		const int RawAmount = ForOthers ? g_Config.m_AcAX30OthersAmount : g_Config.m_AcAX30InputAmount;
@@ -81,6 +95,23 @@ namespace
 
 		if(g_Config.m_AcAX30AdaptiveJitter)
 			Offset += AcInputs::AX30_GetAdaptiveLatencyOffset();
+
+		if(std::isnan(Offset) || std::isinf(Offset) || Offset <= 0.0f)
+			return 0.0f;
+
+		return Offset;
+	}
+
+	float AXv2ModeOffsetTicks(bool ForOthers)
+	{
+		const int RawAmount = ForOthers ? g_Config.m_AcAXv2OthersAmount : g_Config.m_AcAXv2InputAmount;
+		if(RawAmount <= 0)
+			return 0.0f;
+
+		float Offset = RawAmount / 100.0f;
+
+		if(g_Config.m_AcAXv2AdaptiveJitter)
+			Offset += AcInputs::AXv2_GetAdaptiveLatencyOffset();
 
 		if(std::isnan(Offset) || std::isinf(Offset) || Offset <= 0.0f)
 			return 0.0f;
@@ -127,7 +158,9 @@ float AcInputs::EffectiveOffsetTicks(bool ForOthers)
 	case AC_INPUTS_DELTA: return DeltaModeOffsetTicks(ForOthers);
 	case AC_INPUTS_F: return FModeOffsetTicks(ForOthers);
 	case AC_INPUTS_CLOUD: return CloudModeOffsetTicks(ForOthers);
+	case AC_INPUTS_ACLIENT: return AClientModeOffsetTicks(ForOthers);
 	case AC_INPUTS_AX30: return AX30ModeOffsetTicks(ForOthers);
+	case AC_INPUTS_AXV2: return AXv2ModeOffsetTicks(ForOthers);
 	case AC_INPUTS_OFF:
 	default:
 		if(g_Config.m_TcFastInput != 0)
@@ -171,7 +204,7 @@ float AcInputs::BestInterpolationAmount(float Fraction, float DeltaLength, bool 
 	const float T = std::clamp(Fraction, 0.0f, 1.0f);
 	const float T2 = T * T;
 	const float CubicT = 3.0f * T2 - 2.0f * T2 * T;
-	const int InterpMode = g_Config.m_AcBestInputInterpolation;
+	const int InterpMode = (g_Config.m_AcInputs == AC_INPUTS_ACLIENT) ? g_Config.m_AcAClientInputInterpolation : g_Config.m_AcBestInputInterpolation;
 	switch(std::clamp(InterpMode, 1, 3))
 	{
 	case 2:
@@ -224,27 +257,89 @@ bool AcInputs::CloudOthers()
 	return g_Config.m_AcInputs == AC_INPUTS_CLOUD && g_Config.m_AcCloudInputOthers != 0;
 }
 
+bool AcInputs::AClientOthers()
+{
+	return g_Config.m_AcInputs == AC_INPUTS_ACLIENT && g_Config.m_AcAClientInputOthers != 0;
+}
+
 bool AcInputs::AX30Others()
 {
 	return g_Config.m_AcInputs == AC_INPUTS_AX30 && g_Config.m_AcAX30Others != 0;
 }
 
+bool AcInputs::AXv2Others()
+{
+	return g_Config.m_AcInputs == AC_INPUTS_AXV2 && g_Config.m_AcAXv2Others != 0;
+}
+
 bool AcInputs::AnyOthers()
 {
-	return FastOthers() || BestOthers() || SaikoOthers() || DeltaOthers() || FOthers() || CloudOthers() || AX30Others();
+	return FastOthers() || BestOthers() || SaikoOthers() || DeltaOthers() || FOthers() || CloudOthers() || AClientOthers() || AX30Others() || AXv2Others();
 }
 
 bool AcInputs::ImmediateOthers()
 {
-	return BestOthers() || SaikoOthers() || DeltaOthers() || AX30Others();
+	return BestOthers() || SaikoOthers() || DeltaOthers() || AClientOthers() || AX30Others() || AXv2Others();
 }
 
-void AcInputs::AX30_Reset()
+// =========================================================================
+// aX30 Engine (Formula Original)
+// =========================================================================
+vec2 AcInputs::AX30_EvaluateTrajectory(vec2 P_prev, vec2 P0, vec2 P1, vec2 P_next, float Fraction, int Mode)
 {
-	aX30::Reset();
+	const float t = std::clamp(Fraction, 0.0f, 1.0f);
+	if(Mode == 2)
+		return mix(P0, P1, t);
+	if(Mode == 3)
+		return BestInterpolate(P0, P1, t, true);
+
+	return aX30::EvaluateTrajectory(P_prev, P0, P1, P_next, Fraction);
 }
 
-vec2 AcInputs::AX30_EvaluateTrajectory(vec2 P_prev, vec2 P0, vec2 P1, vec2 P_next, vec2 Vel0, vec2 Vel1, bool HasVel, float Fraction, int Mode)
+float AcInputs::AX30_GetAdaptiveLatencyOffset()
+{
+	return aX30::GetAdaptiveLatencyOffset();
+}
+
+vec2 AcInputs::AX30_FilterBoundary(vec2 P0, vec2 TargetPos, const ::CCollision *pCollision)
+{
+	if(!pCollision)
+		return TargetPos;
+
+	if(std::isnan(P0.x) || std::isnan(P0.y) || std::isnan(TargetPos.x) || std::isnan(TargetPos.y) ||
+	   std::isinf(P0.x) || std::isinf(P0.y) || std::isinf(TargetPos.x) || std::isinf(TargetPos.y))
+		return P0;
+
+	const float Dist = distance(P0, TargetPos);
+	if(Dist < 1.0f || Dist > 300.0f)
+		return TargetPos;
+
+	vec2 OutCollision, OutBefore;
+	if(pCollision->IntersectLine(P0, TargetPos, &OutCollision, &OutBefore))
+	{
+		TargetPos = OutBefore;
+	}
+
+	const int Tile = pCollision->GetCollisionAt(TargetPos.x, TargetPos.y);
+	const int FrontTile = pCollision->GetFrontCollisionAt(TargetPos.x, TargetPos.y);
+	if(Tile == TILE_FREEZE || Tile == TILE_DFREEZE || Tile == TILE_LFREEZE ||
+	   FrontTile == TILE_FREEZE || FrontTile == TILE_DFREEZE || FrontTile == TILE_LFREEZE)
+	{
+		return P0;
+	}
+
+	return TargetPos;
+}
+
+// =========================================================================
+// aXv2 Engine (aX30 2.0)
+// =========================================================================
+void AcInputs::AXv2_Reset()
+{
+	aX30v2::Reset();
+}
+
+vec2 AcInputs::AXv2_EvaluateTrajectory(vec2 P_prev, vec2 P0, vec2 P1, vec2 P_next, vec2 Vel0, vec2 Vel1, bool HasVel, float Fraction, int Mode)
 {
 	const float t = std::clamp(Fraction, 0.0f, 1.0f);
 	if(distance(P0, P1) > 320.0f)
@@ -257,40 +352,35 @@ vec2 AcInputs::AX30_EvaluateTrajectory(vec2 P_prev, vec2 P0, vec2 P1, vec2 P_nex
 		return mix(P0, P1, SmoothT);
 	}
 
-	return aX30::EvaluateTrajectory(P_prev, P0, P1, P_next, Vel0, Vel1, HasVel, Fraction);
+	return aX30v2::EvaluateTrajectory(P_prev, P0, P1, P_next, Vel0, Vel1, HasVel, Fraction);
 }
 
-vec2 AcInputs::AX30_EvaluateTrajectory(vec2 P_prev, vec2 P0, vec2 P1, vec2 P_next, float Fraction, int Mode)
+vec2 AcInputs::AXv2_EvaluateTrajectory(vec2 P_prev, vec2 P0, vec2 P1, vec2 P_next, float Fraction, int Mode)
 {
-	return AX30_EvaluateTrajectory(P_prev, P0, P1, P_next, vec2(0.0f, 0.0f), vec2(0.0f, 0.0f), false, Fraction, Mode);
+	return AXv2_EvaluateTrajectory(P_prev, P0, P1, P_next, vec2(0.0f, 0.0f), vec2(0.0f, 0.0f), false, Fraction, Mode);
 }
 
-void AcInputs::AX30_UpdateNetworkTiming(float RttMs, float InputMarginMs)
+void AcInputs::AXv2_UpdateNetworkTiming(float RttMs, float InputMarginMs)
 {
-	aX30::UpdateNetworkTiming(RttMs, InputMarginMs);
+	aX30v2::UpdateNetworkTiming(RttMs, InputMarginMs);
 }
 
-void AcInputs::AX30_UpdateSnapshotArrival(int64_t NowTicks, int64_t Freq, int TickDelta, int TickSpeed)
+void AcInputs::AXv2_UpdateSnapshotArrival(int64_t NowTicks, int64_t Freq, int TickDelta, int TickSpeed)
 {
-	aX30::UpdateSnapshotArrival(NowTicks, Freq, TickDelta, TickSpeed);
+	aX30v2::UpdateSnapshotArrival(NowTicks, Freq, TickDelta, TickSpeed);
 }
 
-void AcInputs::AX30_AdvanceFrame(float FrameDeltaSeconds)
+void AcInputs::AXv2_AdvanceFrame(float FrameDeltaSeconds)
 {
-	aX30::AdvanceFrame(FrameDeltaSeconds);
+	aX30v2::AdvanceFrame(FrameDeltaSeconds);
 }
 
-void AcInputs::UpdatePingSample(int PingMs)
+float AcInputs::AXv2_GetAdaptiveLatencyOffset()
 {
-	aX30::UpdatePingSample(PingMs);
+	return aX30v2::GetAdaptiveLatencyOffset();
 }
 
-float AcInputs::AX30_GetAdaptiveLatencyOffset()
-{
-	return aX30::GetAdaptiveLatencyOffset();
-}
-
-vec2 AcInputs::AX30_FilterBoundary(vec2 P0, vec2 TargetPos, const ::CCollision *pCollision)
+vec2 AcInputs::AXv2_FilterBoundary(vec2 P0, vec2 TargetPos, const ::CCollision *pCollision)
 {
 	if(!pCollision || !pCollision->GameLayer() || pCollision->GetWidth() <= 0 || pCollision->GetHeight() <= 0)
 		return TargetPos;
@@ -345,6 +435,40 @@ vec2 AcInputs::AX30_FilterBoundary(vec2 P0, vec2 TargetPos, const ::CCollision *
 	}
 
 	return SafePos;
+}
+
+// =========================================================================
+// Compatibility aliases / Common Forwarding
+// =========================================================================
+void AcInputs::AX30_Reset()
+{
+	aX30v2::Reset();
+}
+
+vec2 AcInputs::AX30_EvaluateTrajectory(vec2 P_prev, vec2 P0, vec2 P1, vec2 P_next, vec2 Vel0, vec2 Vel1, bool HasVel, float Fraction, int Mode)
+{
+	return AX30_EvaluateTrajectory(P_prev, P0, P1, P_next, Fraction, Mode);
+}
+
+void AcInputs::AX30_UpdateNetworkTiming(float RttMs, float InputMarginMs)
+{
+	aX30v2::UpdateNetworkTiming(RttMs, InputMarginMs);
+}
+
+void AcInputs::AX30_UpdateSnapshotArrival(int64_t NowTicks, int64_t Freq, int TickDelta, int TickSpeed)
+{
+	aX30v2::UpdateSnapshotArrival(NowTicks, Freq, TickDelta, TickSpeed);
+}
+
+void AcInputs::AX30_AdvanceFrame(float FrameDeltaSeconds)
+{
+	aX30v2::AdvanceFrame(FrameDeltaSeconds);
+}
+
+void AcInputs::UpdatePingSample(int PingMs)
+{
+	aX30::UpdatePingSample(PingMs);
+	aX30v2::UpdatePingSample(PingMs);
 }
 
 bool AcInputs::IsActive()

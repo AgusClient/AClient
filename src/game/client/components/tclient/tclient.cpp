@@ -30,6 +30,22 @@ CTClient::CTClient()
 	OnReset();
 
 	// Fallback offline releases
+	CAClientRelease Rel272;
+	str_copy(Rel272.m_aTag, "v2.7.2", sizeof(Rel272.m_aTag));
+	str_copy(Rel272.m_aName, "AClient v2.7.2", sizeof(Rel272.m_aName));
+	str_copy(Rel272.m_aPublishedAt, "2026-11-08", sizeof(Rel272.m_aPublishedAt));
+	Rel272.m_Body =
+		"## Novedades de AClient v2.7.2\n\n"
+		"### Selector Personalizable de Modos de Fast Input\n"
+		"- **Panel de Visibilidad Dinamico**: Permite seleccionar exactamente que modos de input se muestran en la barra principal mediante el icono de lapiz.\n"
+		"- **Distribucion Autoajustable**: Distribuye dinamicamente el ancho de los botones segun la cantidad de modos visibles.\n\n"
+		"### Coexistencia aX30 (Original) y aXv2 (Version 2.0)\n"
+		"- **aX30 (Formula Clasica)**: Retorna la formula original Catmull-Rom con Horner y filtro clasico.\n"
+		"- **aXv2 (Motor Avanzado)**: Motor 2.0 con Hermite cubica monotona (Fritsch-Carlson), blend de velocidad fisica, analisis RTT y clamp volumetrico subtick.\n"
+		"- **Modo AClient (Fallback)**: Formula directa 1:1 activable desde el menu de seleccion visible.\n"
+		"- **Ajustes y Sliders Independientes**: Cada modo conserva sus valores y toggles de manera aislada.";
+	m_vReleases.push_back(Rel272);
+
 	CAClientRelease Rel271;
 	str_copy(Rel271.m_aTag, "v2.7.1", sizeof(Rel271.m_aTag));
 	str_copy(Rel271.m_aName, "AClient v2.7.1", sizeof(Rel271.m_aName));

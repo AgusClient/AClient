@@ -73,7 +73,15 @@ MACRO_CONFIG_INT(AcOptimizerHighPriority, ac_optimizer_high_priority, 0, 0, 1, C
 
 // Fast Input Prediction Modes & Amounts
 MACRO_CONFIG_INT(AcConfigVersion, ac_config_version, 0, 0, 10, CFGFLAG_CLIENT | CFGFLAG_SAVE, "AClient default configuration version")
-MACRO_CONFIG_INT(AcInputs, ac_inputs, 8, 0, 8, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Input prediction mode (0 = off, 1 = fast, 2 = best, 3 = saiko, 4 = delta, 5 = f, 6 = cloud, 8 = ax30)")
+MACRO_CONFIG_INT(AcInputs, ac_inputs, 8, 0, 9, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Input prediction mode (0 = off, 1 = fast, 2 = best, 3 = saiko, 4 = delta, 5 = f, 6 = cloud, 7 = aclient, 8 = ax30, 9 = axv2)")
+MACRO_CONFIG_INT(AcInputsVisibleMask, ac_inputs_visible_mask, 895, 0, 1023, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Bitmask of visible input modes in settings selector")
+
+// AClient Mode (Fallback Linear Formula)
+MACRO_CONFIG_INT(AcAClientInputAmount, ac_aclient_input_amount, 100, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "AClient input prediction amount in 0.01 ticks")
+MACRO_CONFIG_INT(AcAClientInputLatencyComp, ac_aclient_input_latency_comp, 0, 0, 50, CFGFLAG_CLIENT | CFGFLAG_SAVE, "AClient input latency compensation (0-50%)")
+MACRO_CONFIG_INT(AcAClientInputInterpolation, ac_aclient_input_interpolation, 1, 1, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "AClient input interpolation mode (1 = linear, 2 = cubic, 3 = smooth)")
+MACRO_CONFIG_INT(AcAClientInputOthers, ac_aclient_input_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply AClient input to other tees")
+MACRO_CONFIG_INT(AcAClientInputOthersAmount, ac_aclient_input_others_amount, 100, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "AClient input prediction amount for other tees in 0.01 ticks")
 
 // aX30 Mode
 MACRO_CONFIG_INT(AcAX30InputAmount, ac_ax30_input_amount, 100, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aX30 prediction offset in 0.01 ticks")
@@ -82,6 +90,14 @@ MACRO_CONFIG_INT(AcAX30CollisionClamp, ac_ax30_collision_clamp, 0, 0, 1, CFGFLAG
 MACRO_CONFIG_INT(AcAX30Interpolation, ac_ax30_interpolation, 1, 1, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aX30 motion profile preset (1-3)")
 MACRO_CONFIG_INT(AcAX30Others, ac_ax30_others, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply aX30 to other players")
 MACRO_CONFIG_INT(AcAX30OthersAmount, ac_ax30_others_amount, 100, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aX30 prediction offset for other players in 0.01 ticks")
+
+// aXv2 Mode (aX30 v2)
+MACRO_CONFIG_INT(AcAXv2InputAmount, ac_axv2_input_amount, 100, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aXv2 prediction offset in 0.01 ticks")
+MACRO_CONFIG_INT(AcAXv2AdaptiveJitter, ac_axv2_adaptive_jitter, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aXv2 adaptive latency compensation")
+MACRO_CONFIG_INT(AcAXv2CollisionClamp, ac_axv2_collision_clamp, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aXv2 boundary safety filter")
+MACRO_CONFIG_INT(AcAXv2Interpolation, ac_axv2_interpolation, 1, 1, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aXv2 motion profile preset (1-3)")
+MACRO_CONFIG_INT(AcAXv2Others, ac_axv2_others, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply aXv2 to other players")
+MACRO_CONFIG_INT(AcAXv2OthersAmount, ac_axv2_others_amount, 100, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "aXv2 prediction offset for other players in 0.01 ticks")
 
 
 // Fast Mode

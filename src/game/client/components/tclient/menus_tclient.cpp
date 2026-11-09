@@ -3885,7 +3885,7 @@ void CMenus::RenderSettingsAClientCommands(CUIRect MainView)
 	Ui()->DoLabel(&Label, TCLocalize("Fast Input & Prediction"), HeadlineFontSize, TEXTALIGN_ML);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
-	DrawCommandCard(Column, "ac_inputs [0-8]", TCLocalize("Prediction mode: 0=Off, 1=Fast, 2=Best, 3=Saiko, 4=Delta, 5=F, 6=Cloud, 7=AClient, 8=aX30."));
+	DrawCommandCard(Column, "ac_inputs [0-9]", TCLocalize("Prediction mode: 0=Off, 1=Fast, 2=Best, 3=Saiko, 4=Delta, 5=F, 6=Cloud, 7=AClient, 8=aX30, 9=aXv2."));
 	DrawCommandCard(Column, "cl_prediction_margin [-50 to 50]", TCLocalize("Prediction margin in ms (Anti-lag tool)."));
 	DrawCommandCard(Column, "ac_ax30_input_amount / others", TCLocalize("Prediction offset in 0.01 ticks for aX30 mode."));
 	DrawCommandCard(Column, "ac_ax30_adaptive_jitter [0|1]", TCLocalize("Adaptive latency compensation for aX30."));
@@ -4034,22 +4034,130 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	Column.HSplitTop(LineSize, &Label, &Column);
+	CUIRect PencilBtn;
+	Label.VSplitRight(Label.h, &Label, &PencilBtn);
 	Ui()->DoLabel(&Label, TCLocalize("Fast Input Mode:"), Label.h * CUi::ms_FontmodHeight * 0.8f, TEXTALIGN_ML);
+
+	static bool s_ShowInputVisibilityEdit = false;
+	static CButtonContainer s_PencilBtnContainer;
+	if(Ui()->DoButton_FontIcon(&s_PencilBtnContainer, FontIcon::PENCIL, s_ShowInputVisibilityEdit ? 1 : 0, &PencilBtn, BUTTONFLAG_LEFT))
+	{
+		s_ShowInputVisibilityEdit = !s_ShowInputVisibilityEdit;
+	}
+
+	struct SInputDef
+	{
+		const char *m_pName;
+		int m_Value;
+	};
+	static const SInputDef s_aAllDefs[] = {
+		{"Off", AC_INPUTS_OFF},
+		{"aX30", AC_INPUTS_AX30},
+		{"aXv2", AC_INPUTS_AXV2},
+		{"AClient", AC_INPUTS_ACLIENT},
+		{"Fast", AC_INPUTS_FAST},
+		{"Best", AC_INPUTS_BEST},
+		{"Saiko", AC_INPUTS_SAIKO},
+		{"Delta", AC_INPUTS_DELTA},
+		{"F", AC_INPUTS_F},
+		{"Cloud", AC_INPUTS_CLOUD},
+	};
+
+	if(s_ShowInputVisibilityEdit)
+	{
+		CUIRect EditPanel;
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize * 3.6f, &EditPanel, &Column);
+		EditPanel.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.40f), IGraphics::CORNER_ALL, 6.0f);
+		CUIRect InnerPanel = EditPanel;
+		InnerPanel.Margin(6.0f, &InnerPanel);
+
+		CUIRect PanelTitle;
+		InnerPanel.HSplitTop(LineSize * 0.8f, &PanelTitle, &InnerPanel);
+		Ui()->DoLabel(&PanelTitle, TCLocalize("Select visible inputs:"), PanelTitle.h * 0.85f, TEXTALIGN_ML);
+
+		InnerPanel.HSplitTop(4.0f, nullptr, &InnerPanel);
+
+		static CButtonContainer s_aVisibilityToggleButtons[10];
+
+		CUIRect Row1, Row2;
+		InnerPanel.HSplitTop((InnerPanel.h - 3.0f) * 0.5f, &Row1, &InnerPanel);
+		InnerPanel.HSplitTop(3.0f, nullptr, &Row2);
+
+		const float Spacing = 3.0f;
+		const float W = (Row1.w - Spacing * 4.0f) / 5.0f;
+		for(int i = 0; i < 5; ++i)
+		{
+			CUIRect B;
+			if(i < 4)
+			{
+				Row1.VSplitLeft(W, &B, &Row1);
+				Row1.VSplitLeft(Spacing, nullptr, &Row1);
+			}
+			else
+				B = Row1;
+
+			const int ModeVal = s_aAllDefs[i].m_Value;
+			const bool IsVisible = (g_Config.m_AcInputsVisibleMask & (1 << ModeVal)) != 0;
+			if(DoButton_Menu(&s_aVisibilityToggleButtons[ModeVal], TCLocalize(s_aAllDefs[i].m_pName), IsVisible, &B, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL))
+			{
+				g_Config.m_AcInputsVisibleMask ^= (1 << ModeVal);
+				if((g_Config.m_AcInputsVisibleMask & 0x3FF) == 0)
+					g_Config.m_AcInputsVisibleMask = (1 << ModeVal);
+			}
+		}
+
+		for(int i = 5; i < 10; ++i)
+		{
+			CUIRect B;
+			if(i < 9)
+			{
+				Row2.VSplitLeft(W, &B, &Row2);
+				Row2.VSplitLeft(Spacing, nullptr, &Row2);
+			}
+			else
+				B = Row2;
+
+			const int ModeVal = s_aAllDefs[i].m_Value;
+			const bool IsVisible = (g_Config.m_AcInputsVisibleMask & (1 << ModeVal)) != 0;
+			if(DoButton_Menu(&s_aVisibilityToggleButtons[ModeVal], TCLocalize(s_aAllDefs[i].m_pName), IsVisible, &B, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL))
+			{
+				g_Config.m_AcInputsVisibleMask ^= (1 << ModeVal);
+				if((g_Config.m_AcInputsVisibleMask & 0x3FF) == 0)
+					g_Config.m_AcInputsVisibleMask = (1 << ModeVal);
+			}
+		}
+	}
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	Column.HSplitTop(LineSize, &Button, &Column);
 	{
-		static CButtonContainer s_aInputButtons[8];
-		static const char *s_apInputNames[] = {"Off", "aX30", "Fast", "Best", "Saiko", "Delta", "F", "Cloud"};
-		static const int s_aInputValues[] = {AC_INPUTS_OFF, AC_INPUTS_AX30, AC_INPUTS_FAST, AC_INPUTS_BEST, AC_INPUTS_SAIKO, AC_INPUTS_DELTA, AC_INPUTS_F, AC_INPUTS_CLOUD};
+		static CButtonContainer s_aInputButtons[10];
+
+		SInputDef aShownDefs[10];
+		int NumShown = 0;
+		for(const auto &Def : s_aAllDefs)
+		{
+			if(g_Config.m_AcInputsVisibleMask & (1 << Def.m_Value))
+			{
+				aShownDefs[NumShown++] = Def;
+			}
+		}
+		if(NumShown == 0)
+		{
+			aShownDefs[0] = s_aAllDefs[0];
+			aShownDefs[1] = s_aAllDefs[1];
+			aShownDefs[2] = s_aAllDefs[2];
+			NumShown = 3;
+		}
 
 		CUIRect ButtonsRect = Button;
 		const float Spacing = 2.0f;
-		const float ModeButtonWidth = (ButtonsRect.w - Spacing * 7.0f) / 8.0f;
-		for(int i = 0; i < 8; ++i)
+		const float ModeButtonWidth = (ButtonsRect.w - Spacing * (NumShown - 1)) / (float)NumShown;
+		for(int i = 0; i < NumShown; ++i)
 		{
 			CUIRect ModeButton;
-			if(i < 7)
+			if(i < NumShown - 1)
 			{
 				ButtonsRect.VSplitLeft(ModeButtonWidth, &ModeButton, &ButtonsRect);
 				ButtonsRect.VSplitLeft(Spacing, nullptr, &ButtonsRect);
@@ -4057,16 +4165,15 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 			else
 				ModeButton = ButtonsRect;
 
-			int Corners = (i == 0) ? IGraphics::CORNER_L : ((i == 7) ? IGraphics::CORNER_R : IGraphics::CORNER_NONE);
+		int Corners = (NumShown == 1) ? IGraphics::CORNER_ALL : ((i == 0) ? IGraphics::CORNER_L : ((i == NumShown - 1) ? IGraphics::CORNER_R : IGraphics::CORNER_NONE));
 
-			if(DoButton_Menu(&s_aInputButtons[i], TCLocalize(s_apInputNames[i]), g_Config.m_AcInputs == s_aInputValues[i], &ModeButton, BUTTONFLAG_LEFT, nullptr, Corners))
+			if(DoButton_Menu(&s_aInputButtons[aShownDefs[i].m_Value], TCLocalize(aShownDefs[i].m_pName), g_Config.m_AcInputs == aShownDefs[i].m_Value, &ModeButton, BUTTONFLAG_LEFT, nullptr, Corners))
 			{
-				g_Config.m_AcInputs = s_aInputValues[i];
+				g_Config.m_AcInputs = aShownDefs[i].m_Value;
 				g_Config.m_TcFastInput = (g_Config.m_AcInputs != AC_INPUTS_OFF) ? 1 : 0;
 			}
 		}
 	}
-
 	if(g_Config.m_AcInputs == AC_INPUTS_AX30)
 	{
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
@@ -4116,6 +4223,108 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		{
 			Column.HSplitTop(LineSize, &Button, &Column);
 			DoTickAmountSlider(&g_Config.m_AcAX30OthersAmount, &Button, TCLocalize("Others offset"), 0, 1000);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcFastInputOthersOnlyFrozen, TCLocalize("Only when frozen"), &g_Config.m_AcFastInputOthersOnlyFrozen, &Column, LineSize);
+		}
+	}
+	else if(g_Config.m_AcInputs == AC_INPUTS_AXV2)
+	{
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		DoTickAmountSlider(&g_Config.m_AcAXv2InputAmount, &Button, TCLocalize("Prediction offset"), 0, 1000);
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcAXv2AdaptiveJitter, TCLocalize("Compensacion adaptativa inteligente"), &g_Config.m_AcAXv2AdaptiveJitter, &Column, LineSize);
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcAXv2CollisionClamp, TCLocalize("Filtro de seguridad de bordes"), &g_Config.m_AcAXv2CollisionClamp, &Column, LineSize);
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Label, &Column);
+		Ui()->DoLabel(&Label, TCLocalize("Interpolation"), Label.h * CUi::ms_FontmodHeight * 0.8f, TEXTALIGN_ML);
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		{
+			static CButtonContainer s_aAXv2InterpolationButtons[3];
+			static const char *s_apInterpolationNames[] = {"HE", "Linear (1:1)", "Cubic"};
+			static const int s_aInterpolationValues[] = {1, 2, 3};
+
+			CUIRect ButtonsRect = Button;
+			const float Spacing = 2.0f;
+			const float InterpWidth = (ButtonsRect.w - Spacing * 2.0f) / 3.0f;
+			for(int i = 0; i < 3; ++i)
+			{
+				CUIRect InterpButton;
+				if(i < 2)
+				{
+					ButtonsRect.VSplitLeft(InterpWidth, &InterpButton, &ButtonsRect);
+					ButtonsRect.VSplitLeft(Spacing, nullptr, &ButtonsRect);
+				}
+				else
+					InterpButton = ButtonsRect;
+
+				int Corners = (i == 0) ? IGraphics::CORNER_L : ((i == 2) ? IGraphics::CORNER_R : IGraphics::CORNER_NONE);
+				if(DoButton_Menu(&s_aAXv2InterpolationButtons[i], TCLocalize(s_apInterpolationNames[i]), g_Config.m_AcAXv2Interpolation == s_aInterpolationValues[i], &InterpButton, BUTTONFLAG_LEFT, nullptr, Corners))
+					g_Config.m_AcAXv2Interpolation = s_aInterpolationValues[i];
+			}
+		}
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcAXv2Others, TCLocalize("aXv2 input others"), &g_Config.m_AcAXv2Others, &Column, LineSize);
+		if(g_Config.m_AcAXv2Others)
+		{
+			Column.HSplitTop(LineSize, &Button, &Column);
+			DoTickAmountSlider(&g_Config.m_AcAXv2OthersAmount, &Button, TCLocalize("Others offset"), 0, 1000);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcFastInputOthersOnlyFrozen, TCLocalize("Only when frozen"), &g_Config.m_AcFastInputOthersOnlyFrozen, &Column, LineSize);
+		}
+	}
+	else if(g_Config.m_AcInputs == AC_INPUTS_ACLIENT)
+	{
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		DoTickAmountSlider(&g_Config.m_AcAClientInputAmount, &Button, TCLocalize("Prediction offset"), 0, 1000);
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		Ui()->DoScrollbarOption(&g_Config.m_AcAClientInputLatencyComp, &g_Config.m_AcAClientInputLatencyComp, &Button, TCLocalize("Latency compensation"), 0, 50, &CUi::ms_LinearScrollbarScale, 0, "%");
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Label, &Column);
+		Ui()->DoLabel(&Label, TCLocalize("Interpolation"), Label.h * CUi::ms_FontmodHeight * 0.8f, TEXTALIGN_ML);
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		{
+			static CButtonContainer s_aAClientInterpolationButtons[3];
+			static const char *s_apInterpolationNames[] = {"Linear", "Cubic", "Smooth"};
+			static const int s_aInterpolationValues[] = {1, 2, 3};
+
+			CUIRect ButtonsRect = Button;
+			const float Spacing = 2.0f;
+			const float InterpWidth = (ButtonsRect.w - Spacing * 2.0f) / 3.0f;
+			for(int i = 0; i < 3; ++i)
+			{
+				CUIRect InterpButton;
+				if(i < 2)
+				{
+					ButtonsRect.VSplitLeft(InterpWidth, &InterpButton, &ButtonsRect);
+					ButtonsRect.VSplitLeft(Spacing, nullptr, &ButtonsRect);
+				}
+				else
+					InterpButton = ButtonsRect;
+
+				int Corners = (i == 0) ? IGraphics::CORNER_L : ((i == 2) ? IGraphics::CORNER_R : IGraphics::CORNER_NONE);
+				if(DoButton_Menu(&s_aAClientInterpolationButtons[i], TCLocalize(s_apInterpolationNames[i]), g_Config.m_AcAClientInputInterpolation == s_aInterpolationValues[i], &InterpButton, BUTTONFLAG_LEFT, nullptr, Corners))
+					g_Config.m_AcAClientInputInterpolation = s_aInterpolationValues[i];
+			}
+		}
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcAClientInputOthers, TCLocalize("AClient input others"), &g_Config.m_AcAClientInputOthers, &Column, LineSize);
+		if(g_Config.m_AcAClientInputOthers)
+		{
+			Column.HSplitTop(LineSize, &Button, &Column);
+			DoTickAmountSlider(&g_Config.m_AcAClientInputOthersAmount, &Button, TCLocalize("Others offset"), 0, 1000);
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcFastInputOthersOnlyFrozen, TCLocalize("Only when frozen"), &g_Config.m_AcFastInputOthersOnlyFrozen, &Column, LineSize);
 		}
 	}

@@ -3020,8 +3020,8 @@ void CGameClient::OnPredict()
 
 	int FinalTickSelf = FinalTickRegular + FastInputTicksSelf; // the final tick for just our local tee
 	int FinalTickOthers = FinalTickRegular + FastInputTicksOthers; // the final tick for all other tees
-	const int LookaheadTicksSelf = (g_Config.m_AcInputs == AC_INPUTS_AX30 && FastInputTicksSelf > 0) ? 1 : 0;
-	const int LookaheadTicksOthers = (g_Config.m_AcInputs == AC_INPUTS_AX30 && FastInputTicksOthers > 0) ? 1 : 0;
+	const int LookaheadTicksSelf = ((g_Config.m_AcInputs == AC_INPUTS_AX30 || g_Config.m_AcInputs == AC_INPUTS_AXV2) && FastInputTicksSelf > 0) ? 1 : 0;
+	const int LookaheadTicksOthers = ((g_Config.m_AcInputs == AC_INPUTS_AX30 || g_Config.m_AcInputs == AC_INPUTS_AXV2) && FastInputTicksOthers > 0) ? 1 : 0;
 	int FinalTickMax = std::max(FinalTickSelf + LookaheadTicksSelf, FinalTickOthers + LookaheadTicksOthers);
 
 	int LocalTee = g_Config.m_ClDummy ^ m_IsDummySwapping;
@@ -5088,7 +5088,7 @@ vec2 CGameClient::GetSmoothPos(int ClientId)
 	const float FastInputOffsetTicks = IsLocal ? AcInputs::EffectiveOffsetTicks(false) : (AllowedOthers ? AcInputs::EffectiveOffsetTicks(true) : 0.0f);
 	const int FastInputTicks = IsLocal ? AcInputs::PredictionTicks(FastInputOffsetTicks) : (AllowedOthers ? AcInputs::PredictionTicksOthers(FastInputOffsetTicks) : 0);
 	const bool FastInputOthers = AllowedOthers && AcInputs::AnyOthers();
-	const bool BestInputInterpolationEnabled = (g_Config.m_AcInputs == AC_INPUTS_BEST || g_Config.m_AcInputs == AC_INPUTS_AX30) && FastInputTicks > 0 && (IsLocal || FastInputOthers);
+	const bool BestInputInterpolationEnabled = (g_Config.m_AcInputs == AC_INPUTS_BEST || g_Config.m_AcInputs == AC_INPUTS_ACLIENT || g_Config.m_AcInputs == AC_INPUTS_AX30 || g_Config.m_AcInputs == AC_INPUTS_AXV2) && FastInputTicks > 0 && (IsLocal || FastInputOthers);
 	if(!IsLocal && FastInputTicks > 0 && AcInputs::ImmediateOthers())
 		return GetFastInputPos(ClientId);
 
@@ -5133,17 +5133,33 @@ vec2 CGameClient::GetFastInputPos(int ClientId)
 	const bool AllowedOthers = !IsLocalForFastInput && (!g_Config.m_AcFastInputOthersOnlyFrozen || IsPlayerFrozen(ClientId));
 	const float FastInputOffsetTicks = IsLocalForFastInput ? AcInputs::EffectiveOffsetTicks(false) : (AllowedOthers ? AcInputs::EffectiveOffsetTicks(true) : 0.0f);
 	const int FastInputTicks = IsLocalForFastInput ? AcInputs::PredictionTicks(FastInputOffsetTicks) : (AllowedOthers ? AcInputs::PredictionTicksOthers(FastInputOffsetTicks) : 0);
-	const bool BestInputInterpolationEnabled = (g_Config.m_AcInputs == AC_INPUTS_BEST || g_Config.m_AcInputs == AC_INPUTS_AX30) && FastInputTicks > 0;
+	const bool BestInputInterpolationEnabled = (g_Config.m_AcInputs == AC_INPUTS_BEST || g_Config.m_AcInputs == AC_INPUTS_ACLIENT || g_Config.m_AcInputs == AC_INPUTS_AX30 || g_Config.m_AcInputs == AC_INPUTS_AXV2) && FastInputTicks > 0;
 	AcInputs::ApplyOffset(FastInputOffsetTicks, PredTick, PredIntraTick);
 
 	const int MaxTick = Client()->PredGameTick(g_Config.m_ClDummy) + FastInputTicks;
-	const int LookaheadTicks = (g_Config.m_AcInputs == AC_INPUTS_AX30 && FastInputTicks > 0) ? 1 : 0;
+	const int LookaheadTicks = ((g_Config.m_AcInputs == AC_INPUTS_AX30 || g_Config.m_AcInputs == AC_INPUTS_AXV2) && FastInputTicks > 0) ? 1 : 0;
 	const int MaxLookaheadTick = MaxTick + LookaheadTicks;
 	if(PredTick > 0 && PredTick <= MaxTick &&
 		m_aClients[ClientId].m_aPredTick[(PredTick - 1) % 200] == PredTick - 1 &&
 		m_aClients[ClientId].m_aPredTick[PredTick % 200] == PredTick)
 	{
 		if(g_Config.m_AcInputs == AC_INPUTS_AX30)
+		{
+			const vec2 P0 = m_aClients[ClientId].m_aPredPos[(PredTick - 1) % 200];
+			const vec2 P1 = m_aClients[ClientId].m_aPredPos[PredTick % 200];
+			const vec2 P_prev = (PredTick >= 2 && m_aClients[ClientId].m_aPredTick[(PredTick - 2) % 200] == PredTick - 2) ?
+				m_aClients[ClientId].m_aPredPos[(PredTick - 2) % 200] : P0;
+			const vec2 P_next = (PredTick + 1 <= MaxLookaheadTick && m_aClients[ClientId].m_aPredTick[(PredTick + 1) % 200] == PredTick + 1) ?
+				m_aClients[ClientId].m_aPredPos[(PredTick + 1) % 200] : P1;
+
+			Pos = AcInputs::AX30_EvaluateTrajectory(P_prev, P0, P1, P_next, PredIntraTick, g_Config.m_AcAX30Interpolation);
+
+			if(g_Config.m_AcAX30CollisionClamp)
+			{
+				Pos = AcInputs::AX30_FilterBoundary(P0, Pos, Collision());
+			}
+		}
+		else if(g_Config.m_AcInputs == AC_INPUTS_AXV2)
 		{
 			const vec2 P0 = m_aClients[ClientId].m_aPredPos[(PredTick - 1) % 200];
 			const vec2 P1 = m_aClients[ClientId].m_aPredPos[PredTick % 200];
@@ -5154,11 +5170,11 @@ vec2 CGameClient::GetFastInputPos(int ClientId)
 			const vec2 P_next = (PredTick + 1 <= MaxLookaheadTick && m_aClients[ClientId].m_aPredTick[(PredTick + 1) % 200] == PredTick + 1) ?
 				m_aClients[ClientId].m_aPredPos[(PredTick + 1) % 200] : P1;
 
-			Pos = AcInputs::AX30_EvaluateTrajectory(P_prev, P0, P1, P_next, Vel0, Vel1, true, PredIntraTick, g_Config.m_AcAX30Interpolation);
+			Pos = AcInputs::AXv2_EvaluateTrajectory(P_prev, P0, P1, P_next, Vel0, Vel1, true, PredIntraTick, g_Config.m_AcAXv2Interpolation);
 
-			if(g_Config.m_AcAX30CollisionClamp)
+			if(g_Config.m_AcAXv2CollisionClamp)
 			{
-				Pos = AcInputs::AX30_FilterBoundary(P0, Pos, Collision());
+				Pos = AcInputs::AXv2_FilterBoundary(P0, Pos, Collision());
 			}
 		}
 		else
@@ -5273,7 +5289,7 @@ vec2 CGameClient::GetFreezePos(int ClientId)
 	const int FastInputTicks = IsLocalForFastInput ? AcInputs::PredictionTicks(FastInputOffsetTicks) : (AllowedOthers ? AcInputs::PredictionTicksOthers(FastInputOffsetTicks) : 0);
 	const bool FastInputOthers = AllowedOthers && AcInputs::AnyOthers();
 	const bool ApplyFastInput = (IsLocalForFastInput && AcInputs::IsActive()) || (!IsLocalForFastInput && FastInputOthers);
-	const bool BestInputInterpolationEnabled = (g_Config.m_AcInputs == AC_INPUTS_BEST || g_Config.m_AcInputs == AC_INPUTS_AX30) && ApplyFastInput;
+	const bool BestInputInterpolationEnabled = (g_Config.m_AcInputs == AC_INPUTS_BEST || g_Config.m_AcInputs == AC_INPUTS_ACLIENT || g_Config.m_AcInputs == AC_INPUTS_AX30 || g_Config.m_AcInputs == AC_INPUTS_AXV2) && ApplyFastInput;
 
 	if(ApplyFastInput && FastInputTicks > 0)
 	{
@@ -5281,13 +5297,26 @@ vec2 CGameClient::GetFreezePos(int ClientId)
 	}
 
 	const int MaxTick = Client()->PredGameTick(g_Config.m_ClDummy) + FastInputTicks;
-	const int LookaheadTicks = (g_Config.m_AcInputs == AC_INPUTS_AX30 && ApplyFastInput && FastInputTicks > 0) ? 1 : 0;
+	const int LookaheadTicks = ((g_Config.m_AcInputs == AC_INPUTS_AX30 || g_Config.m_AcInputs == AC_INPUTS_AXV2) && ApplyFastInput && FastInputTicks > 0) ? 1 : 0;
 	const int MaxLookaheadTick = MaxTick + LookaheadTicks;
 	if(SmoothTick > 0 && SmoothTick <= MaxTick &&
 		m_aClients[ClientId].m_aPredTick[(SmoothTick - 1) % 200] == SmoothTick - 1 &&
 		m_aClients[ClientId].m_aPredTick[SmoothTick % 200] == SmoothTick)
 	{
 		if(g_Config.m_AcInputs == AC_INPUTS_AX30 && ApplyFastInput)
+		{
+			const vec2 P0 = m_aClients[ClientId].m_aPredPos[(SmoothTick - 1) % 200];
+			const vec2 P1 = m_aClients[ClientId].m_aPredPos[SmoothTick % 200];
+			const vec2 P_prev = (SmoothTick >= 2 && m_aClients[ClientId].m_aPredTick[(SmoothTick - 2) % 200] == SmoothTick - 2) ?
+				m_aClients[ClientId].m_aPredPos[(SmoothTick - 2) % 200] : P0;
+			const vec2 P_next = (SmoothTick + 1 <= MaxLookaheadTick && m_aClients[ClientId].m_aPredTick[(SmoothTick + 1) % 200] == SmoothTick + 1) ?
+				m_aClients[ClientId].m_aPredPos[(SmoothTick + 1) % 200] : P1;
+
+			Pos = AcInputs::AX30_EvaluateTrajectory(P_prev, P0, P1, P_next, SmoothIntra, g_Config.m_AcAX30Interpolation);
+			if(g_Config.m_AcAX30CollisionClamp)
+				Pos = AcInputs::AX30_FilterBoundary(P0, Pos, Collision());
+		}
+		else if(g_Config.m_AcInputs == AC_INPUTS_AXV2 && ApplyFastInput)
 		{
 			const vec2 P0 = m_aClients[ClientId].m_aPredPos[(SmoothTick - 1) % 200];
 			const vec2 P1 = m_aClients[ClientId].m_aPredPos[SmoothTick % 200];
@@ -5298,9 +5327,9 @@ vec2 CGameClient::GetFreezePos(int ClientId)
 			const vec2 P_next = (SmoothTick + 1 <= MaxLookaheadTick && m_aClients[ClientId].m_aPredTick[(SmoothTick + 1) % 200] == SmoothTick + 1) ?
 				m_aClients[ClientId].m_aPredPos[(SmoothTick + 1) % 200] : P1;
 
-			Pos = AcInputs::AX30_EvaluateTrajectory(P_prev, P0, P1, P_next, Vel0, Vel1, true, SmoothIntra, g_Config.m_AcAX30Interpolation);
-			if(g_Config.m_AcAX30CollisionClamp)
-				Pos = AcInputs::AX30_FilterBoundary(P0, Pos, Collision());
+			Pos = AcInputs::AXv2_EvaluateTrajectory(P_prev, P0, P1, P_next, Vel0, Vel1, true, SmoothIntra, g_Config.m_AcAXv2Interpolation);
+			if(g_Config.m_AcAXv2CollisionClamp)
+				Pos = AcInputs::AXv2_FilterBoundary(P0, Pos, Collision());
 		}
 		else
 		{
