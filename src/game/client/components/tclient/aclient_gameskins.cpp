@@ -301,8 +301,9 @@ void CAClientGameSkins::OnStateChange(int NewState, int OldState)
 		m_InitialDownloadPhase = true;
 		m_WasFrozen = false;
 	}
-	else if(NewState < IClient::STATE_ONLINE)
+	else if(OldState == IClient::STATE_ONLINE || NewState < IClient::STATE_ONLINE)
 	{
+		// Covers disconnect, switching to demo playback, and quitting (STATE_QUITTING > STATE_ONLINE)
 		if(m_aLastServerAddress[0] != '\0')
 		{
 			if(m_aLastAnnouncedPlayer[0] != '\0')
@@ -311,6 +312,21 @@ void CAClientGameSkins::OnStateChange(int NewState, int OldState)
 				SendPresenceLeave(m_aLastServerAddress, m_aLastAnnouncedDummy);
 		}
 		OnReset();
+	}
+}
+
+void CAClientGameSkins::OnShutdown()
+{
+	// Game closing: make sure the presence rows are removed (the HTTP engine flushes pending requests on shutdown)
+	if(m_aLastServerAddress[0] != '\0')
+	{
+		if(m_aLastAnnouncedPlayer[0] != '\0')
+			SendPresenceLeave(m_aLastServerAddress, m_aLastAnnouncedPlayer);
+		if(m_aLastAnnouncedDummy[0] != '\0')
+			SendPresenceLeave(m_aLastServerAddress, m_aLastAnnouncedDummy);
+		m_aLastServerAddress[0] = '\0';
+		m_aLastAnnouncedPlayer[0] = '\0';
+		m_aLastAnnouncedDummy[0] = '\0';
 	}
 }
 

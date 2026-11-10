@@ -79,6 +79,7 @@ public:
 	void OnRender() override;
 	void OnConsoleInit() override;
 	void OnReset() override;
+	void OnShutdown() override;
 
 	void SendPresenceLeave(const char *pServer, const char *pPlayer);
 	void RefreshPresence();
