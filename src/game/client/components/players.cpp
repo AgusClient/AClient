@@ -493,6 +493,24 @@ void CPlayers::RenderHookCollLine(
 
 void CPlayers::FlushQueuedHookedTiles()
 {
+	if(m_vQueuedHookedTiles.empty())
+		return;
+
+	ColorRGBA GlowColor(1.0f, 1.0f, 1.0f, 1.0f);
+	if(g_Config.m_AcHookedTile)
+	{
+		if(g_Config.m_AcHookedTileRgb)
+		{
+			float Speed = g_Config.m_AcHookedTileSpeed / 25.0f;
+			float Hue = std::fmod((float)(time_get() * Speed) / (float)time_freq() * 0.2f, 1.0f);
+			GlowColor = color_cast<ColorRGBA>(ColorHSLA(Hue, 1.0f, 0.5f));
+		}
+		else
+		{
+			GlowColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_AcHookedTileColor));
+		}
+	}
+
 	for(const SQueuedHookedTile &Tile : m_vQueuedHookedTiles)
 	{
 		const float X0 = Tile.m_TileX * 32.0f;
@@ -514,18 +532,6 @@ void CPlayers::FlushQueuedHookedTiles()
 
 		if(Tile.m_Glow)
 		{
-			ColorRGBA GlowColor;
-			if(g_Config.m_AcHookedTileRgb)
-			{
-				float Speed = g_Config.m_AcHookedTileSpeed / 25.0f;
-				float Hue = std::fmod((float)(time_get() * Speed) / (float)time_freq() * 0.2f, 1.0f);
-				GlowColor = color_cast<ColorRGBA>(ColorHSLA(Hue, 1.0f, 0.5f));
-			}
-			else
-			{
-				GlowColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_AcHookedTileColor));
-			}
-
 			const float TileOpacity = std::clamp(g_Config.m_AcHookedTileOpacity / 100.0f, 0.05f, 1.0f) * Tile.m_Alpha;
 
 			Graphics()->TextureClear();
@@ -561,6 +567,8 @@ void CPlayers::FlushQueuedHookedTiles()
 	}
 	m_vQueuedHookedTiles.clear();
 	Graphics()->TextureClear();
+	Graphics()->QuadsSetSubset(0.0f, 0.0f, 1.0f, 1.0f);
+	Graphics()->QuadsSetRotation(0.0f);
 	Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
 }
 
@@ -601,10 +609,18 @@ void CPlayers::RenderHookedTile(const vec2 &Pos, const vec2 &HookPos, int Client
 		HookPos - vec2(0.0f, 12.0f),
 	};
 
+	int LastTestedTx = -1;
+	int LastTestedTy = -1;
+
 	for(const vec2 &CheckPos : aTestPositions)
 	{
 		int Tx = (int)std::floor(CheckPos.x / 32.0f);
 		int Ty = (int)std::floor(CheckPos.y / 32.0f);
+		if(Tx == LastTestedTx && Ty == LastTestedTy)
+			continue;
+		LastTestedTx = Tx;
+		LastTestedTy = Ty;
+
 		if(Tx >= 0 && Tx < Collision()->GetWidth() && Ty >= 0 && Ty < Collision()->GetHeight())
 		{
 			int Idx = Collision()->GetTile(round_to_int(CheckPos.x), round_to_int(CheckPos.y));
@@ -627,6 +643,21 @@ void CPlayers::RenderHookedTile(const vec2 &Pos, const vec2 &HookPos, int Client
 
 	if(TileX < 0 || TileY < 0 || TileIndex <= 0)
 		return;
+
+	for(auto &Existing : m_vQueuedHookedTiles)
+	{
+		if(Existing.m_TileX == TileX && Existing.m_TileY == TileY)
+		{
+			if(RemoteEntitiesTex.IsValid() && (!Existing.m_Texture.IsValid() || IsLocal))
+			{
+				Existing.m_Texture = RemoteEntitiesTex;
+				Existing.m_TileIndex = TileIndex;
+			}
+			Existing.m_Glow = Existing.m_Glow || RenderGlow;
+			Existing.m_Alpha = std::max(Existing.m_Alpha, Alpha);
+			return;
+		}
+	}
 
 	m_vQueuedHookedTiles.push_back({RemoteEntitiesTex, RenderGlow, TileX, TileY, TileIndex, Alpha});
 }
@@ -1364,6 +1395,8 @@ inline bool CPlayers::IsPlayerInfoAvailable(int ClientId) const
 
 void CPlayers::OnRender()
 {
+	m_vQueuedHookedTiles.clear();
+
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
 
@@ -1549,6 +1582,8 @@ void CPlayers::CreateSpectatorTeeRenderInfo()
 
 void CPlayers::OnInit()
 {
+	m_vQueuedHookedTiles.reserve(16);
+
 	m_WeaponEmoteQuadContainerIndex = Graphics()->CreateQuadContainer(false);
 
 	Graphics()->SetColor(1.f, 1.f, 1.f, 1.f);

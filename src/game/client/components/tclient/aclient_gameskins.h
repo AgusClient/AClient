@@ -42,6 +42,7 @@ class CAClientGameSkins : public CComponent
 	char m_aLastAnnouncedDummyEntities[128];
 	int m_LastActivePlayerCount;
 	int64_t m_LastPresenceRefreshTime;
+	int64_t m_LastPresenceAnnounceTime;
 	int64_t m_LastRenderCheckTime;
 	int64_t m_ServerJoinTime;
 	bool m_InitialDownloadPhase;
@@ -82,7 +83,7 @@ public:
 	void OnShutdown() override;
 
 	void SendPresenceLeave(const char *pServer, const char *pPlayer);
-	void RefreshPresence();
+	void RefreshPresence(bool ForceAnnounce = true);
 	bool IsPlayerAClient(int ClientId) const;
 	const SClientGameSkin *GetOrLoadGameSkin(const char *pName);
 	IGraphics::CTextureHandle GetOrLoadEntitiesTexture(const char *pName);

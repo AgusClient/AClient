@@ -41,6 +41,7 @@ CAClientGameSkins::CAClientGameSkins() :
 	m_PendingAnnounce(false),
 	m_LastActivePlayerCount(0),
 	m_LastPresenceRefreshTime(0),
+	m_LastPresenceAnnounceTime(0),
 	m_LastRenderCheckTime(0),
 	m_ServerJoinTime(0),
 	m_InitialDownloadPhase(false),
@@ -377,6 +378,7 @@ void CAClientGameSkins::OnReset()
 	m_aLastAnnouncedDummyEntities[0] = '\0';
 	m_LastActivePlayerCount = 0;
 	m_LastPresenceRefreshTime = 0;
+	m_LastPresenceAnnounceTime = 0;
 	m_LastRenderCheckTime = 0;
 	m_ServerJoinTime = 0;
 	m_InitialDownloadPhase = false;
@@ -909,7 +911,7 @@ void CAClientGameSkins::SendPresenceLeave(const char *pServer, const char *pPlay
 	Http()->Run(pPost);
 }
 
-void CAClientGameSkins::RefreshPresence()
+void CAClientGameSkins::RefreshPresence(bool ForceAnnounce)
 {
 	if(Client()->State() != IClient::STATE_ONLINE)
 		return;
@@ -942,77 +944,90 @@ void CAClientGameSkins::RefreshPresence()
 	const char *pAssetEntities = (g_Config.m_ClAssetsEntities[0] == '\0') ? "default" : g_Config.m_ClAssetsEntities;
 	const char *pDummyAssetEntities = (g_Config.m_ClDummyAssetEntities[0] != '\0') ? g_Config.m_ClDummyAssetEntities : pAssetEntities;
 
-	// If server address changed, send leave for previous server
-	if(m_aLastServerAddress[0] != '\0' && str_comp(m_aLastServerAddress, aServerAddr) != 0)
-	{
-		if(m_aLastAnnouncedPlayer[0] != '\0')
-			SendPresenceLeave(m_aLastServerAddress, m_aLastAnnouncedPlayer);
-		if(m_aLastAnnouncedDummy[0] != '\0')
-			SendPresenceLeave(m_aLastServerAddress, m_aLastAnnouncedDummy);
-	}
-	else if(m_aLastServerAddress[0] != '\0' && m_aLastAnnouncedPlayer[0] != '\0' && str_comp(m_aLastAnnouncedPlayer, aPrimaryPlayer) != 0)
-	{
-		SendPresenceLeave(m_aLastServerAddress, m_aLastAnnouncedPlayer);
-	}
-
-	if(m_aLastServerAddress[0] != '\0' && m_aLastAnnouncedDummy[0] != '\0' && str_comp(m_aLastAnnouncedDummy, aPrimaryDummy) != 0)
-	{
-		SendPresenceLeave(m_aLastServerAddress, m_aLastAnnouncedDummy);
-	}
-
-	str_copy(m_aLastServerAddress, aServerAddr);
-	str_copy(m_aLastAnnouncedPlayer, aPrimaryPlayer);
-	str_copy(m_aLastAnnouncedDummy, aPrimaryDummy);
-	str_copy(m_aLastAnnouncedSkin, pAssetGame);
-	str_copy(m_aLastAnnouncedEntities, pAssetEntities);
-	str_copy(m_aLastAnnouncedDummyEntities, pDummyAssetEntities);
-	m_LastPresenceRefreshTime = time_get();
-
 	const char *pBaseUrl = (g_Config.m_AcPresenceUrl[0] != '\0' && str_find(g_Config.m_AcPresenceUrl, "workers.dev") == nullptr) ? g_Config.m_AcPresenceUrl : AClientBackend::SUPABASE_URL;
 
-	char aEscServer[128];
-	EscapeJson(aEscServer, sizeof(aEscServer), aServerAddr);
+	int64_t Now = time_get();
 
-	char aPostUrl[512];
-	str_format(aPostUrl, sizeof(aPostUrl), "%s/rest/v1/rpc/aclient_presence", pBaseUrl);
+	if(ForceAnnounce)
+	{
+		// If server address changed, send leave for previous server
+		if(m_aLastServerAddress[0] != '\0' && str_comp(m_aLastServerAddress, aServerAddr) != 0)
+		{
+			if(m_aLastAnnouncedPlayer[0] != '\0')
+				SendPresenceLeave(m_aLastServerAddress, m_aLastAnnouncedPlayer);
+			if(m_aLastAnnouncedDummy[0] != '\0')
+				SendPresenceLeave(m_aLastServerAddress, m_aLastAnnouncedDummy);
+		}
+		else if(m_aLastServerAddress[0] != '\0' && m_aLastAnnouncedPlayer[0] != '\0' && str_comp(m_aLastAnnouncedPlayer, aPrimaryPlayer) != 0)
+		{
+			SendPresenceLeave(m_aLastServerAddress, m_aLastAnnouncedPlayer);
+		}
 
-	auto SendPresencePost = [&](const char *pPlayerNameToAnnounce, const char *pSkinToAnnounce, const char *pEntitiesToAnnounce) {
-		if(!pPlayerNameToAnnounce || !pPlayerNameToAnnounce[0])
-			return;
-		char aEscPlayer[128];
-		EscapeJson(aEscPlayer, sizeof(aEscPlayer), pPlayerNameToAnnounce);
-		char aEscSkin[128];
-		EscapeJson(aEscSkin, sizeof(aEscSkin), pSkinToAnnounce);
-		char aEscEntities[128];
-		EscapeJson(aEscEntities, sizeof(aEscEntities), pEntitiesToAnnounce);
+		if(m_aLastServerAddress[0] != '\0' && m_aLastAnnouncedDummy[0] != '\0' && str_comp(m_aLastAnnouncedDummy, aPrimaryDummy) != 0)
+		{
+			SendPresenceLeave(m_aLastServerAddress, m_aLastAnnouncedDummy);
+		}
 
-		char aPayload[512];
-		str_format(aPayload, sizeof(aPayload),
-			"{\"p_server\":\"%s\",\"p_player\":\"%s\",\"p_asset_game\":\"%s\",\"p_asset_entities\":\"%s\"}",
-			aEscServer, aEscPlayer, aEscSkin, aEscEntities);
+		str_copy(m_aLastServerAddress, aServerAddr);
+		str_copy(m_aLastAnnouncedPlayer, aPrimaryPlayer);
+		str_copy(m_aLastAnnouncedDummy, aPrimaryDummy);
+		str_copy(m_aLastAnnouncedSkin, pAssetGame);
+		str_copy(m_aLastAnnouncedEntities, pAssetEntities);
+		str_copy(m_aLastAnnouncedDummyEntities, pDummyAssetEntities);
+		m_LastPresenceAnnounceTime = Now;
 
-		std::shared_ptr<IHttpRequest> pPost = HttpPostJson(aPostUrl, aPayload);
-		pPost->Timeout(CTimeout{3000, 3000, 500, 3});
-		pPost->IpResolve(IPRESOLVE::V4);
-		pPost->LogProgress(HTTPLOG::NONE);
-		pPost->Header(AClientBackend::USER_AGENT_HEADER);
-		pPost->Header(AClientBackend::API_KEY_HEADER);
-		pPost->Header(AClientBackend::AUTH_BEARER_HEADER);
-		Http()->Run(pPost);
-	};
+		char aEscServer[128];
+		EscapeJson(aEscServer, sizeof(aEscServer), aServerAddr);
 
-	// 1. Announce player
-	SendPresencePost(aPrimaryPlayer, pAssetGame, pAssetEntities);
+		char aPostUrl[512];
+		str_format(aPostUrl, sizeof(aPostUrl), "%s/rest/v1/rpc/aclient_presence", pBaseUrl);
 
-	// 1b. Announce dummy if connected
-	if(aPrimaryDummy[0] != '\0' && str_comp(aPrimaryDummy, aPrimaryPlayer) != 0)
-		SendPresencePost(aPrimaryDummy, pAssetGame, pDummyAssetEntities);
+		auto SendPresencePost = [&](const char *pPlayerNameToAnnounce, const char *pSkinToAnnounce, const char *pEntitiesToAnnounce) {
+			if(!pPlayerNameToAnnounce || !pPlayerNameToAnnounce[0])
+				return;
+			char aEscPlayer[128];
+			EscapeJson(aEscPlayer, sizeof(aEscPlayer), pPlayerNameToAnnounce);
+			char aEscSkin[128];
+			EscapeJson(aEscSkin, sizeof(aEscSkin), pSkinToAnnounce);
+			char aEscEntities[128];
+			EscapeJson(aEscEntities, sizeof(aEscEntities), pEntitiesToAnnounce);
+
+			char aPayload[512];
+			str_format(aPayload, sizeof(aPayload),
+				"{\"p_server\":\"%s\",\"p_player\":\"%s\",\"p_asset_game\":\"%s\",\"p_asset_entities\":\"%s\"}",
+				aEscServer, aEscPlayer, aEscSkin, aEscEntities);
+
+			std::shared_ptr<IHttpRequest> pPost = HttpPostJson(aPostUrl, aPayload);
+			pPost->Timeout(CTimeout{3000, 3000, 500, 3});
+			pPost->IpResolve(IPRESOLVE::V4);
+			pPost->LogProgress(HTTPLOG::NONE);
+			pPost->Header(AClientBackend::USER_AGENT_HEADER);
+			pPost->Header(AClientBackend::API_KEY_HEADER);
+			pPost->Header(AClientBackend::AUTH_BEARER_HEADER);
+			Http()->Run(pPost);
+		};
+
+		// 1. Announce player
+		SendPresencePost(aPrimaryPlayer, pAssetGame, pAssetEntities);
+
+		// 1b. Announce dummy if connected
+		if(aPrimaryDummy[0] != '\0' && str_comp(aPrimaryDummy, aPrimaryPlayer) != 0)
+			SendPresencePost(aPrimaryDummy, pAssetGame, pDummyAssetEntities);
+	}
 
 	// 2. Fetch remote gameskins and AClient presence via GET
+	if(!ForceAnnounce && m_pPresenceRequest && !m_pPresenceRequest->Done())
+	{
+		// A poll GET is already in-flight, avoid restarting it prematurely
+		return;
+	}
+
 	if(m_pPresenceRequest && !m_pPresenceRequest->Done())
 	{
 		m_pPresenceRequest->Abort();
 	}
+
+	m_LastPresenceRefreshTime = Now;
 
 	if(g_Config.m_AcShowRemoteGameSkins || g_Config.m_AcShowRemoteEntitiesOnHook)
 	{
@@ -1204,7 +1219,10 @@ void CAClientGameSkins::OnRender()
 			bool DummyEntitiesChanged = str_comp(m_aLastAnnouncedDummyEntities, pEffectiveDummyEntities) != 0;
 			bool NameChanged = aCurrentPlayer[0] != '\0' && str_comp(m_aLastAnnouncedPlayer, aCurrentPlayer) != 0;
 			bool DummyChanged = str_comp(m_aLastAnnouncedDummy, aCurrentDummy) != 0;
-			bool PeriodicRefresh = (m_LastPresenceRefreshTime == 0) || ((Now - m_LastPresenceRefreshTime) > time_freq() * 10);
+			bool HeartbeatNeeded = (m_LastPresenceAnnounceTime > 0) && ((Now - m_LastPresenceAnnounceTime) > time_freq() * 2700);
+
+			bool ForceAnnounce = SkinChanged || EntitiesChanged || DummyEntitiesChanged || NameChanged || DummyChanged || HeartbeatNeeded;
+			bool PeriodicRefresh = (m_LastPresenceRefreshTime == 0) || ((Now - m_LastPresenceRefreshTime) > time_freq() * 12);
 
 			int RosterSignature = 0;
 			for(int i = 0; i < MAX_CLIENTS; ++i)
@@ -1218,9 +1236,13 @@ void CAClientGameSkins::OnRender()
 			if(RosterChanged)
 				m_LastActivePlayerCount = RosterSignature;
 
-			if(SkinChanged || EntitiesChanged || DummyEntitiesChanged || NameChanged || DummyChanged || PeriodicRefresh || RosterChanged)
+			if(ForceAnnounce)
 			{
-				RefreshPresence();
+				RefreshPresence(true);
+			}
+			else if(PeriodicRefresh || RosterChanged)
+			{
+				RefreshPresence(false);
 			}
 		}
 	}
@@ -1299,10 +1321,16 @@ void CAClientGameSkins::OnRender()
 							}
 						}
 					}
-					m_sRemoteAClientPlayers = std::move(NewAClientPlayers);
-					m_mRemotePlayerGameSkins = std::move(NewSkins);
-					m_mRemotePlayerEntities = std::move(NewEntities);
-					UpdateAllPlayerSkins();
+					bool Changed = (m_mRemotePlayerGameSkins != NewSkins ||
+							m_mRemotePlayerEntities != NewEntities ||
+							m_sRemoteAClientPlayers != NewAClientPlayers);
+					if(Changed)
+					{
+						m_sRemoteAClientPlayers = std::move(NewAClientPlayers);
+						m_mRemotePlayerGameSkins = std::move(NewSkins);
+						m_mRemotePlayerEntities = std::move(NewEntities);
+						UpdateAllPlayerSkins();
+					}
 				}
 				json_value_free(pJson);
 			}
