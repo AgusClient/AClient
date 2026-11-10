@@ -4716,7 +4716,7 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
 
 	// ***** Hook Glow & Bloque Hookeado ***** //
-	Column.HSplitTop(Margin, nullptr, &Column);
+	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 	s_SectionBoxesAc.push_back(Column);
 	Column.HSplitTop(HeadlineHeight, &Label, &Column);
 	Ui()->DoLabel(&Label, TCLocalize("Hook Glow / Bloque Hookeado"), HeadlineFontSize, TEXTALIGN_ML);
@@ -4749,7 +4749,7 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 
 	static CLineInput s_DummyEntitiesInput;
 	Column.HSplitTop(LineSize, &Button, &Column);
-	DoEditBoxWithLabel(&s_DummyEntitiesInput, &Button, TCLocalize("Entities del Dummy (test)"), "", g_Config.m_ClDummyAssetEntities, sizeof(g_Config.m_ClDummyAssetEntities));
+	DoEditBoxWithLabel(&s_DummyEntitiesInput, &Button, TCLocalize("Entities del Dummy"), "", g_Config.m_ClDummyAssetEntities, sizeof(g_Config.m_ClDummyAssetEntities));
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
