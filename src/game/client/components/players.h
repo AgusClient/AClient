@@ -44,6 +44,7 @@ class CPlayers : public CComponent
 	struct SQueuedHookedTile
 	{
 		IGraphics::CTextureHandle m_Texture;
+		bool m_Glow;
 		int m_TileX;
 		int m_TileY;
 		int m_TileIndex;

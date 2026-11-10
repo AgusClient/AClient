@@ -495,19 +495,73 @@ void CPlayers::FlushQueuedHookedTiles()
 {
 	for(const SQueuedHookedTile &Tile : m_vQueuedHookedTiles)
 	{
-		const int tx = Tile.m_TileIndex % 16;
-		const int ty = Tile.m_TileIndex / 16;
-		Graphics()->TextureSet(Tile.m_Texture);
-		Graphics()->QuadsBegin();
-		Graphics()->QuadsSetRotation(0.0f);
-		Graphics()->QuadsSetSubset(tx / 16.0f, ty / 16.0f, (tx + 1) / 16.0f, (ty + 1) / 16.0f);
-		Graphics()->SetColor(1.0f, 1.0f, 1.0f, Tile.m_Alpha);
-		IGraphics::CQuadItem TileQuad(Tile.m_TileX * 32.0f, Tile.m_TileY * 32.0f, 32.0f, 32.0f);
-		Graphics()->QuadsDrawTL(&TileQuad, 1);
-		Graphics()->QuadsEnd();
+		const float X0 = Tile.m_TileX * 32.0f;
+		const float Y0 = Tile.m_TileY * 32.0f;
+
+		if(Tile.m_Texture.IsValid())
+		{
+			const int tx = Tile.m_TileIndex % 16;
+			const int ty = Tile.m_TileIndex / 16;
+			Graphics()->TextureSet(Tile.m_Texture);
+			Graphics()->QuadsBegin();
+			Graphics()->QuadsSetRotation(0.0f);
+			Graphics()->QuadsSetSubset(tx / 16.0f, ty / 16.0f, (tx + 1) / 16.0f, (ty + 1) / 16.0f);
+			Graphics()->SetColor(1.0f, 1.0f, 1.0f, Tile.m_Alpha);
+			IGraphics::CQuadItem TileQuad(X0, Y0, 32.0f, 32.0f);
+			Graphics()->QuadsDrawTL(&TileQuad, 1);
+			Graphics()->QuadsEnd();
+		}
+
+		if(Tile.m_Glow)
+		{
+			ColorRGBA GlowColor;
+			if(g_Config.m_AcHookedTileRgb)
+			{
+				float Speed = g_Config.m_AcHookedTileSpeed / 25.0f;
+				float Hue = std::fmod((float)(time_get() * Speed) / (float)time_freq() * 0.2f, 1.0f);
+				GlowColor = color_cast<ColorRGBA>(ColorHSLA(Hue, 1.0f, 0.5f));
+			}
+			else
+			{
+				GlowColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_AcHookedTileColor));
+			}
+
+			const float TileOpacity = std::clamp(g_Config.m_AcHookedTileOpacity / 100.0f, 0.05f, 1.0f) * Tile.m_Alpha;
+
+			Graphics()->TextureClear();
+
+			// Everything stays inside the tile bounds
+			if(g_Config.m_AcHookedTileGlow)
+			{
+				Graphics()->BlendAdditive();
+				Graphics()->QuadsBegin();
+				Graphics()->SetColor(GlowColor.r, GlowColor.g, GlowColor.b, TileOpacity * 0.45f);
+				IGraphics::CQuadItem HaloQuad(X0, Y0, 32.0f, 32.0f);
+				Graphics()->QuadsDrawTL(&HaloQuad, 1);
+				Graphics()->QuadsEnd();
+				Graphics()->BlendNormal();
+			}
+
+			Graphics()->QuadsBegin();
+			Graphics()->SetColor(GlowColor.r, GlowColor.g, GlowColor.b, TileOpacity * 0.40f);
+			IGraphics::CQuadItem HighlightQuad(X0, Y0, 32.0f, 32.0f);
+			Graphics()->QuadsDrawTL(&HighlightQuad, 1);
+
+			const float BorderWidth = 1.5f;
+			Graphics()->SetColor(GlowColor.r, GlowColor.g, GlowColor.b, TileOpacity);
+			IGraphics::CQuadItem Borders[4] = {
+				IGraphics::CQuadItem(X0, Y0, 32.0f, BorderWidth),
+				IGraphics::CQuadItem(X0, Y0 + 32.0f - BorderWidth, 32.0f, BorderWidth),
+				IGraphics::CQuadItem(X0, Y0, BorderWidth, 32.0f),
+				IGraphics::CQuadItem(X0 + 32.0f - BorderWidth, Y0, BorderWidth, 32.0f),
+			};
+			Graphics()->QuadsDrawTL(Borders, 4);
+			Graphics()->QuadsEnd();
+		}
 	}
 	m_vQueuedHookedTiles.clear();
 	Graphics()->TextureClear();
+	Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
 }
 
 void CPlayers::RenderHookedTile(const vec2 &Pos, const vec2 &HookPos, int ClientId, float Alpha)
@@ -574,69 +628,7 @@ void CPlayers::RenderHookedTile(const vec2 &Pos, const vec2 &HookPos, int Client
 	if(TileX < 0 || TileY < 0 || TileIndex <= 0)
 		return;
 
-	const float X0 = TileX * 32.0f;
-	const float Y0 = TileY * 32.0f;
-
-	Graphics()->QuadsSetRotation(0.0f);
-
-	// 1. Draw remote player's entities on this tile if enabled and available
-	if(RemoteEntitiesTex.IsValid())
-	{
-		// Deferred: map foreground layers render after players and would cover this tile
-		m_vQueuedHookedTiles.push_back({RemoteEntitiesTex, TileX, TileY, TileIndex, Alpha});
-	}
-
-	// 2. Draw luminous Hook Glow effect
-	if(RenderGlow)
-	{
-		ColorRGBA GlowColor;
-		if(g_Config.m_AcHookedTileRgb)
-		{
-			float Speed = g_Config.m_AcHookedTileSpeed / 25.0f;
-			float Hue = std::fmod((float)(time_get() * Speed) / (float)time_freq() * 0.2f, 1.0f);
-			GlowColor = color_cast<ColorRGBA>(ColorHSLA(Hue, 1.0f, 0.5f));
-		}
-		else
-		{
-			GlowColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_AcHookedTileColor));
-		}
-
-		float TileOpacity = std::clamp(g_Config.m_AcHookedTileOpacity / 100.0f, 0.05f, 1.0f) * Alpha;
-
-		// Outer halo glow
-		if(g_Config.m_AcHookedTileGlow)
-		{
-			Graphics()->BlendAdditive();
-			Graphics()->TextureClear();
-			Graphics()->QuadsBegin();
-			Graphics()->SetColor(GlowColor.r, GlowColor.g, GlowColor.b, TileOpacity * 0.45f);
-			IGraphics::CQuadItem HaloQuad(X0 - 6.0f, Y0 - 6.0f, 44.0f, 44.0f);
-			Graphics()->QuadsDrawTL(&HaloQuad, 1);
-			Graphics()->QuadsEnd();
-			Graphics()->BlendNormal();
-		}
-
-		// Inner tile tint
-		Graphics()->TextureClear();
-		Graphics()->QuadsBegin();
-		Graphics()->SetColor(GlowColor.r, GlowColor.g, GlowColor.b, TileOpacity * 0.40f);
-		IGraphics::CQuadItem HighlightQuad(X0, Y0, 32.0f, 32.0f);
-		Graphics()->QuadsDrawTL(&HighlightQuad, 1);
-
-		// Crisp luminous borders
-		const float BorderWidth = 1.5f;
-		Graphics()->SetColor(GlowColor.r, GlowColor.g, GlowColor.b, TileOpacity);
-		IGraphics::CQuadItem Borders[4] = {
-			IGraphics::CQuadItem(X0, Y0, 32.0f, BorderWidth),
-			IGraphics::CQuadItem(X0, Y0 + 32.0f - BorderWidth, 32.0f, BorderWidth),
-			IGraphics::CQuadItem(X0, Y0, BorderWidth, 32.0f),
-			IGraphics::CQuadItem(X0 + 32.0f - BorderWidth, Y0, BorderWidth, 32.0f),
-		};
-		Graphics()->QuadsDrawTL(Borders, 4);
-		Graphics()->QuadsEnd();
-	}
-	Graphics()->TextureClear();
-	Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
+	m_vQueuedHookedTiles.push_back({RemoteEntitiesTex, RenderGlow, TileX, TileY, TileIndex, Alpha});
 }
 
 void CPlayers::RenderHook(
