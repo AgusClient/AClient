@@ -18,7 +18,6 @@ class CAClientGameSkins : public CComponent
 	std::map<std::string, std::string> m_mRemotePlayerGameSkins;
 	std::map<std::string, std::string> m_mRemotePlayerEntities;
 	std::map<std::string, IGraphics::CTextureHandle> m_mLoadedEntitiesTextures;
-	bool m_SupabaseHasEntitiesColumn;
 	std::set<std::string> m_sRemoteAClientPlayers;
 	std::set<std::string> m_sFailedSkins;
 	std::unordered_set<std::string> m_sBlacklistedGameSkins;

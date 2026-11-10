@@ -46,8 +46,7 @@ CAClientGameSkins::CAClientGameSkins() :
 	m_InitialDownloadPhase(false),
 	m_WasFrozen(false),
 	m_BlacklistLoaded(false),
-	m_SkinUsersRevision(0),
-	m_SupabaseHasEntitiesColumn(false)
+	m_SkinUsersRevision(0)
 {
 	m_aLastServerAddress[0] = '\0';
 	m_aLastAnnouncedPlayer[0] = '\0';
@@ -923,18 +922,9 @@ void CAClientGameSkins::RefreshPresence()
 		EscapeJson(aEscPlayer, sizeof(aEscPlayer), pPlayerNameToAnnounce);
 
 		char aPayload[512];
-		if(m_SupabaseHasEntitiesColumn)
-		{
-			str_format(aPayload, sizeof(aPayload),
-				"{\"p_server\":\"%s\",\"p_player\":\"%s\",\"p_asset_game\":\"%s\",\"p_asset_entities\":\"%s\"}",
-				aEscServer, aEscPlayer, aEscSkin, aEscEntities);
-		}
-		else
-		{
-			str_format(aPayload, sizeof(aPayload),
-				"{\"p_server\":\"%s\",\"p_player\":\"%s\",\"p_asset_game\":\"%s\"}",
-				aEscServer, aEscPlayer, aEscSkin);
-		}
+		str_format(aPayload, sizeof(aPayload),
+			"{\"p_server\":\"%s\",\"p_player\":\"%s\",\"p_asset_game\":\"%s\",\"p_asset_entities\":\"%s\"}",
+			aEscServer, aEscPlayer, aEscSkin, aEscEntities);
 
 		std::shared_ptr<IHttpRequest> pPost = HttpPostJson(aPostUrl, aPayload);
 		pPost->Timeout(CTimeout{3000, 3000, 500, 3});
@@ -968,10 +958,7 @@ void CAClientGameSkins::RefreshPresence()
 	int64_t MinUpdatedAt = NowEpochMs - 3600000; // 1 hora
 
 	char aGetUrl[512];
-	if(m_SupabaseHasEntitiesColumn)
-		str_format(aGetUrl, sizeof(aGetUrl), "%s/rest/v1/presence?server=eq.%s&updated_at=gt.%" PRId64 "&select=player,asset_game,asset_entities,updated_at", pBaseUrl, aEscapedServer, MinUpdatedAt);
-	else
-		str_format(aGetUrl, sizeof(aGetUrl), "%s/rest/v1/presence?server=eq.%s&updated_at=gt.%" PRId64 "&select=player,asset_game,updated_at", pBaseUrl, aEscapedServer, MinUpdatedAt);
+	str_format(aGetUrl, sizeof(aGetUrl), "%s/rest/v1/presence?server=eq.%s&updated_at=gt.%" PRId64 "&select=player,asset_game,asset_entities,updated_at", pBaseUrl, aEscapedServer, MinUpdatedAt);
 
 	m_pPresenceRequest = HttpGet(aGetUrl);
 	m_pPresenceRequest->Timeout(CTimeout{4000, 4000, 500, 4});
@@ -1200,11 +1187,6 @@ void CAClientGameSkins::OnRender()
 				}
 				json_value_free(pJson);
 			}
-		}
-		else if(m_pPresenceRequest->State() == EHttpState::DONE && m_pPresenceRequest->StatusCode() == 400 && m_SupabaseHasEntitiesColumn)
-		{
-			m_SupabaseHasEntitiesColumn = false;
-			m_LastPresenceRefreshTime = 0;
 		}
 		m_pPresenceRequest = nullptr;
 	}
