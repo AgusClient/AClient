@@ -38,6 +38,7 @@ class CAClientGameSkins : public CComponent
 	char m_aLastAnnouncedDummy[128];
 	char m_aLastAnnouncedSkin[128];
 	char m_aLastAnnouncedEntities[128];
+	char m_aLastAnnouncedDummyEntities[128];
 	int m_LastActivePlayerCount;
 	int64_t m_LastPresenceRefreshTime;
 	int64_t m_LastRenderCheckTime;
@@ -60,7 +61,9 @@ class CAClientGameSkins : public CComponent
 	void EnsureBlacklistLoaded();
 
 	static void ConReloadRemoteGameSkins(IConsole::IResult *pResult, void *pUserData);
+	static void ConReloadRemoteEntities(IConsole::IResult *pResult, void *pUserData);
 	static void ConSetPlayerGameSkin(IConsole::IResult *pResult, void *pUserData);
+	static void ConSetPlayerEntities(IConsole::IResult *pResult, void *pUserData);
 	static void ConBlacklistGameSkin(IConsole::IResult *pResult, void *pUserData);
 	static void ConUnblacklistGameSkin(IConsole::IResult *pResult, void *pUserData);
 	static void ConToggleBlacklistGameSkin(IConsole::IResult *pResult, void *pUserData);

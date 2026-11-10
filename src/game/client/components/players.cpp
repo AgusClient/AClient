@@ -512,10 +512,24 @@ void CPlayers::RenderHookedTile(const vec2 &Pos, const vec2 &HookPos, int Client
 	int TileY = -1;
 	int TileIndex = 0;
 
-	const float aOffsets[] = { 4.0f, 2.0f, 8.0f, 0.0f };
-	for(float Offset : aOffsets)
+	const vec2 aTestPositions[] = {
+		HookPos + Dir * 4.0f,
+		HookPos + Dir * 8.0f,
+		HookPos + Dir * 16.0f,
+		HookPos + Dir * 2.0f,
+		HookPos,
+		HookPos + vec2(4.0f, 0.0f),
+		HookPos - vec2(4.0f, 0.0f),
+		HookPos + vec2(0.0f, 4.0f),
+		HookPos - vec2(0.0f, 4.0f),
+		HookPos + vec2(12.0f, 0.0f),
+		HookPos - vec2(12.0f, 0.0f),
+		HookPos + vec2(0.0f, 12.0f),
+		HookPos - vec2(0.0f, 12.0f),
+	};
+
+	for(const vec2 &CheckPos : aTestPositions)
 	{
-		vec2 CheckPos = HookPos + Dir * Offset;
 		int Tx = (int)std::floor(CheckPos.x / 32.0f);
 		int Ty = (int)std::floor(CheckPos.y / 32.0f);
 		if(Tx >= 0 && Tx < Collision()->GetWidth() && Ty >= 0 && Ty < Collision()->GetHeight())
@@ -523,6 +537,8 @@ void CPlayers::RenderHookedTile(const vec2 &Pos, const vec2 &HookPos, int Client
 			int Idx = Collision()->GetTile(round_to_int(CheckPos.x), round_to_int(CheckPos.y));
 			if(Idx <= 0)
 				Idx = Collision()->GetFrontTile(round_to_int(CheckPos.x), round_to_int(CheckPos.y));
+			if(Idx <= 0 && Collision()->CheckPoint(CheckPos.x, CheckPos.y))
+				Idx = TILE_SOLID;
 			if(Idx <= 0 && Collision()->GetCollisionAt(CheckPos.x, CheckPos.y) == TILE_SOLID)
 				Idx = TILE_SOLID;
 
@@ -542,6 +558,8 @@ void CPlayers::RenderHookedTile(const vec2 &Pos, const vec2 &HookPos, int Client
 	const float X0 = TileX * 32.0f;
 	const float Y0 = TileY * 32.0f;
 
+	Graphics()->QuadsSetRotation(0.0f);
+
 	// 1. Draw remote player's entities on this tile if enabled and available
 	if(RemoteEntitiesTex.IsValid())
 	{
@@ -559,6 +577,7 @@ void CPlayers::RenderHookedTile(const vec2 &Pos, const vec2 &HookPos, int Client
 		IGraphics::CQuadItem TileQuad(X0, Y0, 32.0f, 32.0f);
 		Graphics()->QuadsDrawTL(&TileQuad, 1);
 		Graphics()->QuadsEnd();
+		Graphics()->QuadsSetSubset(0.0f, 0.0f, 1.0f, 1.0f);
 	}
 
 	// 2. Draw luminous Hook Glow effect
@@ -704,7 +723,7 @@ void CPlayers::RenderHook(
 	float d = distance(Pos, HookPos);
 	vec2 Dir = normalize(Pos - HookPos);
 
-	const bool HookGrabbed = HasFastHook ? FastHookActive : (pPlayerChar->m_HookState == HOOK_GRABBED);
+	const bool HookGrabbed = (pPlayerChar->m_HookState == HOOK_GRABBED) || (HasFastHook && FastHookActive);
 	if(HookGrabbed && pPlayerChar->m_HookedPlayer < 0)
 	{
 		RenderHookedTile(Pos, HookPos, ClientId, Alpha);

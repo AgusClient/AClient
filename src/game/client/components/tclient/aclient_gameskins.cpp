@@ -53,6 +53,7 @@ CAClientGameSkins::CAClientGameSkins() :
 	m_aLastAnnouncedDummy[0] = '\0';
 	m_aLastAnnouncedSkin[0] = '\0';
 	m_aLastAnnouncedEntities[0] = '\0';
+	m_aLastAnnouncedDummyEntities[0] = '\0';
 }
 
 CAClientGameSkins::~CAClientGameSkins()
@@ -356,6 +357,7 @@ void CAClientGameSkins::OnReset()
 	m_aLastAnnouncedDummy[0] = '\0';
 	m_aLastAnnouncedSkin[0] = '\0';
 	m_aLastAnnouncedEntities[0] = '\0';
+	m_aLastAnnouncedDummyEntities[0] = '\0';
 	m_LastActivePlayerCount = 0;
 	m_LastPresenceRefreshTime = 0;
 	m_LastRenderCheckTime = 0;
@@ -606,40 +608,52 @@ void CAClientGameSkins::StartEntitiesDownload(const char *pEntitiesName)
 		return;
 	if(!pEntitiesName || !pEntitiesName[0] || str_comp(pEntitiesName, "default") == 0)
 		return;
-	if(m_sFailedEntities.find(pEntitiesName) != m_sFailedEntities.end())
+
+	char aCleanName[128];
+	str_copy(aCleanName, pEntitiesName);
+	int NameLen = str_length(aCleanName);
+	if(NameLen > 4 && str_comp_nocase(aCleanName + NameLen - 4, ".png") == 0)
+	{
+		aCleanName[NameLen - 4] = '\0';
+	}
+
+	if(aCleanName[0] == '\0' || str_comp(aCleanName, "default") == 0)
 		return;
 
-	for(const char *p = pEntitiesName; *p; ++p)
+	if(m_sFailedEntities.find(aCleanName) != m_sFailedEntities.end())
+		return;
+
+	for(const char *p = aCleanName; *p; ++p)
 	{
 		if(*p == '/' || *p == '\\' || *p == ':' || *p == '*' || *p == '?' || *p == '"' || *p == '<' || *p == '>' || *p == '|')
 			return;
 	}
-	if(str_find(pEntitiesName, ".."))
+	if(str_find(aCleanName, ".."))
 		return;
 
 	Storage()->CreateFolder("downloaded_entities", IStorage::TYPE_SAVE);
 
 	char aEscaped[128];
-	EscapeUrl(aEscaped, sizeof(aEscaped), pEntitiesName);
+	EscapeUrl(aEscaped, sizeof(aEscaped), aCleanName);
 
 	char aUrl[512];
 	str_format(aUrl, sizeof(aUrl), "%s%s.png", g_Config.m_ClEntitiesDownloadUrl, aEscaped);
 
 	char aDest[128];
-	str_format(aDest, sizeof(aDest), "downloaded_entities/%s.png", pEntitiesName);
+	str_format(aDest, sizeof(aDest), "downloaded_entities/%s.png", aCleanName);
 
 	m_pDownloadEntitiesRequest = HttpGetFile(aUrl, Storage(), aDest, IStorage::TYPE_SAVE);
 	m_pDownloadEntitiesRequest->Timeout(CTimeout{8000, 8000, 500, 8});
 	m_pDownloadEntitiesRequest->IpResolve(IPRESOLVE::V4);
 	m_pDownloadEntitiesRequest->LogProgress(HTTPLOG::NONE);
 	m_pDownloadEntitiesRequest->Header("User-Agent: AClient");
-	m_DownloadingEntitiesName = pEntitiesName;
+	m_DownloadingEntitiesName = aCleanName;
 	Http()->Run(m_pDownloadEntitiesRequest);
 
 	if(g_Config.m_AcGameskinDownloadEcho && GameClient())
 	{
 		char aBuf[256];
-		str_format(aBuf, sizeof(aBuf), "[AClient] Descargando entities '%s'...", pEntitiesName);
+		str_format(aBuf, sizeof(aBuf), "[AClient] Descargando entities '%s'...", aCleanName);
 		GameClient()->m_Chat.Echo(aBuf);
 	}
 }
@@ -649,49 +663,81 @@ IGraphics::CTextureHandle CAClientGameSkins::GetOrLoadEntitiesTexture(const char
 	if(!pName || !pName[0] || str_comp(pName, "default") == 0)
 		return IGraphics::CTextureHandle();
 
-	auto it = m_mLoadedEntitiesTextures.find(pName);
+	char aCleanName[128];
+	str_copy(aCleanName, pName);
+	int NameLen = str_length(aCleanName);
+	if(NameLen > 4 && str_comp_nocase(aCleanName + NameLen - 4, ".png") == 0)
+	{
+		aCleanName[NameLen - 4] = '\0';
+	}
+
+	if(aCleanName[0] == '\0' || str_comp(aCleanName, "default") == 0)
+		return IGraphics::CTextureHandle();
+
+	auto it = m_mLoadedEntitiesTextures.find(aCleanName);
 	if(it != m_mLoadedEntitiesTextures.end())
 		return it->second;
 
-	if(m_sFailedEntities.find(pName) != m_sFailedEntities.end())
+	if(m_sFailedEntities.find(aCleanName) != m_sFailedEntities.end())
 		return IGraphics::CTextureHandle();
 
 	char aPath[IO_MAX_PATH_LENGTH];
+	bool Found = false;
+
 	// 1. assets/entities/<name>/ddnet.png
-	str_format(aPath, sizeof(aPath), "assets/entities/%s/ddnet.png", pName);
-	if(!Storage()->FileExists(aPath, IStorage::TYPE_ALL))
+	str_format(aPath, sizeof(aPath), "assets/entities/%s/ddnet.png", aCleanName);
+	if(Storage()->FileExists(aPath, IStorage::TYPE_ALL))
+		Found = true;
+
+	// 2. assets/entities/<name>.png
+	if(!Found)
 	{
-		// 2. assets/entities/<name>.png
-		str_format(aPath, sizeof(aPath), "assets/entities/%s.png", pName);
-		if(!Storage()->FileExists(aPath, IStorage::TYPE_ALL))
-		{
-			// 3. assets/entities/<name>/vanilla.png
-			str_format(aPath, sizeof(aPath), "assets/entities/%s/vanilla.png", pName);
-			if(!Storage()->FileExists(aPath, IStorage::TYPE_ALL))
-			{
-				// 4. downloaded_entities/<name>.png
-				str_format(aPath, sizeof(aPath), "downloaded_entities/%s.png", pName);
-			}
-		}
+		str_format(aPath, sizeof(aPath), "assets/entities/%s.png", aCleanName);
+		if(Storage()->FileExists(aPath, IStorage::TYPE_ALL))
+			Found = true;
 	}
 
-	if(Storage()->FileExists(aPath, IStorage::TYPE_ALL))
+	// 3. assets/entities/<name>/vanilla.png
+	if(!Found)
+	{
+		str_format(aPath, sizeof(aPath), "assets/entities/%s/vanilla.png", aCleanName);
+		if(Storage()->FileExists(aPath, IStorage::TYPE_ALL))
+			Found = true;
+	}
+
+	// 4. downloaded_entities/<name>.png
+	if(!Found)
+	{
+		str_format(aPath, sizeof(aPath), "downloaded_entities/%s.png", aCleanName);
+		if(Storage()->FileExists(aPath, IStorage::TYPE_ALL))
+			Found = true;
+	}
+
+	// 5. downloaded_entities/<name>/ddnet.png
+	if(!Found)
+	{
+		str_format(aPath, sizeof(aPath), "downloaded_entities/%s/ddnet.png", aCleanName);
+		if(Storage()->FileExists(aPath, IStorage::TYPE_ALL))
+			Found = true;
+	}
+
+	if(Found)
 	{
 		IGraphics::CTextureHandle Tex = Graphics()->LoadTexture(aPath, IStorage::TYPE_ALL);
 		if(Tex.IsValid())
 		{
-			m_mLoadedEntitiesTextures[pName] = Tex;
+			m_mLoadedEntitiesTextures[aCleanName] = Tex;
 			return Tex;
 		}
 		else
 		{
-			m_sFailedEntities.insert(pName);
+			m_sFailedEntities.insert(aCleanName);
 		}
 	}
 	else
 	{
 		if(g_Config.m_ClDownloadEntities)
-			StartEntitiesDownload(pName);
+			StartEntitiesDownload(aCleanName);
 	}
 
 	return IGraphics::CTextureHandle();
@@ -877,6 +923,7 @@ void CAClientGameSkins::RefreshPresence()
 
 	const char *pAssetGame = (!g_Config.m_AcShowRemoteGameSkins || g_Config.m_ClAssetGame[0] == '\0') ? "default" : g_Config.m_ClAssetGame;
 	const char *pAssetEntities = (g_Config.m_ClAssetsEntities[0] == '\0') ? "default" : g_Config.m_ClAssetsEntities;
+	const char *pDummyAssetEntities = (g_Config.m_ClDummyAssetEntities[0] != '\0') ? g_Config.m_ClDummyAssetEntities : pAssetEntities;
 
 	// If server address changed, send leave for previous server
 	if(m_aLastServerAddress[0] != '\0' && str_comp(m_aLastServerAddress, aServerAddr) != 0)
@@ -901,25 +948,26 @@ void CAClientGameSkins::RefreshPresence()
 	str_copy(m_aLastAnnouncedDummy, aPrimaryDummy);
 	str_copy(m_aLastAnnouncedSkin, pAssetGame);
 	str_copy(m_aLastAnnouncedEntities, pAssetEntities);
+	str_copy(m_aLastAnnouncedDummyEntities, pDummyAssetEntities);
 	m_LastPresenceRefreshTime = time_get();
 
 	const char *pBaseUrl = (g_Config.m_AcPresenceUrl[0] != '\0' && str_find(g_Config.m_AcPresenceUrl, "workers.dev") == nullptr) ? g_Config.m_AcPresenceUrl : AClientBackend::SUPABASE_URL;
 
-	char aEscSkin[128];
-	char aEscEntities[128];
 	char aEscServer[128];
-	EscapeJson(aEscSkin, sizeof(aEscSkin), pAssetGame);
-	EscapeJson(aEscEntities, sizeof(aEscEntities), pAssetEntities);
 	EscapeJson(aEscServer, sizeof(aEscServer), aServerAddr);
 
 	char aPostUrl[512];
 	str_format(aPostUrl, sizeof(aPostUrl), "%s/rest/v1/rpc/aclient_presence", pBaseUrl);
 
-	auto SendPresencePost = [&](const char *pPlayerNameToAnnounce) {
+	auto SendPresencePost = [&](const char *pPlayerNameToAnnounce, const char *pSkinToAnnounce, const char *pEntitiesToAnnounce) {
 		if(!pPlayerNameToAnnounce || !pPlayerNameToAnnounce[0])
 			return;
 		char aEscPlayer[128];
 		EscapeJson(aEscPlayer, sizeof(aEscPlayer), pPlayerNameToAnnounce);
+		char aEscSkin[128];
+		EscapeJson(aEscSkin, sizeof(aEscSkin), pSkinToAnnounce);
+		char aEscEntities[128];
+		EscapeJson(aEscEntities, sizeof(aEscEntities), pEntitiesToAnnounce);
 
 		char aPayload[512];
 		str_format(aPayload, sizeof(aPayload),
@@ -936,12 +984,12 @@ void CAClientGameSkins::RefreshPresence()
 		Http()->Run(pPost);
 	};
 
-	// 1. Announce only the single trimmed in-game server name
-	SendPresencePost(aPrimaryPlayer);
+	// 1. Announce player
+	SendPresencePost(aPrimaryPlayer, pAssetGame, pAssetEntities);
 
-	// 1b. Announce dummy's single trimmed in-game server name if connected
+	// 1b. Announce dummy if connected
 	if(aPrimaryDummy[0] != '\0' && str_comp(aPrimaryDummy, aPrimaryPlayer) != 0)
-		SendPresencePost(aPrimaryDummy);
+		SendPresencePost(aPrimaryDummy, pAssetGame, pDummyAssetEntities);
 
 	// 2. Fetch remote gameskins and AClient presence via GET
 	if(m_pPresenceRequest && !m_pPresenceRequest->Done())
@@ -949,42 +997,60 @@ void CAClientGameSkins::RefreshPresence()
 		m_pPresenceRequest->Abort();
 	}
 
-	if(g_Config.m_AcShowRemoteGameSkins)
+	if(g_Config.m_AcShowRemoteGameSkins || g_Config.m_AcShowRemoteEntitiesOnHook)
 	{
 		char aEscapedServer[256];
-	EscapeUrl(aEscapedServer, sizeof(aEscapedServer), aServerAddr);
+		EscapeUrl(aEscapedServer, sizeof(aEscapedServer), aServerAddr);
 
-	int64_t NowEpochMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-	int64_t MinUpdatedAt = NowEpochMs - 3600000; // 1 hora
+		int64_t NowEpochMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+		int64_t MinUpdatedAt = NowEpochMs - 3600000; // 1 hora
 
-	char aGetUrl[512];
-	str_format(aGetUrl, sizeof(aGetUrl), "%s/rest/v1/presence?server=eq.%s&updated_at=gt.%" PRId64 "&select=player,asset_game,asset_entities,updated_at", pBaseUrl, aEscapedServer, MinUpdatedAt);
+		char aGetUrl[512];
+		str_format(aGetUrl, sizeof(aGetUrl), "%s/rest/v1/presence?server=eq.%s&updated_at=gt.%" PRId64 "&select=player,asset_game,asset_entities,updated_at", pBaseUrl, aEscapedServer, MinUpdatedAt);
 
-	m_pPresenceRequest = HttpGet(aGetUrl);
-	m_pPresenceRequest->Timeout(CTimeout{4000, 4000, 500, 4});
-	m_pPresenceRequest->IpResolve(IPRESOLVE::V4);
-	m_pPresenceRequest->LogProgress(HTTPLOG::NONE);
-	m_pPresenceRequest->Header(AClientBackend::USER_AGENT_HEADER);
-	m_pPresenceRequest->Header(AClientBackend::API_KEY_HEADER);
-	m_pPresenceRequest->Header(AClientBackend::AUTH_BEARER_HEADER);
+		m_pPresenceRequest = HttpGet(aGetUrl);
+		m_pPresenceRequest->Timeout(CTimeout{4000, 4000, 500, 4});
+		m_pPresenceRequest->IpResolve(IPRESOLVE::V4);
+		m_pPresenceRequest->LogProgress(HTTPLOG::NONE);
+		m_pPresenceRequest->Header(AClientBackend::USER_AGENT_HEADER);
+		m_pPresenceRequest->Header(AClientBackend::API_KEY_HEADER);
+		m_pPresenceRequest->Header(AClientBackend::AUTH_BEARER_HEADER);
 		Http()->Run(m_pPresenceRequest);
 	}
-	else if(!m_mRemotePlayerGameSkins.empty())
+	else if(!m_mRemotePlayerGameSkins.empty() || !m_mRemotePlayerEntities.empty())
 	{
 		m_mRemotePlayerGameSkins.clear();
+		m_mRemotePlayerEntities.clear();
 		UpdateAllPlayerSkins();
 	}
 }
 
 void CAClientGameSkins::UpdateAllPlayerSkins()
 {
+	const int LocalClientId = GameClient()->m_Snap.m_LocalClientId;
+	const int DummyClientId = Client()->DummyConnected() ? GameClient()->m_aLocalIds[1] : -1;
+
 	for(int i = 0; i < MAX_CLIENTS; ++i)
 	{
 		if(!GameClient()->m_aClients[i].m_Active)
 			continue;
 
-		if(i == GameClient()->m_Snap.m_LocalClientId)
+		if(i == LocalClientId)
+		{
+			// Load local entities texture for hooked tile rendering
+			const char *pLocalEnt = (g_Config.m_ClAssetsEntities[0] != '\0' && str_comp(g_Config.m_ClAssetsEntities, "default") != 0) ? g_Config.m_ClAssetsEntities : nullptr;
+			if(pLocalEnt)
+			{
+				str_copy(GameClient()->m_aClients[i].m_aCustomEntitiesName, pLocalEnt);
+				GameClient()->m_aClients[i].m_CustomEntitiesTexture = GetOrLoadEntitiesTexture(pLocalEnt);
+			}
+			else
+			{
+				GameClient()->m_aClients[i].m_aCustomEntitiesName[0] = '\0';
+				GameClient()->m_aClients[i].m_CustomEntitiesTexture = IGraphics::CTextureHandle();
+			}
 			continue;
+		}
 
 		bool IsAClient = false;
 		if(m_sRemoteAClientPlayers.find(GameClient()->m_aClients[i].m_aName) != m_sRemoteAClientPlayers.end())
@@ -1018,18 +1084,31 @@ void CAClientGameSkins::UpdateAllPlayerSkins()
 			GameClient()->m_aClients[i].m_aCustomGameSkinName[0] = '\0';
 		}
 
-		auto itEnt = m_mRemotePlayerEntities.find(GameClient()->m_aClients[i].m_aName);
-		if(itEnt == m_mRemotePlayerEntities.end())
+		const char *pEntitiesToLoad = nullptr;
+		if(i == DummyClientId && g_Config.m_ClDummyAssetEntities[0] != '\0')
 		{
-			char aTrimmedEnt[MAX_NAME_LENGTH];
-			TrimPlayerName(GameClient()->m_aClients[i].m_aName, aTrimmedEnt, sizeof(aTrimmedEnt));
-			if(aTrimmedEnt[0] != '\0')
-				itEnt = m_mRemotePlayerEntities.find(aTrimmedEnt);
+			pEntitiesToLoad = g_Config.m_ClDummyAssetEntities;
 		}
-		if(itEnt != m_mRemotePlayerEntities.end() && !itEnt->second.empty() && str_comp(itEnt->second.c_str(), "default") != 0)
+		else
 		{
-			str_copy(GameClient()->m_aClients[i].m_aCustomEntitiesName, itEnt->second.c_str());
-			GameClient()->m_aClients[i].m_CustomEntitiesTexture = GetOrLoadEntitiesTexture(itEnt->second.c_str());
+			auto itEnt = m_mRemotePlayerEntities.find(GameClient()->m_aClients[i].m_aName);
+			if(itEnt == m_mRemotePlayerEntities.end())
+			{
+				char aTrimmedEnt[MAX_NAME_LENGTH];
+				TrimPlayerName(GameClient()->m_aClients[i].m_aName, aTrimmedEnt, sizeof(aTrimmedEnt));
+				if(aTrimmedEnt[0] != '\0')
+					itEnt = m_mRemotePlayerEntities.find(aTrimmedEnt);
+			}
+			if(itEnt != m_mRemotePlayerEntities.end() && !itEnt->second.empty() && str_comp(itEnt->second.c_str(), "default") != 0)
+			{
+				pEntitiesToLoad = itEnt->second.c_str();
+			}
+		}
+
+		if(pEntitiesToLoad && pEntitiesToLoad[0] != '\0' && str_comp(pEntitiesToLoad, "default") != 0)
+		{
+			str_copy(GameClient()->m_aClients[i].m_aCustomEntitiesName, pEntitiesToLoad);
+			GameClient()->m_aClients[i].m_CustomEntitiesTexture = GetOrLoadEntitiesTexture(pEntitiesToLoad);
 		}
 		else
 		{
@@ -1081,11 +1160,13 @@ void CAClientGameSkins::OnRender()
 
 			const char *pEffectiveSkin = (!g_Config.m_AcShowRemoteGameSkins || g_Config.m_ClAssetGame[0] == '\0') ? "default" : g_Config.m_ClAssetGame;
 			const char *pEffectiveEntities = (g_Config.m_ClAssetsEntities[0] == '\0') ? "default" : g_Config.m_ClAssetsEntities;
+			const char *pEffectiveDummyEntities = (g_Config.m_ClDummyAssetEntities[0] != '\0') ? g_Config.m_ClDummyAssetEntities : pEffectiveEntities;
 			bool SkinChanged = str_comp(m_aLastAnnouncedSkin, pEffectiveSkin) != 0;
 			bool EntitiesChanged = str_comp(m_aLastAnnouncedEntities, pEffectiveEntities) != 0;
+			bool DummyEntitiesChanged = str_comp(m_aLastAnnouncedDummyEntities, pEffectiveDummyEntities) != 0;
 			bool NameChanged = aCurrentPlayer[0] != '\0' && str_comp(m_aLastAnnouncedPlayer, aCurrentPlayer) != 0;
 			bool DummyChanged = str_comp(m_aLastAnnouncedDummy, aCurrentDummy) != 0;
-			bool PeriodicRefresh = (m_LastPresenceRefreshTime == 0);
+			bool PeriodicRefresh = (m_LastPresenceRefreshTime == 0) || ((Now - m_LastPresenceRefreshTime) > time_freq() * 10);
 
 			int RosterSignature = 0;
 			for(int i = 0; i < MAX_CLIENTS; ++i)
@@ -1099,7 +1180,7 @@ void CAClientGameSkins::OnRender()
 			if(RosterChanged)
 				m_LastActivePlayerCount = RosterSignature;
 
-			if(SkinChanged || EntitiesChanged || NameChanged || DummyChanged || PeriodicRefresh || RosterChanged)
+			if(SkinChanged || EntitiesChanged || DummyEntitiesChanged || NameChanged || DummyChanged || PeriodicRefresh || RosterChanged)
 			{
 				RefreshPresence();
 			}
@@ -1160,7 +1241,7 @@ void CAClientGameSkins::OnRender()
 								if(pAs && pAs->type == json_string)
 								{
 									const char *pSkinName = json_string_get(pAs);
-									if(pSkinName && pSkinName[0] && str_comp(aTrimmedPl, m_aLastAnnouncedPlayer) != 0)
+									if(pSkinName && pSkinName[0])
 									{
 										NewSkins[pPlName] = pSkinName;
 										if(aTrimmedPl[0] != '\0')
@@ -1170,7 +1251,7 @@ void CAClientGameSkins::OnRender()
 								if(pEnt && pEnt->type == json_string)
 								{
 									const char *pEntName = json_string_get(pEnt);
-									if(pEntName && pEntName[0] && str_comp(aTrimmedPl, m_aLastAnnouncedPlayer) != 0)
+									if(pEntName && pEntName[0])
 									{
 										NewEntities[pPlName] = pEntName;
 										if(aTrimmedPl[0] != '\0')
@@ -1326,7 +1407,15 @@ void CAClientGameSkins::ConReloadRemoteGameSkins(IConsole::IResult *pResult, voi
 {
 	CAClientGameSkins *pSelf = (CAClientGameSkins *)pUserData;
 	pSelf->TriggerManualReload();
-	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "aclient", "Consultando gameskins remotos...");
+	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "aclient", "Consultando gameskins y entities remotos...");
+	return;
+}
+
+void CAClientGameSkins::ConReloadRemoteEntities(IConsole::IResult *pResult, void *pUserData)
+{
+	CAClientGameSkins *pSelf = (CAClientGameSkins *)pUserData;
+	pSelf->TriggerManualReload();
+	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "aclient", "Consultando entities y gameskins remotos...");
 	return;
 }
 
@@ -1347,6 +1436,26 @@ void CAClientGameSkins::ConSetPlayerGameSkin(IConsole::IResult *pResult, void *p
 	str_format(aBuf, sizeof(aBuf), "Asignado gameskin '%s' a cliente %d (cargado: %s)", pSkinName, ClientId, pSkin ? "si" : "no (fallback default)");
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "aclient", aBuf);
 }
+
+void CAClientGameSkins::ConSetPlayerEntities(IConsole::IResult *pResult, void *pUserData)
+{
+	CAClientGameSkins *pSelf = (CAClientGameSkins *)pUserData;
+	int ClientId = pResult->GetInteger(0);
+	const char *pEntitiesName = pResult->GetString(1);
+	if(ClientId < 0 || ClientId >= MAX_CLIENTS)
+	{
+		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "aclient", "ClientId fuera de rango");
+		return;
+	}
+	IGraphics::CTextureHandle Tex = pSelf->GetOrLoadEntitiesTexture(pEntitiesName);
+	pSelf->GameClient()->m_aClients[ClientId].m_CustomEntitiesTexture = Tex;
+	str_copy(pSelf->GameClient()->m_aClients[ClientId].m_aCustomEntitiesName, pEntitiesName);
+	pSelf->m_mRemotePlayerEntities[pSelf->GameClient()->m_aClients[ClientId].m_aName] = pEntitiesName;
+	char aBuf[128];
+	str_format(aBuf, sizeof(aBuf), "Asignadas entities '%s' a cliente %d (cargado: %s)", pEntitiesName, ClientId, Tex.IsValid() ? "si" : "no / descargando");
+	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "aclient", aBuf);
+}
+
 
 void CAClientGameSkins::ConBlacklistGameSkin(IConsole::IResult *pResult, void *pUserData)
 {
@@ -1381,7 +1490,9 @@ void CAClientGameSkins::ConToggleBlacklistGameSkin(IConsole::IResult *pResult, v
 void CAClientGameSkins::OnConsoleInit()
 {
 	Console()->Register("reload_remote_gameskins", "", CFGFLAG_CLIENT, ConReloadRemoteGameSkins, this, "Reload custom gameskins for remote players from relay");
+	Console()->Register("reload_remote_entities", "", CFGFLAG_CLIENT, ConReloadRemoteEntities, this, "Reload custom entities and gameskins for remote players from relay");
 	Console()->Register("set_player_gameskin", "i[id] s[skin]", CFGFLAG_CLIENT, ConSetPlayerGameSkin, this, "Set custom gameskin for a specific player (for testing)");
+	Console()->Register("set_player_entities", "i[id] s[entities]", CFGFLAG_CLIENT, ConSetPlayerEntities, this, "Set custom entities for a specific player (for testing)");
 	Console()->Register("cl_blacklist_gameskin", "s[skin]", CFGFLAG_CLIENT, ConBlacklistGameSkin, this, "Blacklist a gameskin");
 	Console()->Register("cl_unblacklist_gameskin", "s[skin]", CFGFLAG_CLIENT, ConUnblacklistGameSkin, this, "Unblacklist a gameskin");
 	Console()->Register("cl_toggle_blacklist_gameskin", "s[skin]", CFGFLAG_CLIENT, ConToggleBlacklistGameSkin, this, "Toggle blacklist for a gameskin");

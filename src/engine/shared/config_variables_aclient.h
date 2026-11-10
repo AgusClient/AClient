@@ -220,4 +220,5 @@ MACRO_CONFIG_INT(AcHookedTileRgb, ac_hooked_tile_rgb, 0, 0, 1, CFGFLAG_CLIENT | 
 MACRO_CONFIG_INT(AcHookedTileSpeed, ac_hooked_tile_speed, 25, 1, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Velocidad de ciclo Rainbow RGB en el bloque enganchado")
 MACRO_CONFIG_INT(AcHookedTileOthers, ac_hooked_tile_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mostrar iluminacion en bloques hookeados por otros jugadores")
 MACRO_CONFIG_INT(AcShowRemoteEntitiesOnHook, ac_show_remote_entities_on_hook, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mostrar entidades remotas (Supabase) en bloques hookeados por otros jugadores")
+MACRO_CONFIG_STR(ClDummyAssetEntities, cl_dummy_asset_entities, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Custom entities pack for dummy player (used for testing hooked tile replacement)")
 

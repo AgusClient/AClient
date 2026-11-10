@@ -4747,6 +4747,10 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	DoCheckboxWithHelp(&g_Config.m_AcShowRemoteEntitiesOnHook, TCLocalize("Mostrar entidades de otros al hookear (Supabase)"), TCLocalize("Cuando otro jugador hookea un bloque, ese bloque se renderiza temporalmente con el pack de entidades que dicho jugador tiene activo."), &g_Config.m_AcShowRemoteEntitiesOnHook, &Column, LineSize);
 	DoCheckboxWithHelp(&g_Config.m_ClDownloadEntities, TCLocalize("Descargar entidades remotas automaticamente"), TCLocalize("Descarga e instala de fondo el pack de entidades de otros jugadores desde GitHub para mostrarlas de inmediato."), &g_Config.m_ClDownloadEntities, &Column, LineSize);
 
+	static CLineInput s_DummyEntitiesInput;
+	Column.HSplitTop(LineSize, &Button, &Column);
+	DoEditBoxWithLabel(&s_DummyEntitiesInput, &Button, TCLocalize("Entities del Dummy (test)"), "", g_Config.m_ClDummyAssetEntities, sizeof(g_Config.m_ClDummyAssetEntities));
+
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
 
