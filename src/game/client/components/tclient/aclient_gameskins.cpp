@@ -46,12 +46,14 @@ CAClientGameSkins::CAClientGameSkins() :
 	m_InitialDownloadPhase(false),
 	m_WasFrozen(false),
 	m_BlacklistLoaded(false),
-	m_SkinUsersRevision(0)
+	m_SkinUsersRevision(0),
+	m_SupabaseHasEntitiesColumn(false)
 {
 	m_aLastServerAddress[0] = '\0';
 	m_aLastAnnouncedPlayer[0] = '\0';
 	m_aLastAnnouncedDummy[0] = '\0';
 	m_aLastAnnouncedSkin[0] = '\0';
+	m_aLastAnnouncedEntities[0] = '\0';
 }
 
 CAClientGameSkins::~CAClientGameSkins()
@@ -67,6 +69,18 @@ void CAClientGameSkins::OnInit()
 {
 	EnsureBlacklistLoaded();
 	UpdateActiveSkinUsers();
+
+	// Limpiar registros huerfanos al iniciar el cliente
+	const char *pPlayerName = g_Config.m_PlayerName;
+	if(pPlayerName && pPlayerName[0])
+	{
+		char aTrimmed[MAX_NAME_LENGTH];
+		TrimPlayerName(pPlayerName, aTrimmed, sizeof(aTrimmed));
+		if(aTrimmed[0] != '\0')
+		{
+			SendPresenceLeave("all", aTrimmed);
+		}
+	}
 }
 
 void CAClientGameSkins::EnsureBlacklistLoaded()
@@ -320,16 +334,20 @@ void CAClientGameSkins::OnReset()
 	{
 		GameClient()->m_aClients[i].m_pCustomGameSkin = nullptr;
 		GameClient()->m_aClients[i].m_aCustomGameSkinName[0] = '\0';
+		GameClient()->m_aClients[i].m_aCustomEntitiesName[0] = '\0';
+		GameClient()->m_aClients[i].m_CustomEntitiesTexture = IGraphics::CTextureHandle();
 		GameClient()->m_aClients[i].m_IsAClient = false;
 	}
 
 	FreeAllGameSkins();
 	m_sFailedSkins.clear();
+	m_mRemotePlayerEntities.clear();
 	m_PendingAnnounce = false;
 	m_aLastServerAddress[0] = '\0';
 	m_aLastAnnouncedPlayer[0] = '\0';
 	m_aLastAnnouncedDummy[0] = '\0';
 	m_aLastAnnouncedSkin[0] = '\0';
+	m_aLastAnnouncedEntities[0] = '\0';
 	m_LastActivePlayerCount = 0;
 	m_LastPresenceRefreshTime = 0;
 	m_LastRenderCheckTime = 0;
@@ -401,6 +419,13 @@ void CAClientGameSkins::FreeAllGameSkins()
 		UnloadSkin(Pair.second);
 	}
 	m_mLoadedGameSkins.clear();
+
+	for(auto &Pair : m_mLoadedEntitiesTextures)
+	{
+		if(Pair.second.IsValid())
+			Graphics()->UnloadTexture(&Pair.second);
+	}
+	m_mLoadedEntitiesTextures.clear();
 }
 
 bool CAClientGameSkins::FindGameSkinFile(const char *pName, char *pOutPath, int OutPathSize)
@@ -525,6 +550,47 @@ void CAClientGameSkins::StartDownload(const char *pSkinName)
 		str_format(aBuf, sizeof(aBuf), "[AClient] Descargando gameskin '%s'...", pSkinName);
 		GameClient()->m_Chat.Echo(aBuf);
 	}
+}
+
+IGraphics::CTextureHandle CAClientGameSkins::GetOrLoadEntitiesTexture(const char *pName)
+{
+	if(!pName || !pName[0] || str_comp(pName, "default") == 0)
+		return IGraphics::CTextureHandle();
+
+	auto it = m_mLoadedEntitiesTextures.find(pName);
+	if(it != m_mLoadedEntitiesTextures.end())
+		return it->second;
+
+	char aPath[IO_MAX_PATH_LENGTH];
+	// 1. assets/entities/<name>/ddnet.png
+	str_format(aPath, sizeof(aPath), "assets/entities/%s/ddnet.png", pName);
+	if(!Storage()->FileExists(aPath, IStorage::TYPE_ALL))
+	{
+		// 2. assets/entities/<name>.png
+		str_format(aPath, sizeof(aPath), "assets/entities/%s.png", pName);
+		if(!Storage()->FileExists(aPath, IStorage::TYPE_ALL))
+		{
+			// 3. assets/entities/<name>/vanilla.png
+			str_format(aPath, sizeof(aPath), "assets/entities/%s/vanilla.png", pName);
+			if(!Storage()->FileExists(aPath, IStorage::TYPE_ALL))
+			{
+				// 4. downloaded_entities/<name>.png
+				str_format(aPath, sizeof(aPath), "downloaded_entities/%s.png", pName);
+			}
+		}
+	}
+
+	if(Storage()->FileExists(aPath, IStorage::TYPE_ALL))
+	{
+		IGraphics::CTextureHandle Tex = Graphics()->LoadTexture(aPath, IStorage::TYPE_ALL);
+		if(Tex.IsValid())
+		{
+			m_mLoadedEntitiesTextures[pName] = Tex;
+			return Tex;
+		}
+	}
+
+	return IGraphics::CTextureHandle();
 }
 
 const SClientGameSkin *CAClientGameSkins::GetOrLoadGameSkin(const char *pName)
@@ -706,6 +772,7 @@ void CAClientGameSkins::RefreshPresence()
 	}
 
 	const char *pAssetGame = (!g_Config.m_AcShowRemoteGameSkins || g_Config.m_ClAssetGame[0] == '\0') ? "default" : g_Config.m_ClAssetGame;
+	const char *pAssetEntities = (g_Config.m_ClAssetsEntities[0] == '\0') ? "default" : g_Config.m_ClAssetsEntities;
 
 	// If server address changed, send leave for previous server
 	if(m_aLastServerAddress[0] != '\0' && str_comp(m_aLastServerAddress, aServerAddr) != 0)
@@ -729,13 +796,16 @@ void CAClientGameSkins::RefreshPresence()
 	str_copy(m_aLastAnnouncedPlayer, aPrimaryPlayer);
 	str_copy(m_aLastAnnouncedDummy, aPrimaryDummy);
 	str_copy(m_aLastAnnouncedSkin, pAssetGame);
+	str_copy(m_aLastAnnouncedEntities, pAssetEntities);
 	m_LastPresenceRefreshTime = time_get();
 
 	const char *pBaseUrl = (g_Config.m_AcPresenceUrl[0] != '\0' && str_find(g_Config.m_AcPresenceUrl, "workers.dev") == nullptr) ? g_Config.m_AcPresenceUrl : AClientBackend::SUPABASE_URL;
 
 	char aEscSkin[128];
+	char aEscEntities[128];
 	char aEscServer[128];
 	EscapeJson(aEscSkin, sizeof(aEscSkin), pAssetGame);
+	EscapeJson(aEscEntities, sizeof(aEscEntities), pAssetEntities);
 	EscapeJson(aEscServer, sizeof(aEscServer), aServerAddr);
 
 	char aPostUrl[512];
@@ -748,9 +818,18 @@ void CAClientGameSkins::RefreshPresence()
 		EscapeJson(aEscPlayer, sizeof(aEscPlayer), pPlayerNameToAnnounce);
 
 		char aPayload[512];
-		str_format(aPayload, sizeof(aPayload),
-			"{\"p_server\":\"%s\",\"p_player\":\"%s\",\"p_asset_game\":\"%s\"}",
-			aEscServer, aEscPlayer, aEscSkin);
+		if(m_SupabaseHasEntitiesColumn)
+		{
+			str_format(aPayload, sizeof(aPayload),
+				"{\"p_server\":\"%s\",\"p_player\":\"%s\",\"p_asset_game\":\"%s\",\"p_asset_entities\":\"%s\"}",
+				aEscServer, aEscPlayer, aEscSkin, aEscEntities);
+		}
+		else
+		{
+			str_format(aPayload, sizeof(aPayload),
+				"{\"p_server\":\"%s\",\"p_player\":\"%s\",\"p_asset_game\":\"%s\"}",
+				aEscServer, aEscPlayer, aEscSkin);
+		}
 
 		std::shared_ptr<IHttpRequest> pPost = HttpPostJson(aPostUrl, aPayload);
 		pPost->Timeout(CTimeout{3000, 3000, 500, 3});
@@ -781,10 +860,13 @@ void CAClientGameSkins::RefreshPresence()
 	EscapeUrl(aEscapedServer, sizeof(aEscapedServer), aServerAddr);
 
 	int64_t NowEpochMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-	int64_t MinUpdatedAt = NowEpochMs - 35000;
+	int64_t MinUpdatedAt = NowEpochMs - 3600000; // 1 hora
 
 	char aGetUrl[512];
-	str_format(aGetUrl, sizeof(aGetUrl), "%s/rest/v1/presence?server=eq.%s&updated_at=gt.%" PRId64 "&select=player,asset_game,updated_at", pBaseUrl, aEscapedServer, MinUpdatedAt);
+	if(m_SupabaseHasEntitiesColumn)
+		str_format(aGetUrl, sizeof(aGetUrl), "%s/rest/v1/presence?server=eq.%s&updated_at=gt.%" PRId64 "&select=player,asset_game,asset_entities,updated_at", pBaseUrl, aEscapedServer, MinUpdatedAt);
+	else
+		str_format(aGetUrl, sizeof(aGetUrl), "%s/rest/v1/presence?server=eq.%s&updated_at=gt.%" PRId64 "&select=player,asset_game,updated_at", pBaseUrl, aEscapedServer, MinUpdatedAt);
 
 	m_pPresenceRequest = HttpGet(aGetUrl);
 	m_pPresenceRequest->Timeout(CTimeout{4000, 4000, 500, 4});
@@ -843,6 +925,25 @@ void CAClientGameSkins::UpdateAllPlayerSkins()
 			GameClient()->m_aClients[i].m_pCustomGameSkin = nullptr;
 			GameClient()->m_aClients[i].m_aCustomGameSkinName[0] = '\0';
 		}
+
+		auto itEnt = m_mRemotePlayerEntities.find(GameClient()->m_aClients[i].m_aName);
+		if(itEnt == m_mRemotePlayerEntities.end())
+		{
+			char aTrimmedEnt[MAX_NAME_LENGTH];
+			TrimPlayerName(GameClient()->m_aClients[i].m_aName, aTrimmedEnt, sizeof(aTrimmedEnt));
+			if(aTrimmedEnt[0] != '\0')
+				itEnt = m_mRemotePlayerEntities.find(aTrimmedEnt);
+		}
+		if(itEnt != m_mRemotePlayerEntities.end() && !itEnt->second.empty() && str_comp(itEnt->second.c_str(), "default") != 0)
+		{
+			str_copy(GameClient()->m_aClients[i].m_aCustomEntitiesName, itEnt->second.c_str());
+			GameClient()->m_aClients[i].m_CustomEntitiesTexture = GetOrLoadEntitiesTexture(itEnt->second.c_str());
+		}
+		else
+		{
+			GameClient()->m_aClients[i].m_aCustomEntitiesName[0] = '\0';
+			GameClient()->m_aClients[i].m_CustomEntitiesTexture = IGraphics::CTextureHandle();
+		}
 	}
 
 	UpdateActiveSkinUsers();
@@ -887,10 +988,12 @@ void CAClientGameSkins::OnRender()
 			}
 
 			const char *pEffectiveSkin = (!g_Config.m_AcShowRemoteGameSkins || g_Config.m_ClAssetGame[0] == '\0') ? "default" : g_Config.m_ClAssetGame;
+			const char *pEffectiveEntities = (g_Config.m_ClAssetsEntities[0] == '\0') ? "default" : g_Config.m_ClAssetsEntities;
 			bool SkinChanged = str_comp(m_aLastAnnouncedSkin, pEffectiveSkin) != 0;
+			bool EntitiesChanged = str_comp(m_aLastAnnouncedEntities, pEffectiveEntities) != 0;
 			bool NameChanged = aCurrentPlayer[0] != '\0' && str_comp(m_aLastAnnouncedPlayer, aCurrentPlayer) != 0;
 			bool DummyChanged = str_comp(m_aLastAnnouncedDummy, aCurrentDummy) != 0;
-			bool PeriodicRefresh = (m_LastPresenceRefreshTime == 0) || ((Now - m_LastPresenceRefreshTime) > time_freq() * 10);
+			bool PeriodicRefresh = (m_LastPresenceRefreshTime == 0);
 
 			int RosterSignature = 0;
 			for(int i = 0; i < MAX_CLIENTS; ++i)
@@ -904,7 +1007,7 @@ void CAClientGameSkins::OnRender()
 			if(RosterChanged)
 				m_LastActivePlayerCount = RosterSignature;
 
-			if(SkinChanged || NameChanged || DummyChanged || PeriodicRefresh || RosterChanged)
+			if(SkinChanged || EntitiesChanged || NameChanged || DummyChanged || PeriodicRefresh || RosterChanged)
 			{
 				RefreshPresence();
 			}
@@ -931,9 +1034,10 @@ void CAClientGameSkins::OnRender()
 				if(pArr)
 				{
 					std::map<std::string, std::string> NewSkins;
+					std::map<std::string, std::string> NewEntities;
 					std::set<std::string> NewAClientPlayers;
 					int64_t NowEpochMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-					int64_t MinUpdatedAt = NowEpochMs - 40000;
+					int64_t MinUpdatedAt = NowEpochMs - 3600000; // 1 hora
 					int Len = json_array_length(pArr);
 					for(int i = 0; i < Len; ++i)
 					{
@@ -949,6 +1053,7 @@ void CAClientGameSkins::OnRender()
 						}
 						const json_value *pPl = json_object_get(pItem, "player");
 						const json_value *pAs = json_object_get(pItem, "asset_game");
+						const json_value *pEnt = json_object_get(pItem, "asset_entities");
 						if(pPl && pPl->type == json_string)
 						{
 							const char *pPlName = json_string_get(pPl);
@@ -970,15 +1075,31 @@ void CAClientGameSkins::OnRender()
 											NewSkins[aTrimmedPl] = pSkinName;
 									}
 								}
+								if(pEnt && pEnt->type == json_string)
+								{
+									const char *pEntName = json_string_get(pEnt);
+									if(pEntName && pEntName[0] && str_comp(aTrimmedPl, m_aLastAnnouncedPlayer) != 0)
+									{
+										NewEntities[pPlName] = pEntName;
+										if(aTrimmedPl[0] != '\0')
+											NewEntities[aTrimmedPl] = pEntName;
+									}
+								}
 							}
 						}
 					}
 					m_sRemoteAClientPlayers = std::move(NewAClientPlayers);
 					m_mRemotePlayerGameSkins = std::move(NewSkins);
+					m_mRemotePlayerEntities = std::move(NewEntities);
 					UpdateAllPlayerSkins();
 				}
 				json_value_free(pJson);
 			}
+		}
+		else if(m_pPresenceRequest->State() == EHttpState::DONE && m_pPresenceRequest->StatusCode() == 400 && m_SupabaseHasEntitiesColumn)
+		{
+			m_SupabaseHasEntitiesColumn = false;
+			m_LastPresenceRefreshTime = 0;
 		}
 		m_pPresenceRequest = nullptr;
 	}

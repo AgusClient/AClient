@@ -4715,6 +4715,40 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
 
+	// ***** Hook Glow & Bloque Hookeado ***** //
+	Column.HSplitTop(Margin, nullptr, &Column);
+	s_SectionBoxesAc.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("Hook Glow / Bloque Hookeado"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	DoCheckboxWithHelp(&g_Config.m_AcHookedTile, TCLocalize("Iluminar bloque al hookear"), TCLocalize("Resalta e ilumina visualmente el bloque que estas hookeando con un efecto luminoso."), &g_Config.m_AcHookedTile, &Column, LineSize);
+	if(g_Config.m_AcHookedTile)
+	{
+		DoCheckboxWithHelp(&g_Config.m_AcHookedTileGlow, TCLocalize("Resplandor luminoso (Glow halo)"), TCLocalize("Dibuja un halo de luz brillante y suave alrededor del bloque enganchado."), &g_Config.m_AcHookedTileGlow, &Column, LineSize);
+		DoCheckboxWithHelp(&g_Config.m_AcHookedTileRgb, TCLocalize("Modo Rainbow RGB animado"), TCLocalize("Hace rotar los colores del bloque hookeado a traves del espectro arcoiris en tiempo real."), &g_Config.m_AcHookedTileRgb, &Column, LineSize);
+		if(g_Config.m_AcHookedTileRgb)
+		{
+			Column.HSplitTop(LineSize, &Button, &Column);
+			Ui()->DoScrollbarOption(&g_Config.m_AcHookedTileSpeed, &g_Config.m_AcHookedTileSpeed, &Button, TCLocalize("Velocidad Rainbow RGB"), 1, 100);
+		}
+		else
+		{
+			static CButtonContainer s_HookedTileColorId;
+			DoLine_ColorPicker(&s_HookedTileColorId, ColorPickerLineSize, ColorPickerLabelSize, ColorPickerLineSpacing, &Column, TCLocalize("Color del bloque hookeado"), &g_Config.m_AcHookedTileColor, ColorRGBA(0.0f, 0.0f, 0.0f), false);
+		}
+
+		Column.HSplitTop(LineSize, &Button, &Column);
+		Ui()->DoScrollbarOption(&g_Config.m_AcHookedTileOpacity, &g_Config.m_AcHookedTileOpacity, &Button, TCLocalize("Opacidad del bloque (%)"), 5, 100);
+
+		DoCheckboxWithHelp(&g_Config.m_AcHookedTileOthers, TCLocalize("Iluminar bloques de otros jugadores"), TCLocalize("Muestra tambien el efecto luminoso cuando otros jugadores enganchan un bloque."), &g_Config.m_AcHookedTileOthers, &Column, LineSize);
+	}
+
+	DoCheckboxWithHelp(&g_Config.m_AcShowRemoteEntitiesOnHook, TCLocalize("Mostrar entidades de otros al hookear (Supabase)"), TCLocalize("Cuando otro jugador hookea un bloque, ese bloque se renderiza temporalmente con el pack de entidades que dicho jugador tiene activo."), &g_Config.m_AcShowRemoteEntitiesOnHook, &Column, LineSize);
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
+
 
 	// ***** Right Column: HUD, Social, Chat & Alerts ***** //
 	LeftView = Column;

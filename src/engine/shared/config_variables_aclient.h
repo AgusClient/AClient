@@ -208,3 +208,14 @@ MACRO_CONFIG_INT(AcCustomAspectRatioIngameOnly, ac_custom_aspect_ratio_ingame_on
 
 // Chat History & Scroll
 MACRO_CONFIG_INT(AcChatMaxLines, ac_chat_max_lines, 64, 64, 512, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Maximum number of chat lines stored in history (default 64, up to 512)")
+
+// Hooked Tile Glow & Remote Entities
+MACRO_CONFIG_INT(AcHookedTile, ac_hooked_tile, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Iluminar el bloque enganchado por tu hook")
+MACRO_CONFIG_INT(AcHookedTileGlow, ac_hooked_tile_glow, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Efecto de resplandor / brillo luminoso (Glow) en el bloque enganchado")
+MACRO_CONFIG_COL(AcHookedTileColor, ac_hooked_tile_color, 12425635, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Color de iluminacion del bloque enganchado")
+MACRO_CONFIG_INT(AcHookedTileOpacity, ac_hooked_tile_opacity, 35, 5, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Opacidad del bloque iluminado (%)")
+MACRO_CONFIG_INT(AcHookedTileRgb, ac_hooked_tile_rgb, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Modo Rainbow RGB animado en el bloque enganchado")
+MACRO_CONFIG_INT(AcHookedTileSpeed, ac_hooked_tile_speed, 25, 1, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Velocidad de ciclo Rainbow RGB en el bloque enganchado")
+MACRO_CONFIG_INT(AcHookedTileOthers, ac_hooked_tile_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mostrar iluminacion en bloques hookeados por otros jugadores")
+MACRO_CONFIG_INT(AcShowRemoteEntitiesOnHook, ac_show_remote_entities_on_hook, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mostrar entidades remotas (Supabase) en bloques hookeados por otros jugadores")
+

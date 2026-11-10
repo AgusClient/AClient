@@ -16,6 +16,9 @@ class CAClientGameSkins : public CComponent
 {
 	std::map<std::string, SClientGameSkin> m_mLoadedGameSkins;
 	std::map<std::string, std::string> m_mRemotePlayerGameSkins;
+	std::map<std::string, std::string> m_mRemotePlayerEntities;
+	std::map<std::string, IGraphics::CTextureHandle> m_mLoadedEntitiesTextures;
+	bool m_SupabaseHasEntitiesColumn;
 	std::set<std::string> m_sRemoteAClientPlayers;
 	std::set<std::string> m_sFailedSkins;
 	std::unordered_set<std::string> m_sBlacklistedGameSkins;
@@ -31,6 +34,7 @@ class CAClientGameSkins : public CComponent
 	char m_aLastAnnouncedPlayer[128];
 	char m_aLastAnnouncedDummy[128];
 	char m_aLastAnnouncedSkin[128];
+	char m_aLastAnnouncedEntities[128];
 	int m_LastActivePlayerCount;
 	int64_t m_LastPresenceRefreshTime;
 	int64_t m_LastRenderCheckTime;
@@ -71,6 +75,7 @@ public:
 	void RefreshPresence();
 	bool IsPlayerAClient(int ClientId) const;
 	const SClientGameSkin *GetOrLoadGameSkin(const char *pName);
+	IGraphics::CTextureHandle GetOrLoadEntitiesTexture(const char *pName);
 	void FreeAllGameSkins();
 	void UpdateAllPlayerSkins();
 	void TriggerManualReload();

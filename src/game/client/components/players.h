@@ -39,6 +39,7 @@ class CPlayers : public CComponent
 		const CNetObj_Character *pPlayerChar,
 		int ClientId);
 	bool IsPlayerInfoAvailable(int ClientId) const;
+	void RenderHookedTile(const vec2 &Pos, const vec2 &HookPos, int ClientId, float Alpha);
 
 	int m_WeaponEmoteQuadContainerIndex;
 	int m_aWeaponSpriteMuzzleQuadContainerIndex[NUM_WEAPONS];

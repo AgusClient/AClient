@@ -631,6 +631,8 @@ public:
 		const SClientGameSkin *m_pCustomGameSkin = nullptr;
 		char m_aCustomGameSkinName[64] = {0};
 		bool m_IsAClient = false;
+		char m_aCustomEntitiesName[64] = {0};
+		IGraphics::CTextureHandle m_CustomEntitiesTexture;
 
 		int ClientId() const { return m_ClientId; }
 

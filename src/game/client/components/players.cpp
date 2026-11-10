@@ -6,6 +6,7 @@
 #include <base/color.h>
 #include <base/dbg.h>
 #include <base/math.h>
+#include <base/time.h>
 
 #include <engine/client/enums.h>
 #include <engine/demo.h>
@@ -490,6 +491,129 @@ void CPlayers::RenderHookCollLine(
 	}
 }
 
+void CPlayers::RenderHookedTile(const vec2 &Pos, const vec2 &HookPos, int ClientId, float Alpha)
+{
+	const bool IsLocal = (ClientId == GameClient()->m_Snap.m_LocalClientId);
+	const bool RenderGlow = g_Config.m_AcHookedTile && (IsLocal || g_Config.m_AcHookedTileOthers);
+
+	IGraphics::CTextureHandle RemoteEntitiesTex;
+	if(g_Config.m_AcShowRemoteEntitiesOnHook && in_range(ClientId, MAX_CLIENTS - 1))
+	{
+		RemoteEntitiesTex = GameClient()->m_aClients[ClientId].m_CustomEntitiesTexture;
+	}
+
+	if(!RenderGlow && !RemoteEntitiesTex.IsValid())
+		return;
+
+	// Calculate contact tile
+	vec2 Dir = (distance(Pos, HookPos) > 0.001f) ? normalize(HookPos - Pos) : vec2(0.0f, 0.0f);
+
+	int TileX = -1;
+	int TileY = -1;
+	int TileIndex = 0;
+
+	const float aOffsets[] = { 4.0f, 2.0f, 8.0f, 0.0f };
+	for(float Offset : aOffsets)
+	{
+		vec2 CheckPos = HookPos + Dir * Offset;
+		int Tx = (int)std::floor(CheckPos.x / 32.0f);
+		int Ty = (int)std::floor(CheckPos.y / 32.0f);
+		if(Tx >= 0 && Tx < Collision()->GetWidth() && Ty >= 0 && Ty < Collision()->GetHeight())
+		{
+			int Idx = Collision()->GetTile(round_to_int(CheckPos.x), round_to_int(CheckPos.y));
+			if(Idx <= 0)
+				Idx = Collision()->GetFrontTile(round_to_int(CheckPos.x), round_to_int(CheckPos.y));
+			if(Idx <= 0 && Collision()->GetCollisionAt(CheckPos.x, CheckPos.y) == TILE_SOLID)
+				Idx = TILE_SOLID;
+
+			if(Idx > 0)
+			{
+				TileX = Tx;
+				TileY = Ty;
+				TileIndex = Idx;
+				break;
+			}
+		}
+	}
+
+	if(TileX < 0 || TileY < 0 || TileIndex <= 0)
+		return;
+
+	const float X0 = TileX * 32.0f;
+	const float Y0 = TileY * 32.0f;
+
+	// 1. Draw remote player's entities on this tile if enabled and available
+	if(RemoteEntitiesTex.IsValid())
+	{
+		int tx = TileIndex % 16;
+		int ty = TileIndex / 16;
+		float u0 = (float)tx / 16.0f;
+		float v0 = (float)ty / 16.0f;
+		float u1 = (float)(tx + 1) / 16.0f;
+		float v1 = (float)(ty + 1) / 16.0f;
+
+		Graphics()->TextureSet(RemoteEntitiesTex);
+		Graphics()->QuadsBegin();
+		Graphics()->QuadsSetSubset(u0, v0, u1, v1);
+		Graphics()->SetColor(1.0f, 1.0f, 1.0f, Alpha);
+		IGraphics::CQuadItem TileQuad(X0, Y0, 32.0f, 32.0f);
+		Graphics()->QuadsDrawTL(&TileQuad, 1);
+		Graphics()->QuadsEnd();
+	}
+
+	// 2. Draw luminous Hook Glow effect
+	if(RenderGlow)
+	{
+		ColorRGBA GlowColor;
+		if(g_Config.m_AcHookedTileRgb)
+		{
+			float Speed = g_Config.m_AcHookedTileSpeed / 25.0f;
+			float Hue = std::fmod((float)(time_get() * Speed) / (float)time_freq() * 0.2f, 1.0f);
+			GlowColor = color_cast<ColorRGBA>(ColorHSLA(Hue, 1.0f, 0.5f));
+		}
+		else
+		{
+			GlowColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_AcHookedTileColor));
+		}
+
+		float TileOpacity = std::clamp(g_Config.m_AcHookedTileOpacity / 100.0f, 0.05f, 1.0f) * Alpha;
+
+		// Outer halo glow
+		if(g_Config.m_AcHookedTileGlow)
+		{
+			Graphics()->BlendAdditive();
+			Graphics()->TextureClear();
+			Graphics()->QuadsBegin();
+			Graphics()->SetColor(GlowColor.r, GlowColor.g, GlowColor.b, TileOpacity * 0.45f);
+			IGraphics::CQuadItem HaloQuad(X0 - 6.0f, Y0 - 6.0f, 44.0f, 44.0f);
+			Graphics()->QuadsDrawTL(&HaloQuad, 1);
+			Graphics()->QuadsEnd();
+			Graphics()->BlendNormal();
+		}
+
+		// Inner tile tint
+		Graphics()->TextureClear();
+		Graphics()->QuadsBegin();
+		Graphics()->SetColor(GlowColor.r, GlowColor.g, GlowColor.b, TileOpacity * 0.40f);
+		IGraphics::CQuadItem HighlightQuad(X0, Y0, 32.0f, 32.0f);
+		Graphics()->QuadsDrawTL(&HighlightQuad, 1);
+
+		// Crisp luminous borders
+		const float BorderWidth = 1.5f;
+		Graphics()->SetColor(GlowColor.r, GlowColor.g, GlowColor.b, TileOpacity);
+		IGraphics::CQuadItem Borders[4] = {
+			IGraphics::CQuadItem(X0, Y0, 32.0f, BorderWidth),
+			IGraphics::CQuadItem(X0, Y0 + 32.0f - BorderWidth, 32.0f, BorderWidth),
+			IGraphics::CQuadItem(X0, Y0, BorderWidth, 32.0f),
+			IGraphics::CQuadItem(X0 + 32.0f - BorderWidth, Y0, BorderWidth, 32.0f),
+		};
+		Graphics()->QuadsDrawTL(Borders, 4);
+		Graphics()->QuadsEnd();
+	}
+	Graphics()->TextureClear();
+	Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
+}
+
 void CPlayers::RenderHook(
 	const CScreenRect &ScreenRect,
 	const CNetObj_Character *pPrevChar,
@@ -579,6 +703,12 @@ void CPlayers::RenderHook(
 
 	float d = distance(Pos, HookPos);
 	vec2 Dir = normalize(Pos - HookPos);
+
+	const bool HookGrabbed = HasFastHook ? FastHookActive : (pPlayerChar->m_HookState == HOOK_GRABBED);
+	if(HookGrabbed && pPlayerChar->m_HookedPlayer < 0)
+	{
+		RenderHookedTile(Pos, HookPos, ClientId, Alpha);
+	}
 
 	const SClientGameSkin *pHookGameSkin = &GameClient()->m_GameSkin;
 	if(g_Config.m_AcShowRemoteGameSkins && in_range(ClientId, MAX_CLIENTS - 1) && GameClient()->m_aClients[ClientId].m_pCustomGameSkin)

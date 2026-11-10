@@ -3738,6 +3738,8 @@ void CGameClient::CClientData::Reset()
 	m_pCustomGameSkin = nullptr;
 	m_aCustomGameSkinName[0] = '\0';
 	m_IsAClient = false;
+	m_aCustomEntitiesName[0] = '\0';
+	m_CustomEntitiesTexture = IGraphics::CTextureHandle();
 
 	m_Solo = false;
 	m_Jetpack = false;
