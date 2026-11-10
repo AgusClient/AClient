@@ -29,6 +29,10 @@ class CAClientGameSkins : public CComponent
 	std::shared_ptr<IHttpRequest> m_pDownloadRequest;
 	std::string m_DownloadingSkinName;
 
+	std::shared_ptr<IHttpRequest> m_pDownloadEntitiesRequest;
+	std::string m_DownloadingEntitiesName;
+	std::set<std::string> m_sFailedEntities;
+
 	bool m_PendingAnnounce;
 	char m_aLastServerAddress[128];
 	char m_aLastAnnouncedPlayer[128];
@@ -44,11 +48,13 @@ class CAClientGameSkins : public CComponent
 	bool m_BlacklistLoaded;
 
 	bool CanDownloadGameskins() const;
+	bool CanDownloadEntities() const;
 	bool IsLocalPlayerFrozen() const;
 
 	bool FindGameSkinFile(const char *pName, char *pOutPath, int OutPathSize);
 	void UnloadSkin(SClientGameSkin &Skin);
 	void StartDownload(const char *pSkinName);
+	void StartEntitiesDownload(const char *pEntitiesName);
 
 	void LoadBlacklist();
 	void SaveBlacklist();

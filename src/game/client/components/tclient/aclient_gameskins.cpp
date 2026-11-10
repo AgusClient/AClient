@@ -62,6 +62,8 @@ CAClientGameSkins::~CAClientGameSkins()
 		m_pPresenceRequest->Abort();
 	if(m_pDownloadRequest)
 		m_pDownloadRequest->Abort();
+	if(m_pDownloadEntitiesRequest)
+		m_pDownloadEntitiesRequest->Abort();
 	FreeAllGameSkins();
 }
 
@@ -325,6 +327,13 @@ void CAClientGameSkins::OnReset()
 		m_pDownloadRequest = nullptr;
 	}
 	m_DownloadingSkinName.clear();
+	if(m_pDownloadEntitiesRequest)
+	{
+		m_pDownloadEntitiesRequest->Abort();
+		m_pDownloadEntitiesRequest = nullptr;
+	}
+	m_DownloadingEntitiesName.clear();
+	m_sFailedEntities.clear();
 	m_mRemotePlayerGameSkins.clear();
 	m_sRemoteAClientPlayers.clear();
 	m_mActiveSkinUsers.clear();
@@ -552,6 +561,90 @@ void CAClientGameSkins::StartDownload(const char *pSkinName)
 	}
 }
 
+bool CAClientGameSkins::CanDownloadEntities() const
+{
+	if(!g_Config.m_ClDownloadEntities)
+		return false;
+	if(Client()->State() != IClient::STATE_ONLINE)
+		return false;
+
+	const bool OptInitial = g_Config.m_AcGameskinDownloadInitial != 0;
+	const bool OptFrozen = g_Config.m_AcGameskinDownloadFrozen != 0;
+
+	if(!OptInitial && !OptFrozen)
+		return true;
+
+	bool InInitial = false;
+	if(OptInitial && m_InitialDownloadPhase)
+	{
+		if(m_ServerJoinTime > 0 && (time_get() - m_ServerJoinTime) < time_freq() * 20)
+			InInitial = true;
+		else
+			const_cast<CAClientGameSkins *>(this)->m_InitialDownloadPhase = false;
+	}
+
+	bool IsFrozen = false;
+	if(OptFrozen)
+	{
+		IsFrozen = IsLocalPlayerFrozen();
+	}
+
+	if(OptInitial && OptFrozen)
+		return InInitial || IsFrozen;
+	if(OptInitial)
+		return InInitial;
+	if(OptFrozen)
+		return IsFrozen;
+
+	return true;
+}
+
+void CAClientGameSkins::StartEntitiesDownload(const char *pEntitiesName)
+{
+	if(!CanDownloadEntities())
+		return;
+	if(m_pDownloadEntitiesRequest)
+		return;
+	if(!pEntitiesName || !pEntitiesName[0] || str_comp(pEntitiesName, "default") == 0)
+		return;
+	if(m_sFailedEntities.find(pEntitiesName) != m_sFailedEntities.end())
+		return;
+
+	for(const char *p = pEntitiesName; *p; ++p)
+	{
+		if(*p == '/' || *p == '\\' || *p == ':' || *p == '*' || *p == '?' || *p == '"' || *p == '<' || *p == '>' || *p == '|')
+			return;
+	}
+	if(str_find(pEntitiesName, ".."))
+		return;
+
+	Storage()->CreateFolder("downloaded_entities", IStorage::TYPE_SAVE);
+
+	char aEscaped[128];
+	EscapeUrl(aEscaped, sizeof(aEscaped), pEntitiesName);
+
+	char aUrl[512];
+	str_format(aUrl, sizeof(aUrl), "%s%s.png", g_Config.m_ClEntitiesDownloadUrl, aEscaped);
+
+	char aDest[128];
+	str_format(aDest, sizeof(aDest), "downloaded_entities/%s.png", pEntitiesName);
+
+	m_pDownloadEntitiesRequest = HttpGetFile(aUrl, Storage(), aDest, IStorage::TYPE_SAVE);
+	m_pDownloadEntitiesRequest->Timeout(CTimeout{8000, 8000, 500, 8});
+	m_pDownloadEntitiesRequest->IpResolve(IPRESOLVE::V4);
+	m_pDownloadEntitiesRequest->LogProgress(HTTPLOG::NONE);
+	m_pDownloadEntitiesRequest->Header("User-Agent: AClient");
+	m_DownloadingEntitiesName = pEntitiesName;
+	Http()->Run(m_pDownloadEntitiesRequest);
+
+	if(g_Config.m_AcGameskinDownloadEcho && GameClient())
+	{
+		char aBuf[256];
+		str_format(aBuf, sizeof(aBuf), "[AClient] Descargando entities '%s'...", pEntitiesName);
+		GameClient()->m_Chat.Echo(aBuf);
+	}
+}
+
 IGraphics::CTextureHandle CAClientGameSkins::GetOrLoadEntitiesTexture(const char *pName)
 {
 	if(!pName || !pName[0] || str_comp(pName, "default") == 0)
@@ -560,6 +653,9 @@ IGraphics::CTextureHandle CAClientGameSkins::GetOrLoadEntitiesTexture(const char
 	auto it = m_mLoadedEntitiesTextures.find(pName);
 	if(it != m_mLoadedEntitiesTextures.end())
 		return it->second;
+
+	if(m_sFailedEntities.find(pName) != m_sFailedEntities.end())
+		return IGraphics::CTextureHandle();
 
 	char aPath[IO_MAX_PATH_LENGTH];
 	// 1. assets/entities/<name>/ddnet.png
@@ -588,6 +684,15 @@ IGraphics::CTextureHandle CAClientGameSkins::GetOrLoadEntitiesTexture(const char
 			m_mLoadedEntitiesTextures[pName] = Tex;
 			return Tex;
 		}
+		else
+		{
+			m_sFailedEntities.insert(pName);
+		}
+	}
+	else
+	{
+		if(g_Config.m_ClDownloadEntities)
+			StartEntitiesDownload(pName);
 	}
 
 	return IGraphics::CTextureHandle();
@@ -1137,16 +1242,49 @@ void CAClientGameSkins::OnRender()
 		m_DownloadingSkinName.clear();
 	}
 
+	if(m_pDownloadEntitiesRequest && m_pDownloadEntitiesRequest->Done())
+	{
+		if(m_pDownloadEntitiesRequest->State() == EHttpState::DONE && m_pDownloadEntitiesRequest->StatusCode() == 200)
+		{
+			if(!m_DownloadingEntitiesName.empty())
+			{
+				if(g_Config.m_AcGameskinDownloadEcho && GameClient())
+				{
+					char aBuf[256];
+					str_format(aBuf, sizeof(aBuf), "[AClient] Entities '%s' descargadas.", m_DownloadingEntitiesName.c_str());
+					GameClient()->m_Chat.Echo(aBuf);
+				}
+				GetOrLoadEntitiesTexture(m_DownloadingEntitiesName.c_str());
+				UpdateAllPlayerSkins();
+			}
+		}
+		else
+		{
+			if(!m_DownloadingEntitiesName.empty())
+			{
+				if(g_Config.m_AcGameskinDownloadEcho && GameClient())
+				{
+					char aBuf[256];
+					str_format(aBuf, sizeof(aBuf), "[AClient] Error al descargar entities '%s'.", m_DownloadingEntitiesName.c_str());
+					GameClient()->m_Chat.Echo(aBuf);
+				}
+				m_sFailedEntities.insert(m_DownloadingEntitiesName);
+			}
+		}
+		m_pDownloadEntitiesRequest = nullptr;
+		m_DownloadingEntitiesName.clear();
+	}
+
 	bool CurrentlyFrozen = IsLocalPlayerFrozen();
 	bool JustGotFrozen = CurrentlyFrozen && !m_WasFrozen;
 	m_WasFrozen = CurrentlyFrozen;
-	if(JustGotFrozen && m_pDownloadRequest == nullptr)
+	if(JustGotFrozen && (m_pDownloadRequest == nullptr || m_pDownloadEntitiesRequest == nullptr))
 	{
 		m_LastRenderCheckTime = 0;
 	}
 
 	int64_t Now = time_get();
-	if(g_Config.m_AcShowRemoteGameSkins && Client()->State() == IClient::STATE_ONLINE && (Now - m_LastRenderCheckTime) > time_freq() / 2)
+	if(Client()->State() == IClient::STATE_ONLINE && (Now - m_LastRenderCheckTime) > time_freq() / 2)
 	{
 		m_LastRenderCheckTime = Now;
 		for(int i = 0; i < MAX_CLIENTS; ++i)
@@ -1154,7 +1292,7 @@ void CAClientGameSkins::OnRender()
 			if(!GameClient()->m_aClients[i].m_Active || i == GameClient()->m_Snap.m_LocalClientId)
 				continue;
 
-			if(GameClient()->m_aClients[i].m_pCustomGameSkin == nullptr && GameClient()->m_aClients[i].m_aCustomGameSkinName[0] == '\0')
+			if(g_Config.m_AcShowRemoteGameSkins && GameClient()->m_aClients[i].m_pCustomGameSkin == nullptr && GameClient()->m_aClients[i].m_aCustomGameSkinName[0] == '\0')
 			{
 				auto it = m_mRemotePlayerGameSkins.find(GameClient()->m_aClients[i].m_aName);
 				if(it == m_mRemotePlayerGameSkins.end())
@@ -1181,6 +1319,14 @@ void CAClientGameSkins::OnRender()
 					{
 						str_copy(GameClient()->m_aClients[i].m_aCustomGameSkinName, it->second.c_str());
 					}
+				}
+			}
+
+			if(g_Config.m_ClDownloadEntities && GameClient()->m_aClients[i].m_aCustomEntitiesName[0] != '\0' && !GameClient()->m_aClients[i].m_CustomEntitiesTexture.IsValid())
+			{
+				if(m_sFailedEntities.find(GameClient()->m_aClients[i].m_aCustomEntitiesName) == m_sFailedEntities.end())
+				{
+					GameClient()->m_aClients[i].m_CustomEntitiesTexture = GetOrLoadEntitiesTexture(GameClient()->m_aClients[i].m_aCustomEntitiesName);
 				}
 			}
 		}

@@ -282,6 +282,11 @@ IGraphics::CTextureHandle CMapImages::GetEntities(EMapImageEntityLayerType Entit
 		{
 			str_format(aPath, sizeof(aPath), "%s.png", m_aEntitiesPath);
 			Graphics()->LoadPng(ImgInfo, aPath, IStorage::TYPE_ALL);
+			if(ImgInfo.m_pData == nullptr)
+			{
+				str_format(aPath, sizeof(aPath), "downloaded_entities/%s.png", g_Config.m_ClAssetsEntities);
+				Graphics()->LoadPng(ImgInfo, aPath, IStorage::TYPE_ALL);
+			}
 		}
 
 		// try default

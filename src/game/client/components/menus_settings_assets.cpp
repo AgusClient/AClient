@@ -52,6 +52,11 @@ void CMenus::LoadEntities(SCustomEntities *pEntitiesItem, void *pUser)
 				str_format(aPath, sizeof(aPath), "assets/entities/%s.png", pEntitiesItem->m_aName);
 				pEntitiesItem->m_aImages[i].m_Texture = pThis->Graphics()->LoadTexture(aPath, IStorage::TYPE_ALL);
 			}
+			if(pEntitiesItem->m_aImages[i].m_Texture.IsNullTexture())
+			{
+				str_format(aPath, sizeof(aPath), "downloaded_entities/%s.png", pEntitiesItem->m_aName);
+				pEntitiesItem->m_aImages[i].m_Texture = pThis->Graphics()->LoadTexture(aPath, IStorage::TYPE_ALL);
+			}
 			if(!pEntitiesItem->m_RenderTexture.IsValid() || pEntitiesItem->m_RenderTexture.IsNullTexture())
 				pEntitiesItem->m_RenderTexture = pEntitiesItem->m_aImages[i].m_Texture;
 		}
@@ -743,7 +748,11 @@ void CMenus::RenderSettingsAssets(CUIRect MainView)
 
 			// load entities
 			Storage()->ListDirectory(IStorage::TYPE_ALL, "assets/entities", EntitiesScan, &User);
+			Storage()->ListDirectory(IStorage::TYPE_ALL, "downloaded_entities", EntitiesScan, &User);
 			std::sort(m_vEntitiesList.begin(), m_vEntitiesList.end());
+			m_vEntitiesList.erase(std::unique(m_vEntitiesList.begin(), m_vEntitiesList.end(), [](const SCustomEntities &a, const SCustomEntities &b) {
+				return str_comp(a.m_aName, b.m_aName) == 0;
+			}), m_vEntitiesList.end());
 			MarkCustomAssetsDeletable(ASSETS_TAB_ENTITIES);
 		}
 		if(m_vEntitiesList.size() != gs_aCustomListSize[s_CurCustomTab])

@@ -171,6 +171,12 @@ void CMenus::RenderSettingsTee(CUIRect MainView)
 		g_Config.m_ClDownloadGameskins ^= 1;
 	}
 
+	Checkboxes.HSplitTop(20.0f, &Button, &Checkboxes);
+	if(DoButton_CheckBox(&g_Config.m_ClDownloadEntities, Localize("Descargar entities automaticamente"), g_Config.m_ClDownloadEntities, &Button))
+	{
+		g_Config.m_ClDownloadEntities ^= 1;
+	}
+
 	if(g_Config.m_ClDownloadGameskins)
 	{
 		CUIRect SubButton;

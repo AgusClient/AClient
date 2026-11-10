@@ -166,6 +166,8 @@ MACRO_CONFIG_INT(AcGameskinDownloadInitial, ac_gameskin_download_initial, 0, 0, 
 MACRO_CONFIG_INT(AcGameskinDownloadFrozen, ac_gameskin_download_frozen, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Download remote gameskins when player is frozen")
 MACRO_CONFIG_INT(AcGameskinDownloadEcho, ac_gameskin_download_echo, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show chat echo notification when downloading gameskins")
 MACRO_CONFIG_STR(ClGameskinDownloadUrl, cl_gameskin_download_url, 128, "https://raw.githubusercontent.com/AgusClient/gameskins/main/", CFGFLAG_CLIENT | CFGFLAG_SAVE, "URL used to download gameskins")
+MACRO_CONFIG_INT(ClDownloadEntities, cl_download_entities, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Download custom entities on-the-fly")
+MACRO_CONFIG_STR(ClEntitiesDownloadUrl, cl_entities_download_url, 128, "https://raw.githubusercontent.com/AgusClient/entities/main/", CFGFLAG_CLIENT | CFGFLAG_SAVE, "URL used to download custom entities")
 MACRO_CONFIG_STR(AcPresenceUrl, ac_presence_url, 128, "", CFGFLAG_CLIENT, "Presence relay server URL")
 
 // AClient Authentication & HWID
