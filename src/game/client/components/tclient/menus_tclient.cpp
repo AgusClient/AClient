@@ -6576,8 +6576,10 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 					bool DifferentDiff = (aCurCategory[0] != '\0' && M.m_aCategory[0] != '\0' && str_comp_nocase(M.m_aCategory, aCurCategory) != 0);
 
 					StatusCol.VSplitRight(50.0f, &StatusCol, &ActionCol);
-					static CButtonContainer s_aBtnVoteMap[1024];
-					CButtonContainer *pVoteBtn = (i < 1024) ? &s_aBtnVoteMap[i] : &s_aBtnVoteMap[0];
+					static std::vector<CButtonContainer> s_vBtnVoteMap;
+					if(s_vBtnVoteMap.size() < Profiles.CommonUnfinishedMaps().size())
+						s_vBtnVoteMap.resize(Profiles.CommonUnfinishedMaps().size());
+					CButtonContainer *pVoteBtn = &s_vBtnVoteMap[i];
 					if(DoButton_Menu(pVoteBtn, TCLocalize("Votar"), 0, &ActionCol, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 2.0f, 0.0f, ColorRGBA(0.2f, 0.5f, 0.85f, 0.65f)))
 					{
 						VoteForMap(M.m_aMap);
@@ -6588,8 +6590,10 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 						CUIRect DiffCol;
 						StatusCol.VSplitRight(3.0f, &StatusCol, nullptr);
 						StatusCol.VSplitRight(60.0f, &StatusCol, &DiffCol);
-						static CButtonContainer s_aBtnVoteDiff[1024];
-						CButtonContainer *pDiffBtn = (i < 1024) ? &s_aBtnVoteDiff[i] : &s_aBtnVoteDiff[0];
+						static std::vector<CButtonContainer> s_vBtnVoteDiff;
+						if(s_vBtnVoteDiff.size() < Profiles.CommonUnfinishedMaps().size())
+							s_vBtnVoteDiff.resize(Profiles.CommonUnfinishedMaps().size());
+						CButtonContainer *pDiffBtn = &s_vBtnVoteDiff[i];
 						if(DoButton_Menu(pDiffBtn, TCLocalize("Votar Dif"), 0, &DiffCol, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 2.0f, 0.0f, ColorRGBA(0.85f, 0.5f, 0.15f, 0.75f)))
 						{
 							VoteForCategory(M.m_aCategory);
@@ -6819,8 +6823,11 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 					BarRect.Margin(1.0f, &BarRect);
 					BarRect.Draw(ColorRGBA(0.1f, 0.1f, 0.1f, 0.7f), IGraphics::CORNER_ALL, 1.5f);
 					float FillW = std::clamp(Pct / 100.0f, 0.0f, 1.0f) * BarRect.w;
-					BarRect.VSplitLeft(FillW, &BarFill, nullptr);
-					BarFill.Draw(CatColor, IGraphics::CORNER_ALL, 1.5f);
+					if(FillW >= 1.0f)
+					{
+						BarRect.VSplitLeft(FillW, &BarFill, nullptr);
+						BarFill.Draw(CatColor, IGraphics::CORNER_ALL, 1.5f);
+					}
 				}
 			}
 			s_ScrollKoGCats.End();
@@ -7065,8 +7072,10 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 						bool DifferentDiff = (aCurCategory[0] != '\0' && HasMeta && Meta.m_aCategory[0] != '\0' && str_comp_nocase(Meta.m_aCategory, aCurCategory) != 0);
 
 						StatusCol.VSplitRight(50.0f, &StatusCol, &ActionCol);
-						static CButtonContainer s_aBtnIndivVoteMap[1024];
-						CButtonContainer *pVoteBtn = (i < 1024) ? &s_aBtnIndivVoteMap[i] : &s_aBtnIndivVoteMap[0];
+						static std::vector<CButtonContainer> s_vBtnIndivVoteMap;
+						if(s_vBtnIndivVoteMap.size() < Prof.m_vUnfinishedMaps.size())
+							s_vBtnIndivVoteMap.resize(Prof.m_vUnfinishedMaps.size());
+						CButtonContainer *pVoteBtn = &s_vBtnIndivVoteMap[i];
 						if(DoButton_Menu(pVoteBtn, TCLocalize("Votar"), 0, &ActionCol, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 2.0f, 0.0f, ColorRGBA(0.2f, 0.5f, 0.85f, 0.65f)))
 						{
 							VoteForMap(MapName.c_str());
@@ -7077,8 +7086,10 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 							CUIRect DiffCol;
 							StatusCol.VSplitRight(3.0f, &StatusCol, nullptr);
 							StatusCol.VSplitRight(60.0f, &StatusCol, &DiffCol);
-							static CButtonContainer s_aBtnIndivVoteDiff[1024];
-							CButtonContainer *pDiffBtn = (i < 1024) ? &s_aBtnIndivVoteDiff[i] : &s_aBtnIndivVoteDiff[0];
+							static std::vector<CButtonContainer> s_vBtnIndivVoteDiff;
+							if(s_vBtnIndivVoteDiff.size() < Prof.m_vUnfinishedMaps.size())
+								s_vBtnIndivVoteDiff.resize(Prof.m_vUnfinishedMaps.size());
+							CButtonContainer *pDiffBtn = &s_vBtnIndivVoteDiff[i];
 							if(DoButton_Menu(pDiffBtn, TCLocalize("Votar Dif"), 0, &DiffCol, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 2.0f, 0.0f, ColorRGBA(0.85f, 0.5f, 0.15f, 0.75f)))
 							{
 								VoteForCategory(Meta.m_aCategory);
@@ -7188,8 +7199,11 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 	CardMid.HSplitTop(7.0f, &BarBg, &CardMid);
 	BarBg.Draw(ColorRGBA(0.1f, 0.1f, 0.1f, 0.7f), IGraphics::CORNER_ALL, 2.0f);
 	float FillW = std::clamp(Ratio / 100.0f, 0.0f, 1.0f) * BarBg.w;
-	BarBg.VSplitLeft(FillW, &BarFill, nullptr);
-	BarFill.Draw(ColorRGBA(0.2f, 0.75f, 0.3f, 0.85f), IGraphics::CORNER_ALL, 2.0f);
+	if(FillW >= 1.0f)
+	{
+		BarBg.VSplitLeft(FillW, &BarFill, nullptr);
+		BarFill.Draw(ColorRGBA(0.2f, 0.75f, 0.3f, 0.85f), IGraphics::CORNER_ALL, 2.0f);
+	}
 	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 
 	// Right: Team Rank & Points
