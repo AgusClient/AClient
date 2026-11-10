@@ -137,6 +137,9 @@ void COutlines::OnMapLoad()
 
 void COutlines::OnRender()
 {
+	// Runs after the map foreground layers: draw remote-entity hooked tiles on top of them
+	GameClient()->m_Players.FlushQueuedHookedTiles();
+
 	if(!m_pMapData)
 		return;
 	if(GameClient()->m_MapLayersBackground.m_OnlineOnly && Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)

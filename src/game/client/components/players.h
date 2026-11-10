@@ -41,6 +41,16 @@ class CPlayers : public CComponent
 	bool IsPlayerInfoAvailable(int ClientId) const;
 	void RenderHookedTile(const vec2 &Pos, const vec2 &HookPos, int ClientId, float Alpha);
 
+	struct SQueuedHookedTile
+	{
+		IGraphics::CTextureHandle m_Texture;
+		int m_TileX;
+		int m_TileY;
+		int m_TileIndex;
+		float m_Alpha;
+	};
+	std::vector<SQueuedHookedTile> m_vQueuedHookedTiles;
+
 	int m_WeaponEmoteQuadContainerIndex;
 	int m_aWeaponSpriteMuzzleQuadContainerIndex[NUM_WEAPONS];
 	STextContainerIndex m_InMenuTextContainerIndex;
@@ -53,6 +63,9 @@ class CPlayers : public CComponent
 	std::shared_ptr<CManagedTeeRenderInfo> m_pSpectatorTeeRenderInfo;
 
 public:
+	// Draws hooked tiles with remote entity textures; must run after the map foreground layers
+	void FlushQueuedHookedTiles();
+
 	float GetPlayerTargetAngle(
 		const CNetObj_Character *pPrevChar,
 		const CNetObj_Character *pPlayerChar,

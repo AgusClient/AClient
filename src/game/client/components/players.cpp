@@ -491,6 +491,25 @@ void CPlayers::RenderHookCollLine(
 	}
 }
 
+void CPlayers::FlushQueuedHookedTiles()
+{
+	for(const SQueuedHookedTile &Tile : m_vQueuedHookedTiles)
+	{
+		const int tx = Tile.m_TileIndex % 16;
+		const int ty = Tile.m_TileIndex / 16;
+		Graphics()->TextureSet(Tile.m_Texture);
+		Graphics()->QuadsBegin();
+		Graphics()->QuadsSetRotation(0.0f);
+		Graphics()->QuadsSetSubset(tx / 16.0f, ty / 16.0f, (tx + 1) / 16.0f, (ty + 1) / 16.0f);
+		Graphics()->SetColor(1.0f, 1.0f, 1.0f, Tile.m_Alpha);
+		IGraphics::CQuadItem TileQuad(Tile.m_TileX * 32.0f, Tile.m_TileY * 32.0f, 32.0f, 32.0f);
+		Graphics()->QuadsDrawTL(&TileQuad, 1);
+		Graphics()->QuadsEnd();
+	}
+	m_vQueuedHookedTiles.clear();
+	Graphics()->TextureClear();
+}
+
 void CPlayers::RenderHookedTile(const vec2 &Pos, const vec2 &HookPos, int ClientId, float Alpha)
 {
 	const bool IsLocal = (ClientId == GameClient()->m_Snap.m_LocalClientId);
@@ -563,21 +582,8 @@ void CPlayers::RenderHookedTile(const vec2 &Pos, const vec2 &HookPos, int Client
 	// 1. Draw remote player's entities on this tile if enabled and available
 	if(RemoteEntitiesTex.IsValid())
 	{
-		int tx = TileIndex % 16;
-		int ty = TileIndex / 16;
-		float u0 = (float)tx / 16.0f;
-		float v0 = (float)ty / 16.0f;
-		float u1 = (float)(tx + 1) / 16.0f;
-		float v1 = (float)(ty + 1) / 16.0f;
-
-		Graphics()->TextureSet(RemoteEntitiesTex);
-		Graphics()->QuadsBegin();
-		Graphics()->QuadsSetSubset(u0, v0, u1, v1);
-		Graphics()->SetColor(1.0f, 1.0f, 1.0f, Alpha);
-		IGraphics::CQuadItem TileQuad(X0, Y0, 32.0f, 32.0f);
-		Graphics()->QuadsDrawTL(&TileQuad, 1);
-		Graphics()->QuadsEnd();
-		Graphics()->QuadsSetSubset(0.0f, 0.0f, 1.0f, 1.0f);
+		// Deferred: map foreground layers render after players and would cover this tile
+		m_vQueuedHookedTiles.push_back({RemoteEntitiesTex, TileX, TileY, TileIndex, Alpha});
 	}
 
 	// 2. Draw luminous Hook Glow effect
