@@ -17,6 +17,7 @@ class CAClientGameSkins : public CComponent
 	std::map<std::string, SClientGameSkin> m_mLoadedGameSkins;
 	std::map<std::string, std::string> m_mRemotePlayerGameSkins;
 	std::map<std::string, std::string> m_mRemotePlayerEntities;
+	std::map<std::string, std::string> m_mManualEntities;
 	std::map<std::string, IGraphics::CTextureHandle> m_mLoadedEntitiesTextures;
 	std::set<std::string> m_sRemoteAClientPlayers;
 	std::set<std::string> m_sFailedSkins;

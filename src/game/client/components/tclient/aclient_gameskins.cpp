@@ -351,6 +351,7 @@ void CAClientGameSkins::OnReset()
 	FreeAllGameSkins();
 	m_sFailedSkins.clear();
 	m_mRemotePlayerEntities.clear();
+	m_mManualEntities.clear();
 	m_PendingAnnounce = false;
 	m_aLastServerAddress[0] = '\0';
 	m_aLastAnnouncedPlayer[0] = '\0';
@@ -1035,10 +1036,27 @@ void CAClientGameSkins::UpdateAllPlayerSkins()
 		if(!GameClient()->m_aClients[i].m_Active)
 			continue;
 
+		// Manual overrides (set_player_entities) survive presence refreshes
+		const char *pManualEnt = nullptr;
+		{
+			auto itManual = m_mManualEntities.find(GameClient()->m_aClients[i].m_aName);
+			if(itManual != m_mManualEntities.end())
+				pManualEnt = itManual->second.c_str();
+		}
+
 		if(i == LocalClientId)
 		{
 			// Load local entities texture for hooked tile rendering
-			const char *pLocalEnt = (g_Config.m_ClAssetsEntities[0] != '\0' && str_comp(g_Config.m_ClAssetsEntities, "default") != 0) ? g_Config.m_ClAssetsEntities : nullptr;
+			// (when controlling the dummy, the local player is the dummy)
+			const char *pLocalEnt = nullptr;
+			if(pManualEnt)
+				pLocalEnt = pManualEnt;
+			else if(i == DummyClientId && g_Config.m_ClDummyAssetEntities[0] != '\0')
+				pLocalEnt = g_Config.m_ClDummyAssetEntities;
+			else if(g_Config.m_ClAssetsEntities[0] != '\0')
+				pLocalEnt = g_Config.m_ClAssetsEntities;
+			if(pLocalEnt && str_comp(pLocalEnt, "default") == 0)
+				pLocalEnt = nullptr;
 			if(pLocalEnt)
 			{
 				str_copy(GameClient()->m_aClients[i].m_aCustomEntitiesName, pLocalEnt);
@@ -1085,7 +1103,11 @@ void CAClientGameSkins::UpdateAllPlayerSkins()
 		}
 
 		const char *pEntitiesToLoad = nullptr;
-		if(i == DummyClientId && g_Config.m_ClDummyAssetEntities[0] != '\0')
+		if(pManualEnt)
+		{
+			pEntitiesToLoad = pManualEnt;
+		}
+		else if(i == DummyClientId && g_Config.m_ClDummyAssetEntities[0] != '\0')
 		{
 			pEntitiesToLoad = g_Config.m_ClDummyAssetEntities;
 		}
@@ -1450,7 +1472,7 @@ void CAClientGameSkins::ConSetPlayerEntities(IConsole::IResult *pResult, void *p
 	IGraphics::CTextureHandle Tex = pSelf->GetOrLoadEntitiesTexture(pEntitiesName);
 	pSelf->GameClient()->m_aClients[ClientId].m_CustomEntitiesTexture = Tex;
 	str_copy(pSelf->GameClient()->m_aClients[ClientId].m_aCustomEntitiesName, pEntitiesName);
-	pSelf->m_mRemotePlayerEntities[pSelf->GameClient()->m_aClients[ClientId].m_aName] = pEntitiesName;
+	pSelf->m_mManualEntities[pSelf->GameClient()->m_aClients[ClientId].m_aName] = pEntitiesName;
 	char aBuf[128];
 	str_format(aBuf, sizeof(aBuf), "Asignadas entities '%s' a cliente %d (cargado: %s)", pEntitiesName, ClientId, Tex.IsValid() ? "si" : "no / descargando");
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "aclient", aBuf);
