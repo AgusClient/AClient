@@ -617,38 +617,6 @@ void CMenus::RenderSettingsTClientSettings(CUIRect MainView)
 	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
 	s_SectionBoxes.back().h = Column.y - s_SectionBoxes.back().y;
 
-	// ***** Input ***** //
-	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
-	s_SectionBoxes.push_back(Column);
-	Column.HSplitTop(HeadlineHeight, &Label, &Column);
-	Ui()->DoLabel(&Label, TCLocalize("Input"), HeadlineFontSize, TEXTALIGN_ML);
-	Column.HSplitTop(MarginSmall, nullptr, &Column);
-
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcFastInput, TCLocalize("Fast Input (reduced visual delay)"), &g_Config.m_TcFastInput, &Column, LineSize);
-
-	Column.HSplitTop(LineSize, &Button, &Column);
-	DoSliderWithScaledValue(&g_Config.m_TcFastInputAmount, &g_Config.m_TcFastInputAmount, &Button, TCLocalize("Amount"), 1, 40, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "ms");
-
-	Column.HSplitTop(MarginSmall, nullptr, &Column);
-	if(g_Config.m_TcFastInput)
-	{
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcFastInputOthers, TCLocalize("Fast Input others"), &g_Config.m_TcFastInputOthers, &Column, LineSize);
-		Column.HSplitTop(LineSize, &Button, &Column);
-		if(g_Config.m_TcFastInputOthers)
-			DoSliderWithScaledValue(&g_Config.m_TcFastInputOthersAmount, &g_Config.m_TcFastInputOthersAmount, &Button, TCLocalize("Others Amount"), 1, 40, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "ms");
-	}
-	else
-		Column.HSplitTop(LineSize, nullptr, &Column);
-
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClSubTickAiming, TCLocalize("Sub-Tick aiming"), &g_Config.m_ClSubTickAiming, &Column, LineSize);
-	if(!g_Config.m_ClSubTickAiming)
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcFastInputRepredictHook, TCLocalize("Repredict on mid-tick hook direction change (may lag)"), &g_Config.m_TcFastInputRepredictHook, &Column, LineSize);
-
-	// A little extra spacing because these are multi line
-	Column.HSplitTop(MarginSmall, nullptr, &Column);
-
-	s_SectionBoxes.back().h = Column.y - s_SectionBoxes.back().y;
-
 	// ***** Anti Latency Tools ***** //
 	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 	s_SectionBoxes.push_back(Column);
@@ -4032,6 +4000,13 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	Column.HSplitTop(LineSize, &Button, &Column);
 	Ui()->DoScrollbarOption(&g_Config.m_ClPredictionMargin, &g_Config.m_ClPredictionMargin, &Button, TCLocalize("Prediction Margin"), 10, 75, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "ms");
 
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClSubTickAiming, TCLocalize("Sub-Tick aiming"), &g_Config.m_ClSubTickAiming, &Column, LineSize);
+	if(!g_Config.m_ClSubTickAiming)
+	{
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcFastInputRepredictHook, TCLocalize("Repredict on mid-tick hook direction change (may lag)"), &g_Config.m_AcFastInputRepredictHook, &Column, LineSize);
+		g_Config.m_TcFastInputRepredictHook = g_Config.m_AcFastInputRepredictHook;
+	}
+
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	Column.HSplitTop(LineSize, &Label, &Column);
 	CUIRect PencilBtn;
@@ -4462,14 +4437,6 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	}
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClSubTickAiming, TCLocalize("Sub-Tick aiming"), &g_Config.m_ClSubTickAiming, &Column, LineSize);
-	if(!g_Config.m_ClSubTickAiming)
-	{
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcFastInputRepredictHook, TCLocalize("Repredict on mid-tick hook direction change (may lag)"), &g_Config.m_AcFastInputRepredictHook, &Column, LineSize);
-		g_Config.m_TcFastInputRepredictHook = g_Config.m_AcFastInputRepredictHook;
-	}
-
-	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
 
 	// ***** Fast Practice ***** //
@@ -4701,10 +4668,43 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		if(g_Config.m_AcCustomAspectRatioMode == 5)
 		{
 			Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+			// Width (Numerator)
 			Column.HSplitTop(LineSize, &Button, &Column);
-			Ui()->DoScrollbarOption(&g_Config.m_AcCustomAspectRatioNum, &g_Config.m_AcCustomAspectRatioNum, &Button, TCLocalize("Ancho (Numerador)"), 1, 32);
+			CUIRect NumMinus, NumPlus;
+			Button.VSplitRight(20.0f, &Button, &NumPlus);
+			Button.VSplitRight(2.0f, &Button, nullptr);
+			Button.VSplitRight(20.0f, &Button, &NumMinus);
+			Button.VSplitRight(4.0f, &Button, nullptr);
+			Ui()->DoScrollbarOption(&g_Config.m_AcCustomAspectRatioNum, &g_Config.m_AcCustomAspectRatioNum, &Button, TCLocalize("Ancho (Numerador)"), 1, 256);
+			static CButtonContainer s_BtnNumMinus, s_BtnNumPlus;
+			if(DoButton_Menu(&s_BtnNumMinus, "-", 0, &NumMinus))
+				g_Config.m_AcCustomAspectRatioNum = std::clamp(g_Config.m_AcCustomAspectRatioNum - 1, 1, 256);
+			if(DoButton_Menu(&s_BtnNumPlus, "+", 0, &NumPlus))
+				g_Config.m_AcCustomAspectRatioNum = std::clamp(g_Config.m_AcCustomAspectRatioNum + 1, 1, 256);
+
+			// Height (Denominator)
 			Column.HSplitTop(LineSize, &Button, &Column);
-			Ui()->DoScrollbarOption(&g_Config.m_AcCustomAspectRatioDen, &g_Config.m_AcCustomAspectRatioDen, &Button, TCLocalize("Alto (Denominador)"), 1, 32);
+			CUIRect DenMinus, DenPlus;
+			Button.VSplitRight(20.0f, &Button, &DenPlus);
+			Button.VSplitRight(2.0f, &Button, nullptr);
+			Button.VSplitRight(20.0f, &Button, &DenMinus);
+			Button.VSplitRight(4.0f, &Button, nullptr);
+			Ui()->DoScrollbarOption(&g_Config.m_AcCustomAspectRatioDen, &g_Config.m_AcCustomAspectRatioDen, &Button, TCLocalize("Alto (Denominador)"), 1, 256);
+			static CButtonContainer s_BtnDenMinus, s_BtnDenPlus;
+			if(DoButton_Menu(&s_BtnDenMinus, "-", 0, &DenMinus))
+				g_Config.m_AcCustomAspectRatioDen = std::clamp(g_Config.m_AcCustomAspectRatioDen - 1, 1, 256);
+			if(DoButton_Menu(&s_BtnDenPlus, "+", 0, &DenPlus))
+				g_Config.m_AcCustomAspectRatioDen = std::clamp(g_Config.m_AcCustomAspectRatioDen + 1, 1, 256);
+
+			// Info label showing exact aspect ratio
+			Column.HSplitTop(LineSize, &Button, &Column);
+			char aRatioStr[64];
+			const float Ratio = (float)g_Config.m_AcCustomAspectRatioNum / (float)std::max(1, g_Config.m_AcCustomAspectRatioDen);
+			str_format(aRatioStr, sizeof(aRatioStr), "%s: %d:%d (%.3f:1)", TCLocalize("Proporcion resultante"), g_Config.m_AcCustomAspectRatioNum, g_Config.m_AcCustomAspectRatioDen, Ratio);
+			TextRender()->TextColor(ColorRGBA(0.7f, 0.7f, 0.7f, 1.0f));
+			Ui()->DoLabel(&Button, aRatioStr, FontSize * 0.9f, TEXTALIGN_ML);
+			TextRender()->TextColor(ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f));
 		}
 
 		Column.HSplitTop(MarginSmall, nullptr, &Column);

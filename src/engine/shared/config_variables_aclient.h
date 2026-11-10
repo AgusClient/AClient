@@ -201,8 +201,8 @@ MACRO_CONFIG_INT(AcShowInMenuIcon, ac_show_in_menu_icon, 1, 0, 1, CFGFLAG_CLIENT
 // Custom Aspect Ratio & Black Bars
 MACRO_CONFIG_INT(AcCustomAspectRatio, ac_custom_aspect_ratio, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable custom aspect ratio override")
 MACRO_CONFIG_INT(AcCustomAspectRatioMode, ac_custom_aspect_ratio_mode, 0, 0, 5, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Aspect ratio preset (0=4:3, 1=16:10, 2=5:4, 3=16:9, 4=21:9, 5=Custom)")
-MACRO_CONFIG_INT(AcCustomAspectRatioNum, ac_custom_aspect_ratio_num, 4, 1, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Custom aspect ratio width numerator")
-MACRO_CONFIG_INT(AcCustomAspectRatioDen, ac_custom_aspect_ratio_den, 3, 1, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Custom aspect ratio height denominator")
+MACRO_CONFIG_INT(AcCustomAspectRatioNum, ac_custom_aspect_ratio_num, 4, 1, 256, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Custom aspect ratio width numerator")
+MACRO_CONFIG_INT(AcCustomAspectRatioDen, ac_custom_aspect_ratio_den, 3, 1, 256, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Custom aspect ratio height denominator")
 MACRO_CONFIG_INT(AcCustomAspectRatioBlackBars, ac_custom_aspect_ratio_black_bars, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Render solid black bars instead of stretching custom aspect ratio")
 MACRO_CONFIG_INT(AcCustomAspectRatioIngameOnly, ac_custom_aspect_ratio_ingame_only, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply custom aspect ratio only while playing in-game")
 

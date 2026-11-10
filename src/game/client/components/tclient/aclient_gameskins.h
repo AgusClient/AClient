@@ -10,6 +10,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <unordered_set>
 
 class CAClientGameSkins : public CComponent
 {
@@ -17,6 +18,9 @@ class CAClientGameSkins : public CComponent
 	std::map<std::string, std::string> m_mRemotePlayerGameSkins;
 	std::set<std::string> m_sRemoteAClientPlayers;
 	std::set<std::string> m_sFailedSkins;
+	std::unordered_set<std::string> m_sBlacklistedGameSkins;
+	std::map<std::string, std::string> m_mActiveSkinUsers;
+	uint64_t m_SkinUsersRevision;
 
 	std::shared_ptr<IHttpRequest> m_pPresenceRequest;
 	std::shared_ptr<IHttpRequest> m_pDownloadRequest;
@@ -33,6 +37,7 @@ class CAClientGameSkins : public CComponent
 	int64_t m_ServerJoinTime;
 	bool m_InitialDownloadPhase;
 	bool m_WasFrozen;
+	bool m_BlacklistLoaded;
 
 	bool CanDownloadGameskins() const;
 	bool IsLocalPlayerFrozen() const;
@@ -41,14 +46,22 @@ class CAClientGameSkins : public CComponent
 	void UnloadSkin(SClientGameSkin &Skin);
 	void StartDownload(const char *pSkinName);
 
+	void LoadBlacklist();
+	void SaveBlacklist();
+	void EnsureBlacklistLoaded();
+
 	static void ConReloadRemoteGameSkins(IConsole::IResult *pResult, void *pUserData);
 	static void ConSetPlayerGameSkin(IConsole::IResult *pResult, void *pUserData);
+	static void ConBlacklistGameSkin(IConsole::IResult *pResult, void *pUserData);
+	static void ConUnblacklistGameSkin(IConsole::IResult *pResult, void *pUserData);
+	static void ConToggleBlacklistGameSkin(IConsole::IResult *pResult, void *pUserData);
 
 public:
 	CAClientGameSkins();
 	~CAClientGameSkins() override;
 
 	int Sizeof() const override { return sizeof(*this); }
+	void OnInit() override;
 	void OnStateChange(int NewState, int OldState) override;
 	void OnRender() override;
 	void OnConsoleInit() override;
@@ -61,6 +74,16 @@ public:
 	void FreeAllGameSkins();
 	void UpdateAllPlayerSkins();
 	void TriggerManualReload();
+
+	bool IsGameSkinBlacklisted(const char *pName) const;
+	void SetGameSkinBlacklisted(const char *pName, bool Blacklist);
+	void ToggleGameSkinBlacklist(const char *pName);
+
+	void UpdateActiveSkinUsers();
+	const std::map<std::string, std::string> &GetActiveSkinUsers() const { return m_mActiveSkinUsers; }
+	uint64_t SkinUsersRevision() const { return m_SkinUsersRevision; }
+	bool GetSkinUsers(const char *pSkinName, char *pOutBuf, int OutBufSize, int *pOutCount = nullptr) const;
+	bool IsGameSkinInUse(const char *pSkinName) const;
 };
 
 #endif // GAME_CLIENT_COMPONENTS_TCLIENT_ACLIENT_GAMESKINS_H

@@ -3,6 +3,7 @@
 #include "aclient_gameskins.h"
 #include "aclient_backend.h"
 
+#include <base/io.h>
 #include <base/math.h>
 #include <base/str.h>
 #include <base/time.h>
@@ -11,6 +12,7 @@
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
 #include <engine/shared/json.h>
+#include <engine/shared/linereader.h>
 #include <engine/storage.h>
 #include <game/client/gameclient.h>
 #include <generated/client_data.h>
@@ -42,7 +44,9 @@ CAClientGameSkins::CAClientGameSkins() :
 	m_LastRenderCheckTime(0),
 	m_ServerJoinTime(0),
 	m_InitialDownloadPhase(false),
-	m_WasFrozen(false)
+	m_WasFrozen(false),
+	m_BlacklistLoaded(false),
+	m_SkinUsersRevision(0)
 {
 	m_aLastServerAddress[0] = '\0';
 	m_aLastAnnouncedPlayer[0] = '\0';
@@ -57,6 +61,219 @@ CAClientGameSkins::~CAClientGameSkins()
 	if(m_pDownloadRequest)
 		m_pDownloadRequest->Abort();
 	FreeAllGameSkins();
+}
+
+void CAClientGameSkins::OnInit()
+{
+	EnsureBlacklistLoaded();
+	UpdateActiveSkinUsers();
+}
+
+void CAClientGameSkins::EnsureBlacklistLoaded()
+{
+	if(m_BlacklistLoaded || !Storage())
+		return;
+	LoadBlacklist();
+}
+
+void CAClientGameSkins::LoadBlacklist()
+{
+	m_sBlacklistedGameSkins.clear();
+	if(!Storage())
+		return;
+
+	IOHANDLE File = Storage()->OpenFile("gameskin_blacklist.txt", IOFLAG_READ, IStorage::TYPE_ALL);
+	if(File)
+	{
+		CLineReader LineReader;
+		if(LineReader.OpenFile(File))
+		{
+			while(const char *pLine = LineReader.Get())
+			{
+				if(!pLine || pLine[0] == '\0' || pLine[0] == '#')
+					continue;
+				char aName[128];
+				str_copy(aName, pLine);
+				str_clean_whitespaces(aName);
+				if(aName[0] != '\0')
+					m_sBlacklistedGameSkins.insert(aName);
+			}
+		}
+	}
+	m_BlacklistLoaded = true;
+}
+
+void CAClientGameSkins::SaveBlacklist()
+{
+	if(!Storage())
+		return;
+
+	IOHANDLE File = Storage()->OpenFile("gameskin_blacklist.txt", IOFLAG_WRITE, IStorage::TYPE_SAVE);
+	if(!File)
+		return;
+
+	for(const auto &SkinName : m_sBlacklistedGameSkins)
+	{
+		io_write(File, SkinName.c_str(), SkinName.length());
+		io_write_newline(File);
+	}
+	io_close(File);
+}
+
+bool CAClientGameSkins::IsGameSkinBlacklisted(const char *pName) const
+{
+	if(!pName || !pName[0])
+		return false;
+	const_cast<CAClientGameSkins *>(this)->EnsureBlacklistLoaded();
+	return m_sBlacklistedGameSkins.find(pName) != m_sBlacklistedGameSkins.end();
+}
+
+void CAClientGameSkins::SetGameSkinBlacklisted(const char *pName, bool Blacklist)
+{
+	if(!pName || !pName[0] || str_comp(pName, "default") == 0)
+		return;
+
+	EnsureBlacklistLoaded();
+
+	if(Blacklist)
+	{
+		m_sBlacklistedGameSkins.insert(pName);
+		auto it = m_mLoadedGameSkins.find(pName);
+		if(it != m_mLoadedGameSkins.end())
+		{
+			UnloadSkin(it->second);
+			m_mLoadedGameSkins.erase(it);
+		}
+	}
+	else
+	{
+		m_sBlacklistedGameSkins.erase(pName);
+	}
+
+	SaveBlacklist();
+	UpdateAllPlayerSkins();
+
+	if(Blacklist && str_comp(g_Config.m_ClAssetGame, pName) == 0)
+	{
+		str_copy(g_Config.m_ClAssetGame, "default");
+		GameClient()->LoadGameSkin(g_Config.m_ClAssetGame);
+	}
+}
+
+void CAClientGameSkins::ToggleGameSkinBlacklist(const char *pName)
+{
+	EnsureBlacklistLoaded();
+	SetGameSkinBlacklisted(pName, !IsGameSkinBlacklisted(pName));
+}
+
+void CAClientGameSkins::UpdateActiveSkinUsers()
+{
+	std::map<std::string, std::vector<std::string>> UsersPerSkin;
+
+	if(Client()->State() == IClient::STATE_ONLINE)
+	{
+		for(int i = 0; i < MAX_CLIENTS; ++i)
+		{
+			if(!GameClient()->m_aClients[i].m_Active)
+				continue;
+
+			const bool IsLocal = (i == GameClient()->m_Snap.m_LocalClientId);
+			const char *pPlayerName = GameClient()->m_aClients[i].m_aName;
+
+			if(IsLocal)
+			{
+				if(g_Config.m_ClAssetGame[0] && str_comp(g_Config.m_ClAssetGame, "default") != 0)
+				{
+					std::string DisplayName = pPlayerName[0] ? (std::string(pPlayerName) + " (Tú)") : "Tú";
+					UsersPerSkin[g_Config.m_ClAssetGame].push_back(DisplayName);
+				}
+				continue;
+			}
+
+			std::string SkinName;
+			auto it = m_mRemotePlayerGameSkins.find(pPlayerName);
+			if(it == m_mRemotePlayerGameSkins.end())
+			{
+				char aTrimmed[MAX_NAME_LENGTH];
+				TrimPlayerName(pPlayerName, aTrimmed, sizeof(aTrimmed));
+				if(aTrimmed[0] != '\0')
+					it = m_mRemotePlayerGameSkins.find(aTrimmed);
+			}
+			if(it != m_mRemotePlayerGameSkins.end() && !it->second.empty())
+			{
+				SkinName = it->second;
+			}
+			else if(GameClient()->m_aClients[i].m_aCustomGameSkinName[0] != '\0')
+			{
+				SkinName = GameClient()->m_aClients[i].m_aCustomGameSkinName;
+			}
+
+			if(!SkinName.empty() && str_comp(SkinName.c_str(), "default") != 0)
+			{
+				UsersPerSkin[SkinName].push_back(pPlayerName);
+			}
+		}
+	}
+	else
+	{
+		if(g_Config.m_ClAssetGame[0] && str_comp(g_Config.m_ClAssetGame, "default") != 0)
+		{
+			std::string DisplayName = g_Config.m_PlayerName[0] ? (std::string(g_Config.m_PlayerName) + " (Tú)") : "Tú";
+			UsersPerSkin[g_Config.m_ClAssetGame].push_back(DisplayName);
+		}
+	}
+
+	std::map<std::string, std::string> NewResult;
+	for(const auto &Pair : UsersPerSkin)
+	{
+		const auto &Users = Pair.second;
+		if(Users.empty())
+			continue;
+
+		char aBuf[128];
+		if(Users.size() == 1)
+			str_format(aBuf, sizeof(aBuf), "%s", Users[0].c_str());
+		else if(Users.size() == 2)
+			str_format(aBuf, sizeof(aBuf), "%s, %s", Users[0].c_str(), Users[1].c_str());
+		else
+			str_format(aBuf, sizeof(aBuf), "%s, %s (+%d)", Users[0].c_str(), Users[1].c_str(), (int)Users.size() - 2);
+
+		NewResult[Pair.first] = aBuf;
+	}
+
+	if(NewResult != m_mActiveSkinUsers)
+	{
+		m_mActiveSkinUsers = std::move(NewResult);
+		m_SkinUsersRevision++;
+	}
+}
+
+bool CAClientGameSkins::GetSkinUsers(const char *pSkinName, char *pOutBuf, int OutBufSize, int *pOutCount) const
+{
+	if(pOutCount)
+		*pOutCount = 0;
+	if(pOutBuf && OutBufSize > 0)
+		pOutBuf[0] = '\0';
+
+	if(!pSkinName || !pSkinName[0])
+		return false;
+
+	auto it = m_mActiveSkinUsers.find(pSkinName);
+	if(it == m_mActiveSkinUsers.end() || it->second.empty())
+		return false;
+
+	if(pOutBuf && OutBufSize > 0)
+		str_copy(pOutBuf, it->second.c_str(), OutBufSize);
+	if(pOutCount)
+		*pOutCount = 1;
+	return true;
+}
+
+bool CAClientGameSkins::IsGameSkinInUse(const char *pSkinName) const
+{
+	if(!pSkinName || !pSkinName[0])
+		return false;
+	return m_mActiveSkinUsers.find(pSkinName) != m_mActiveSkinUsers.end();
 }
 
 void CAClientGameSkins::OnStateChange(int NewState, int OldState)
@@ -96,11 +313,14 @@ void CAClientGameSkins::OnReset()
 	m_DownloadingSkinName.clear();
 	m_mRemotePlayerGameSkins.clear();
 	m_sRemoteAClientPlayers.clear();
+	m_mActiveSkinUsers.clear();
+	m_SkinUsersRevision++;
 
 	for(int i = 0; i < MAX_CLIENTS; ++i)
 	{
 		GameClient()->m_aClients[i].m_pCustomGameSkin = nullptr;
 		GameClient()->m_aClients[i].m_aCustomGameSkinName[0] = '\0';
+		GameClient()->m_aClients[i].m_IsAClient = false;
 	}
 
 	FreeAllGameSkins();
@@ -137,6 +357,22 @@ void CAClientGameSkins::UnloadSkin(SClientGameSkin &Skin)
 		Graphics()->UnloadTexture(&Skin.m_SpriteWeaponLaser);
 	if(Skin.m_SpriteWeaponNinja.IsValid())
 		Graphics()->UnloadTexture(&Skin.m_SpriteWeaponNinja);
+
+	if(Skin.m_SpriteWeaponHammerCursor.IsValid())
+		Graphics()->UnloadTexture(&Skin.m_SpriteWeaponHammerCursor);
+	if(Skin.m_SpriteWeaponGunCursor.IsValid())
+		Graphics()->UnloadTexture(&Skin.m_SpriteWeaponGunCursor);
+	if(Skin.m_SpriteWeaponShotgunCursor.IsValid())
+		Graphics()->UnloadTexture(&Skin.m_SpriteWeaponShotgunCursor);
+	if(Skin.m_SpriteWeaponGrenadeCursor.IsValid())
+		Graphics()->UnloadTexture(&Skin.m_SpriteWeaponGrenadeCursor);
+	if(Skin.m_SpriteWeaponNinjaCursor.IsValid())
+		Graphics()->UnloadTexture(&Skin.m_SpriteWeaponNinjaCursor);
+	if(Skin.m_SpriteWeaponLaserCursor.IsValid())
+		Graphics()->UnloadTexture(&Skin.m_SpriteWeaponLaserCursor);
+
+	for(auto &SpriteWeaponCursor : Skin.m_aSpriteWeaponCursors)
+		SpriteWeaponCursor = IGraphics::CTextureHandle();
 
 	for(auto &SpriteWeapon : Skin.m_aSpriteWeapons)
 		SpriteWeapon = IGraphics::CTextureHandle();
@@ -259,6 +495,8 @@ void CAClientGameSkins::StartDownload(const char *pSkinName)
 		return;
 	if(!pSkinName || !pSkinName[0] || str_comp(pSkinName, "default") == 0)
 		return;
+	if(IsGameSkinBlacklisted(pSkinName))
+		return;
 	if(m_sFailedSkins.find(pSkinName) != m_sFailedSkins.end())
 		return;
 
@@ -292,6 +530,8 @@ void CAClientGameSkins::StartDownload(const char *pSkinName)
 const SClientGameSkin *CAClientGameSkins::GetOrLoadGameSkin(const char *pName)
 {
 	if(!pName || !pName[0] || str_comp(pName, "default") == 0)
+		return nullptr;
+	if(IsGameSkinBlacklisted(pName))
 		return nullptr;
 
 	auto it = m_mLoadedGameSkins.find(pName);
@@ -363,6 +603,20 @@ const SClientGameSkin *CAClientGameSkins::GetOrLoadGameSkin(const char *pName)
 		Skin.m_aaSpriteWeaponsMuzzles[5][i] = Skin.m_aaSpriteWeaponNinjaMuzzles[i];
 	}
 
+	Skin.m_SpriteWeaponHammerCursor = Graphics()->LoadSpriteTexture(ImgInfo, FallbackInfo, &g_pData->m_aSprites[SPRITE_WEAPON_HAMMER_CURSOR]);
+	Skin.m_SpriteWeaponGunCursor = Graphics()->LoadSpriteTexture(ImgInfo, FallbackInfo, &g_pData->m_aSprites[SPRITE_WEAPON_GUN_CURSOR]);
+	Skin.m_SpriteWeaponShotgunCursor = Graphics()->LoadSpriteTexture(ImgInfo, FallbackInfo, &g_pData->m_aSprites[SPRITE_WEAPON_SHOTGUN_CURSOR]);
+	Skin.m_SpriteWeaponGrenadeCursor = Graphics()->LoadSpriteTexture(ImgInfo, FallbackInfo, &g_pData->m_aSprites[SPRITE_WEAPON_GRENADE_CURSOR]);
+	Skin.m_SpriteWeaponNinjaCursor = Graphics()->LoadSpriteTexture(ImgInfo, FallbackInfo, &g_pData->m_aSprites[SPRITE_WEAPON_NINJA_CURSOR]);
+	Skin.m_SpriteWeaponLaserCursor = Graphics()->LoadSpriteTexture(ImgInfo, FallbackInfo, &g_pData->m_aSprites[SPRITE_WEAPON_LASER_CURSOR]);
+
+	Skin.m_aSpriteWeaponCursors[0] = Skin.m_SpriteWeaponHammerCursor;
+	Skin.m_aSpriteWeaponCursors[1] = Skin.m_SpriteWeaponGunCursor;
+	Skin.m_aSpriteWeaponCursors[2] = Skin.m_SpriteWeaponShotgunCursor;
+	Skin.m_aSpriteWeaponCursors[3] = Skin.m_SpriteWeaponGrenadeCursor;
+	Skin.m_aSpriteWeaponCursors[4] = Skin.m_SpriteWeaponLaserCursor;
+	Skin.m_aSpriteWeaponCursors[5] = Skin.m_SpriteWeaponNinjaCursor;
+
 	ImgInfo.Free();
 	if(FallbackInfo.has_value())
 		FallbackInfo->Free();
@@ -379,6 +633,8 @@ bool CAClientGameSkins::IsPlayerAClient(int ClientId) const
 	if(ClientId == GameClient()->m_aLocalIds[0])
 		return true;
 	if(Client()->DummyConnected() && ClientId == GameClient()->m_aLocalIds[1])
+		return true;
+	if(GameClient()->m_aClients[ClientId].m_IsAClient)
 		return true;
 	const char *pName = GameClient()->m_aClients[ClientId].m_aName;
 	if(!pName || !pName[0])
@@ -556,6 +812,18 @@ void CAClientGameSkins::UpdateAllPlayerSkins()
 		if(i == GameClient()->m_Snap.m_LocalClientId)
 			continue;
 
+		bool IsAClient = false;
+		if(m_sRemoteAClientPlayers.find(GameClient()->m_aClients[i].m_aName) != m_sRemoteAClientPlayers.end())
+			IsAClient = true;
+		else
+		{
+			char aTrimmedPl[MAX_NAME_LENGTH];
+			TrimPlayerName(GameClient()->m_aClients[i].m_aName, aTrimmedPl, sizeof(aTrimmedPl));
+			if(aTrimmedPl[0] != '\0' && m_sRemoteAClientPlayers.find(aTrimmedPl) != m_sRemoteAClientPlayers.end())
+				IsAClient = true;
+		}
+		GameClient()->m_aClients[i].m_IsAClient = IsAClient;
+
 		auto it = m_mRemotePlayerGameSkins.find(GameClient()->m_aClients[i].m_aName);
 		if(it == m_mRemotePlayerGameSkins.end())
 		{
@@ -564,7 +832,7 @@ void CAClientGameSkins::UpdateAllPlayerSkins()
 			if(aTrimmed[0] != '\0')
 				it = m_mRemotePlayerGameSkins.find(aTrimmed);
 		}
-		if(it != m_mRemotePlayerGameSkins.end() && !it->second.empty() && str_comp(it->second.c_str(), "default") != 0)
+		if(it != m_mRemotePlayerGameSkins.end() && !it->second.empty() && str_comp(it->second.c_str(), "default") != 0 && !IsGameSkinBlacklisted(it->second.c_str()))
 		{
 			const SClientGameSkin *pSkin = GetOrLoadGameSkin(it->second.c_str());
 			GameClient()->m_aClients[i].m_pCustomGameSkin = pSkin;
@@ -575,6 +843,14 @@ void CAClientGameSkins::UpdateAllPlayerSkins()
 			GameClient()->m_aClients[i].m_pCustomGameSkin = nullptr;
 			GameClient()->m_aClients[i].m_aCustomGameSkinName[0] = '\0';
 		}
+	}
+
+	UpdateActiveSkinUsers();
+
+	if(GameClient())
+	{
+		GameClient()->m_Menus.InvalidateAssetsTab(ASSETS_TAB_GAME);
+		GameClient()->m_Menus.InvalidateAssetsTab(ASSETS_TAB_DOWNLOADED_GAME);
 	}
 }
 
@@ -769,6 +1045,11 @@ void CAClientGameSkins::OnRender()
 				}
 				if(it != m_mRemotePlayerGameSkins.end() && !it->second.empty() && str_comp(it->second.c_str(), "default") != 0)
 				{
+					if(IsGameSkinBlacklisted(it->second.c_str()))
+					{
+						str_copy(GameClient()->m_aClients[i].m_aCustomGameSkinName, it->second.c_str());
+						continue;
+					}
 					const SClientGameSkin *pSkin = GetOrLoadGameSkin(it->second.c_str());
 					if(pSkin)
 					{
@@ -818,8 +1099,41 @@ void CAClientGameSkins::ConSetPlayerGameSkin(IConsole::IResult *pResult, void *p
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "aclient", aBuf);
 }
 
+void CAClientGameSkins::ConBlacklistGameSkin(IConsole::IResult *pResult, void *pUserData)
+{
+	CAClientGameSkins *pSelf = (CAClientGameSkins *)pUserData;
+	const char *pSkinName = pResult->GetString(0);
+	pSelf->SetGameSkinBlacklisted(pSkinName, true);
+	char aBuf[256];
+	str_format(aBuf, sizeof(aBuf), "Gameskin '%s' agregado a la blacklist", pSkinName);
+	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "aclient", aBuf);
+}
+
+void CAClientGameSkins::ConUnblacklistGameSkin(IConsole::IResult *pResult, void *pUserData)
+{
+	CAClientGameSkins *pSelf = (CAClientGameSkins *)pUserData;
+	const char *pSkinName = pResult->GetString(0);
+	pSelf->SetGameSkinBlacklisted(pSkinName, false);
+	char aBuf[256];
+	str_format(aBuf, sizeof(aBuf), "Gameskin '%s' removido de la blacklist", pSkinName);
+	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "aclient", aBuf);
+}
+
+void CAClientGameSkins::ConToggleBlacklistGameSkin(IConsole::IResult *pResult, void *pUserData)
+{
+	CAClientGameSkins *pSelf = (CAClientGameSkins *)pUserData;
+	const char *pSkinName = pResult->GetString(0);
+	pSelf->ToggleGameSkinBlacklist(pSkinName);
+	char aBuf[256];
+	str_format(aBuf, sizeof(aBuf), "Gameskin '%s' blacklist: %s", pSkinName, pSelf->IsGameSkinBlacklisted(pSkinName) ? "activado" : "desactivado");
+	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "aclient", aBuf);
+}
+
 void CAClientGameSkins::OnConsoleInit()
 {
 	Console()->Register("reload_remote_gameskins", "", CFGFLAG_CLIENT, ConReloadRemoteGameSkins, this, "Reload custom gameskins for remote players from relay");
 	Console()->Register("set_player_gameskin", "i[id] s[skin]", CFGFLAG_CLIENT, ConSetPlayerGameSkin, this, "Set custom gameskin for a specific player (for testing)");
+	Console()->Register("cl_blacklist_gameskin", "s[skin]", CFGFLAG_CLIENT, ConBlacklistGameSkin, this, "Blacklist a gameskin");
+	Console()->Register("cl_unblacklist_gameskin", "s[skin]", CFGFLAG_CLIENT, ConUnblacklistGameSkin, this, "Unblacklist a gameskin");
+	Console()->Register("cl_toggle_blacklist_gameskin", "s[skin]", CFGFLAG_CLIENT, ConToggleBlacklistGameSkin, this, "Toggle blacklist for a gameskin");
 }

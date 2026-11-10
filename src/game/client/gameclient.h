@@ -515,6 +515,7 @@ public:
 		vec2 Target() const { return m_Target; }
 		vec2 WorldTarget() const { return m_WorldTarget; }
 		vec2 Position() const { return m_Position; }
+		int CursorOwnerId() const { return m_CursorOwnerId; }
 	} m_CursorInfo;
 
 	// client data
@@ -629,6 +630,7 @@ public:
 		// AClient: custom gameskin per player
 		const SClientGameSkin *m_pCustomGameSkin = nullptr;
 		char m_aCustomGameSkinName[64] = {0};
+		bool m_IsAClient = false;
 
 		int ClientId() const { return m_ClientId; }
 

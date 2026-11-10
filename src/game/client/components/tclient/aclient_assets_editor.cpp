@@ -330,6 +330,116 @@ void AssetsEditorDrawBrushCursor(CUi *pUi, ITextRender *pTextRender, float Mouse
 }
 }
 
+int CMenus::AssetsEditorCategoryFromTab(int Tab)
+{
+	switch(Tab)
+	{
+	case ASSETS_TAB_ENTITIES: return ASSETS_EDITOR_CAT_ENTITIES;
+	case ASSETS_TAB_EMOTICONS: return ASSETS_EDITOR_CAT_EMOTICONS;
+	case ASSETS_TAB_PARTICLES: return ASSETS_EDITOR_CAT_PARTICLES;
+	case ASSETS_TAB_HUD: return ASSETS_EDITOR_CAT_HUD;
+	case ASSETS_TAB_EXTRAS: return ASSETS_EDITOR_CAT_EXTRAS;
+	case ASSETS_TAB_DOWNLOADED_GAME:
+	case ASSETS_TAB_GAME:
+	default:
+		return ASSETS_EDITOR_CAT_GAME;
+	}
+}
+
+int CMenus::AssetsEditorTabFromCategory(int Category)
+{
+	switch(Category)
+	{
+	case ASSETS_EDITOR_CAT_ENTITIES: return ASSETS_TAB_ENTITIES;
+	case ASSETS_EDITOR_CAT_EMOTICONS: return ASSETS_TAB_EMOTICONS;
+	case ASSETS_EDITOR_CAT_PARTICLES: return ASSETS_TAB_PARTICLES;
+	case ASSETS_EDITOR_CAT_HUD: return ASSETS_TAB_HUD;
+	case ASSETS_EDITOR_CAT_EXTRAS: return ASSETS_TAB_EXTRAS;
+	case ASSETS_EDITOR_CAT_GAME:
+	default:
+		return ASSETS_TAB_GAME;
+	}
+}
+
+void CMenus::AssetsEditorOpen(int Category)
+{
+	if(Category < 0 || Category >= ASSETS_EDITOR_CAT_COUNT)
+		Category = ASSETS_EDITOR_CAT_GAME;
+
+	const char *pEquippedName = "default";
+	if(Category == ASSETS_EDITOR_CAT_ENTITIES)
+		pEquippedName = g_Config.m_ClAssetsEntities;
+	else if(Category == ASSETS_EDITOR_CAT_GAME)
+		pEquippedName = g_Config.m_ClAssetGame;
+	else if(Category == ASSETS_EDITOR_CAT_EMOTICONS)
+		pEquippedName = g_Config.m_ClAssetEmoticons;
+	else if(Category == ASSETS_EDITOR_CAT_PARTICLES)
+		pEquippedName = g_Config.m_ClAssetParticles;
+	else if(Category == ASSETS_EDITOR_CAT_HUD)
+		pEquippedName = g_Config.m_ClAssetHud;
+	else if(Category == ASSETS_EDITOR_CAT_EXTRAS)
+		pEquippedName = g_Config.m_ClAssetExtras;
+
+	if(pEquippedName[0] == '\0')
+		pEquippedName = "default";
+
+	const bool CategoryChanged = !m_AssetsEditorState.m_Initialized ||
+		m_AssetsEditorState.m_Right.m_Category != Category ||
+		m_AssetsEditorState.m_Left.m_Category != Category;
+
+	const bool TargetChanged = CategoryChanged ||
+		str_comp(m_AssetsEditorState.m_Right.m_aName, pEquippedName) != 0;
+
+	if(CategoryChanged || TargetChanged)
+	{
+		// Clean up previous GPU textures and deep-copied CPU buffers to prevent leaks
+		Graphics()->UnloadTexture(&m_AssetsEditorState.m_Left.m_Texture);
+		Graphics()->UnloadTexture(&m_AssetsEditorState.m_Right.m_Texture);
+		Graphics()->UnloadTexture(&m_AssetsEditorState.m_PreviewTexture);
+		m_AssetsEditorState.m_Left.m_Image.Free();
+		m_AssetsEditorState.m_Right.m_Image.Free();
+		m_AssetsEditorState.m_Left = SAssetsEditorImage();
+		m_AssetsEditorState.m_Right = SAssetsEditorImage();
+		m_AssetsEditorState.m_vDonorSlots.clear();
+		m_AssetsEditorState.m_vTargetSlots.clear();
+		m_AssetsEditorState.m_DonorHover = SAssetsEditorHoverCycle();
+		m_AssetsEditorState.m_TargetHover = SAssetsEditorHoverCycle();
+		if(Ui()->IsPopupOpen(&gs_AssetsEditorColorPopup))
+			Ui()->ClosePopupMenu(&gs_AssetsEditorColorPopup);
+		m_AssetsEditorState.m_ColorEditSlot = -1;
+
+		AssetsEditorLoadImage(Category, "default", m_AssetsEditorState.m_Left);
+		if(!AssetsEditorLoadImage(Category, pEquippedName, m_AssetsEditorState.m_Right))
+			AssetsEditorLoadImage(Category, "default", m_AssetsEditorState.m_Right);
+
+		AssetsEditorRebuildSlots(ASSETS_EDITOR_SIDE_LEFT);
+		AssetsEditorRebuildSlots(ASSETS_EDITOR_SIDE_RIGHT);
+
+		const char *pCatSuffix = "asset";
+		switch(Category)
+		{
+		case ASSETS_EDITOR_CAT_ENTITIES: pCatSuffix = "entities"; break;
+		case ASSETS_EDITOR_CAT_GAME: pCatSuffix = "game"; break;
+		case ASSETS_EDITOR_CAT_EMOTICONS: pCatSuffix = "emoticons"; break;
+		case ASSETS_EDITOR_CAT_PARTICLES: pCatSuffix = "particles"; break;
+		case ASSETS_EDITOR_CAT_HUD: pCatSuffix = "hud"; break;
+		case ASSETS_EDITOR_CAT_EXTRAS: pCatSuffix = "extras"; break;
+		}
+		str_format(m_AssetsEditorState.m_aExportName, sizeof(m_AssetsEditorState.m_aExportName), "ac_%s", pCatSuffix);
+
+		m_AssetsEditorState.m_Initialized = true;
+		m_AssetsEditorState.m_HasUnsavedChanges = false;
+		m_AssetsEditorState.m_aStatusMessage[0] = '\0';
+		m_AssetsEditorState.m_StatusIsError = false;
+		m_AssetsEditorState.m_DirtyPreview = true;
+	}
+
+	m_AssetsEditorState.m_Open = true;
+	m_AssetsEditorState.m_ExploreSide = -1;
+	m_AssetsEditorState.m_ShowExitConfirm = false;
+	AssetsEditorCancelDrag();
+}
+
 bool CMenus::AssetsEditorResolvePath(int Category, const char *pName, char *pOut, int OutSize) const
 {
 	static_assert(ASSETS_EDITOR_CAT_ENTITIES == 0 && ASSETS_EDITOR_CAT_GAME == 1 && ASSETS_EDITOR_CAT_EMOTICONS == 2 && ASSETS_EDITOR_CAT_PARTICLES == 3 && ASSETS_EDITOR_CAT_HUD == 4 && ASSETS_EDITOR_CAT_EXTRAS == 5 && ASSETS_EDITOR_CAT_COUNT == 6);
@@ -553,6 +663,15 @@ bool CMenus::AssetsEditorAssignPickedAsset(int Side, int Category, const char *p
 {
 	if((Side != ASSETS_EDITOR_SIDE_LEFT && Side != ASSETS_EDITOR_SIDE_RIGHT) || Category < 0 || Category >= ASSETS_EDITOR_CAT_COUNT)
 		return false;
+
+	const int ExpectedCategory = Side == ASSETS_EDITOR_SIDE_LEFT ? m_AssetsEditorState.m_Left.m_Category : m_AssetsEditorState.m_Right.m_Category;
+	if(Category != ExpectedCategory)
+	{
+		str_copy(m_AssetsEditorState.m_aStatusMessage, Localize("Asset category mismatch."), sizeof(m_AssetsEditorState.m_aStatusMessage));
+		m_AssetsEditorState.m_StatusIsError = true;
+		m_AssetsEditorState.m_ExploreSide = -1;
+		return false;
+	}
 
 	SAssetsEditorImage Loaded;
 	if(!AssetsEditorLoadImage(Category, pName, Loaded))
@@ -793,6 +912,7 @@ bool CMenus::AssetsEditorExport()
 		return false;
 	}
 	OutputImage.Free();
+	InvalidateAssetsTab(AssetsEditorTabFromCategory(m_AssetsEditorState.m_Right.m_Category));
 	str_format(m_AssetsEditorState.m_aStatusMessage, sizeof(m_AssetsEditorState.m_aStatusMessage), Localize("Exported to %s"), aPngPath);
 	m_AssetsEditorState.m_StatusIsError = false;
 	m_AssetsEditorState.m_HasUnsavedChanges = false;
@@ -1206,14 +1326,7 @@ void CMenus::RenderAssetsEditorScreen(CUIRect MainView)
 {
 	if(!m_AssetsEditorState.m_Initialized)
 	{
-		AssetsEditorLoadImage(ASSETS_EDITOR_CAT_GAME, "default", m_AssetsEditorState.m_Left);
-		AssetsEditorLoadImage(ASSETS_EDITOR_CAT_GAME, "default", m_AssetsEditorState.m_Right);
-		AssetsEditorRebuildSlots(ASSETS_EDITOR_SIDE_LEFT);
-		AssetsEditorRebuildSlots(ASSETS_EDITOR_SIDE_RIGHT);
-		if(m_AssetsEditorState.m_aExportName[0] == '\0')
-			str_copy(m_AssetsEditorState.m_aExportName, "ac_asset", sizeof(m_AssetsEditorState.m_aExportName));
-		m_AssetsEditorState.m_Initialized = true;
-		m_AssetsEditorState.m_DirtyPreview = true;
+		AssetsEditorOpen(ASSETS_EDITOR_CAT_GAME);
 	}
 
 	if(!m_AssetsEditorState.m_ShowExitConfirm && !Ui()->IsPopupOpen() && Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE))
@@ -1414,11 +1527,13 @@ void CMenus::RenderAssetsEditorScreen(CUIRect MainView)
 	{
 		m_AssetsEditorState.m_ExploreSide = ASSETS_EDITOR_SIDE_LEFT;
 		AssetsEditorCancelDrag();
+		SetCustomAssetsTab(AssetsEditorTabFromCategory(m_AssetsEditorState.m_Left.m_Category));
 	}
 	if(DoButton_Menu(&s_RightExploreButton, Localize("Explore"), 0, &RightExplore))
 	{
 		m_AssetsEditorState.m_ExploreSide = ASSETS_EDITOR_SIDE_RIGHT;
 		AssetsEditorCancelDrag();
+		SetCustomAssetsTab(AssetsEditorTabFromCategory(m_AssetsEditorState.m_Right.m_Category));
 	}
 
 	int HoveredDonor = -1;

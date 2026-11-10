@@ -832,6 +832,7 @@ void CHud::RenderCursor()
 	int CurWeapon = 0;
 	vec2 TargetPos;
 	float Alpha = 1.0f;
+	int SpecClientId = -1;
 
 	const vec2 Center = GameClient()->m_Camera.m_Center;
 	CScreenRect ScreenRect = Graphics()->MapScreenToWorld(Center.x, Center.y, 100.0f, 100.0f, 100.0f, 0, 0, Graphics()->ScreenAspect(), 1.0f);
@@ -840,7 +841,7 @@ void CHud::RenderCursor()
 	if(Client()->State() != IClient::STATE_DEMOPLAYBACK && GameClient()->m_Snap.m_pLocalCharacter)
 	{
 		// Render local cursor
-		CurWeapon = std::max(0, GameClient()->m_aClients[GameClient()->m_Snap.m_LocalClientId].m_Predicted.m_ActiveWeapon);
+		CurWeapon = std::clamp(GameClient()->m_aClients[GameClient()->m_Snap.m_LocalClientId].m_Predicted.m_ActiveWeapon, 0, NUM_WEAPONS - 1);
 		TargetPos = GameClient()->m_Controls.m_aTargetPos[g_Config.m_ClDummy];
 	}
 	else
@@ -863,14 +864,31 @@ void CHud::RenderCursor()
 			absolute(ScreenPos.y / HalfSize.y),
 		});
 
-		CurWeapon = std::max(0, GameClient()->m_CursorInfo.Weapon() % NUM_WEAPONS);
+		CurWeapon = std::clamp(GameClient()->m_CursorInfo.Weapon() % NUM_WEAPONS, 0, NUM_WEAPONS - 1);
 		TargetPos = ScreenPos / ClampFactor + Center;
 		if(ClampFactor != 1.0f)
 			Alpha /= 2.0f;
+
+		if(GameClient()->m_Snap.m_SpecInfo.m_Active && GameClient()->m_Snap.m_SpecInfo.m_SpectatorId != SPEC_FREEVIEW)
+			SpecClientId = GameClient()->m_Snap.m_SpecInfo.m_SpectatorId;
+		else if(GameClient()->m_CursorInfo.CursorOwnerId() >= 0 && GameClient()->m_CursorInfo.CursorOwnerId() < MAX_CLIENTS)
+			SpecClientId = GameClient()->m_CursorInfo.CursorOwnerId();
+	}
+
+	const SClientGameSkin *pCursorGameSkin = &GameClient()->m_GameSkin;
+	if(SpecClientId >= 0 && SpecClientId < MAX_CLIENTS && g_Config.m_AcShowRemoteGameSkins)
+	{
+		const SClientGameSkin *pCustomSkin = GameClient()->m_aClients[SpecClientId].m_pCustomGameSkin;
+		if(pCustomSkin != nullptr &&
+			pCustomSkin->m_aSpriteWeaponCursors[CurWeapon].IsValid() &&
+			GameClient()->m_AClientGameSkins.IsPlayerAClient(SpecClientId))
+		{
+			pCursorGameSkin = pCustomSkin;
+		}
 	}
 
 	Graphics()->SetColor(1.0f, 1.0f, 1.0f, Alpha);
-	Graphics()->TextureSet(GameClient()->m_GameSkin.m_aSpriteWeaponCursors[CurWeapon]);
+	Graphics()->TextureSet(pCursorGameSkin->m_aSpriteWeaponCursors[CurWeapon]);
 	Graphics()->RenderQuadContainerAsSprite(m_HudQuadContainerIndex, m_aCursorOffset[CurWeapon], TargetPos.x, TargetPos.y, Scale, Scale);
 }
 

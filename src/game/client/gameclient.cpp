@@ -512,8 +512,8 @@ float CGameClient::ComputeTargetCustomAspect() const
 	case 4: return 21.0f / 9.0f;
 	default:
 	{
-		const int Num = std::clamp(g_Config.m_AcCustomAspectRatioNum, 1, 100);
-		const int Den = std::clamp(g_Config.m_AcCustomAspectRatioDen, 1, 100);
+		const int Num = std::clamp(g_Config.m_AcCustomAspectRatioNum, 1, 256);
+		const int Den = std::clamp(g_Config.m_AcCustomAspectRatioDen, 1, 256);
 		return std::clamp((float)Num / (float)Den, 0.5f, 4.0f);
 	}
 	}
@@ -3737,6 +3737,7 @@ void CGameClient::CClientData::Reset()
 
 	m_pCustomGameSkin = nullptr;
 	m_aCustomGameSkinName[0] = '\0';
+	m_IsAClient = false;
 
 	m_Solo = false;
 	m_Jetpack = false;

@@ -33,6 +33,19 @@
 #include <optional>
 #include <vector>
 
+// IDs of the tabs in the Assets menu
+enum
+{
+	ASSETS_TAB_ENTITIES = 0,
+	ASSETS_TAB_GAME = 1,
+	ASSETS_TAB_EMOTICONS = 2,
+	ASSETS_TAB_PARTICLES = 3,
+	ASSETS_TAB_HUD = 4,
+	ASSETS_TAB_EXTRAS = 5,
+	ASSETS_TAB_DOWNLOADED_GAME = 6,
+	NUMBER_OF_ASSETS_TABS = 7,
+};
+
 class CMenus : public CComponent
 {
 	static ColorRGBA ms_GuiColor;
@@ -83,6 +96,8 @@ private:
 
 	// menus_settings_assets.cpp
 public:
+	void InvalidateAssetsTab(int Tab);
+
 	struct SCustomItem
 	{
 		IGraphics::CTextureHandle m_RenderTexture;
@@ -91,6 +106,8 @@ public:
 		bool m_Deletable = false;
 		bool m_LoadFailed = false;
 		CButtonContainer m_DeleteButtonId;
+		CButtonContainer m_BlacklistButtonId;
+		char m_aInUseTooltip[256] = {0};
 
 		bool operator<(const SCustomItem &Other) const { return str_comp(m_aName, Other.m_aName) < 0; }
 	};
@@ -943,6 +960,12 @@ public:
 		ASSETS_EDITOR_SIDE_LEFT = 0,
 		ASSETS_EDITOR_SIDE_RIGHT,
 	};
+
+	void AssetsEditorOpen(int Category);
+	static int AssetsEditorCategoryFromTab(int Tab);
+	static int AssetsEditorTabFromCategory(int Category);
+	void SetCustomAssetsTab(int Tab);
+	int GetCustomAssetsTab() const;
 
 	enum
 	{

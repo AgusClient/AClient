@@ -25,19 +25,6 @@ struct SMenuAssetScanUser
 	TMenuAssetScanLoadedFunc m_LoadedFunc;
 };
 
-// IDs of the tabs in the Assets menu
-enum
-{
-	ASSETS_TAB_ENTITIES = 0,
-	ASSETS_TAB_GAME = 1,
-	ASSETS_TAB_EMOTICONS = 2,
-	ASSETS_TAB_PARTICLES = 3,
-	ASSETS_TAB_HUD = 4,
-	ASSETS_TAB_EXTRAS = 5,
-	ASSETS_TAB_DOWNLOADED_GAME = 6,
-	NUMBER_OF_ASSETS_TABS = 7,
-};
-
 void CMenus::LoadEntities(SCustomEntities *pEntitiesItem, void *pUser)
 {
 	auto *pRealUser = (SMenuAssetScanUser *)pUser;
@@ -253,9 +240,43 @@ static size_t gs_aCustomListSize[NUMBER_OF_ASSETS_TABS] = {
 	0,
 };
 
+void CMenus::InvalidateAssetsTab(int Tab)
+{
+	if(Tab >= 0 && Tab < NUMBER_OF_ASSETS_TABS)
+		gs_aInitCustomList[Tab] = true;
+}
+
+static void SortGamesList(std::vector<const CMenus::SCustomGame *> &vpSearchList, const std::map<std::string, std::string> &InUseMap)
+{
+	std::stable_sort(vpSearchList.begin(), vpSearchList.end(), [&InUseMap](const CMenus::SCustomGame *pA, const CMenus::SCustomGame *pB) {
+		const bool AInUse = InUseMap.find(pA->m_aName) != InUseMap.end();
+		const bool BInUse = InUseMap.find(pB->m_aName) != InUseMap.end();
+		if(AInUse != BInUse)
+			return AInUse > BInUse;
+
+		const bool AIsDefault = (str_comp(pA->m_aName, "default") == 0);
+		const bool BIsDefault = (str_comp(pB->m_aName, "default") == 0);
+		if(AIsDefault != BIsDefault)
+			return AIsDefault > BIsDefault;
+
+		return str_comp_nocase(pA->m_aName, pB->m_aName) < 0;
+	});
+}
+
 static CLineInputBuffered<64> s_aFilterInputs[NUMBER_OF_ASSETS_TABS];
 
 static int s_CurCustomTab = ASSETS_TAB_ENTITIES;
+
+void CMenus::SetCustomAssetsTab(int Tab)
+{
+	if(Tab >= 0 && Tab < NUMBER_OF_ASSETS_TABS)
+		s_CurCustomTab = Tab;
+}
+
+int CMenus::GetCustomAssetsTab() const
+{
+	return s_CurCustomTab;
+}
 
 static const CMenus::SCustomItem *GetCustomItem(int CurTab, size_t Index)
 {
@@ -792,6 +813,20 @@ void CMenus::RenderSettingsAssets(CUIRect MainView)
 
 	// skin selector
 	MainView.HSplitTop(MainView.h - 10.0f - ms_ButtonHeight, &CustomList, &MainView);
+
+	static uint64_t s_LastSkinUsersRevision = 0;
+	if(s_CurCustomTab == ASSETS_TAB_GAME || s_CurCustomTab == ASSETS_TAB_DOWNLOADED_GAME)
+	{
+		const uint64_t CurRev = GameClient()->m_AClientGameSkins.SkinUsersRevision();
+		if(CurRev != s_LastSkinUsersRevision)
+		{
+			gs_aInitCustomList[s_CurCustomTab] = true;
+			s_LastSkinUsersRevision = CurRev;
+		}
+	}
+
+	const auto &ActiveSkinUsers = GameClient()->m_AClientGameSkins.GetActiveSkinUsers();
+
 	if(gs_aInitCustomList[s_CurCustomTab])
 	{
 		int ListSize = 0;
@@ -813,6 +848,7 @@ void CMenus::RenderSettingsAssets(CUIRect MainView)
 		else if(s_CurCustomTab == ASSETS_TAB_GAME)
 		{
 			ListSize = InitSearchList(gs_vpSearchGamesList, m_vGameList);
+			SortGamesList(gs_vpSearchGamesList, ActiveSkinUsers);
 		}
 		else if(s_CurCustomTab == ASSETS_TAB_EMOTICONS)
 		{
@@ -833,6 +869,7 @@ void CMenus::RenderSettingsAssets(CUIRect MainView)
 		else if(s_CurCustomTab == ASSETS_TAB_DOWNLOADED_GAME)
 		{
 			ListSize = InitSearchList(gs_vpSearchDownloadedGamesList, m_vDownloadedGameList);
+			SortGamesList(gs_vpSearchDownloadedGamesList, ActiveSkinUsers);
 		}
 		gs_aInitCustomList[s_CurCustomTab] = false;
 		gs_aCustomListSize[s_CurCustomTab] = ListSize;
@@ -872,7 +909,8 @@ void CMenus::RenderSettingsAssets(CUIRect MainView)
 	}
 
 	static CListBox s_ListBox;
-	s_ListBox.DoStart(TextureHeight + 15.0f + 10.0f + Margin, SearchListSize, CustomList.w / (Margin + TextureWidth), 1, OldSelected, &CustomList, false);
+	const float ExtraItemHeight = (s_CurCustomTab == ASSETS_TAB_GAME || s_CurCustomTab == ASSETS_TAB_DOWNLOADED_GAME) ? 18.0f : 0.0f;
+	s_ListBox.DoStart(TextureHeight + 15.0f + 10.0f + Margin + ExtraItemHeight, SearchListSize, CustomList.w / (Margin + TextureWidth), 1, OldSelected, &CustomList, false);
 	bool SkipSelectionBecauseDelete = false;
 	int DownloadedLoadedThisFrame = 0;
 	for(size_t i = 0; i < SearchListSize; ++i)
@@ -919,10 +957,37 @@ void CMenus::RenderSettingsAssets(CUIRect MainView)
 			continue;
 
 		const bool CanDelete = pItem->m_Deletable;
+		const bool CanBlacklist = (s_CurCustomTab == ASSETS_TAB_GAME || s_CurCustomTab == ASSETS_TAB_DOWNLOADED_GAME) && str_comp(pItem->m_aName, "default") != 0;
+		const bool IsBlacklisted = CanBlacklist && GameClient()->m_AClientGameSkins.IsGameSkinBlacklisted(pItem->m_aName);
+
+		CUIRect TopBar;
+		Item.m_Rect.HSplitTop(20.0f, &TopBar, nullptr);
+
 		CUIRect DeleteButton;
-		Item.m_Rect.HSplitTop(20.0f, &DeleteButton, nullptr);
-		DeleteButton.VSplitRight(20.0f, nullptr, &DeleteButton);
-		DeleteButton.Margin(2.0f, &DeleteButton);
+		CUIRect BlacklistButton;
+
+		if(CanDelete)
+		{
+			TopBar.VSplitRight(20.0f, &TopBar, &DeleteButton);
+			DeleteButton.Margin(2.0f, &DeleteButton);
+			if(CanBlacklist)
+			{
+				TopBar.VSplitRight(20.0f, nullptr, &BlacklistButton);
+				BlacklistButton.Margin(2.0f, &BlacklistButton);
+			}
+		}
+		else if(CanBlacklist)
+		{
+			TopBar.VSplitRight(20.0f, nullptr, &BlacklistButton);
+			BlacklistButton.Margin(2.0f, &BlacklistButton);
+		}
+
+		CUIRect UserBadgeRect;
+		if(s_CurCustomTab == ASSETS_TAB_GAME || s_CurCustomTab == ASSETS_TAB_DOWNLOADED_GAME)
+		{
+			ItemRect.HSplitBottom(16.0f, &ItemRect, &UserBadgeRect);
+			UserBadgeRect.Margin(1.0f, &UserBadgeRect);
+		}
 
 		CUIRect TextureRect;
 		ItemRect.HSplitTop(15, &ItemRect, &TextureRect);
@@ -952,11 +1017,58 @@ void CMenus::RenderSettingsAssets(CUIRect MainView)
 			Graphics()->WrapClamp();
 			Graphics()->TextureSet(pItem->m_RenderTexture);
 			Graphics()->QuadsBegin();
-			Graphics()->SetColor(1, 1, 1, 1);
+			if(IsBlacklisted)
+				Graphics()->SetColor(0.45f, 0.45f, 0.45f, 0.5f);
+			else
+				Graphics()->SetColor(1, 1, 1, 1);
 			IGraphics::CQuadItem QuadItem(TextureRect.x + (TextureRect.w - TextureWidth) / 2, TextureRect.y + (TextureRect.h - TextureHeight) / 2, TextureWidth, TextureHeight);
 			Graphics()->QuadsDrawTL(&QuadItem, 1);
 			Graphics()->QuadsEnd();
 			Graphics()->WrapNormal();
+		}
+
+		if(CanBlacklist)
+		{
+			const bool ItemHovered = Ui()->HotItem() == pItem;
+			const bool ButtonHovered = Ui()->HotItem() == &pItem->m_BlacklistButtonId;
+
+			if(IsBlacklisted || ItemHovered || ButtonHovered)
+			{
+				TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+				TextRender()->SetRenderFlags(ETextRenderFlags::TEXT_RENDER_FLAG_ONLY_ADVANCE_WIDTH | ETextRenderFlags::TEXT_RENDER_FLAG_NO_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_Y_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT | ETextRenderFlags::TEXT_RENDER_FLAG_NO_OVERSIZE);
+
+				if(IsBlacklisted)
+				{
+					const float Alpha = ButtonHovered ? 1.0f : 0.8f;
+					TextRender()->TextColor(ColorRGBA(0.95f, 0.25f, 0.25f, Alpha));
+					SLabelProperties EyeProps;
+					EyeProps.m_MaxWidth = BlacklistButton.w;
+					Ui()->DoLabel(&BlacklistButton, FontIcon::EYE_SLASH, 12.0f, TEXTALIGN_MC, EyeProps);
+				}
+				else
+				{
+					const float Alpha = ButtonHovered ? 1.0f : 0.45f;
+					TextRender()->TextColor(ColorRGBA(0.9f, 0.9f, 0.9f, Alpha));
+					SLabelProperties EyeProps;
+					EyeProps.m_MaxWidth = BlacklistButton.w;
+					Ui()->DoLabel(&BlacklistButton, FontIcon::EYE, 12.0f, TEXTALIGN_MC, EyeProps);
+				}
+
+				TextRender()->TextColor(TextRender()->DefaultTextColor());
+				TextRender()->SetRenderFlags(0);
+				TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+			}
+
+			if(Ui()->DoButtonLogic(&pItem->m_BlacklistButtonId, 0, &BlacklistButton, BUTTONFLAG_LEFT))
+			{
+				SkipSelectionBecauseDelete = true;
+				GameClient()->m_AClientGameSkins.ToggleGameSkinBlacklist(pItem->m_aName);
+			}
+
+			if(IsBlacklisted)
+				GameClient()->m_Tooltips.DoToolTip(&pItem->m_BlacklistButtonId, &BlacklistButton, Localize("Mostrar gameskin (quitar de blacklist)"));
+			else
+				GameClient()->m_Tooltips.DoToolTip(&pItem->m_BlacklistButtonId, &BlacklistButton, Localize("Ocultar gameskin (agregar a blacklist)"));
 		}
 
 		if(CanDelete)
@@ -986,6 +1098,45 @@ void CMenus::RenderSettingsAssets(CUIRect MainView)
 			}
 			GameClient()->m_Tooltips.DoToolTip(&pItem->m_DeleteButtonId, &DeleteButton, Localize("Delete this asset from your assets directory."));
 		}
+
+		if(s_CurCustomTab == ASSETS_TAB_GAME || s_CurCustomTab == ASSETS_TAB_DOWNLOADED_GAME)
+		{
+			auto UserIt = ActiveSkinUsers.find(pItem->m_aName);
+			if(UserIt != ActiveSkinUsers.end() && !UserIt->second.empty())
+			{
+				const ColorRGBA PillBg = IsBlacklisted ? ColorRGBA(0.45f, 0.15f, 0.15f, 0.85f) : ColorRGBA(0.12f, 0.42f, 0.22f, 0.85f);
+				Graphics()->DrawRect(UserBadgeRect.x, UserBadgeRect.y, UserBadgeRect.w, UserBadgeRect.h, PillBg, IGraphics::CORNER_ALL, 4.0f);
+
+				CUIRect IconRect, TextRect;
+				UserBadgeRect.VSplitLeft(16.0f, &IconRect, &TextRect);
+
+				TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+				TextRender()->SetRenderFlags(ETextRenderFlags::TEXT_RENDER_FLAG_ONLY_ADVANCE_WIDTH | ETextRenderFlags::TEXT_RENDER_FLAG_NO_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_Y_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT | ETextRenderFlags::TEXT_RENDER_FLAG_NO_OVERSIZE);
+				const ColorRGBA IconColor = IsBlacklisted ? ColorRGBA(1.0f, 0.7f, 0.7f, 1.0f) : ColorRGBA(0.7f, 1.0f, 0.7f, 1.0f);
+				TextRender()->TextColor(IconColor);
+				SLabelProperties IconProps;
+				IconProps.m_MaxWidth = IconRect.w;
+				Ui()->DoLabel(&IconRect, FontIcon::USER, 10.0f, TEXTALIGN_MC, IconProps);
+				TextRender()->TextColor(TextRender()->DefaultTextColor());
+				TextRender()->SetRenderFlags(0);
+				TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+
+				TextRect.Margin(1.0f, &TextRect);
+				SLabelProperties UserProps;
+				UserProps.m_MaxWidth = TextRect.w;
+				UserProps.m_EllipsisAtEnd = true;
+				TextRender()->TextColor(ColorRGBA(0.95f, 0.95f, 0.95f, 1.0f));
+				Ui()->DoLabel(&TextRect, UserIt->second.c_str(), 9.0f, TEXTALIGN_ML, UserProps);
+				TextRender()->TextColor(TextRender()->DefaultTextColor());
+
+				SCustomItem *pMutableItem = const_cast<SCustomItem *>(pItem);
+				str_format(pMutableItem->m_aInUseTooltip, sizeof(pMutableItem->m_aInUseTooltip), "En uso por: %s", UserIt->second.c_str());
+				if(Ui()->MouseInside(&UserBadgeRect))
+				{
+					GameClient()->m_Tooltips.DoToolTip(pItem, &UserBadgeRect, pMutableItem->m_aInUseTooltip);
+				}
+			}
+		}
 	}
 
 	const int NewSelected = s_ListBox.DoEnd();
@@ -996,7 +1147,7 @@ void CMenus::RenderSettingsAssets(CUIRect MainView)
 		const SCustomItem *pPicked = GetCustomItem(s_CurCustomTab, NewSelected);
 		if(pPicked != nullptr && pPicked->m_aName[0] != '\0')
 		{
-			const int EditorCat = (s_CurCustomTab == ASSETS_TAB_DOWNLOADED_GAME) ? ASSETS_TAB_GAME : s_CurCustomTab;
+			const int EditorCat = AssetsEditorCategoryFromTab(s_CurCustomTab);
 			AssetsEditorAssignPickedAsset(m_AssetsEditorState.m_ExploreSide, EditorCat, pPicked->m_aName);
 		}
 	}
@@ -1011,8 +1162,12 @@ void CMenus::RenderSettingsAssets(CUIRect MainView)
 			}
 			else if(s_CurCustomTab == ASSETS_TAB_GAME || s_CurCustomTab == ASSETS_TAB_DOWNLOADED_GAME)
 			{
-				str_copy(g_Config.m_ClAssetGame, GetCustomItem(s_CurCustomTab, NewSelected)->m_aName);
+				const char *pSelectedName = GetCustomItem(s_CurCustomTab, NewSelected)->m_aName;
+				if(GameClient()->m_AClientGameSkins.IsGameSkinBlacklisted(pSelectedName))
+					GameClient()->m_AClientGameSkins.SetGameSkinBlacklisted(pSelectedName, false);
+				str_copy(g_Config.m_ClAssetGame, pSelectedName);
 				GameClient()->LoadGameSkin(g_Config.m_ClAssetGame);
+				GameClient()->m_AClientGameSkins.UpdateActiveSkinUsers();
 			}
 			else if(s_CurCustomTab == ASSETS_TAB_EMOTICONS)
 			{
@@ -1061,8 +1216,14 @@ void CMenus::RenderSettingsAssets(CUIRect MainView)
 		const bool EditorPicking = m_AssetsEditorState.m_Open && m_AssetsEditorState.m_ExploreSide >= 0;
 		if(DoButton_Menu(&s_AssetsEditorButton, EditorPicking ? FontIcon::CHEVRON_LEFT : FontIcon::PEN_TO_SQUARE, 0, &AssetsEditorButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, -0.2f))
 		{
-			m_AssetsEditorState.m_Open = true;
-			m_AssetsEditorState.m_ExploreSide = -1;
+			if(EditorPicking)
+			{
+				m_AssetsEditorState.m_ExploreSide = -1;
+			}
+			else
+			{
+				AssetsEditorOpen(AssetsEditorCategoryFromTab(s_CurCustomTab));
+			}
 		}
 		TextRender()->SetRenderFlags(0);
 		TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);

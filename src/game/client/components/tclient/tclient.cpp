@@ -30,6 +30,26 @@ CTClient::CTClient()
 	OnReset();
 
 	// Fallback offline releases
+	CAClientRelease Rel273;
+	str_copy(Rel273.m_aTag, "v2.7.3-pre1", sizeof(Rel273.m_aTag));
+	str_copy(Rel273.m_aName, "AClient v2.7.3-pre1 (Pre-Release)", sizeof(Rel273.m_aName));
+	str_copy(Rel273.m_aPublishedAt, "2026-11-10", sizeof(Rel273.m_aPublishedAt));
+	Rel273.m_Body =
+		"## Novedades de AClient v2.7.3 (Pre-Release)\n\n"
+		"### Editor de Recursos Contextual por Pestana\n"
+		"- **Apertura Contextual**: Al hacer clic en el lapiz del editor de recursos en Emoticones, Particulas, HUD (Apariencia), Extras o Entidades, se cargan los recursos de esa pestana especifica en lugar de forzar siempre el gameskin.\n"
+		"- **Exploracion Sincronizada**: Al explorar donantes o resultados dentro del editor, la lista navega automaticamente a la categoria correspondiente.\n\n"
+		"### Blacklist de GameSkins y Priorizacion en Uso\n"
+		"- **Blacklist de GameSkins**: Nuevo boton de ojo junto a cada skin para bloquear skins no deseadas, impidiendo su descarga y carga local.\n"
+		"- **Priorizacion en Uso**: Los gameskins actualmente en uso por jugadores del servidor aparecen primeros en la lista con badge visual `[👤 Nombre]` y tooltip informativo.\n\n"
+		"### Relacion de Aspecto Personalizada Ampliada\n"
+		"- **Rango hasta 256**: Soporte de numeradores y denominadores libres hasta 256 (e.g. 73:45, 64:27, 256:135).\n"
+		"- **Botones de Precision**: Controles [-] y [+] para ajuste fino de 1 en 1 y visor del ratio decimal calculado.\n\n"
+		"### Optimizaciones y Sub-Tick Aiming\n"
+		"- Opcion de entrada cl_sub_tick_aiming integrada en AClient -> Entrada.\n"
+		"- Optimizacion de memoria y limpieza de texturas GPU en tiempo real.";
+	m_vReleases.push_back(Rel273);
+
 	CAClientRelease Rel272;
 	str_copy(Rel272.m_aTag, "v2.7.2", sizeof(Rel272.m_aTag));
 	str_copy(Rel272.m_aName, "AClient v2.7.2", sizeof(Rel272.m_aName));

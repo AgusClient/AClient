@@ -1,5 +1,6 @@
 #include "tooltips.h"
 
+#include <base/str.h>
 #include <base/time.h>
 
 #include <game/client/ui.h>
@@ -40,26 +41,38 @@ void CTooltips::SetFadeTime(const void *pId, float Time)
 
 void CTooltips::DoToolTip(const void *pId, const CUIRect *pNearRect, const char *pText, float WidthHint)
 {
+	if(!pText)
+		return;
+
 	uintptr_t Id = reinterpret_cast<uintptr_t>(pId);
-	const auto &[Entry, WasInserted] = m_Tooltips.emplace(Id, CTooltip{
-									  pId,
-									  *pNearRect,
-									  pText,
-									  WidthHint,
-									  false});
-	CTooltip &Tooltip = Entry->second;
-
-	if(!WasInserted)
+	auto It = m_Tooltips.find(Id);
+	if(It == m_Tooltips.end())
 	{
-		Tooltip.m_Rect = *pNearRect; // update in case of window resize
-		Tooltip.m_pText = pText; // update in case of language change
+		CTooltip Tooltip;
+		Tooltip.m_pId = pId;
+		Tooltip.m_Rect = *pNearRect;
+		str_copy(Tooltip.m_aText, pText);
+		Tooltip.m_WidthHint = WidthHint;
+		Tooltip.m_OnScreen = true;
+		Tooltip.m_FadeTime = 0.75f;
+		auto Res = m_Tooltips.emplace(Id, Tooltip);
+		if(Ui()->HotItem() == pId)
+		{
+			SetActiveTooltip(Res.first->second);
+		}
 	}
-
-	Tooltip.m_OnScreen = true;
-
-	if(Ui()->HotItem() == Tooltip.m_pId)
+	else
 	{
-		SetActiveTooltip(Tooltip);
+		CTooltip &Tooltip = It->second;
+		Tooltip.m_Rect = *pNearRect; // update in case of window resize
+		str_copy(Tooltip.m_aText, pText); // update in case of language change or dynamic text
+		Tooltip.m_WidthHint = WidthHint;
+		Tooltip.m_OnScreen = true;
+
+		if(Ui()->HotItem() == Tooltip.m_pId)
+		{
+			SetActiveTooltip(Tooltip);
+		}
 	}
 }
 
@@ -81,7 +94,7 @@ void CTooltips::OnRender()
 		// Reset hover time if a different tooltip is active.
 		// Only reset hover time when rendering, because multiple tooltips can be
 		// activated in the same frame, but only the last one should be rendered.
-		if(!m_PreviousTooltip.has_value() || m_PreviousTooltip.value().get().m_pText != Tooltip.m_pText)
+		if(!m_PreviousTooltip.has_value() || str_comp(m_PreviousTooltip.value().get().m_aText, Tooltip.m_aText) != 0)
 			m_HoverTime = time_get();
 		m_PreviousTooltip.emplace(Tooltip);
 
@@ -100,7 +113,7 @@ void CTooltips::OnRender()
 		constexpr float Margin = 5.0f;
 		constexpr float Padding = 5.0f;
 
-		const STextBoundingBox BoundingBox = TextRender()->TextBoundingBox(FontSize, Tooltip.m_pText, -1, Tooltip.m_WidthHint);
+		const STextBoundingBox BoundingBox = TextRender()->TextBoundingBox(FontSize, Tooltip.m_aText, -1, Tooltip.m_WidthHint);
 		CUIRect Rect;
 		Rect.w = BoundingBox.m_W + 2 * Padding;
 		Rect.h = BoundingBox.m_H + 2 * Padding;
@@ -145,7 +158,7 @@ void CTooltips::OnRender()
 		STextContainerIndex TextContainerIndex;
 		const unsigned OldRenderFlags = TextRender()->GetRenderFlags();
 		TextRender()->SetRenderFlags(OldRenderFlags | TEXT_RENDER_FLAG_ONE_TIME_USE);
-		TextRender()->CreateTextContainer(TextContainerIndex, &Cursor, Tooltip.m_pText);
+		TextRender()->CreateTextContainer(TextContainerIndex, &Cursor, Tooltip.m_aText);
 		TextRender()->SetRenderFlags(OldRenderFlags);
 
 		if(TextContainerIndex.Valid())

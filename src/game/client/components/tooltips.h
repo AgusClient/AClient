@@ -13,7 +13,7 @@ struct CTooltip
 {
 	const void *m_pId;
 	CUIRect m_Rect;
-	const char *m_pText;
+	char m_aText[512];
 	float m_WidthHint;
 	bool m_OnScreen; // used to know if the tooltip should be rendered.
 	float m_FadeTime = 0.75f;
