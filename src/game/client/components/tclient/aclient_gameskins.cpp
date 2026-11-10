@@ -443,6 +443,9 @@ void CAClientGameSkins::UnloadSkin(SClientGameSkin &Skin)
 
 void CAClientGameSkins::FreeAllGameSkins()
 {
+	if(GameClient())
+		GameClient()->m_Players.ClearQueuedHookedTiles();
+
 	for(auto &Pair : m_mLoadedGameSkins)
 	{
 		UnloadSkin(Pair.second);
@@ -451,10 +454,18 @@ void CAClientGameSkins::FreeAllGameSkins()
 
 	for(auto &Pair : m_mLoadedEntitiesTextures)
 	{
-		if(Pair.second.IsValid())
+		if(Pair.second.IsValid() && !Pair.second.IsNullTexture())
 			Graphics()->UnloadTexture(&Pair.second);
 	}
 	m_mLoadedEntitiesTextures.clear();
+
+	if(GameClient())
+	{
+		for(int i = 0; i < MAX_CLIENTS; ++i)
+		{
+			GameClient()->m_aClients[i].m_CustomEntitiesTexture = IGraphics::CTextureHandle();
+		}
+	}
 }
 
 bool CAClientGameSkins::FindGameSkinFile(const char *pName, char *pOutPath, int OutPathSize)
@@ -743,7 +754,7 @@ IGraphics::CTextureHandle CAClientGameSkins::GetOrLoadEntitiesTexture(const char
 	if(Found)
 	{
 		IGraphics::CTextureHandle Tex = Graphics()->LoadTexture(aPath, IStorage::TYPE_ALL);
-		if(Tex.IsValid())
+		if(Tex.IsValid() && !Tex.IsNullTexture())
 		{
 			m_mLoadedEntitiesTextures[aCleanName] = Tex;
 			return Tex;

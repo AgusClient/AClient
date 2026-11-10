@@ -66,6 +66,7 @@ class CPlayers : public CComponent
 public:
 	// Draws hooked tiles with remote entity textures; must run after the map foreground layers
 	void FlushQueuedHookedTiles();
+	void ClearQueuedHookedTiles();
 
 	float GetPlayerTargetAngle(
 		const CNetObj_Character *pPrevChar,
@@ -75,6 +76,7 @@ public:
 
 	int Sizeof() const override { return sizeof(*this); }
 	void OnInit() override;
+	void OnReset() override;
 	void OnWindowResize() override;
 	void OnRender() override;
 

@@ -491,6 +491,16 @@ void CPlayers::RenderHookCollLine(
 	}
 }
 
+void CPlayers::ClearQueuedHookedTiles()
+{
+	m_vQueuedHookedTiles.clear();
+}
+
+void CPlayers::OnReset()
+{
+	ClearQueuedHookedTiles();
+}
+
 void CPlayers::FlushQueuedHookedTiles()
 {
 	if(m_vQueuedHookedTiles.empty())
@@ -516,7 +526,7 @@ void CPlayers::FlushQueuedHookedTiles()
 		const float X0 = Tile.m_TileX * 32.0f;
 		const float Y0 = Tile.m_TileY * 32.0f;
 
-		if(Tile.m_Texture.IsValid())
+		if(Tile.m_Texture.IsValid() && !Tile.m_Texture.IsNullTexture())
 		{
 			const int tx = Tile.m_TileIndex % 16;
 			const int ty = Tile.m_TileIndex / 16;
@@ -539,13 +549,11 @@ void CPlayers::FlushQueuedHookedTiles()
 			// Everything stays inside the tile bounds
 			if(g_Config.m_AcHookedTileGlow)
 			{
-				Graphics()->BlendAdditive();
 				Graphics()->QuadsBegin();
 				Graphics()->SetColor(GlowColor.r, GlowColor.g, GlowColor.b, TileOpacity * 0.45f);
 				IGraphics::CQuadItem HaloQuad(X0, Y0, 32.0f, 32.0f);
 				Graphics()->QuadsDrawTL(&HaloQuad, 1);
 				Graphics()->QuadsEnd();
-				Graphics()->BlendNormal();
 			}
 
 			Graphics()->QuadsBegin();
@@ -761,6 +769,12 @@ void CPlayers::RenderHook(
 	const SClientGameSkin *pHookGameSkin = &GameClient()->m_GameSkin;
 	if(g_Config.m_AcShowRemoteGameSkins && in_range(ClientId, MAX_CLIENTS - 1) && GameClient()->m_aClients[ClientId].m_pCustomGameSkin)
 		pHookGameSkin = GameClient()->m_aClients[ClientId].m_pCustomGameSkin;
+
+	if(!pHookGameSkin->m_SpriteHookHead.IsValid() || pHookGameSkin->m_SpriteHookHead.IsNullTexture() ||
+		!pHookGameSkin->m_SpriteHookChain.IsValid() || pHookGameSkin->m_SpriteHookChain.IsNullTexture())
+	{
+		pHookGameSkin = &GameClient()->m_GameSkin;
+	}
 
 	Graphics()->TextureSet(pHookGameSkin->m_SpriteHookHead);
 	Graphics()->QuadsSetRotation(angle(Dir) + pi);
@@ -1042,6 +1056,10 @@ void CPlayers::RenderPlayer(
 			const SClientGameSkin *pPlayerGameSkin = &GameClient()->m_GameSkin;
 			if(g_Config.m_AcShowRemoteGameSkins && in_range(ClientId, MAX_CLIENTS - 1) && GameClient()->m_aClients[ClientId].m_pCustomGameSkin)
 				pPlayerGameSkin = GameClient()->m_aClients[ClientId].m_pCustomGameSkin;
+
+			if(!pPlayerGameSkin->m_aSpriteWeapons[CurrentWeapon].IsValid() || pPlayerGameSkin->m_aSpriteWeapons[CurrentWeapon].IsNullTexture())
+				pPlayerGameSkin = &GameClient()->m_GameSkin;
+
 			Graphics()->TextureSet(pPlayerGameSkin->m_aSpriteWeapons[CurrentWeapon]);
 			int QuadOffset = CurrentWeapon * 2 + (Direction.x < 0.0f ? 1 : 0);
 
@@ -1174,7 +1192,10 @@ void CPlayers::RenderPlayer(
 						WeaponPosition = Position;
 						float OffsetX = g_pData->m_Weapons.m_aId[CurrentWeapon].m_Muzzleoffsetx;
 						WeaponPosition -= HadokenDirection * OffsetX;
-						Graphics()->TextureSet(pPlayerGameSkin->m_aaSpriteWeaponsMuzzles[CurrentWeapon][IteX]);
+						IGraphics::CTextureHandle HadokenTex = pPlayerGameSkin->m_aaSpriteWeaponsMuzzles[CurrentWeapon][IteX];
+						if(!HadokenTex.IsValid() || HadokenTex.IsNullTexture())
+							HadokenTex = GameClient()->m_GameSkin.m_aaSpriteWeaponsMuzzles[CurrentWeapon][IteX];
+						Graphics()->TextureSet(HadokenTex);
 						Graphics()->RenderQuadContainerAsSprite(m_aWeaponSpriteMuzzleQuadContainerIndex[CurrentWeapon], QuadOffset, WeaponPosition.x, WeaponPosition.y);
 					}
 				}
@@ -1227,7 +1248,10 @@ void CPlayers::RenderPlayer(
 
 						vec2 DirectionY(-Direction.y, Direction.x);
 						vec2 MuzzlePos = WeaponPosition + Direction * g_pData->m_Weapons.m_aId[CurrentWeapon].m_Muzzleoffsetx + DirectionY * OffsetY;
-						Graphics()->TextureSet(pPlayerGameSkin->m_aaSpriteWeaponsMuzzles[CurrentWeapon][IteX]);
+						IGraphics::CTextureHandle FireMuzzleTex = pPlayerGameSkin->m_aaSpriteWeaponsMuzzles[CurrentWeapon][IteX];
+						if(!FireMuzzleTex.IsValid() || FireMuzzleTex.IsNullTexture())
+							FireMuzzleTex = GameClient()->m_GameSkin.m_aaSpriteWeaponsMuzzles[CurrentWeapon][IteX];
+						Graphics()->TextureSet(FireMuzzleTex);
 						Graphics()->RenderQuadContainerAsSprite(m_aWeaponSpriteMuzzleQuadContainerIndex[CurrentWeapon], QuadOffset, MuzzlePos.x, MuzzlePos.y);
 					}
 				}
