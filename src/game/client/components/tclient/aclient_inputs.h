@@ -12,6 +12,8 @@ namespace AcInputs
 	bool IsPracticeActive();
 
 	float EffectiveOffsetTicks(bool ForOthers = false);
+	float EffectiveOffsetTicksMove(bool ForOthers = false);
+	float EffectiveOffsetTicksHook(bool ForOthers = false);
 
 	int PredictionTicks(float OffsetTicks);
 	int PredictionTicksOthers(float OffsetTicks);

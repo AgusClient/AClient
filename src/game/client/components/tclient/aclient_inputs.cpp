@@ -150,23 +150,117 @@ float AcInputs::EffectiveOffsetTicks(bool ForOthers)
 		return g_Config.m_AcFastPracticeFastInputAmount <= 0 ? 0.0f : g_Config.m_AcFastPracticeFastInputAmount / 20.0f;
 	}
 
+	float BaseOffset = 0.0f;
 	switch(g_Config.m_AcInputs)
 	{
-	case AC_INPUTS_FAST: return FastModeOffsetTicks(ForOthers);
-	case AC_INPUTS_BEST: return BestModeOffsetTicks(ForOthers);
-	case AC_INPUTS_SAIKO: return SaikoModeOffsetTicks(ForOthers);
-	case AC_INPUTS_DELTA: return DeltaModeOffsetTicks(ForOthers);
-	case AC_INPUTS_F: return FModeOffsetTicks(ForOthers);
-	case AC_INPUTS_CLOUD: return CloudModeOffsetTicks(ForOthers);
-	case AC_INPUTS_ACLIENT: return AClientModeOffsetTicks(ForOthers);
-	case AC_INPUTS_AX30: return AX30ModeOffsetTicks(ForOthers);
-	case AC_INPUTS_AXV2: return AXv2ModeOffsetTicks(ForOthers);
+	case AC_INPUTS_FAST: BaseOffset = FastModeOffsetTicks(ForOthers); break;
+	case AC_INPUTS_BEST: BaseOffset = BestModeOffsetTicks(ForOthers); break;
+	case AC_INPUTS_SAIKO: BaseOffset = SaikoModeOffsetTicks(ForOthers); break;
+	case AC_INPUTS_DELTA: BaseOffset = DeltaModeOffsetTicks(ForOthers); break;
+	case AC_INPUTS_F: BaseOffset = FModeOffsetTicks(ForOthers); break;
+	case AC_INPUTS_CLOUD: BaseOffset = CloudModeOffsetTicks(ForOthers); break;
+	case AC_INPUTS_ACLIENT: BaseOffset = AClientModeOffsetTicks(ForOthers); break;
+	case AC_INPUTS_AX30: BaseOffset = AX30ModeOffsetTicks(ForOthers); break;
+	case AC_INPUTS_AXV2: BaseOffset = AXv2ModeOffsetTicks(ForOthers); break;
 	case AC_INPUTS_OFF:
 	default:
 		if(g_Config.m_TcFastInput != 0)
-			return FastModeOffsetTicks(ForOthers);
-		return 0.0f;
+			BaseOffset = FastModeOffsetTicks(ForOthers);
+		else
+			BaseOffset = 0.0f;
+		break;
 	}
+
+	if(!ForOthers && g_Config.m_AcInputSplitHookMove)
+	{
+		const float MoveOffset = EffectiveOffsetTicksMove(false);
+		const float HookOffset = EffectiveOffsetTicksHook(false);
+		return std::max(MoveOffset, HookOffset);
+	}
+
+	return BaseOffset;
+}
+
+float AcInputs::EffectiveOffsetTicksMove(bool ForOthers)
+{
+	if(ForOthers || !g_Config.m_AcInputSplitHookMove)
+	{
+		if(s_PracticeActive && g_Config.m_AcFastPracticeFastInputOverride)
+			return ForOthers ? 0.0f : (g_Config.m_AcFastPracticeFastInputAmount <= 0 ? 0.0f : g_Config.m_AcFastPracticeFastInputAmount / 20.0f);
+
+		switch(g_Config.m_AcInputs)
+		{
+		case AC_INPUTS_FAST: return FastModeOffsetTicks(ForOthers);
+		case AC_INPUTS_BEST: return BestModeOffsetTicks(ForOthers);
+		case AC_INPUTS_SAIKO: return SaikoModeOffsetTicks(ForOthers);
+		case AC_INPUTS_DELTA: return DeltaModeOffsetTicks(ForOthers);
+		case AC_INPUTS_F: return FModeOffsetTicks(ForOthers);
+		case AC_INPUTS_CLOUD: return CloudModeOffsetTicks(ForOthers);
+		case AC_INPUTS_ACLIENT: return AClientModeOffsetTicks(ForOthers);
+		case AC_INPUTS_AX30: return AX30ModeOffsetTicks(ForOthers);
+		case AC_INPUTS_AXV2: return AXv2ModeOffsetTicks(ForOthers);
+		case AC_INPUTS_OFF:
+		default:
+			if(g_Config.m_TcFastInput != 0)
+				return FastModeOffsetTicks(ForOthers);
+			return 0.0f;
+		}
+	}
+
+	if(s_PracticeActive && g_Config.m_AcFastPracticeFastInputOverride)
+		return g_Config.m_AcFastPracticeFastInputAmount <= 0 ? 0.0f : g_Config.m_AcFastPracticeFastInputAmount / 20.0f;
+
+	if(g_Config.m_AcInputs == AC_INPUTS_FAST || (g_Config.m_AcInputs == AC_INPUTS_OFF && g_Config.m_TcFastInput != 0))
+	{
+		const int Amount = g_Config.m_AcFastInputMoveAmount > 0 ? g_Config.m_AcFastInputMoveAmount : (g_Config.m_AcFastInputAmount > 0 ? g_Config.m_AcFastInputAmount : g_Config.m_TcFastInputAmount);
+		return Amount <= 0 ? 0.0f : Amount / 20.0f;
+	}
+
+	if(g_Config.m_AcTickInputMoveAmount > 0)
+		return g_Config.m_AcTickInputMoveAmount / 100.0f;
+
+	return EffectiveOffsetTicks(false);
+}
+
+float AcInputs::EffectiveOffsetTicksHook(bool ForOthers)
+{
+	if(ForOthers || !g_Config.m_AcInputSplitHookMove)
+	{
+		if(s_PracticeActive && g_Config.m_AcFastPracticeFastInputOverride)
+			return ForOthers ? 0.0f : (g_Config.m_AcFastPracticeFastInputAmount <= 0 ? 0.0f : g_Config.m_AcFastPracticeFastInputAmount / 20.0f);
+
+		switch(g_Config.m_AcInputs)
+		{
+		case AC_INPUTS_FAST: return FastModeOffsetTicks(ForOthers);
+		case AC_INPUTS_BEST: return BestModeOffsetTicks(ForOthers);
+		case AC_INPUTS_SAIKO: return SaikoModeOffsetTicks(ForOthers);
+		case AC_INPUTS_DELTA: return DeltaModeOffsetTicks(ForOthers);
+		case AC_INPUTS_F: return FModeOffsetTicks(ForOthers);
+		case AC_INPUTS_CLOUD: return CloudModeOffsetTicks(ForOthers);
+		case AC_INPUTS_ACLIENT: return AClientModeOffsetTicks(ForOthers);
+		case AC_INPUTS_AX30: return AX30ModeOffsetTicks(ForOthers);
+		case AC_INPUTS_AXV2: return AXv2ModeOffsetTicks(ForOthers);
+		case AC_INPUTS_OFF:
+		default:
+			if(g_Config.m_TcFastInput != 0)
+				return FastModeOffsetTicks(ForOthers);
+			return 0.0f;
+		}
+	}
+
+	if(s_PracticeActive && g_Config.m_AcFastPracticeFastInputOverride)
+		return g_Config.m_AcFastPracticeFastInputAmount <= 0 ? 0.0f : g_Config.m_AcFastPracticeFastInputAmount / 20.0f;
+
+	if(g_Config.m_AcInputs == AC_INPUTS_FAST || (g_Config.m_AcInputs == AC_INPUTS_OFF && g_Config.m_TcFastInput != 0))
+	{
+		const int Amount = g_Config.m_AcFastInputHookAmount > 0 ? g_Config.m_AcFastInputHookAmount : (g_Config.m_AcFastInputAmount > 0 ? g_Config.m_AcFastInputAmount : g_Config.m_TcFastInputAmount);
+		return Amount <= 0 ? 0.0f : Amount / 20.0f;
+	}
+
+	if(g_Config.m_AcTickInputHookAmount > 0)
+		return g_Config.m_AcTickInputHookAmount / 100.0f;
+
+	return EffectiveOffsetTicks(false);
 }
 
 int AcInputs::PredictionTicks(float OffsetTicks)

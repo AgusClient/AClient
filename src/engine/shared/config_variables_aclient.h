@@ -105,6 +105,13 @@ MACRO_CONFIG_INT(AcFastInputAmount, ac_fast_input_amount, 20, 1, 40, CFGFLAG_CLI
 MACRO_CONFIG_INT(AcFastInputOthers, ac_fast_input_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply fast input to other tees")
 MACRO_CONFIG_INT(AcFastInputOthersAmount, ac_fast_input_others_amount, 10, 1, 40, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Fast input prediction offset for other tees in ms")
 
+// Split Hook and Move input prediction
+MACRO_CONFIG_INT(AcInputSplitHookMove, ac_input_split_hook_move, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Split player input prediction into independent hook and A/D movement offsets")
+MACRO_CONFIG_INT(AcFastInputMoveAmount, ac_fast_input_move_amount, 20, 1, 40, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Fast input A/D movement prediction offset in ms")
+MACRO_CONFIG_INT(AcFastInputHookAmount, ac_fast_input_hook_amount, 20, 1, 40, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Fast input hook prediction offset in ms")
+MACRO_CONFIG_INT(AcTickInputMoveAmount, ac_tick_input_move_amount, 100, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "A/D movement prediction offset for advanced tick modes in 0.01 ticks")
+MACRO_CONFIG_INT(AcTickInputHookAmount, ac_tick_input_hook_amount, 100, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hook prediction offset for advanced tick modes in 0.01 ticks")
+
 // Best Mode
 MACRO_CONFIG_INT(AcBestInputAmount, ac_best_input_amount, 100, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Best input prediction amount in 0.01 ticks")
 MACRO_CONFIG_INT(AcBestInputSmoothing, ac_best_input_smoothing, 0, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Best input smoothing amount (0-100%)")
