@@ -151,6 +151,8 @@ private:
 	std::map<std::string, CKoGPlayerProfile> m_mKoGProfilesCache;
 	std::deque<std::string> m_dKoGCacheOrder;
 	int64_t m_KoGCloudflareCooldown = 0;
+	int64_t m_KoGLastBlockTime = 0; // time_get() of the last Cloudflare/rate-limit block
+	int m_KoGBlockStrikes = 0; // consecutive blocks, drives the escalating cooldown
 	std::map<std::string, int64_t> m_mFailedFetchesKoG;
 	std::map<std::string, int64_t> m_mFailedFetchesDDNet;
 
@@ -172,6 +174,7 @@ private:
 	void ProcessKoGFetchCompletion();
 	void AddToKoGCache(const CKoGPlayerProfile &Profile);
 	bool GetFromKoGCache(const char *pName, CKoGPlayerProfile &OutProfile);
+	void SetKoGCachedStatusMsg();
 
 	static void ConProfile(IConsole::IResult *pResult, void *pUserData);
 	static void ConProfileWebDDNet(IConsole::IResult *pResult, void *pUserData);

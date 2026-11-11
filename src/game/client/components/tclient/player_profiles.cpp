@@ -424,6 +424,29 @@ namespace
 		}
 	};
 
+	// Formats a wait time as "45s" or "12 min"
+	std::string FormatKoGWait(int Secs)
+	{
+		char aBuf[32];
+		if(Secs >= 90)
+			str_format(aBuf, sizeof(aBuf), "%d min", (Secs + 30) / 60);
+		else
+			str_format(aBuf, sizeof(aBuf), "%ds", Secs);
+		return aBuf;
+	}
+
+	// True when the response is an anti-bot interstitial instead of real content
+	bool LooksLikeCloudflareChallenge(long HttpCode, const std::string &Body)
+	{
+		if(Body.find("Just a moment") != std::string::npos ||
+			Body.find("cf-mitigated") != std::string::npos ||
+			Body.find("challenges.cloudflare.com") != std::string::npos ||
+			Body.find("cf-chl") != std::string::npos)
+			return true;
+		const bool IsHtml = Body.find("<!DOCTYPE") != std::string::npos || Body.find("<html") != std::string::npos;
+		return (HttpCode == 403 || HttpCode == 503) && IsHtml;
+	}
+
 	struct curl_slist *BuildKoGApiHeaders(bool WithJsonContentType)
 	{
 		struct curl_slist *pHeaders = nullptr;
@@ -492,6 +515,23 @@ void CPlayerProfiles::KoGFetchWorker(void *pUser)
 		return;
 	}
 
+	// If the very first request is already blocked, stop here instead of sending more requests
+	if(LooksLikeCloudflareChallenge(RootHttpCode, InitSink) || RootHttpCode == 429)
+	{
+		pSelf->m_KoGFetchSuccess = false;
+		pSelf->m_KoGResultStatusCode = (int)RootHttpCode;
+		char aBuf[128];
+		if(RootHttpCode == 429)
+			str_copy(aBuf, "kog.tw: Limite de peticiones excedido (HTTP 429 Rate Limit)");
+		else
+			str_format(aBuf, sizeof(aBuf), "Proteccion Cloudflare activa en kog.tw (HTTP %ld)", RootHttpCode);
+		pSelf->m_KoGFetchErrorMsg = aBuf;
+		log_warn("kog", "kog.tw bloqueo en la raiz (HTTP %ld), se cancelan las demas peticiones", RootHttpCode);
+		curl_easy_cleanup(pCurl);
+		pSelf->m_KoGFetchDone = true;
+		return;
+	}
+
 	// 2. Fetch CSRF nonce with session cookie, Referer and AJAX headers
 	ApiHeaders.m_pList = BuildKoGApiHeaders(false);
 	curl_easy_setopt(pCurl, CURLOPT_HTTPHEADER, ApiHeaders.m_pList);
@@ -544,15 +584,12 @@ void CPlayerProfiles::KoGFetchWorker(void *pUser)
 		pSelf->m_KoGFetchSuccess = false;
 		pSelf->m_KoGResultStatusCode = (int)CsrfHttpCode;
 
-		const bool HasCfChallenge = (CsrfJson.find("Just a moment") != std::string::npos ||
-					  CsrfJson.find("cf-mitigated") != std::string::npos ||
-					  CsrfJson.find("challenges.cloudflare.com") != std::string::npos ||
-					  CsrfJson.find("cf-chl") != std::string::npos);
+		const bool HasCfChallenge = LooksLikeCloudflareChallenge(CsrfHttpCode, CsrfJson);
 		const bool IsHtml = (CsrfJson.find("<!DOCTYPE") != std::string::npos ||
 				    CsrfJson.find("<html") != std::string::npos);
 
 		char aErr[128];
-		if(HasCfChallenge || ((CsrfHttpCode == 403 || CsrfHttpCode == 503) && IsHtml))
+		if(HasCfChallenge)
 		{
 			if(CsrfHttpCode > 0)
 				str_format(aErr, sizeof(aErr), "Proteccion Cloudflare activa en kog.tw (HTTP %ld)", CsrfHttpCode);
@@ -757,9 +794,16 @@ void CPlayerProfiles::ProcessKoGFetchCompletion()
 	if(!m_KoGFetchSuccess)
 	{
 		m_mFailedFetchesKoG[Key] = time_get() + time_freq() * 60;
-		if(m_KoGFetchErrorMsg.find("Cloudflare") != std::string::npos)
+		if(m_KoGFetchErrorMsg.find("Cloudflare") != std::string::npos || m_KoGResultStatusCode == 429)
 		{
-			m_KoGCloudflareCooldown = time_get() + time_freq() * 60;
+			// Escalating cooldown: 5 min, 15 min, 45 min, then 60 min. Insisting on an active block only prolongs it.
+			m_KoGBlockStrikes = (std::min)(m_KoGBlockStrikes + 1, 4);
+			int CooldownSecs = 300;
+			for(int i = 1; i < m_KoGBlockStrikes; ++i)
+				CooldownSecs *= 3;
+			CooldownSecs = (std::min)(CooldownSecs, 3600);
+			m_KoGLastBlockTime = time_get();
+			m_KoGCloudflareCooldown = m_KoGLastBlockTime + time_freq() * CooldownSecs;
 			m_qTeamPendingKoG.clear();
 		}
 
@@ -822,6 +866,10 @@ void CPlayerProfiles::ProcessKoGFetchCompletion()
 
 	// Persist raw inner JSON to disk cache
 	SaveKoGToDisk(m_aKoGRequestedName, pInnerStr);
+
+	// A successful response means the block is gone
+	m_KoGBlockStrikes = 0;
+	m_KoGCloudflareCooldown = 0;
 
 	NewProfile.m_FromDiskCache = false;
 	m_CurrentKoGProfile = NewProfile;
@@ -1053,6 +1101,19 @@ bool CPlayerProfiles::GetFromKoGCache(const char *pName, CKoGPlayerProfile &OutP
 	return false;
 }
 
+void CPlayerProfiles::SetKoGCachedStatusMsg()
+{
+	// Cached data is served first; tell the user when it may be outdated because kog.tw is blocking us
+	if(time_get() < m_KoGCloudflareCooldown)
+	{
+		int Secs = (int)((m_KoGCloudflareCooldown - time_get()) / time_freq());
+		if(Secs < 1) Secs = 1;
+		str_format(m_aKoGStatusMsg, sizeof(m_aKoGStatusMsg), "Datos en cache (pueden estar desactualizados). KoG.tw requiere verificacion, reintento en %s", FormatKoGWait(Secs).c_str());
+	}
+	else
+		str_copy(m_aKoGStatusMsg, "");
+}
+
 void CPlayerProfiles::FetchKoGProfile(const char *pPlayerName, bool ForceRefresh)
 {
 	if(!pPlayerName || pPlayerName[0] == '\0')
@@ -1077,7 +1138,7 @@ void CPlayerProfiles::FetchKoGProfile(const char *pPlayerName, bool ForceRefresh
 	if(!ForceRefresh && GetFromKoGCache(pStart, m_CurrentKoGProfile))
 	{
 		m_KoGState = EProfileState::READY;
-		str_copy(m_aKoGStatusMsg, "");
+		SetKoGCachedStatusMsg();
 		return;
 	}
 
@@ -1086,17 +1147,19 @@ void CPlayerProfiles::FetchKoGProfile(const char *pPlayerName, bool ForceRefresh
 	{
 		AddToKoGCache(m_CurrentKoGProfile);
 		m_KoGState = EProfileState::READY;
-		str_copy(m_aKoGStatusMsg, "");
+		SetKoGCachedStatusMsg();
 		return;
 	}
 
-	// If Cloudflare cooldown is active and not forcing refresh, don't query
-	if(!ForceRefresh && time_get() < m_KoGCloudflareCooldown)
+	// While blocked, don't query. A manual refresh may bypass the cooldown, but never more than once every 30s.
+	const int64_t Now = time_get();
+	const int64_t BlockedUntil = ForceRefresh ? m_KoGLastBlockTime + time_freq() * 30 : m_KoGCloudflareCooldown;
+	if(Now < BlockedUntil && Now < m_KoGCloudflareCooldown)
 	{
-		int Secs = (int)((m_KoGCloudflareCooldown - time_get()) / time_freq());
+		int Secs = (int)((BlockedUntil - Now) / time_freq());
 		if(Secs < 1) Secs = 1;
 		m_KoGState = EProfileState::ERROR_NETWORK;
-		str_format(m_aKoGStatusMsg, sizeof(m_aKoGStatusMsg), "KoG.tw en espera por Cloudflare (%ds para reintentar)", Secs);
+		str_format(m_aKoGStatusMsg, sizeof(m_aKoGStatusMsg), "KoG.tw en espera por Cloudflare (%s para reintentar). Usa 'Abrir KoG.tw'", FormatKoGWait(Secs).c_str());
 		return;
 	}
 
@@ -1122,6 +1185,7 @@ void CPlayerProfiles::FetchKoGProfile(const char *pPlayerName, bool ForceRefresh
 	m_KoGFetchSuccess = false;
 	m_KoGFetchDone = false;
 	m_KoGFetchRunning = true;
+	m_KoGResultStatusCode = 0;
 	m_KoGResultData.clear();
 	m_KoGFetchErrorMsg.clear();
 
