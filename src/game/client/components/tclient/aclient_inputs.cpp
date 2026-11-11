@@ -170,7 +170,7 @@ float AcInputs::EffectiveOffsetTicks(bool ForOthers)
 
 	if(!ForOthers && g_Config.m_AcInputSplitHookMove)
 	{
-		const float MoveOffset = EffectiveOffsetTicksMove(false);
+		const float MoveOffset = CalculateBaseOffset(false);
 		const float HookOffset = EffectiveOffsetTicksHook(false);
 		return (MoveOffset > HookOffset) ? MoveOffset : HookOffset;
 	}
@@ -183,19 +183,8 @@ float AcInputs::EffectiveOffsetTicksMove(bool ForOthers)
 	if(s_PracticeActive && g_Config.m_AcFastPracticeFastInputOverride)
 		return ForOthers ? 0.0f : (g_Config.m_AcFastPracticeFastInputAmount <= 0 ? 0.0f : g_Config.m_AcFastPracticeFastInputAmount / 20.0f);
 
-	if(ForOthers || !g_Config.m_AcInputSplitHookMove)
-		return CalculateBaseOffset(ForOthers);
-
-	if(g_Config.m_AcInputs == AC_INPUTS_FAST || (g_Config.m_AcInputs == AC_INPUTS_OFF && g_Config.m_TcFastInput != 0))
-	{
-		const int Amount = g_Config.m_AcFastInputMoveAmount > 0 ? g_Config.m_AcFastInputMoveAmount : (g_Config.m_AcFastInputAmount > 0 ? g_Config.m_AcFastInputAmount : g_Config.m_TcFastInputAmount);
-		return Amount <= 0 ? 0.0f : Amount / 20.0f;
-	}
-
-	if(g_Config.m_AcTickInputMoveAmount > 0)
-		return g_Config.m_AcTickInputMoveAmount / 100.0f;
-
-	return CalculateBaseOffset(false);
+	// Movimiento A/D siempre toma el slider general de prediccion de arriba
+	return CalculateBaseOffset(ForOthers);
 }
 
 float AcInputs::EffectiveOffsetTicksHook(bool ForOthers)

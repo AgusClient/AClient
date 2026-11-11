@@ -4161,10 +4161,6 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		{
 			Column.HSplitTop(LineSize, &Button, &Column);
 			DoTickAmountSlider(&g_Config.m_AcTickInputHookAmount, &Button, TCLocalize("Offset Hook (Gancho)"), 0, 1000);
-
-			Column.HSplitTop(MarginSmall, nullptr, &Column);
-			Column.HSplitTop(LineSize, &Button, &Column);
-			DoTickAmountSlider(&g_Config.m_AcTickInputMoveAmount, &Button, TCLocalize("Offset Movimiento A/D"), 0, 1000);
 		}
 
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
@@ -4225,10 +4221,6 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		{
 			Column.HSplitTop(LineSize, &Button, &Column);
 			DoTickAmountSlider(&g_Config.m_AcTickInputHookAmount, &Button, TCLocalize("Offset Hook (Gancho)"), 0, 1000);
-
-			Column.HSplitTop(MarginSmall, nullptr, &Column);
-			Column.HSplitTop(LineSize, &Button, &Column);
-			DoTickAmountSlider(&g_Config.m_AcTickInputMoveAmount, &Button, TCLocalize("Offset Movimiento A/D"), 0, 1000);
 		}
 
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
@@ -4340,10 +4332,6 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		{
 			Column.HSplitTop(LineSize, &Button, &Column);
 			DoSliderWithScaledValue(&g_Config.m_AcFastInputHookAmount, &g_Config.m_AcFastInputHookAmount, &Button, TCLocalize("Offset Hook (Gancho)"), 1, 40, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "ms");
-
-			Column.HSplitTop(MarginSmall, nullptr, &Column);
-			Column.HSplitTop(LineSize, &Button, &Column);
-			DoSliderWithScaledValue(&g_Config.m_AcFastInputMoveAmount, &g_Config.m_AcFastInputMoveAmount, &Button, TCLocalize("Offset Movimiento A/D"), 1, 40, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "ms");
 		}
 
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
@@ -4369,10 +4357,6 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		{
 			Column.HSplitTop(LineSize, &Button, &Column);
 			DoTickAmountSlider(&g_Config.m_AcTickInputHookAmount, &Button, TCLocalize("Offset Hook (Gancho)"), 0, 1000);
-
-			Column.HSplitTop(MarginSmall, nullptr, &Column);
-			Column.HSplitTop(LineSize, &Button, &Column);
-			DoTickAmountSlider(&g_Config.m_AcTickInputMoveAmount, &Button, TCLocalize("Offset Movimiento A/D"), 0, 1000);
 		}
 
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
