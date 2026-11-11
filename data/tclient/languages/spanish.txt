@@ -1113,3 +1113,18 @@ Invite all online friends to your team with /invite friends, with anti-flood que
 == Ocultar burbujas de chat de los demás jugadores
 == Hides the 3-dots typing bubble of other players on your screen when they are typing.
 == Oculta visualmente en tu pantalla la burbuja de 3 puntos sobre los demás jugadores cuando ellos estén escribiendo.
+
+Decouple hook from A/D movement
+== Desacoplar Hook de Movimiento A/D
+
+Hook offset
+== Offset Hook (Gancho)
+
+Smart adaptive compensation
+== Compensacion adaptativa inteligente
+
+Boundary safety filter
+== Filtro de seguridad de bordes
+
+Only when frozen
+== Solo cuando está congelado

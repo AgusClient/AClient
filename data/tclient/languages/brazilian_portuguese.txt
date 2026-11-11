@@ -1037,3 +1037,18 @@ friend(s)
 
 player(s)
 == jogador(es)
+
+Decouple hook from A/D movement
+== Desacoplar gancho do movimento A/D
+
+Hook offset
+== Offset de gancho
+
+Smart adaptive compensation
+== Compensação adaptativa inteligente
+
+Boundary safety filter
+== Filtro de segurança de bordas
+
+Only when frozen
+== Apenas quando congelado
