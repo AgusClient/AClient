@@ -404,6 +404,40 @@ void CPlayerProfiles::ProcessHttpResponse()
 // King of Gores (KoG) Profile Operations
 // ==========================================
 
+namespace
+{
+	struct SCurlSlistGuard
+	{
+		struct curl_slist *m_pList = nullptr;
+		~SCurlSlistGuard()
+		{
+			if(m_pList)
+				curl_slist_free_all(m_pList);
+		}
+		void Reset()
+		{
+			if(m_pList)
+			{
+				curl_slist_free_all(m_pList);
+				m_pList = nullptr;
+			}
+		}
+	};
+
+	struct curl_slist *BuildKoGApiHeaders(bool WithJsonContentType)
+	{
+		struct curl_slist *pHeaders = nullptr;
+		pHeaders = curl_slist_append(pHeaders, "Referer: https://kog.tw/");
+		pHeaders = curl_slist_append(pHeaders, "Origin: https://kog.tw");
+		pHeaders = curl_slist_append(pHeaders, "Accept: application/json, text/plain, */*");
+		pHeaders = curl_slist_append(pHeaders, "X-Requested-With: XMLHttpRequest");
+		pHeaders = curl_slist_append(pHeaders, "Accept-Language: en-US,en;q=0.9");
+		if(WithJsonContentType)
+			pHeaders = curl_slist_append(pHeaders, "Content-Type: application/json;charset=UTF-8");
+		return pHeaders;
+	}
+} // namespace
+
 void CPlayerProfiles::KoGFetchWorker(void *pUser)
 {
 	CPlayerProfiles *pSelf = static_cast<CPlayerProfiles *>(pUser);
@@ -428,20 +462,14 @@ void CPlayerProfiles::KoGFetchWorker(void *pUser)
 	curl_easy_setopt(pCurl, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36");
 	curl_easy_setopt(pCurl, CURLOPT_WRITEFUNCTION, CurlStringWriteCallback);
 
-	// Setup browser headers required by Cloudflare protection on kog.tw
-	struct curl_slist *pHeaders = nullptr;
-	pHeaders = curl_slist_append(pHeaders, "Referer: https://kog.tw/");
-	pHeaders = curl_slist_append(pHeaders, "Origin: https://kog.tw");
-	pHeaders = curl_slist_append(pHeaders, "Accept: application/json, text/plain, */*");
-	pHeaders = curl_slist_append(pHeaders, "X-Requested-With: XMLHttpRequest");
-	pHeaders = curl_slist_append(pHeaders, "Accept-Language: en-US,en;q=0.9");
-	curl_easy_setopt(pCurl, CURLOPT_HTTPHEADER, pHeaders);
+	SCurlSlistGuard ApiHeaders;
+	SCurlSlistGuard PostHeaders;
 
 	// 1. Visit root to establish PHP session with standard browser navigation headers
-	struct curl_slist *pNavHeaders = nullptr;
-	pNavHeaders = curl_slist_append(pNavHeaders, "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
-	pNavHeaders = curl_slist_append(pNavHeaders, "Accept-Language: en-US,en;q=0.9");
-	curl_easy_setopt(pCurl, CURLOPT_HTTPHEADER, pNavHeaders);
+	SCurlSlistGuard NavHeaders;
+	NavHeaders.m_pList = curl_slist_append(NavHeaders.m_pList, "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+	NavHeaders.m_pList = curl_slist_append(NavHeaders.m_pList, "Accept-Language: en-US,en;q=0.9");
+	curl_easy_setopt(pCurl, CURLOPT_HTTPHEADER, NavHeaders.m_pList);
 
 	std::string InitSink;
 	curl_easy_setopt(pCurl, CURLOPT_URL, "https://kog.tw/");
@@ -449,7 +477,8 @@ void CPlayerProfiles::KoGFetchWorker(void *pUser)
 	CURLcode Res = curl_easy_perform(pCurl);
 	long RootHttpCode = 0;
 	curl_easy_getinfo(pCurl, CURLINFO_RESPONSE_CODE, &RootHttpCode);
-	curl_slist_free_all(pNavHeaders);
+	curl_easy_setopt(pCurl, CURLOPT_HTTPHEADER, nullptr);
+	NavHeaders.Reset();
 
 	if(Res != CURLE_OK)
 	{
@@ -464,13 +493,8 @@ void CPlayerProfiles::KoGFetchWorker(void *pUser)
 	}
 
 	// 2. Fetch CSRF nonce with session cookie, Referer and AJAX headers
-	struct curl_slist *pApiHeaders = nullptr;
-	pApiHeaders = curl_slist_append(pApiHeaders, "Referer: https://kog.tw/");
-	pApiHeaders = curl_slist_append(pApiHeaders, "Origin: https://kog.tw");
-	pApiHeaders = curl_slist_append(pApiHeaders, "Accept: application/json, text/plain, */*");
-	pApiHeaders = curl_slist_append(pApiHeaders, "X-Requested-With: XMLHttpRequest");
-	pApiHeaders = curl_slist_append(pApiHeaders, "Accept-Language: en-US,en;q=0.9");
-	curl_easy_setopt(pCurl, CURLOPT_HTTPHEADER, pApiHeaders);
+	ApiHeaders.m_pList = BuildKoGApiHeaders(false);
+	curl_easy_setopt(pCurl, CURLOPT_HTTPHEADER, ApiHeaders.m_pList);
 
 	std::string CsrfJson;
 	curl_easy_setopt(pCurl, CURLOPT_URL, "https://kog.tw/api.php?type=csrf-token");
@@ -486,7 +510,6 @@ void CPlayerProfiles::KoGFetchWorker(void *pUser)
 		str_format(aBuf, sizeof(aBuf), "Error al pedir token CSRF (%s, HTTP %ld)", curl_easy_strerror(Res), CsrfHttpCode);
 		pSelf->m_KoGFetchErrorMsg = aBuf;
 		log_warn("kog", "Fallo curl en csrf-token: %s (HTTP %ld)", curl_easy_strerror(Res), CsrfHttpCode);
-		curl_slist_free_all(pApiHeaders);
 		curl_easy_cleanup(pCurl);
 		pSelf->m_KoGFetchDone = true;
 		return;
@@ -564,21 +587,26 @@ void CPlayerProfiles::KoGFetchWorker(void *pUser)
 			log_warn("kog", "Token CSRF no encontrado en respuesta (HTTP %ld)", CsrfHttpCode);
 		}
 
-		// Log sample of response for console troubleshooting
-		std::string Sample = CsrfJson.substr(0, 160);
-		for(char &c : Sample) { if(c == '\r' || c == '\n') c = ' '; }
-		log_warn("kog", "Cuerpo recibido en csrf-token: %s", Sample.c_str());
+		// Log sample of response for console troubleshooting without heap allocation
+		char aSample[161];
+		const size_t SampleLen = (std::min)(CsrfJson.size(), sizeof(aSample) - 1);
+		for(size_t i = 0; i < SampleLen; ++i)
+		{
+			const char Ch = CsrfJson[i];
+			aSample[i] = (Ch == '\r' || Ch == '\n') ? ' ' : Ch;
+		}
+		aSample[SampleLen] = '\0';
+		log_warn("kog", "Cuerpo recibido en csrf-token: %s", aSample);
 
 		pSelf->m_KoGFetchErrorMsg = aErr;
-		curl_slist_free_all(pApiHeaders);
 		curl_easy_cleanup(pCurl);
 		pSelf->m_KoGFetchDone = true;
 		return;
 	}
 
 	// 3. Post to api.php requesting player profile data
-	pApiHeaders = curl_slist_append(pApiHeaders, "Content-Type: application/json;charset=UTF-8");
-	curl_easy_setopt(pCurl, CURLOPT_HTTPHEADER, pApiHeaders);
+	PostHeaders.m_pList = BuildKoGApiHeaders(true);
+	curl_easy_setopt(pCurl, CURLOPT_HTTPHEADER, PostHeaders.m_pList);
 
 	std::string PostData = "{\"nonce\":\"" + Nonce + "\",\"type\":\"players\",\"player\":\"" + EscapeForJson(pSelf->m_aKoGFetchThreadPlayer) + "\",\"tz\":\"UTC\"}";
 	std::string ResponseJson;
@@ -593,7 +621,6 @@ void CPlayerProfiles::KoGFetchWorker(void *pUser)
 	long PostHttpCode = 0;
 	curl_easy_getinfo(pCurl, CURLINFO_RESPONSE_CODE, &PostHttpCode);
 	pSelf->m_KoGResultStatusCode = (int)PostHttpCode;
-	curl_slist_free_all(pApiHeaders);
 
 	if(Res != CURLE_OK)
 	{
@@ -607,9 +634,7 @@ void CPlayerProfiles::KoGFetchWorker(void *pUser)
 		return;
 	}
 
-	long Code = 0;
-	curl_easy_getinfo(pCurl, CURLINFO_RESPONSE_CODE, &Code);
-	pSelf->m_KoGResultStatusCode = (int)Code;
+	long Code = PostHttpCode;
 
 	// If player was not found, check alternative casing variants (e.g. "tae" -> "Tae", "Akisi" -> "akisi")
 	if(ResponseJson.find("\"data\":[]") != std::string::npos)
@@ -644,20 +669,14 @@ void CPlayerProfiles::KoGFetchWorker(void *pUser)
 
 		for(const auto &Variant : vVariants)
 		{
-			// Fetch fresh nonce
-			struct curl_slist *pNonceHeaders = nullptr;
-			pNonceHeaders = curl_slist_append(pNonceHeaders, "Referer: https://kog.tw/");
-			pNonceHeaders = curl_slist_append(pNonceHeaders, "Origin: https://kog.tw");
-			pNonceHeaders = curl_slist_append(pNonceHeaders, "Accept: application/json, text/plain, */*");
-			pNonceHeaders = curl_slist_append(pNonceHeaders, "X-Requested-With: XMLHttpRequest");
-			curl_easy_setopt(pCurl, CURLOPT_HTTPHEADER, pNonceHeaders);
+			// Fetch fresh nonce reusing API header list
+			curl_easy_setopt(pCurl, CURLOPT_HTTPHEADER, ApiHeaders.m_pList);
 			curl_easy_setopt(pCurl, CURLOPT_HTTPGET, 1L);
 			curl_easy_setopt(pCurl, CURLOPT_URL, "https://kog.tw/api.php?type=csrf-token");
 
 			std::string FreshCsrf;
 			curl_easy_setopt(pCurl, CURLOPT_WRITEDATA, &FreshCsrf);
 			CURLcode NonceRes = curl_easy_perform(pCurl);
-			curl_slist_free_all(pNonceHeaders);
 			if(NonceRes != CURLE_OK || FreshCsrf.empty())
 				continue;
 
@@ -683,13 +702,7 @@ void CPlayerProfiles::KoGFetchWorker(void *pUser)
 			if(FreshNonce.empty())
 				continue;
 
-			struct curl_slist *pPostHeaders = nullptr;
-			pPostHeaders = curl_slist_append(pPostHeaders, "Referer: https://kog.tw/");
-			pPostHeaders = curl_slist_append(pPostHeaders, "Origin: https://kog.tw");
-			pPostHeaders = curl_slist_append(pPostHeaders, "Accept: application/json, text/plain, */*");
-			pPostHeaders = curl_slist_append(pPostHeaders, "X-Requested-With: XMLHttpRequest");
-			pPostHeaders = curl_slist_append(pPostHeaders, "Content-Type: application/json;charset=UTF-8");
-			curl_easy_setopt(pCurl, CURLOPT_HTTPHEADER, pPostHeaders);
+			curl_easy_setopt(pCurl, CURLOPT_HTTPHEADER, PostHeaders.m_pList);
 
 			std::string VarPostData = "{\"nonce\":\"" + FreshNonce + "\",\"type\":\"players\",\"player\":\"" + EscapeForJson(Variant.c_str()) + "\",\"tz\":\"UTC\"}";
 			std::string VarResponseJson;
@@ -700,7 +713,6 @@ void CPlayerProfiles::KoGFetchWorker(void *pUser)
 			curl_easy_setopt(pCurl, CURLOPT_WRITEDATA, &VarResponseJson);
 
 			CURLcode PostRes = curl_easy_perform(pCurl);
-			curl_slist_free_all(pPostHeaders);
 
 			if(PostRes == CURLE_OK && !VarResponseJson.empty())
 			{

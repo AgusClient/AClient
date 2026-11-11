@@ -3,6 +3,10 @@
 #define GAME_TCLIENT_EMBEDDED_LANGUAGES_H
 
 #include <cstring>
+#include <iterator>
+#include <string>
+#include <string_view>
+#include <unordered_map>
 
 struct SEmbeddedTranslationEntry
 {
@@ -203,29 +207,45 @@ static const char *TCLocalizeEmbedded(const char *pStr, const char *pLangFile)
 	if(!pStr || !pLangFile || !pLangFile[0])
 		return nullptr;
 
-	int LangIndex = -1; // 0=es, 1=ru, 2=pt, 3=zh, 4=fr
-	if(std::strstr(pLangFile, "spanish")) LangIndex = 0;
-	else if(std::strstr(pLangFile, "russian")) LangIndex = 1;
-	else if(std::strstr(pLangFile, "portuguese")) LangIndex = 2;
-	else if(std::strstr(pLangFile, "chinese")) LangIndex = 3;
-	else if(std::strstr(pLangFile, "french")) LangIndex = 4;
-	else return nullptr;
-
-	for(const auto &Entry : s_aEmbeddedTranslations)
+	thread_local std::string s_CachedLangFile;
+	thread_local int s_CachedLangIndex = -1;
+	if(s_CachedLangFile != pLangFile)
 	{
-		if(std::strcmp(Entry.m_pKey, pStr) == 0)
-		{
-			switch(LangIndex)
-			{
-			case 0: return Entry.m_pEs;
-			case 1: return Entry.m_pRu;
-			case 2: return Entry.m_pPt;
-			case 3: return Entry.m_pZh;
-			case 4: return Entry.m_pFr;
-			}
-		}
+		s_CachedLangFile = pLangFile;
+		if(std::strstr(pLangFile, "spanish")) s_CachedLangIndex = 0;
+		else if(std::strstr(pLangFile, "russian")) s_CachedLangIndex = 1;
+		else if(std::strstr(pLangFile, "portuguese")) s_CachedLangIndex = 2;
+		else if(std::strstr(pLangFile, "chinese")) s_CachedLangIndex = 3;
+		else if(std::strstr(pLangFile, "french")) s_CachedLangIndex = 4;
+		else s_CachedLangIndex = -1;
 	}
-	return nullptr;
+
+	const int LangIndex = s_CachedLangIndex;
+	if(LangIndex < 0)
+		return nullptr;
+
+	static const auto s_TranslationMap = []() {
+		std::unordered_map<std::string_view, const SEmbeddedTranslationEntry *> Map;
+		Map.reserve(std::size(s_aEmbeddedTranslations));
+		for(const auto &Entry : s_aEmbeddedTranslations)
+			Map.emplace(Entry.m_pKey, &Entry);
+		return Map;
+	}();
+
+	const auto It = s_TranslationMap.find(std::string_view(pStr));
+	if(It == s_TranslationMap.end())
+		return nullptr;
+
+	const SEmbeddedTranslationEntry *pEntry = It->second;
+	switch(LangIndex)
+	{
+	case 0: return pEntry->m_pEs;
+	case 1: return pEntry->m_pRu;
+	case 2: return pEntry->m_pPt;
+	case 3: return pEntry->m_pZh;
+	case 4: return pEntry->m_pFr;
+	default: return nullptr;
+	}
 }
 
 #endif

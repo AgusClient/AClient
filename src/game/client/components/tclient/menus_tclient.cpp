@@ -3973,6 +3973,19 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	// ***** Left Column: Gameplay, Network & Input ***** //
 	Column = LeftView;
 
+	const auto DoSplitHookMoveUI = [&](bool MsMode) {
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcInputSplitHookMove, TCLocalize("Decouple hook from A/D movement"), &g_Config.m_AcInputSplitHookMove, &Column, LineSize);
+		if(g_Config.m_AcInputSplitHookMove)
+		{
+			Column.HSplitTop(LineSize, &Button, &Column);
+			if(MsMode)
+				DoSliderWithScaledValue(&g_Config.m_AcFastInputHookAmount, &g_Config.m_AcFastInputHookAmount, &Button, TCLocalize("Hook offset"), 1, 40, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "ms");
+			else
+				DoTickAmountSlider(&g_Config.m_AcTickInputHookAmount, &Button, TCLocalize("Hook offset"), 0, 1000);
+		}
+	};
+
 	// ***** Network & Anti-Ping ***** //
 	Column.HSplitTop(Margin, nullptr, &Column);
 	s_SectionBoxesAc.push_back(Column);
@@ -4155,13 +4168,7 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		Column.HSplitTop(LineSize, &Button, &Column);
 		DoTickAmountSlider(&g_Config.m_AcAX30InputAmount, &Button, TCLocalize("Prediction offset"), 0, 1000);
 
-		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcInputSplitHookMove, TCLocalize("Decouple hook from A/D movement"), &g_Config.m_AcInputSplitHookMove, &Column, LineSize);
-		if(g_Config.m_AcInputSplitHookMove)
-		{
-			Column.HSplitTop(LineSize, &Button, &Column);
-			DoTickAmountSlider(&g_Config.m_AcTickInputHookAmount, &Button, TCLocalize("Hook offset"), 0, 1000);
-		}
+		DoSplitHookMoveUI(false);
 
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcAX30AdaptiveJitter, TCLocalize("Smart adaptive compensation"), &g_Config.m_AcAX30AdaptiveJitter, &Column, LineSize);
@@ -4215,13 +4222,7 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		Column.HSplitTop(LineSize, &Button, &Column);
 		DoTickAmountSlider(&g_Config.m_AcAXv2InputAmount, &Button, TCLocalize("Prediction offset"), 0, 1000);
 
-		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcInputSplitHookMove, TCLocalize("Decouple hook from A/D movement"), &g_Config.m_AcInputSplitHookMove, &Column, LineSize);
-		if(g_Config.m_AcInputSplitHookMove)
-		{
-			Column.HSplitTop(LineSize, &Button, &Column);
-			DoTickAmountSlider(&g_Config.m_AcTickInputHookAmount, &Button, TCLocalize("Hook offset"), 0, 1000);
-		}
+		DoSplitHookMoveUI(false);
 
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcAXv2AdaptiveJitter, TCLocalize("Smart adaptive compensation"), &g_Config.m_AcAXv2AdaptiveJitter, &Column, LineSize);
@@ -4326,13 +4327,7 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		DoSliderWithScaledValue(&g_Config.m_AcFastInputAmount, &g_Config.m_AcFastInputAmount, &Button, TCLocalize("Prediction offset"), 1, 40, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "ms");
 		g_Config.m_TcFastInputAmount = g_Config.m_AcFastInputAmount;
 
-		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcInputSplitHookMove, TCLocalize("Decouple hook from A/D movement"), &g_Config.m_AcInputSplitHookMove, &Column, LineSize);
-		if(g_Config.m_AcInputSplitHookMove)
-		{
-			Column.HSplitTop(LineSize, &Button, &Column);
-			DoSliderWithScaledValue(&g_Config.m_AcFastInputHookAmount, &g_Config.m_AcFastInputHookAmount, &Button, TCLocalize("Hook offset"), 1, 40, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "ms");
-		}
+		DoSplitHookMoveUI(true);
 
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcFastInputOthers, TCLocalize("Fast Input others"), &g_Config.m_AcFastInputOthers, &Column, LineSize);
@@ -4351,13 +4346,7 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		Column.HSplitTop(LineSize, &Button, &Column);
 		DoTickAmountSlider(&g_Config.m_AcBestInputAmount, &Button, TCLocalize("Prediction offset"), 0, 1000);
 
-		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcInputSplitHookMove, TCLocalize("Decouple hook from A/D movement"), &g_Config.m_AcInputSplitHookMove, &Column, LineSize);
-		if(g_Config.m_AcInputSplitHookMove)
-		{
-			Column.HSplitTop(LineSize, &Button, &Column);
-			DoTickAmountSlider(&g_Config.m_AcTickInputHookAmount, &Button, TCLocalize("Hook offset"), 0, 1000);
-		}
+		DoSplitHookMoveUI(false);
 
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		Column.HSplitTop(LineSize, &Button, &Column);

@@ -127,6 +127,18 @@ namespace
 		return Tile == TILE_FREEZE || Tile == TILE_DFREEZE || Tile == TILE_LFREEZE ||
 		       FrontTile == TILE_FREEZE || FrontTile == TILE_DFREEZE || FrontTile == TILE_LFREEZE;
 	}
+	static bool s_PracticeActive = false;
+
+	static inline bool TryGetPracticeOverrideOffset(bool ForOthers, float &OutOffset)
+	{
+		if(s_PracticeActive && g_Config.m_AcFastPracticeFastInputOverride)
+		{
+			OutOffset = ForOthers ? 0.0f : (g_Config.m_AcFastPracticeFastInputAmount <= 0 ? 0.0f : g_Config.m_AcFastPracticeFastInputAmount / 20.0f);
+			return true;
+		}
+		return false;
+	}
+
 	static inline float CalculateBaseOffset(bool ForOthers)
 	{
 		switch(g_Config.m_AcInputs)
@@ -145,9 +157,25 @@ namespace
 			return (g_Config.m_TcFastInput != 0) ? FastModeOffsetTicks(ForOthers) : 0.0f;
 		}
 	}
-} // namespace
 
-static bool s_PracticeActive = false;
+	// Returns split hook offset in ticks, 0.0f when inputs are disabled, or -1.0f to fall back to MoveOffset
+	static inline float CalculateSplitHookOffset()
+	{
+		if(g_Config.m_AcInputs == AC_INPUTS_FAST || (g_Config.m_AcInputs == AC_INPUTS_OFF && g_Config.m_TcFastInput != 0))
+		{
+			const int Amount = g_Config.m_AcFastInputHookAmount > 0 ? g_Config.m_AcFastInputHookAmount : (g_Config.m_AcFastInputAmount > 0 ? g_Config.m_AcFastInputAmount : g_Config.m_TcFastInputAmount);
+			return Amount <= 0 ? 0.0f : Amount / 20.0f;
+		}
+
+		if(g_Config.m_AcInputs == AC_INPUTS_OFF)
+			return 0.0f;
+
+		if(g_Config.m_AcTickInputHookAmount > 0)
+			return g_Config.m_AcTickInputHookAmount / 100.0f;
+
+		return -1.0f;
+	}
+} // namespace
 
 void AcInputs::SetPracticeActive(bool Active)
 {
@@ -161,27 +189,25 @@ bool AcInputs::IsPracticeActive()
 
 float AcInputs::EffectiveOffsetTicks(bool ForOthers)
 {
-	if(s_PracticeActive && g_Config.m_AcFastPracticeFastInputOverride)
-	{
-		if(ForOthers)
-			return 0.0f;
-		return g_Config.m_AcFastPracticeFastInputAmount <= 0 ? 0.0f : g_Config.m_AcFastPracticeFastInputAmount / 20.0f;
-	}
+	float Override = 0.0f;
+	if(TryGetPracticeOverrideOffset(ForOthers, Override))
+		return Override;
 
+	const float MoveOffset = CalculateBaseOffset(ForOthers);
 	if(!ForOthers && g_Config.m_AcInputSplitHookMove)
 	{
-		const float MoveOffset = CalculateBaseOffset(false);
-		const float HookOffset = EffectiveOffsetTicksHook(false);
-		return (MoveOffset > HookOffset) ? MoveOffset : HookOffset;
+		const float HookOffset = CalculateSplitHookOffset();
+		return (HookOffset > MoveOffset) ? HookOffset : MoveOffset;
 	}
 
-	return CalculateBaseOffset(ForOthers);
+	return MoveOffset;
 }
 
 float AcInputs::EffectiveOffsetTicksMove(bool ForOthers)
 {
-	if(s_PracticeActive && g_Config.m_AcFastPracticeFastInputOverride)
-		return ForOthers ? 0.0f : (g_Config.m_AcFastPracticeFastInputAmount <= 0 ? 0.0f : g_Config.m_AcFastPracticeFastInputAmount / 20.0f);
+	float Override = 0.0f;
+	if(TryGetPracticeOverrideOffset(ForOthers, Override))
+		return Override;
 
 	// Movimiento A/D siempre toma el slider general de prediccion de arriba
 	return CalculateBaseOffset(ForOthers);
@@ -189,22 +215,18 @@ float AcInputs::EffectiveOffsetTicksMove(bool ForOthers)
 
 float AcInputs::EffectiveOffsetTicksHook(bool ForOthers)
 {
-	if(s_PracticeActive && g_Config.m_AcFastPracticeFastInputOverride)
-		return ForOthers ? 0.0f : (g_Config.m_AcFastPracticeFastInputAmount <= 0 ? 0.0f : g_Config.m_AcFastPracticeFastInputAmount / 20.0f);
+	float Override = 0.0f;
+	if(TryGetPracticeOverrideOffset(ForOthers, Override))
+		return Override;
 
-	if(ForOthers || !g_Config.m_AcInputSplitHookMove)
-		return CalculateBaseOffset(ForOthers);
-
-	if(g_Config.m_AcInputs == AC_INPUTS_FAST || (g_Config.m_AcInputs == AC_INPUTS_OFF && g_Config.m_TcFastInput != 0))
+	if(!ForOthers && g_Config.m_AcInputSplitHookMove)
 	{
-		const int Amount = g_Config.m_AcFastInputHookAmount > 0 ? g_Config.m_AcFastInputHookAmount : (g_Config.m_AcFastInputAmount > 0 ? g_Config.m_AcFastInputAmount : g_Config.m_TcFastInputAmount);
-		return Amount <= 0 ? 0.0f : Amount / 20.0f;
+		const float HookOffset = CalculateSplitHookOffset();
+		if(HookOffset >= 0.0f)
+			return HookOffset;
 	}
 
-	if(g_Config.m_AcTickInputHookAmount > 0)
-		return g_Config.m_AcTickInputHookAmount / 100.0f;
-
-	return CalculateBaseOffset(false);
+	return CalculateBaseOffset(ForOthers);
 }
 
 int AcInputs::PredictionTicks(float OffsetTicks)
