@@ -2019,7 +2019,14 @@ void CHud::OnRender()
 	if(!GameClient()->m_Snap.m_pGameInfoObj)
 		return;
 
-	m_Width = 300.0f * Graphics()->ScreenAspect();
+	const float CurrentAspect = Graphics()->ScreenAspect();
+	if(std::abs(m_PrevAspect - CurrentAspect) > 0.0001f)
+	{
+		m_PrevAspect = CurrentAspect;
+		ResetHudContainers();
+	}
+
+	m_Width = 300.0f * CurrentAspect;
 	m_Height = 300.0f;
 	Graphics()->MapScreenToSize(m_Width, m_Height);
 
