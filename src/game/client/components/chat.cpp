@@ -26,6 +26,7 @@
 #include <game/client/components/skins.h>
 #include <game/client/components/sounds.h>
 #include <game/client/components/tclient/colored_parts.h>
+#include <game/client/components/tclient/hud_layout.h>
 #include <game/client/gameclient.h>
 #include <game/localization.h>
 
@@ -1314,7 +1315,8 @@ void CChat::OnPrepareLines(float y)
 	float FontSize = this->FontSize();
 
 	const bool IsScoreBoardOpen = GameClient()->m_Scoreboard.IsActive() && (Graphics()->ScreenAspect() > 1.7f); // only assume scoreboard when screen ratio is widescreen(something around 16:9)
-	const bool ShowLargeArea = m_Show || (m_Mode != MODE_NONE && g_Config.m_ClShowChat == 1) || g_Config.m_ClShowChat == 2;
+	const bool HudEditorActive = GameClient()->m_HudEditor.IsActive();
+	const bool ShowLargeArea = m_Show || HudEditorActive || (m_Mode != MODE_NONE && g_Config.m_ClShowChat == 1) || g_Config.m_ClShowChat == 2;
 	m_PrevScoreBoardShowed = IsScoreBoardOpen;
 	m_PrevShowChat = ShowLargeArea;
 
@@ -1333,7 +1335,7 @@ void CChat::OnPrepareLines(float y)
 	int64_t Now = time();
 	float LineWidth = (IsScoreBoardOpen ? std::max(85.0f, FontSize * 85.0f / 6.0f) : g_Config.m_ClChatWidth) - (RealMsgPaddingX * 1.5f) - RealMsgPaddingTee;
 
-	float HeightLimit = IsScoreBoardOpen ? 180.0f : (m_PrevShowChat ? 50.0f : 200.0f);
+	float HeightLimit = HudLayout::HasPositionOverride(HudLayout::MODULE_CHAT) ? 0.0f : (IsScoreBoardOpen ? 180.0f : (m_PrevShowChat ? 50.0f : 200.0f));
 	float Begin = x;
 	float TextBegin = Begin + RealMsgPaddingX / 2.0f;
 	int OffsetType = IsScoreBoardOpen ? 1 : 0;
@@ -1696,11 +1698,25 @@ void CChat::OnRender()
 	const float Width = Height * Graphics()->ScreenAspect();
 	Graphics()->MapScreenToSize(Width, Height);
 
+	const bool HudEditorActive = GameClient()->m_HudEditor.IsActive();
+	if(!HudEditorActive && !HudLayout::IsEnabled(HudLayout::MODULE_CHAT))
+		return;
+
+	const HudLayout::SModuleLayout ChatLayout = HudLayout::Get(HudLayout::MODULE_CHAT, Width, Height);
+	const bool PosOverride = HudLayout::HasPositionOverride(HudLayout::MODULE_CHAT);
+	const float AlphaMult = HudLayout::AlphaFactor(HudLayout::MODULE_CHAT);
+
 	float x = 5.0f;
 
 	// TClient
 	float y = 300.0f - (20.0f * FontSize() / 6.0f + (g_Config.m_TcStatusBar ? g_Config.m_TcStatusBarHeight : 0.0f));
 	// float y = 300.0f - 20.0f * FontSize() / 6.0f;
+	if(PosOverride)
+	{
+		x = std::clamp(ChatLayout.m_X, 0.0f, std::max(0.0f, Width - 180.0f));
+		y = std::clamp(ChatLayout.m_Y, 0.0f, std::max(0.0f, Height - 58.0f)) + 58.0f;
+	}
+	const float PreviewBaseY = y;
 
 	float ScaledFontSize = FontSize() * (8.0f / 6.0f);
 	if(m_Mode != MODE_NONE)
@@ -1789,12 +1805,29 @@ void CChat::OnRender()
 		}
 	}
 
+	bool ShowChat = true;
 #if defined(CONF_VIDEORECORDER)
 	if(!((g_Config.m_ClShowChat && !IVideo::Current()) || (g_Config.m_ClVideoShowChat && IVideo::Current())))
 #else
 	if(!g_Config.m_ClShowChat)
 #endif
+		ShowChat = false;
+
+	if(!ShowChat)
+	{
+		if(HudEditorActive)
+		{
+			const float BoxW = 180.0f;
+			const float BoxH = 58.0f;
+			const float BoxX = PosOverride ? std::clamp(ChatLayout.m_X, 0.0f, std::max(0.0f, Width - BoxW)) : 5.0f;
+			const float BoxY = PosOverride ? std::clamp(ChatLayout.m_Y, 0.0f, std::max(0.0f, Height - BoxH)) : std::max(0.0f, PreviewBaseY - BoxH);
+			Graphics()->DrawRect(BoxX, BoxY, BoxW, BoxH, ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f * AlphaMult), IGraphics::CORNER_ALL, 4.0f);
+			TextRender()->TextColor(TextRender()->DefaultTextColor().WithMultipliedAlpha(AlphaMult));
+			TextRender()->Text(BoxX + 6.0f, BoxY + 6.0f, 6.0f, "Chat", -1.0f);
+			TextRender()->TextColor(TextRender()->DefaultTextColor());
+		}
 		return;
+	}
 
 	y -= ScaledFontSize;
 
@@ -1819,7 +1852,7 @@ void CChat::OnRender()
 	bool IsScoreBoardOpen = GameClient()->m_Scoreboard.IsActive() && (Graphics()->ScreenAspect() > 1.7f); // only assume scoreboard when screen ratio is widescreen(something around 16:9)
 
 	int64_t Now = time();
-	float HeightLimit = IsScoreBoardOpen ? 180.0f : (m_PrevShowChat ? 50.0f : 200.0f);
+	float HeightLimit = HudLayout::HasPositionOverride(HudLayout::MODULE_CHAT) ? 0.0f : (IsScoreBoardOpen ? 180.0f : (m_PrevShowChat ? 50.0f : 200.0f));
 	int OffsetType = IsScoreBoardOpen ? 1 : 0;
 
 	float RealMsgPaddingX = MessagePaddingX();
@@ -1833,6 +1866,7 @@ void CChat::OnRender()
 
 	const int Limit = ActiveMaxLines();
 	const int StartLine = (m_Mode != MODE_NONE) ? m_ChatHistoryScroll : 0;
+	bool RenderedAny = false;
 
 	for(int i = StartLine; i < Limit; i++)
 	{
@@ -1848,7 +1882,11 @@ void CChat::OnRender()
 		if(y < HeightLimit)
 			break;
 
+		RenderedAny = true;
 		float Blend = Now > Line.m_Time + 14 * time_freq() && !m_PrevShowChat ? 1.0f - (Now - Line.m_Time - 14 * time_freq()) / (2.0f * time_freq()) : 1.0f;
+		Blend *= AlphaMult;
+
+		const float OffsetX = x - 5.0f;
 
 		// Draw backgrounds for messages in one batch
 		if(!g_Config.m_ClChatOld)
@@ -1857,7 +1895,7 @@ void CChat::OnRender()
 			if(Line.m_QuadContainerIndex != -1)
 			{
 				Graphics()->SetColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClChatBackgroundColor, true)).WithMultipliedAlpha(Blend));
-				Graphics()->RenderQuadContainerEx(Line.m_QuadContainerIndex, 0, -1, 0, ((y + RealMsgPaddingY / 2.0f) - Line.m_TextYOffset));
+				Graphics()->RenderQuadContainerEx(Line.m_QuadContainerIndex, 0, -1, OffsetX, ((y + RealMsgPaddingY / 2.0f) - Line.m_TextYOffset));
 			}
 		}
 
@@ -1882,8 +1920,20 @@ void CChat::OnRender()
 
 			const ColorRGBA TextColor = TextRender()->DefaultTextColor().WithMultipliedAlpha(Blend);
 			const ColorRGBA TextOutlineColor = TextRender()->DefaultTextOutlineColor().WithMultipliedAlpha(Blend);
-			TextRender()->RenderTextContainer(Line.m_TextContainerIndex, TextColor, TextOutlineColor, 0, (y + RealMsgPaddingY / 2.0f) - Line.m_TextYOffset);
+			TextRender()->RenderTextContainer(Line.m_TextContainerIndex, TextColor, TextOutlineColor, OffsetX, (y + RealMsgPaddingY / 2.0f) - Line.m_TextYOffset);
 		}
+	}
+
+	if(HudEditorActive && !RenderedAny)
+	{
+		const float BoxW = 180.0f;
+		const float BoxH = 58.0f;
+		const float BoxX = PosOverride ? std::clamp(ChatLayout.m_X, 0.0f, std::max(0.0f, Width - BoxW)) : 5.0f;
+		const float BoxY = PosOverride ? std::clamp(ChatLayout.m_Y, 0.0f, std::max(0.0f, Height - BoxH)) : std::max(0.0f, PreviewBaseY - BoxH);
+		Graphics()->DrawRect(BoxX, BoxY, BoxW, BoxH, ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f * AlphaMult), IGraphics::CORNER_ALL, 4.0f);
+		TextRender()->TextColor(TextRender()->DefaultTextColor().WithMultipliedAlpha(AlphaMult));
+		TextRender()->Text(BoxX + 6.0f, BoxY + 6.0f, 6.0f, "Chat", -1.0f);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
 	}
 }
 

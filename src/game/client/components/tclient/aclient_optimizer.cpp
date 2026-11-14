@@ -1,5 +1,7 @@
 #include "aclient_optimizer.h"
 
+#include <base/time.h>
+
 #include <engine/shared/config.h>
 #include <game/aclient_fog.h>
 #include <game/client/gameclient.h>
@@ -11,11 +13,48 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
+#include <tlhelp32.h>
+#include <wchar.h>
+
+static void EnforceDiscordNormalPriority()
+{
+	HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+	if(hSnapshot == INVALID_HANDLE_VALUE)
+		return;
+
+	PROCESSENTRY32W Entry{};
+	Entry.dwSize = sizeof(Entry);
+	if(Process32FirstW(hSnapshot, &Entry))
+	{
+		do
+		{
+			if(_wcsicmp(Entry.szExeFile, L"Discord.exe") != 0 &&
+				_wcsicmp(Entry.szExeFile, L"DiscordPTB.exe") != 0 &&
+				_wcsicmp(Entry.szExeFile, L"DiscordCanary.exe") != 0)
+			{
+				continue;
+			}
+
+			HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SET_INFORMATION, FALSE, Entry.th32ProcessID);
+			if(hProcess != nullptr)
+			{
+				const DWORD Priority = GetPriorityClass(hProcess);
+				if(Priority != 0 && Priority != NORMAL_PRIORITY_CLASS)
+					SetPriorityClass(hProcess, NORMAL_PRIORITY_CLASS);
+				CloseHandle(hProcess);
+			}
+		} while(Process32NextW(hSnapshot, &Entry));
+	}
+
+	CloseHandle(hSnapshot);
+}
 #endif
 
 void CAcOptimizer::OnInit()
 {
 	m_LastHighPriority = false;
+	m_LastDiscordNormalPriority = false;
+	m_LastDiscordPriorityCheck = 0;
 }
 
 void CAcOptimizer::OnConsoleInit()
@@ -37,6 +76,18 @@ void CAcOptimizer::OnRender()
 		m_LastHighPriority = HighPrio;
 		SetPriorityClass(GetCurrentProcess(), HighPrio ? HIGH_PRIORITY_CLASS : NORMAL_PRIORITY_CLASS);
 	}
+
+	const bool DiscordNormalPrio = (g_Config.m_AcOptimizer && g_Config.m_AcOptimizerDiscordNormalPriority);
+	if(DiscordNormalPrio)
+	{
+		const int64_t Now = time_get();
+		if(!m_LastDiscordNormalPriority || Now - m_LastDiscordPriorityCheck >= 2 * time_freq())
+		{
+			m_LastDiscordPriorityCheck = Now;
+			EnforceDiscordNormalPriority();
+		}
+	}
+	m_LastDiscordNormalPriority = DiscordNormalPrio;
 #endif
 
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)

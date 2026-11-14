@@ -101,6 +101,9 @@ class CHud : public CComponent
 
 	void RenderScoreHud();
 	int m_LastLocalClientId = -1;
+	float m_PrevScoreLayoutX = -1.0f;
+	float m_PrevScoreLayoutY = -1.0f;
+	bool m_PrevScorePosOverride = false;
 
 	void RenderSpectatorHud();
 	void RenderWarmupTimer();

@@ -7,6 +7,8 @@
 class CAcOptimizer : public CComponent
 {
 	bool m_LastHighPriority = false;
+	bool m_LastDiscordNormalPriority = false;
+	int64_t m_LastDiscordPriorityCheck = 0;
 
 public:
 	int Sizeof() const override { return sizeof(*this); }

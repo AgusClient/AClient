@@ -3840,6 +3840,7 @@ void CMenus::RenderSettingsAClientCommands(CUIRect MainView)
 	DrawCommandCard(Column, "ac_optimizer_fps_fog_radius_tiles [15-80]", TCLocalize("View radius in tiles for FPS Fog culling (default: 35)."));
 	DrawCommandCard(Column, "ac_optimizer_fps_fog_cull_map_tiles [0|1]", TCLocalize("Cull map tiles outside the FPS Fog radius."));
 	DrawCommandCard(Column, "ac_optimizer_high_priority [0|1]", TCLocalize("Automatically set Windows process priority to High."));
+	DrawCommandCard(Column, "ac_optimizer_discord_normal_priority [0|1]", TCLocalize("Keep Discord processes at Normal priority in Windows."));
 	s_SectionBoxesCmds.back().h = Column.y - s_SectionBoxesCmds.back().y;
 
 	LeftView = Column;
@@ -4645,6 +4646,7 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	}
 
 	DoCheckboxWithHelp(&g_Config.m_AcOptimizerHighPriority, TCLocalize("High process priority (Windows)"), TCLocalize("Automatically assigns High priority to DDNet in Windows to reduce background process micro-stutters."), &g_Config.m_AcOptimizerHighPriority, &Column, LineSize);
+	DoCheckboxWithHelp(&g_Config.m_AcOptimizerDiscordNormalPriority, TCLocalize("Discord normal priority (Windows)"), TCLocalize("Keeps Discord processes at Normal priority in Windows so Discord does not compete with DDNet for CPU."), &g_Config.m_AcOptimizerDiscordNormalPriority, &Column, LineSize);
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
@@ -4797,7 +4799,19 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	Column.HSplitTop(Margin, nullptr, &Column);
 	s_SectionBoxesAc.push_back(Column);
 	Column.HSplitTop(HeadlineHeight, &Label, &Column);
-	Ui()->DoLabel(&Label, TCLocalize("Overlay"), HeadlineFontSize, TEXTALIGN_ML);
+	Ui()->DoLabel(&Label, TCLocalize("Overlay & HUD Editor"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	{
+		CUIRect BtnEditorRect;
+		Column.HSplitTop(LineSize + 4.0f, &BtnEditorRect, &Column);
+		static CButtonContainer s_BtnOpenHudEditor;
+		if(DoButton_Menu(&s_BtnOpenHudEditor, TCLocalize("Abrir Editor de HUD Interactivo (BestClient Style)"), 0, &BtnEditorRect))
+		{
+			SetActive(false);
+			GameClient()->m_HudEditor.Activate();
+		}
+	}
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
 	DoCheckboxWithHelp(&g_Config.m_AcMiniStatboard, TCLocalize("Enable Mini Statboard HUD"), TCLocalize("Shows the compact live team statistics table on your screen during the game."), &g_Config.m_AcMiniStatboard, &Column, LineSize);

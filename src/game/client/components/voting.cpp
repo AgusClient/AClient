@@ -12,6 +12,7 @@
 
 #include <game/client/components/scoreboard.h>
 #include <game/client/components/sounds.h>
+#include <game/client/components/tclient/hud_layout.h>
 #include <game/client/gameclient.h>
 #include <game/localization.h>
 
@@ -337,72 +338,110 @@ void CVoting::OnMessage(int MsgType, void *pRawMsg)
 
 void CVoting::Render()
 {
-	if((!g_Config.m_ClShowVotesAfterVoting && !GameClient()->m_Scoreboard.IsActive() && TakenChoice()) || !IsVoting())
+	const bool HudEditorActive = GameClient()->m_HudEditor.IsActive();
+	if(!HudEditorActive && !HudLayout::IsEnabled(HudLayout::MODULE_VOTES))
 		return;
-	const int Seconds = SecondsLeft();
-	if(Seconds < 0)
+
+	const bool VotingActive = IsVoting() && (g_Config.m_ClShowVotesAfterVoting || GameClient()->m_Scoreboard.IsActive() || !TakenChoice());
+	if(!VotingActive && !HudEditorActive)
+		return;
+
+	const int Seconds = VotingActive ? SecondsLeft() : 30;
+	if(VotingActive && Seconds < 0)
 	{
 		OnReset();
-		return;
+		if(!HudEditorActive)
+			return;
 	}
 
 	// TClient
-	if(g_Config.m_TcMiniVoteHud > 0)
+	if(VotingActive && g_Config.m_TcMiniVoteHud > 0)
 	{
 		GameClient()->m_TClient.RenderMiniVoteHud();
 		return;
 	}
 
-	CUIRect View = {0.0f, 60.0f, 120.0f, 38.0f};
-	View.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f), IGraphics::CORNER_R, 3.0f);
-	View.Margin(3.0f, &View);
+	const float HudHeight = 300.0f;
+	const float HudWidth = HudHeight * Graphics()->ScreenAspect();
+	const HudLayout::SModuleLayout Layout = HudLayout::Get(HudLayout::MODULE_VOTES, HudWidth, HudHeight);
+	const float Scale = HudLayout::HasRuntimeOverride(HudLayout::MODULE_VOTES) ? std::clamp(Layout.m_Scale / 100.0f, 0.5f, 2.0f) : 1.0f;
+	const float AlphaMult = HudLayout::AlphaFactor(HudLayout::MODULE_VOTES);
+
+	const float BoxW = 120.0f * Scale;
+	const float BoxH = 38.0f * Scale;
+	float BoxX = 0.0f;
+	float BoxY = 60.0f;
+	if(HudLayout::HasPositionOverride(HudLayout::MODULE_VOTES))
+	{
+		BoxX = std::clamp(Layout.m_X, 0.0f, std::max(0.0f, HudWidth - BoxW));
+		BoxY = std::clamp(Layout.m_Y, 0.0f, std::max(0.0f, HudHeight - BoxH));
+	}
+
+	CUIRect View = {BoxX, BoxY, BoxW, BoxH};
+	View.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f * AlphaMult), IGraphics::CORNER_R, 3.0f * Scale);
+	View.Margin(3.0f * Scale, &View);
+
+	const float FontSize = 6.0f * Scale;
+	const ColorRGBA BaseTextColor = TextRender()->DefaultTextColor().WithMultipliedAlpha(AlphaMult);
+	TextRender()->TextColor(BaseTextColor);
 
 	SLabelProperties Props;
 	Props.m_EllipsisAtEnd = true;
 
 	char aBuf[256];
-	str_format(aBuf, sizeof(aBuf), Localize("%ds left"), Seconds);
+	str_format(aBuf, sizeof(aBuf), Localize("%ds left"), std::max(0, Seconds));
 
 	CUIRect Row, LeftColumn, RightColumn, ProgressSpinner;
-	View.HSplitTop(6.0f, &Row, &View);
-	Row.VSplitRight(TextRender()->TextWidth(6.0f, aBuf), &LeftColumn, &RightColumn);
-	LeftColumn.VSplitRight(2.0f, &LeftColumn, nullptr);
-	LeftColumn.VSplitRight(6.0f, &LeftColumn, &ProgressSpinner);
-	LeftColumn.VSplitRight(2.0f, &LeftColumn, nullptr);
+	View.HSplitTop(FontSize, &Row, &View);
+	Row.VSplitRight(TextRender()->TextWidth(FontSize, aBuf), &LeftColumn, &RightColumn);
+	LeftColumn.VSplitRight(2.0f * Scale, &LeftColumn, nullptr);
+	LeftColumn.VSplitRight(FontSize, &LeftColumn, &ProgressSpinner);
+	LeftColumn.VSplitRight(2.0f * Scale, &LeftColumn, nullptr);
 
 	SProgressSpinnerProperties ProgressProps;
-	ProgressProps.m_Progress = std::clamp((time() - m_Opentime) / (float)(m_Closetime - m_Opentime), 0.0f, 1.0f);
+	ProgressProps.m_Progress = VotingActive ? std::clamp((time() - m_Opentime) / (float)(m_Closetime - m_Opentime), 0.0f, 1.0f) : 0.65f;
+	ProgressProps.m_Color = ColorRGBA(1.0f, 1.0f, 1.0f, AlphaMult);
 	Ui()->RenderProgressSpinner(ProgressSpinner.Center(), ProgressSpinner.h / 2.0f, ProgressProps);
 
-	Ui()->DoLabel(&RightColumn, aBuf, 6.0f, TEXTALIGN_MR);
+	Ui()->DoLabel(&RightColumn, aBuf, FontSize, TEXTALIGN_MR);
 
 	Props.m_MaxWidth = LeftColumn.w;
-	Ui()->DoLabel(&LeftColumn, VoteDescription(), 6.0f, TEXTALIGN_ML, Props);
+	Ui()->DoLabel(&LeftColumn, VotingActive ? VoteDescription() : Localize("Sample vote"), FontSize, TEXTALIGN_ML, Props);
 
-	View.HSplitTop(3.0f, nullptr, &View);
-	View.HSplitTop(6.0f, &Row, &View);
-	str_format(aBuf, sizeof(aBuf), "%s %s", Localize("Reason:"), VoteReason());
+	View.HSplitTop(3.0f * Scale, nullptr, &View);
+	View.HSplitTop(FontSize, &Row, &View);
+	str_format(aBuf, sizeof(aBuf), "%s %s", Localize("Reason:"), VotingActive ? VoteReason() : Localize("HUD Editor preview"));
 	Props.m_MaxWidth = Row.w;
-	Ui()->DoLabel(&Row, aBuf, 6.0f, TEXTALIGN_ML, Props);
+	Ui()->DoLabel(&Row, aBuf, FontSize, TEXTALIGN_ML, Props);
 
-	View.HSplitTop(3.0f, nullptr, &View);
-	View.HSplitTop(4.0f, &Row, &View);
-	RenderBars(Row);
+	View.HSplitTop(3.0f * Scale, nullptr, &View);
+	View.HSplitTop(4.0f * Scale, &Row, &View);
+	if(VotingActive)
+	{
+		RenderBars(Row);
+	}
+	else
+	{
+		Row.Draw(ColorRGBA(0.8f, 0.8f, 0.8f, 0.5f * AlphaMult), IGraphics::CORNER_ALL, Row.h / 2.0f);
+		CUIRect YesPreview;
+		Row.VSplitLeft(Row.w * 0.65f, &YesPreview, nullptr);
+		YesPreview.Draw(ColorRGBA(0.2f, 0.9f, 0.2f, 0.85f * AlphaMult), IGraphics::CORNER_ALL, YesPreview.h / 2.0f);
+	}
 
-	View.HSplitTop(3.0f, nullptr, &View);
-	View.HSplitTop(6.0f, &Row, &View);
-	Row.VSplitMid(&LeftColumn, &RightColumn, 4.0f);
+	View.HSplitTop(3.0f * Scale, nullptr, &View);
+	View.HSplitTop(FontSize, &Row, &View);
+	Row.VSplitMid(&LeftColumn, &RightColumn, 4.0f * Scale);
 
 	char aKey[64];
 	GameClient()->m_Binds.GetKey("vote yes", aKey, sizeof(aKey));
 	str_format(aBuf, sizeof(aBuf), "%s - %s", aKey, Localize("Vote yes"));
-	TextRender()->TextColor(TakenChoice() == 1 ? ColorRGBA(0.2f, 0.9f, 0.2f, 0.85f) : TextRender()->DefaultTextColor());
-	Ui()->DoLabel(&LeftColumn, aBuf, 6.0f, TEXTALIGN_ML);
+	TextRender()->TextColor((VotingActive && TakenChoice() == 1) ? ColorRGBA(0.2f, 0.9f, 0.2f, 0.85f * AlphaMult) : BaseTextColor);
+	Ui()->DoLabel(&LeftColumn, aBuf, FontSize, TEXTALIGN_ML);
 
 	GameClient()->m_Binds.GetKey("vote no", aKey, sizeof(aKey));
 	str_format(aBuf, sizeof(aBuf), "%s - %s", Localize("Vote no"), aKey);
-	TextRender()->TextColor(TakenChoice() == -1 ? ColorRGBA(0.95f, 0.25f, 0.25f, 0.85f) : TextRender()->DefaultTextColor());
-	Ui()->DoLabel(&RightColumn, aBuf, 6.0f, TEXTALIGN_MR);
+	TextRender()->TextColor((VotingActive && TakenChoice() == -1) ? ColorRGBA(0.95f, 0.25f, 0.25f, 0.85f * AlphaMult) : BaseTextColor);
+	Ui()->DoLabel(&RightColumn, aBuf, FontSize, TEXTALIGN_MR);
 
 	TextRender()->TextColor(TextRender()->DefaultTextColor());
 }

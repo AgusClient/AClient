@@ -10,6 +10,8 @@
 #include <engine/shared/linereader.h>
 #include <engine/storage.h>
 #include <engine/textrender.h>
+#include "hud_layout.h"
+
 #include <game/client/animstate.h>
 #include <game/client/gameclient.h>
 #include <game/client/render.h>
@@ -843,7 +845,7 @@ void CRaceStats::OnRender()
 		}
 	}
 
-	if(g_Config.m_AcMiniStatboard || m_Active)
+	if((g_Config.m_AcMiniStatboard && HudLayout::IsEnabled(HudLayout::MODULE_MINI_STATBOARD)) || m_Active || GameClient()->m_HudEditor.IsActive())
 	{
 		RenderMiniStatboard();
 	}
@@ -1205,8 +1207,15 @@ void CRaceStats::RenderMiniStatboard()
 	float BaseX = (Width - TotalWidth) * PosXPercent;
 	float BaseY = (Height - TotalHeight) * PosYPercent;
 
-	BaseX = std::clamp(BaseX, 2.0f, Width - TotalWidth - 2.0f);
-	BaseY = std::clamp(BaseY, 2.0f, Height - TotalHeight - 2.0f);
+	if(HudLayout::HasPositionOverride(HudLayout::MODULE_MINI_STATBOARD))
+	{
+		const HudLayout::SModuleLayout Layout = HudLayout::Get(HudLayout::MODULE_MINI_STATBOARD, Width, Height);
+		BaseX = Layout.m_X;
+		BaseY = Layout.m_Y;
+	}
+
+	BaseX = std::clamp(BaseX, 2.0f, std::max(2.0f, Width - TotalWidth - 2.0f));
+	BaseY = std::clamp(BaseY, 2.0f, std::max(2.0f, Height - TotalHeight - 2.0f));
 
 	// Fondo redondeado elegante con opacidad configurable
 	float Alpha = (float)g_Config.m_AcMiniStatboardOpacity / 100.0f;

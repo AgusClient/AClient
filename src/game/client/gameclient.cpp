@@ -175,8 +175,8 @@ void CGameClient::OnConsoleInit()
 					      &m_StatusBar, // TClient
 					      &m_RaceStats, // TClient
 					      &m_AClientHud, // AClient
-						      &m_AClientAuth, // AClient
-						      &m_AClientGameSkins, // AClient
+					      &m_AClientAuth, // AClient
+					      &m_AClientGameSkins,
 					      &m_PlayerProfiles, // TClient
 					      &m_FastPractice, // TClient
 					      &m_InfoMessages,
@@ -193,10 +193,12 @@ void CGameClient::OnConsoleInit()
 					      &m_Scripting, // TClient
 					      &m_KeyBinder,
 					      &m_GameConsole,
-					      &m_MenuBackground});
+					      &m_MenuBackground,
+					      &m_HudEditor}); // AClient
 
 	// build the input stack
-	m_vpInput.insert(m_vpInput.end(), {&m_KeyBinder, // this will take over all input when we want to bind a key
+	m_vpInput.insert(m_vpInput.end(), {&m_HudEditor,
+						  &m_KeyBinder, // this will take over all input when we want to bind a key
 						  &m_Binds.m_SpecialBinds,
 						  &m_GameConsole,
 						  &m_Chat, // chat has higher prio, due to that you can quit it by pressing esc

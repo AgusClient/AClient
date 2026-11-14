@@ -70,6 +70,7 @@ MACRO_CONFIG_INT(AcOptimizerFpsFogZoomPercent, ac_optimizer_fps_fog_zoom_percent
 MACRO_CONFIG_INT(AcOptimizerFpsFogCullMapTiles, ac_optimizer_fps_fog_cull_map_tiles, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Cull map tiles outside the FPS Fog radius")
 MACRO_CONFIG_INT(AcOptimizerFpsFogRenderRect, ac_optimizer_fps_fog_render_rect, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draw outline box showing the FPS Fog area (debug)")
 MACRO_CONFIG_INT(AcOptimizerHighPriority, ac_optimizer_high_priority, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Set DDNet process priority to High in Windows")
+MACRO_CONFIG_INT(AcOptimizerDiscordNormalPriority, ac_optimizer_discord_normal_priority, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Keep Discord process priority at Normal in Windows when optimizer is active")
 
 // Fast Input Prediction Modes & Amounts
 MACRO_CONFIG_INT(AcConfigVersion, ac_config_version, 0, 0, 10, CFGFLAG_CLIENT | CFGFLAG_SAVE, "AClient default configuration version")

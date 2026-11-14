@@ -1,5 +1,7 @@
 #include "aclient_hud.h"
 
+#include "hud_layout.h"
+
 #include <engine/keys.h>
 #include <engine/textrender.h>
 #include <game/client/gameclient.h>
@@ -21,10 +23,11 @@ void CAClientHud::OnRender()
 		return;
 #endif
 
-	if(g_Config.m_AcHudKeystrokes)
+	const bool HudEditorActive = GameClient()->m_HudEditor.IsActive();
+	if((g_Config.m_AcHudKeystrokes && HudLayout::IsEnabled(HudLayout::MODULE_KEYSTROKES)) || HudEditorActive)
 		RenderKeystrokes();
 
-	if(g_Config.m_AcHudSpeedometer)
+	if((g_Config.m_AcHudSpeedometer && HudLayout::IsEnabled(HudLayout::MODULE_SPEEDOMETER)) || HudEditorActive)
 		RenderSpeedometer();
 }
 
@@ -66,8 +69,10 @@ void CAClientHud::RenderKeystrokes()
 	const float HudWidth = HudHeight * Graphics()->ScreenAspect();
 	Graphics()->MapScreenToSize(HudWidth, HudHeight);
 
-	const float Scale = std::clamp(g_Config.m_AcHudKeystrokesScale / 100.0f, 0.5f, 2.0f);
-	const float Alpha = std::clamp(g_Config.m_AcHudKeystrokesAlpha / 100.0f, 0.2f, 1.0f);
+	const bool HasKeystrokesOverride = HudLayout::HasRuntimeOverride(HudLayout::MODULE_KEYSTROKES);
+	const HudLayout::SModuleLayout KeystrokesLayout = HudLayout::Get(HudLayout::MODULE_KEYSTROKES, HudLayout::CANVAS_WIDTH, HudLayout::CANVAS_HEIGHT);
+	const float Scale = HasKeystrokesOverride ? std::clamp(KeystrokesLayout.m_Scale / 100.0f, 0.5f, 2.0f) : std::clamp(g_Config.m_AcHudKeystrokesScale / 100.0f, 0.5f, 2.0f);
+	const float Alpha = HasKeystrokesOverride ? HudLayout::AlphaFactor(HudLayout::MODULE_KEYSTROKES) : std::clamp(g_Config.m_AcHudKeystrokesAlpha / 100.0f, 0.2f, 1.0f);
 
 	bool PressLeft = false;
 	bool PressRight = false;
@@ -116,8 +121,10 @@ void CAClientHud::RenderKeystrokes()
 		const float TotalW = KeyW * 2.0f + Gap;
 		const float TotalH = KeyH * 3.0f + Gap * 2.0f;
 
-		const float PosX = (g_Config.m_AcHudKeystrokesX / 100.0f) * (HudWidth - TotalW);
-		const float PosY = (g_Config.m_AcHudKeystrokesY / 100.0f) * (HudHeight - TotalH);
+		const HudLayout::SModuleLayout Layout = HudLayout::Get(HudLayout::MODULE_KEYSTROKES, HudWidth, HudHeight);
+		const bool PosOverride = HudLayout::HasPositionOverride(HudLayout::MODULE_KEYSTROKES);
+		const float PosX = PosOverride ? std::clamp(Layout.m_X, 0.0f, std::max(0.0f, HudWidth - TotalW)) : (g_Config.m_AcHudKeystrokesX / 100.0f) * (HudWidth - TotalW);
+		const float PosY = PosOverride ? std::clamp(Layout.m_Y, 0.0f, std::max(0.0f, HudHeight - TotalH)) : (g_Config.m_AcHudKeystrokesY / 100.0f) * (HudHeight - TotalH);
 
 		// Row 0: A, D
 		DrawKey(PosX, PosY, KeyW, KeyH, Rounding, PressLeft, "A", Alpha);
@@ -140,8 +147,10 @@ void CAClientHud::RenderKeystrokes()
 		const float SpaceH = 12.0f * Scale;
 		const float TotalH = KeySize * 2.0f + MouseH + SpaceH + Gap * 3.0f;
 
-		const float PosX = (g_Config.m_AcHudKeystrokesX / 100.0f) * (HudWidth - TotalW);
-		const float PosY = (g_Config.m_AcHudKeystrokesY / 100.0f) * (HudHeight - TotalH);
+		const HudLayout::SModuleLayout Layout = HudLayout::Get(HudLayout::MODULE_KEYSTROKES, HudWidth, HudHeight);
+		const bool PosOverride = HudLayout::HasPositionOverride(HudLayout::MODULE_KEYSTROKES);
+		const float PosX = PosOverride ? std::clamp(Layout.m_X, 0.0f, std::max(0.0f, HudWidth - TotalW)) : (g_Config.m_AcHudKeystrokesX / 100.0f) * (HudWidth - TotalW);
+		const float PosY = PosOverride ? std::clamp(Layout.m_Y, 0.0f, std::max(0.0f, HudHeight - TotalH)) : (g_Config.m_AcHudKeystrokesY / 100.0f) * (HudHeight - TotalH);
 
 		// Row 0: W (Center)
 		DrawKey(PosX + KeySize + Gap, PosY, KeySize, KeySize, Rounding, PressUp, "W", Alpha);
@@ -165,30 +174,39 @@ void CAClientHud::RenderKeystrokes()
 
 void CAClientHud::RenderSpeedometer()
 {
+	const bool HudEditorActive = GameClient()->m_HudEditor.IsActive();
 	int TrackedId = GameClient()->m_Snap.m_LocalClientId;
 	if(GameClient()->m_Snap.m_SpecInfo.m_Active && in_range(GameClient()->m_Snap.m_SpecInfo.m_SpectatorId, 0, MAX_CLIENTS - 1))
 		TrackedId = GameClient()->m_Snap.m_SpecInfo.m_SpectatorId;
 
-	if(!in_range(TrackedId, 0, MAX_CLIENTS - 1) || !GameClient()->m_Snap.m_aCharacters[TrackedId].m_Active)
+	const bool HasChar = in_range(TrackedId, 0, MAX_CLIENTS - 1) && GameClient()->m_Snap.m_aCharacters[TrackedId].m_Active;
+	if(!HasChar && !HudEditorActive)
 		return;
 
 	const float HudHeight = 300.0f;
 	const float HudWidth = HudHeight * Graphics()->ScreenAspect();
 	Graphics()->MapScreenToSize(HudWidth, HudHeight);
 
-	const float Scale = std::clamp(g_Config.m_AcHudSpeedometerScale / 100.0f, 0.5f, 2.0f);
-	const float Alpha = std::clamp(g_Config.m_AcHudSpeedometerAlpha / 100.0f, 0.2f, 1.0f);
+	const HudLayout::SModuleLayout Layout = HudLayout::Get(HudLayout::MODULE_SPEEDOMETER, HudWidth, HudHeight);
+	const bool HasOverride = HudLayout::HasRuntimeOverride(HudLayout::MODULE_SPEEDOMETER);
+	const float Scale = HasOverride ? std::clamp(Layout.m_Scale / 100.0f, 0.5f, 2.0f) : std::clamp(g_Config.m_AcHudSpeedometerScale / 100.0f, 0.5f, 2.0f);
+	const float Alpha = HasOverride ? HudLayout::AlphaFactor(HudLayout::MODULE_SPEEDOMETER) : std::clamp(g_Config.m_AcHudSpeedometerAlpha / 100.0f, 0.2f, 1.0f);
 
-	const CNetObj_Character *pPrev = &GameClient()->m_Snap.m_aCharacters[TrackedId].m_Prev;
-	const CNetObj_Character *pCur = &GameClient()->m_Snap.m_aCharacters[TrackedId].m_Cur;
-	const float IntraTick = Client()->IntraGameTick(g_Config.m_ClDummy);
-	const vec2 Vel = mix(vec2(pPrev->m_VelX, pPrev->m_VelY), vec2(pCur->m_VelX, pCur->m_VelY), IntraTick);
-	const float SpeedUps = length(Vel / 256.0f) * Client()->GameTickSpeed() / 32.0f;
+	float SpeedUps = 0.0f;
+	if(HasChar)
+	{
+		const CNetObj_Character *pPrev = &GameClient()->m_Snap.m_aCharacters[TrackedId].m_Prev;
+		const CNetObj_Character *pCur = &GameClient()->m_Snap.m_aCharacters[TrackedId].m_Cur;
+		const float IntraTick = Client()->IntraGameTick(g_Config.m_ClDummy);
+		const vec2 Vel = mix(vec2(pPrev->m_VelX, pPrev->m_VelY), vec2(pCur->m_VelX, pCur->m_VelY), IntraTick);
+		SpeedUps = length(Vel / 256.0f) * Client()->GameTickSpeed() / 32.0f;
+	}
 
 	const float BoxW = 75.0f * Scale;
 	const float BoxH = 18.0f * Scale;
-	const float PosX = (g_Config.m_AcHudSpeedometerX / 100.0f) * (HudWidth - BoxW);
-	const float PosY = (g_Config.m_AcHudSpeedometerY / 100.0f) * (HudHeight - BoxH);
+	const bool PosOverride = HudLayout::HasPositionOverride(HudLayout::MODULE_SPEEDOMETER);
+	const float PosX = PosOverride ? std::clamp(Layout.m_X, 0.0f, std::max(0.0f, HudWidth - BoxW)) : (g_Config.m_AcHudSpeedometerX / 100.0f) * (HudWidth - BoxW);
+	const float PosY = PosOverride ? std::clamp(Layout.m_Y, 0.0f, std::max(0.0f, HudHeight - BoxH)) : (g_Config.m_AcHudSpeedometerY / 100.0f) * (HudHeight - BoxH);
 
 	CUIRect Rect(PosX, PosY, BoxW, BoxH);
 	Rect.Draw(ColorRGBA(0.08f, 0.10f, 0.14f, Alpha * 0.70f), IGraphics::CORNER_ALL, 4.0f * Scale);

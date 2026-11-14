@@ -85,6 +85,8 @@
 #include "components/tclient/aclient_optimizer.h"
 #include "components/tclient/aclient_auth.h"
 #include "components/tclient/aclient_gameskins.h"
+#include "components/tclient/hud_layout.h"
+#include "components/tclient/hud_editor.h"
 #include "components/tclient/fast_practice.h"
 #include "components/tclient/scripting.h"
 #include "components/tclient/skinprofiles.h"
@@ -241,6 +243,7 @@ public:
 	CAClientHud m_AClientHud;
 	CAClientAuth m_AClientAuth;
 	CAClientGameSkins m_AClientGameSkins;
+	CHudEditor m_HudEditor;
 	CPlayerProfiles m_PlayerProfiles;
 	CFastPractice m_FastPractice;
 	CBindChat m_BindChat;

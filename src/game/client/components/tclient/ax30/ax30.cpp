@@ -10,9 +10,15 @@ namespace aX30
 {
 	namespace
 	{
-		int s_aPingHistory[16] = {0};
+		constexpr int PING_RING_SIZE = 16;
+
+		int s_aPingHistory[PING_RING_SIZE] = {0};
 		int s_PingHistoryIndex = 0;
 		int s_PingHistoryCount = 0;
+
+		// O(1) running accumulators (int64_t prevents any precision drift)
+		int64_t s_PingSum = 0;
+		int64_t s_PingSqSum = 0;
 	}
 
 	vec2 EvaluateTrajectory(vec2 P_prev, vec2 P0, vec2 P1, vec2 P_next, float Fraction)
@@ -39,10 +45,24 @@ namespace aX30
 	{
 		if(PingMs <= 0 || PingMs > 2000)
 			return;
-		s_aPingHistory[s_PingHistoryIndex] = PingMs;
-		s_PingHistoryIndex = (s_PingHistoryIndex + 1) % 16;
-		if(s_PingHistoryCount < 16)
+
+		if(s_PingHistoryCount == PING_RING_SIZE)
+		{
+			const int64_t oldPing = s_aPingHistory[s_PingHistoryIndex];
+			s_PingSum -= oldPing;
+			s_PingSqSum -= oldPing * oldPing;
+		}
+		else
+		{
 			s_PingHistoryCount++;
+		}
+
+		s_aPingHistory[s_PingHistoryIndex] = PingMs;
+		s_PingHistoryIndex = (s_PingHistoryIndex + 1) % PING_RING_SIZE;
+
+		const int64_t newPing = PingMs;
+		s_PingSum += newPing;
+		s_PingSqSum += newPing * newPing;
 	}
 
 	float GetAdaptiveLatencyOffset()
@@ -50,21 +70,11 @@ namespace aX30
 		if(s_PingHistoryCount < 4)
 			return 0.0f;
 
-		float sum = 0.0f;
-		for(int i = 0; i < s_PingHistoryCount; ++i)
-			sum += (float)s_aPingHistory[i];
+		const double inv = 1.0 / (double)s_PingHistoryCount;
+		const double avg = (double)s_PingSum * inv;
+		const double var = ((double)s_PingSqSum * inv) - (avg * avg);
 
-		const float inv = 1.0f / (float)s_PingHistoryCount;
-		const float avg = sum * inv;
-
-		float var_sum = 0.0f;
-		for(int i = 0; i < s_PingHistoryCount; ++i)
-		{
-			const float d = (float)s_aPingHistory[i] - avg;
-			var_sum += d * d;
-		}
-
-		const float delta = std::sqrt(std::max(0.0f, var_sum * inv));
+		const float delta = (float)std::sqrt(std::max(0.0, var));
 		if(std::isnan(delta) || std::isinf(delta))
 			return 0.0f;
 
@@ -87,18 +97,24 @@ namespace aX30v2
 		float s_aInputMarginMs[TIMING_RING_SIZE] = {0.0f};
 		int s_TimingIndex = 0;
 		int s_TimingCount = 0;
+		double s_RttSum = 0.0;
+		double s_RttSqSum = 0.0;
+		int s_TightMarginCount = 0;
 
 		// High-resolution snapshot inter-arrival jitter (~25-50 Hz)
 		float s_aSnapJitterMs[TIMING_RING_SIZE] = {0.0f};
 		int s_SnapJitterIndex = 0;
 		int s_SnapJitterCount = 0;
 		int64_t s_LastSnapTicks = 0;
+		double s_SnapJitterSqSum = 0.0;
 
 		// Deduplicated scoreboard ping fallback when NETMSG_INPUTTIMING is unavailable
 		int s_aPingHistory[PING_FALLBACK_SIZE] = {0};
 		int s_PingHistoryIndex = 0;
 		int s_PingHistoryCount = 0;
 		int s_LastPingSample = -1;
+		int64_t s_PingSum = 0;
+		int64_t s_PingSqSum = 0;
 
 		// Frame-rate-independent smoothed adaptive offset (ticks)
 		float s_TargetOffsetTicks = 0.0f;
@@ -156,6 +172,7 @@ namespace aX30v2
 			return ((c3 * t + c2) * t + c1) * t + c0;
 		}
 
+		// O(1) constant-time target offset evaluation
 		float ComputeTargetOffsetTicks()
 		{
 			float rttStdMs = 0.0f;
@@ -165,32 +182,19 @@ namespace aX30v2
 			if(s_TimingCount >= 6)
 			{
 				hasHighResTiming = true;
-				float meanRtt = 0.0f;
-				for(int i = 0; i < s_TimingCount; ++i)
-					meanRtt += s_aRttMs[i];
-				meanRtt /= (float)s_TimingCount;
+				const double invCount = 1.0 / (double)s_TimingCount;
+				const double meanRtt = s_RttSum * invCount;
+				const double varRtt = (s_RttSqSum * invCount) - (meanRtt * meanRtt);
 
-				float varRtt = 0.0f;
-				int tightCount = 0;
-				for(int i = 0; i < s_TimingCount; ++i)
-				{
-					const float diff = s_aRttMs[i] - meanRtt;
-					varRtt += diff * diff;
-					// Margin < 4ms means our input arrived dangerously close to or after the server tick
-					if(s_aInputMarginMs[i] < 4.0f)
-						tightCount++;
-				}
-				rttStdMs = std::sqrt(std::max(0.0f, varRtt / (float)s_TimingCount));
-				latePressure = (float)tightCount / (float)s_TimingCount;
+				rttStdMs = (float)std::sqrt(std::max(0.0, varRtt));
+				latePressure = (float)s_TightMarginCount / (float)s_TimingCount;
 			}
 
 			float snapStdMs = 0.0f;
 			if(s_SnapJitterCount >= 6)
 			{
-				float varSnap = 0.0f;
-				for(int i = 0; i < s_SnapJitterCount; ++i)
-					varSnap += s_aSnapJitterMs[i] * s_aSnapJitterMs[i];
-				snapStdMs = std::sqrt(std::max(0.0f, varSnap / (float)s_SnapJitterCount));
+				const double varSnap = s_SnapJitterSqSum / (double)s_SnapJitterCount;
+				snapStdMs = (float)std::sqrt(std::max(0.0, varSnap));
 			}
 
 			if(hasHighResTiming || s_SnapJitterCount >= 6)
@@ -205,25 +209,15 @@ namespace aX30v2
 				return std::clamp(target, 0.0f, 0.35f);
 			}
 
-			// Fallback to deduplicated scoreboard ping variance
+			// Fallback to O(1) deduplicated scoreboard ping variance
 			if(s_PingHistoryCount < 4)
 				return 0.0f;
 
-			float sum = 0.0f;
-			for(int i = 0; i < s_PingHistoryCount; ++i)
-				sum += (float)s_aPingHistory[i];
+			const double inv = 1.0 / (double)s_PingHistoryCount;
+			const double avg = (double)s_PingSum * inv;
+			const double var = ((double)s_PingSqSum * inv) - (avg * avg);
 
-			const float inv = 1.0f / (float)s_PingHistoryCount;
-			const float avg = sum * inv;
-
-			float varSum = 0.0f;
-			for(int i = 0; i < s_PingHistoryCount; ++i)
-			{
-				const float d = (float)s_aPingHistory[i] - avg;
-				varSum += d * d;
-			}
-
-			const float delta = std::sqrt(std::max(0.0f, varSum * inv));
+			const float delta = (float)std::sqrt(std::max(0.0, var));
 			if(std::isnan(delta) || std::isinf(delta))
 				return 0.0f;
 
@@ -235,12 +229,21 @@ namespace aX30v2
 	{
 		s_TimingIndex = 0;
 		s_TimingCount = 0;
+		s_RttSum = 0.0;
+		s_RttSqSum = 0.0;
+		s_TightMarginCount = 0;
+
 		s_SnapJitterIndex = 0;
 		s_SnapJitterCount = 0;
 		s_LastSnapTicks = 0;
+		s_SnapJitterSqSum = 0.0;
+
 		s_PingHistoryIndex = 0;
 		s_PingHistoryCount = 0;
 		s_LastPingSample = -1;
+		s_PingSum = 0;
+		s_PingSqSum = 0;
+
 		s_TargetOffsetTicks = 0.0f;
 		s_SmoothedOffsetTicks = 0.0f;
 		s_OffsetInitialized = false;
@@ -283,11 +286,30 @@ namespace aX30v2
 		if(std::isnan(InputMarginMs) || std::isinf(InputMarginMs))
 			InputMarginMs = 0.0f;
 
-		s_aRttMs[s_TimingIndex] = RttMs;
-		s_aInputMarginMs[s_TimingIndex] = std::clamp(InputMarginMs, -500.0f, 500.0f);
-		s_TimingIndex = (s_TimingIndex + 1) % TIMING_RING_SIZE;
-		if(s_TimingCount < TIMING_RING_SIZE)
+		const float clampedMargin = std::clamp(InputMarginMs, -500.0f, 500.0f);
+
+		if(s_TimingCount == TIMING_RING_SIZE)
+		{
+			const double oldRtt = (double)s_aRttMs[s_TimingIndex];
+			s_RttSum -= oldRtt;
+			s_RttSqSum -= oldRtt * oldRtt;
+			if(s_aInputMarginMs[s_TimingIndex] < 4.0f)
+				s_TightMarginCount--;
+		}
+		else
+		{
 			s_TimingCount++;
+		}
+
+		s_aRttMs[s_TimingIndex] = RttMs;
+		s_aInputMarginMs[s_TimingIndex] = clampedMargin;
+		s_TimingIndex = (s_TimingIndex + 1) % TIMING_RING_SIZE;
+
+		const double newRtt = (double)RttMs;
+		s_RttSum += newRtt;
+		s_RttSqSum += newRtt * newRtt;
+		if(clampedMargin < 4.0f)
+			s_TightMarginCount++;
 
 		s_TargetOffsetTicks = ComputeTargetOffsetTicks();
 	}
@@ -304,10 +326,22 @@ namespace aX30v2
 			const float jitterMs = dtMs - expectedMs;
 			if(!std::isnan(jitterMs) && !std::isinf(jitterMs) && std::fabs(jitterMs) < 250.0f)
 			{
+				if(s_SnapJitterCount == TIMING_RING_SIZE)
+				{
+					const double oldJitter = (double)s_aSnapJitterMs[s_SnapJitterIndex];
+					s_SnapJitterSqSum -= oldJitter * oldJitter;
+				}
+				else
+				{
+					s_SnapJitterCount++;
+				}
+
 				s_aSnapJitterMs[s_SnapJitterIndex] = jitterMs;
 				s_SnapJitterIndex = (s_SnapJitterIndex + 1) % TIMING_RING_SIZE;
-				if(s_SnapJitterCount < TIMING_RING_SIZE)
-					s_SnapJitterCount++;
+
+				const double newJitter = (double)jitterMs;
+				s_SnapJitterSqSum += newJitter * newJitter;
+
 				s_TargetOffsetTicks = ComputeTargetOffsetTicks();
 			}
 		}
@@ -324,10 +358,24 @@ namespace aX30v2
 			return;
 
 		s_LastPingSample = PingMs;
+
+		if(s_PingHistoryCount == PING_FALLBACK_SIZE)
+		{
+			const int64_t oldPing = s_aPingHistory[s_PingHistoryIndex];
+			s_PingSum -= oldPing;
+			s_PingSqSum -= oldPing * oldPing;
+		}
+		else
+		{
+			s_PingHistoryCount++;
+		}
+
 		s_aPingHistory[s_PingHistoryIndex] = PingMs;
 		s_PingHistoryIndex = (s_PingHistoryIndex + 1) % PING_FALLBACK_SIZE;
-		if(s_PingHistoryCount < PING_FALLBACK_SIZE)
-			s_PingHistoryCount++;
+
+		const int64_t newPing = PingMs;
+		s_PingSum += newPing;
+		s_PingSqSum += newPing * newPing;
 
 		s_TargetOffsetTicks = ComputeTargetOffsetTicks();
 	}
