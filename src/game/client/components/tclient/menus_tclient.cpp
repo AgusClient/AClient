@@ -4530,7 +4530,22 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	Column.HSplitTop(Margin, nullptr, &Column);
 	s_SectionBoxesAc.push_back(Column);
 	Column.HSplitTop(HeadlineHeight, &Label, &Column);
-	Ui()->DoLabel(&Label, TCLocalize("Keystrokes HUD"), HeadlineFontSize, TEXTALIGN_ML);
+	{
+		CUIRect HeaderLabel = Label;
+		CUIRect BetaBadge;
+		HeaderLabel.VSplitRight(44.0f, &HeaderLabel, &BetaBadge);
+		Ui()->DoLabel(&HeaderLabel, TCLocalize("Keystrokes HUD"), HeadlineFontSize, TEXTALIGN_ML);
+
+		const float BadgeHeight = std::min(16.0f, BetaBadge.h);
+		BetaBadge.HMargin((BetaBadge.h - BadgeHeight) * 0.5f, &BetaBadge);
+		BetaBadge.Draw(ColorRGBA(0.95f, 0.55f, 0.15f, 0.75f), IGraphics::CORNER_ALL, 4.0f);
+		CUIRect BetaInner = BetaBadge;
+		BetaInner.Margin(1.0f, &BetaInner);
+		BetaInner.Draw(ColorRGBA(0.12f, 0.13f, 0.16f, 0.95f), IGraphics::CORNER_ALL, 3.0f);
+		TextRender()->TextColor(ColorRGBA(1.0f, 0.68f, 0.22f, 1.0f));
+		Ui()->DoLabel(&BetaInner, "BETA", 10.0f, TEXTALIGN_MC);
+		TextRender()->TextColor(ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f));
+	}
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcHudKeystrokes, TCLocalize("Enable Keystrokes overlay"), &g_Config.m_AcHudKeystrokes, &Column, LineSize);
@@ -5079,7 +5094,22 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 	s_SectionBoxesAc.push_back(Column);
 	Column.HSplitTop(HeadlineHeight, &Label, &Column);
-	Ui()->DoLabel(&Label, TCLocalize("Motion Blur"), HeadlineFontSize, TEXTALIGN_ML);
+	{
+		CUIRect HeaderLabel = Label;
+		CUIRect BetaBadge;
+		HeaderLabel.VSplitRight(44.0f, &HeaderLabel, &BetaBadge);
+		Ui()->DoLabel(&HeaderLabel, TCLocalize("Motion Blur"), HeadlineFontSize, TEXTALIGN_ML);
+
+		const float BadgeHeight = std::min(16.0f, BetaBadge.h);
+		BetaBadge.HMargin((BetaBadge.h - BadgeHeight) * 0.5f, &BetaBadge);
+		BetaBadge.Draw(ColorRGBA(0.95f, 0.55f, 0.15f, 0.75f), IGraphics::CORNER_ALL, 4.0f);
+		CUIRect BetaInner = BetaBadge;
+		BetaInner.Margin(1.0f, &BetaInner);
+		BetaInner.Draw(ColorRGBA(0.12f, 0.13f, 0.16f, 0.95f), IGraphics::CORNER_ALL, 3.0f);
+		TextRender()->TextColor(ColorRGBA(1.0f, 0.68f, 0.22f, 1.0f));
+		Ui()->DoLabel(&BetaInner, "BETA", 10.0f, TEXTALIGN_MC);
+		TextRender()->TextColor(ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f));
+	}
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
 	DoCheckboxWithHelp(&g_Config.m_AcMotionBlur, TCLocalize("Activar Motion Blur"), TCLocalize("Suaviza el movimiento mezclando el frame anterior con el actual (OpenGL 3.3 y Vulkan)."), &g_Config.m_AcMotionBlur, &Column, LineSize);
@@ -5097,7 +5127,22 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 	s_SectionBoxesAc.push_back(Column);
 	Column.HSplitTop(HeadlineHeight, &Label, &Column);
-	Ui()->DoLabel(&Label, TCLocalize("Keystrokes Separado (Teclado + Mouse)"), HeadlineFontSize, TEXTALIGN_ML);
+	{
+		CUIRect HeaderLabel = Label;
+		CUIRect BetaBadge;
+		HeaderLabel.VSplitRight(44.0f, &HeaderLabel, &BetaBadge);
+		Ui()->DoLabel(&HeaderLabel, TCLocalize("Keystrokes Separado (Teclado + Mouse)"), HeadlineFontSize, TEXTALIGN_ML);
+
+		const float BadgeHeight = std::min(16.0f, BetaBadge.h);
+		BetaBadge.HMargin((BetaBadge.h - BadgeHeight) * 0.5f, &BetaBadge);
+		BetaBadge.Draw(ColorRGBA(0.95f, 0.55f, 0.15f, 0.75f), IGraphics::CORNER_ALL, 4.0f);
+		CUIRect BetaInner = BetaBadge;
+		BetaInner.Margin(1.0f, &BetaInner);
+		BetaInner.Draw(ColorRGBA(0.12f, 0.13f, 0.16f, 0.95f), IGraphics::CORNER_ALL, 3.0f);
+		TextRender()->TextColor(ColorRGBA(1.0f, 0.68f, 0.22f, 1.0f));
+		Ui()->DoLabel(&BetaInner, "BETA", 10.0f, TEXTALIGN_MC);
+		TextRender()->TextColor(ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f));
+	}
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
 	{

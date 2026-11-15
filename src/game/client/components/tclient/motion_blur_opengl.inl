@@ -56,23 +56,23 @@ void CCommandProcessorFragment_OpenGL3_3::RenderMotionBlurGL()
 	if(!State.m_HistoryValid)
 	{
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, State.m_TexWidth, State.m_TexHeight);
+		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_ViewportX, m_ViewportY, State.m_TexWidth, State.m_TexHeight);
 		glBindTexture(GL_TEXTURE_2D, State.m_aTexture[WriteIndex]);
-		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, State.m_TexWidth, State.m_TexHeight);
+		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_ViewportX, m_ViewportY, State.m_TexWidth, State.m_TexHeight);
 		glBindTexture(GL_TEXTURE_2D, 0);
 		State.m_HistoryValid = true;
 		return;
 	}
 
 	const float StrengthT = g_Config.m_AcMotionBlurStrength / 95.0f;
-	const float RefAlpha60 = StrengthT * StrengthT * 0.58f;
+	const float RefAlpha60 = std::clamp(StrengthT * 0.85f, 0.0f, 0.92f);
 	const float FrameTime = AcMotionBlurAdvanceFrameTime(State.m_LastTime);
 	const float BlendAlpha = AcMotionBlurPersistence(RefAlpha60, FrameTime);
 	if(BlendAlpha <= 0.0f)
 		return;
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glViewport(0, 0, m_CanvasWidth, m_CanvasHeight);
+	glViewport(m_ViewportX, m_ViewportY, m_CanvasWidth, m_CanvasHeight);
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -123,7 +123,7 @@ void CCommandProcessorFragment_OpenGL3_3::RenderMotionBlurGL()
 	m_LastStreamBuffer = (m_LastStreamBuffer + 1 >= MAX_STREAM_BUFFER_COUNT ? 0 : m_LastStreamBuffer + 1);
 
 	glBindTexture(GL_TEXTURE_2D, State.m_aTexture[WriteIndex]);
-	glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, State.m_TexWidth, State.m_TexHeight);
+	glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_ViewportX, m_ViewportY, State.m_TexWidth, State.m_TexHeight);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	State.m_ReadIndex = WriteIndex;
 

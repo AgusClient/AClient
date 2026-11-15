@@ -2325,6 +2325,11 @@ protected:
 		}
 
 		const bool FrameBlendEnabled = AcMotionBlurEnabled();
+		if(FrameBlendEnabled && m_vFrameBlendImages.empty())
+		{
+			if(!CreateFrameBlendImages())
+				return false;
+		}
 		if(FrameBlendEnabled != m_FrameBlendEnabledLastFrame)
 		{
 			ResetFrameBlendHistory();
@@ -2334,6 +2339,9 @@ protected:
 			return false;
 
 		vkCmdEndRenderPass(CommandBuffer);
+
+		if(FrameBlendEnabled)
+			CopyFrameToFrameBlendHistory(CommandBuffer);
 
 		if(vkEndCommandBuffer(CommandBuffer) != VK_SUCCESS)
 		{
@@ -5461,6 +5469,16 @@ public:
 					return false;
 				}
 			}
+
+			m_vFrameBlendCommandBuffers.resize(m_SwapChainImageCount);
+			AllocInfo.commandPool = m_vCommandPools[0];
+			AllocInfo.commandBufferCount = (uint32_t)m_vFrameBlendCommandBuffers.size();
+			AllocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+			if(vkAllocateCommandBuffers(m_VKDevice, &AllocInfo, m_vFrameBlendCommandBuffers.data()) != VK_SUCCESS)
+			{
+				SetError(EGfxErrorType::GFX_ERROR_TYPE_INIT, "Allocating frame blend command buffers failed.");
+				return false;
+			}
 		}
 
 		return true;
@@ -5468,6 +5486,12 @@ public:
 
 	void DestroyCommandBuffer()
 	{
+		if(!m_vFrameBlendCommandBuffers.empty())
+		{
+			vkFreeCommandBuffers(m_VKDevice, m_vCommandPools[0], static_cast<uint32_t>(m_vFrameBlendCommandBuffers.size()), m_vFrameBlendCommandBuffers.data());
+			m_vFrameBlendCommandBuffers.clear();
+		}
+
 		if(m_ThreadCount > 1)
 		{
 			size_t Count = 0;
