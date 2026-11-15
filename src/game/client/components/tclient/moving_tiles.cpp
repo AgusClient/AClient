@@ -19,11 +19,11 @@
 #include <cmath>
 #include <iterator>
 
-inline static void RotatePoint(const vec2 &Center, vec2 &Point, float Rotation)
+inline static void RotatePoint(vec2 &Point, const vec2 &Center, float CosR, float SinR)
 {
-	const vec2 RelativePos = Point - Center;
-	Point.x = RelativePos.x * std::cos(Rotation) - RelativePos.y * std::sin(Rotation) + Center.x;
-	Point.y = RelativePos.x * std::sin(Rotation) + RelativePos.y * std::cos(Rotation) + Center.y;
+	const vec2 d = Point - Center;
+	Point.x = d.x * CosR - d.y * SinR + Center.x;
+	Point.y = d.x * SinR + d.y * CosR + Center.y;
 }
 
 inline static bool QuadName(const int *pInts, size_t NumInts, char *pStr, size_t StrSize)
@@ -207,6 +207,8 @@ void CMovingTiles::OnRender()
 			continue;
 		}
 
+		const CScreenRect ScreenRect = Graphics()->GetScreen();
+
 		if(pLayer->m_Image >= 0 && pLayer->m_Image < GameClient()->m_MapImages.Num())
 			Graphics()->TextureSet(GameClient()->m_MapImages.Get(pLayer->m_Image));
 		else
@@ -226,23 +228,11 @@ void CMovingTiles::OnRender()
 			if(Color.a <= 0.0f)
 				continue;
 
-			Graphics()->QuadsSetSubsetFree(
-				fx2f(pQuad->m_aTexcoords[0].x), fx2f(pQuad->m_aTexcoords[0].y),
-				fx2f(pQuad->m_aTexcoords[1].x), fx2f(pQuad->m_aTexcoords[1].y),
-				fx2f(pQuad->m_aTexcoords[2].x), fx2f(pQuad->m_aTexcoords[2].y),
-				fx2f(pQuad->m_aTexcoords[3].x), fx2f(pQuad->m_aTexcoords[3].y));
-
 			ColorRGBA Position(0.0f, 0.0f, 0.0f, 0.0f);
 			m_EnvEvaluator.EnvelopeEval(pQuad->m_PosEnvOffset, pQuad->m_PosEnv, Position, 3);
 
 			const vec2 Offset(Position.r, Position.g);
 			const float Rotation = Position.b / 180.0f * pi + QuadData.m_Angle;
-
-			Graphics()->SetColor4(
-				ColorRGBA(pQuad->m_aColors[0].r, pQuad->m_aColors[0].g, pQuad->m_aColors[0].b, pQuad->m_aColors[0].a).Multiply(Color).Multiply(ColorConv),
-				ColorRGBA(pQuad->m_aColors[1].r, pQuad->m_aColors[1].g, pQuad->m_aColors[1].b, pQuad->m_aColors[1].a).Multiply(Color).Multiply(ColorConv),
-				ColorRGBA(pQuad->m_aColors[3].r, pQuad->m_aColors[3].g, pQuad->m_aColors[3].b, pQuad->m_aColors[3].a).Multiply(Color).Multiply(ColorConv),
-				ColorRGBA(pQuad->m_aColors[2].r, pQuad->m_aColors[2].g, pQuad->m_aColors[2].b, pQuad->m_aColors[2].a).Multiply(Color).Multiply(ColorConv));
 
 			vec2 aPoints[4] = {
 				QuadData.m_Pos[0],
@@ -251,17 +241,42 @@ void CMovingTiles::OnRender()
 				QuadData.m_Pos[3],
 			};
 
-			if(Rotation != 0.0f)
+			if(std::abs(Rotation) >= 0.0001f)
 			{
+				const float CosR = std::cos(Rotation);
+				const float SinR = std::sin(Rotation);
 				for(vec2 &Point : aPoints)
-					RotatePoint(QuadData.m_Pos[4], Point, Rotation);
+					RotatePoint(Point, QuadData.m_Pos[4], CosR, SinR);
 			}
 
-			const IGraphics::CFreeformItem Freeform(
-				aPoints[0] + Offset,
-				aPoints[1] + Offset,
-				aPoints[2] + Offset,
-				aPoints[3] + Offset);
+			const vec2 P0 = aPoints[0] + Offset;
+			const vec2 P1 = aPoints[1] + Offset;
+			const vec2 P2 = aPoints[2] + Offset;
+			const vec2 P3 = aPoints[3] + Offset;
+
+			const float MinX = std::min({P0.x, P1.x, P2.x, P3.x});
+			const float MaxX = std::max({P0.x, P1.x, P2.x, P3.x});
+			const float MinY = std::min({P0.y, P1.y, P2.y, P3.y});
+			const float MaxY = std::max({P0.y, P1.y, P2.y, P3.y});
+			if(MaxX < ScreenRect.m_TopLeft.x || MinX > ScreenRect.m_BottomRight.x ||
+				MaxY < ScreenRect.m_TopLeft.y || MinY > ScreenRect.m_BottomRight.y)
+			{
+				continue;
+			}
+
+			Graphics()->QuadsSetSubsetFree(
+				fx2f(pQuad->m_aTexcoords[0].x), fx2f(pQuad->m_aTexcoords[0].y),
+				fx2f(pQuad->m_aTexcoords[1].x), fx2f(pQuad->m_aTexcoords[1].y),
+				fx2f(pQuad->m_aTexcoords[2].x), fx2f(pQuad->m_aTexcoords[2].y),
+				fx2f(pQuad->m_aTexcoords[3].x), fx2f(pQuad->m_aTexcoords[3].y));
+
+			Graphics()->SetColor4(
+				ColorRGBA(pQuad->m_aColors[0].r, pQuad->m_aColors[0].g, pQuad->m_aColors[0].b, pQuad->m_aColors[0].a).Multiply(Color).Multiply(ColorConv),
+				ColorRGBA(pQuad->m_aColors[1].r, pQuad->m_aColors[1].g, pQuad->m_aColors[1].b, pQuad->m_aColors[1].a).Multiply(Color).Multiply(ColorConv),
+				ColorRGBA(pQuad->m_aColors[3].r, pQuad->m_aColors[3].g, pQuad->m_aColors[3].b, pQuad->m_aColors[3].a).Multiply(Color).Multiply(ColorConv),
+				ColorRGBA(pQuad->m_aColors[2].r, pQuad->m_aColors[2].g, pQuad->m_aColors[2].b, pQuad->m_aColors[2].a).Multiply(Color).Multiply(ColorConv));
+
+			const IGraphics::CFreeformItem Freeform(P0, P1, P2, P3);
 			Graphics()->QuadsDrawFreeform(&Freeform, 1);
 		}
 

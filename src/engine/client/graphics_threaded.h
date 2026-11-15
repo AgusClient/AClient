@@ -126,6 +126,7 @@ public:
 		CMD_TEXT_TEXTURES_CREATE,
 		CMD_TEXT_TEXTURES_DESTROY,
 		CMD_TEXT_TEXTURE_UPDATE,
+		CMD_TEXTURE_UPDATE,
 
 		// rendering
 		CMD_CLEAR,
@@ -574,6 +575,20 @@ public:
 		uint8_t *m_pData; // will be freed by the command processor
 	};
 
+	struct SCommand_Texture_Update : public SCommand
+	{
+		SCommand_Texture_Update() :
+			SCommand(CMD_TEXTURE_UPDATE) {}
+
+		int m_Slot;
+
+		int m_X;
+		int m_Y;
+		size_t m_Width;
+		size_t m_Height;
+		uint8_t *m_pData; // will be freed by the command processor
+	};
+
 	struct SCommand_WindowCreateNtf : public CCommandBuffer::SCommand
 	{
 		SCommand_WindowCreateNtf() :
@@ -940,6 +955,7 @@ public:
 	void LoadTextureAddWarning(size_t Width, size_t Height, int Flags, const char *pTexName);
 	IGraphics::CTextureHandle LoadTextureRaw(const CImageInfo &Image, int Flags, const char *pTexName = nullptr) override;
 	IGraphics::CTextureHandle LoadTextureRawMove(CImageInfo &Image, int Flags, const char *pTexName = nullptr) override;
+	bool UpdateTextureRaw(CTextureHandle TextureId, int x, int y, size_t Width, size_t Height, uint8_t *pData, bool IsMovedPointer) override;
 
 	bool LoadTextTextures(size_t Width, size_t Height, CTextureHandle &TextTexture, CTextureHandle &TextOutlineTexture, uint8_t *pTextData, uint8_t *pTextOutlineData) override;
 	bool UnloadTextTextures(CTextureHandle &TextTexture, CTextureHandle &TextOutlineTexture) override;

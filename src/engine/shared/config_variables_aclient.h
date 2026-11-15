@@ -202,6 +202,7 @@ MACRO_CONFIG_COL(AcThemeColor, ac_theme_color, 12050856, CFGFLAG_CLIENT | CFGFLA
 MACRO_CONFIG_COL(AcColorX, ac_color_x, 12050856, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Color de la marca X en opciones ON/OFF")
 MACRO_CONFIG_COL(AcColorBorder, ac_color_border, 12050856, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Color de los bordes del bloque/tarjeta")
 MACRO_CONFIG_COL(AcColorBg, ac_color_bg, 3215086858, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color del fondo del bloque/tarjeta")
+MACRO_CONFIG_COL(AcColorDetails, ac_color_details, 12050856, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Color de detalles y subrayado de pestañas")
 // Tee Skin Downloads
 MACRO_CONFIG_INT(AcDownloadSkinsFrozen, ac_download_skins_frozen, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Descargar skins del tee solo cuando estoy freezeado")
 MACRO_CONFIG_INT(AcShowInMenuIcon, ac_show_in_menu_icon, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mostrar logo/icono de opciones arriba del tee al presionar escape o abrir el menu")
@@ -227,4 +228,40 @@ MACRO_CONFIG_INT(AcHookedTileSpeed, ac_hooked_tile_speed, 25, 1, 100, CFGFLAG_CL
 MACRO_CONFIG_INT(AcHookedTileOthers, ac_hooked_tile_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mostrar iluminacion en bloques hookeados por otros jugadores")
 MACRO_CONFIG_INT(AcShowRemoteEntitiesOnHook, ac_show_remote_entities_on_hook, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mostrar entidades remotas (Supabase) en bloques hookeados por otros jugadores")
 MACRO_CONFIG_STR(ClDummyAssetEntities, cl_dummy_asset_entities, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Custom entities pack for dummy player (used for testing hooked tile replacement)")
+
+// Media Background
+MACRO_CONFIG_INT(AcMenuMediaBackground, ac_menu_media_background, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable custom media background in offline menus")
+MACRO_CONFIG_INT(AcGameMediaBackground, ac_game_media_background, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable custom media background in game background rendering")
+MACRO_CONFIG_STR(AcMenuMediaBackgroundPath, ac_menu_media_background_path, IO_MAX_PATH_LENGTH, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Path to the custom menu media background file")
+MACRO_CONFIG_INT(AcGameMediaBackgroundOffset, ac_game_media_background_offset, 0, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How much the custom media background is fixed to the map when rendering the in-game background")
+
+// Text Gradient
+MACRO_CONFIG_INT(AcNameplateGradient, ac_nameplate_gradient, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Gradient player nicknames")
+MACRO_CONFIG_INT(AcNameplateGradientClan, ac_nameplate_gradient_clan, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Gradient player clan tags")
+MACRO_CONFIG_INT(AcNameplateGradientMode, ac_nameplate_gradient_mode, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Gradient mode (0 = skin colors, 1 = custom, 2 = rainbow)")
+MACRO_CONFIG_INT(AcNameplateGradientColorCount, ac_nameplate_gradient_color_count, 2, 2, 4, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Number of custom gradient colors")
+MACRO_CONFIG_COL(AcNameplateGradientColor1, ac_nameplate_gradient_color1, 0xFF3366FFU, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Custom gradient color 1")
+MACRO_CONFIG_COL(AcNameplateGradientColor2, ac_nameplate_gradient_color2, 0xFF66CCFFU, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Custom gradient color 2")
+MACRO_CONFIG_COL(AcNameplateGradientColor3, ac_nameplate_gradient_color3, 0xFF33FF99U, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Custom gradient color 3")
+MACRO_CONFIG_COL(AcNameplateGradientColor4, ac_nameplate_gradient_color4, 0xFFFFCC33U, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Custom gradient color 4")
+MACRO_CONFIG_INT(AcNameplateGradientSkin, ac_nameplate_gradient_skin, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply gradient colors to player skin body and feet")
+MACRO_CONFIG_INT(AcNameplateGradientEverything, ac_nameplate_gradient_everything, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply gradient to all rendered text")
+MACRO_CONFIG_INT(AcNameplateGradientAnimateSpeed, ac_nameplate_gradient_animate_speed, 35, 1, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Speed of the animated gradient sweep, in percent")
+MACRO_CONFIG_INT(AcNameplateGradientTarget, ac_nameplate_gradient_target, 2, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Who the gradient applies to (0 = own, 1 = others, 2 = all)")
+
+// Motion Blur
+MACRO_CONFIG_INT(AcMotionBlur, ac_motion_blur, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable motion blur via previous-frame blending")
+MACRO_CONFIG_INT(AcMotionBlurStrength, ac_motion_blur_strength, 50, 0, 95, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Strength of motion blur frame blending (0-95%)")
+
+// Keystrokes (Separated Keyboard + Mouse)
+MACRO_CONFIG_INT(AcKeystrokesStyle, ac_keystrokes_style, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Keystrokes style (0 = Classic, 1 = Minecraft)")
+MACRO_CONFIG_INT(AcKeystrokesKeyboard, ac_keystrokes_keyboard, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show keyboard keystrokes HUD")
+MACRO_CONFIG_INT(AcKeystrokesKeyboardPreset, ac_keystrokes_keyboard_preset, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Keyboard keystrokes preset (0 = wasd-minimal, 1 = wasd-full, 2 = micro)")
+MACRO_CONFIG_INT(AcKeystrokesMouse, ac_keystrokes_mouse, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show mouse keystrokes HUD")
+MACRO_CONFIG_INT(AcKeystrokesMousePreset, ac_keystrokes_mouse_preset, 1, 1, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mouse keystrokes preset (1 = mouse-arrow, 2 = mouse-dot-dot, 3 = mouse-nothing)")
+MACRO_CONFIG_INT(AcKeystrokesMcLayout, ac_keystrokes_mc_layout, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Minecraft keystrokes layout (0 = Full, 1 = Only A/D)")
+MACRO_CONFIG_INT(AcKeystrokesMcShowLmb, ac_keystrokes_mc_show_lmb, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show LMB in Minecraft keystrokes")
+MACRO_CONFIG_INT(AcKeystrokesMcShowRmb, ac_keystrokes_mc_show_rmb, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show RMB in Minecraft keystrokes")
+MACRO_CONFIG_INT(AcKeystrokesMcShowSpace, ac_keystrokes_mc_show_space, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show Space in Minecraft keystrokes")
+MACRO_CONFIG_INT(AcKeystrokesMcPressedOpacity, ac_keystrokes_mc_pressed_opacity, 92, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Pressed key opacity in Minecraft keystrokes")
 

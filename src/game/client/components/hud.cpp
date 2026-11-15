@@ -719,18 +719,26 @@ void CHud::RenderTextInfo()
 		}
 
 		// Notify when last
-		if(g_Config.m_TcNotifyWhenLast && GameClient()->m_GameInfo.m_EntitiesDDRace)
+		const bool NotifyLastEnabled = HudLayout::IsEnabled(HudLayout::MODULE_NOTIFY_LAST);
+		const bool ShowNotifyLast = (NotifyLastEnabled && g_Config.m_TcNotifyWhenLast && GameClient()->m_GameInfo.m_EntitiesDDRace && NumInTeam > 1 && NumInTeam - NumFrozen == 1) || HudEditorActiveFrozen;
+		if(ShowNotifyLast)
 		{
-			if(NumInTeam > 1 && NumInTeam - NumFrozen == 1)
-			{
-				TextRender()->TextColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcNotifyWhenLastColor)));
-				float FontSize = g_Config.m_TcNotifyWhenLastSize;
-				float XPos = std::clamp((g_Config.m_TcNotifyWhenLastX / 100.0f) * m_Width, 1.0f, m_Width - FontSize);
-				float YPos = std::clamp((g_Config.m_TcNotifyWhenLastY / 100.0f) * m_Height, 1.0f, m_Height - FontSize);
+			const auto LastLayout = HudLayout::Get(HudLayout::MODULE_NOTIFY_LAST, m_Width, m_Height);
+			const bool LastPosOverride = HudLayout::HasPositionOverride(HudLayout::MODULE_NOTIFY_LAST);
+			const float LastScale = HudLayout::HasRuntimeOverride(HudLayout::MODULE_NOTIFY_LAST) ? std::clamp(LastLayout.m_Scale / 100.0f, 0.25f, 3.0f) : 1.0f;
+			const float LastAlpha = HudLayout::AlphaFactor(HudLayout::MODULE_NOTIFY_LAST);
+			const float FontSize = std::clamp(g_Config.m_TcNotifyWhenLastSize * LastScale, 1.0f, 50.0f * LastScale);
+			const char *pLastText = g_Config.m_TcNotifyWhenLastText[0] != '\0' ? g_Config.m_TcNotifyWhenLastText : "Last!";
+			const float TextW = TextRender()->TextWidth(FontSize, pLastText);
 
-				TextRender()->Text(XPos, YPos, FontSize, g_Config.m_TcNotifyWhenLastText, -1.0f);
-				TextRender()->TextColor(TextRender()->DefaultTextColor());
-			}
+			float XPos = LastPosOverride ? LastLayout.m_X : (g_Config.m_TcNotifyWhenLastX / 100.0f) * m_Width;
+			float YPos = LastPosOverride ? LastLayout.m_Y : (g_Config.m_TcNotifyWhenLastY / 100.0f) * m_Height;
+			XPos = std::clamp(XPos, 1.0f, std::max(1.0f, m_Width - std::max(TextW, FontSize)));
+			YPos = std::clamp(YPos, 1.0f, std::max(1.0f, m_Height - FontSize));
+
+			TextRender()->TextColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcNotifyWhenLastColor)).WithMultipliedAlpha(LastAlpha));
+			TextRender()->Text(XPos, YPos, FontSize, pLastText, -1.0f);
+			TextRender()->TextColor(TextRender()->DefaultTextColor());
 		}
 		// Show freeze text
 		char aBuf[64];

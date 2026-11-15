@@ -26,6 +26,8 @@
 
 using namespace std::chrono_literals;
 
+extern void (*ACGradient_ApplyEverythingHook)(CTextCursor *pCursor, const char *pText, int Length);
+
 // TClient
 static void ReplaceHyphensWithSpaces(char *pStr)
 {
@@ -1646,6 +1648,9 @@ public:
 			Length = str_length(pText);
 		else
 			Length = std::min(Length, str_length(pText));
+
+		if(ACGradient_ApplyEverythingHook && pCursor->m_vColorSplits.empty())
+			ACGradient_ApplyEverythingHook(pCursor, pText, Length);
 
 		const char *pCurrent = pText;
 		const char *pEnd = pCurrent + Length;

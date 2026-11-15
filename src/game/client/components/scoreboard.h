@@ -140,9 +140,8 @@ class CScoreboard : public CComponent
 	CCachedText m_HeadlineClan;
 	CCachedText m_HeadlinePing;
 
-	void ResetTexts();
-
 public:
+	void ResetTexts();
 	void SaveModReplay(const char *pAction, const char *pTargetName);
 
 	CScoreboard();

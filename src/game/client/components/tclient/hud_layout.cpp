@@ -37,6 +37,9 @@ static const SModuleMeta gs_aModuleMeta[MODULE_COUNT] = {
 	{"game_timer", "Game Timer", true, true},
 	{"local_time", "Local Time", true, true},
 	{"frozen_hud", "Frozen HUD", true, true},
+	{"notify_last", "Notify Last", true, true},
+	{"keystrokes_keyboard", "Keystrokes Keyboard", true, true},
+	{"keystrokes_mouse", "Keystrokes Mouse", true, true},
 };
 
 static const SModuleLayout gs_aDefaultLayouts[MODULE_COUNT] = {
@@ -52,6 +55,9 @@ static const SModuleLayout gs_aDefaultLayouts[MODULE_COUNT] = {
 	{225.0f, 2.0f, 100, 0, true, false, 0x66000000U, 100},   // MODULE_GAME_TIMER
 	{180.0f, 0.0f, 100, 0, true, true, 0x66000000U, 100},    // MODULE_LOCAL_TIME
 	{288.0f, 0.0f, 100, 0, true, true, 0x66000000U, 100},    // MODULE_FROZEN_HUD
+	{100.0f, 3.0f, 100, 0, true, false, 0x66000000U, 100},   // MODULE_NOTIFY_LAST
+	{2.0f, 152.0f, 100, 0, true, false, 0x66000000U, 100},   // MODULE_KEYSTROKES_KEYBOARD
+	{80.0f, 152.0f, 100, 0, true, false, 0x66000000U, 100},  // MODULE_KEYSTROKES_MOUSE
 };
 
 static SModuleLayout gs_aRuntimeLayouts[MODULE_COUNT];
@@ -78,6 +84,12 @@ void SyncModuleToConfig(EModule Module)
 		g_Config.m_AcHudSpeedometer = Layout.m_Enabled ? 1 : 0;
 		g_Config.m_AcHudSpeedometerScale = std::clamp(Layout.m_Scale, 50, 200);
 		g_Config.m_AcHudSpeedometerAlpha = std::clamp(Layout.m_Alpha, 20, 100);
+		break;
+	case MODULE_KEYSTROKES_KEYBOARD:
+		g_Config.m_AcKeystrokesKeyboard = Layout.m_Enabled ? 1 : 0;
+		break;
+	case MODULE_KEYSTROKES_MOUSE:
+		g_Config.m_AcKeystrokesMouse = Layout.m_Enabled ? 1 : 0;
 		break;
 	default:
 		break;
@@ -221,6 +233,12 @@ SModuleLayout Get(EModule Module, float HudWidth, float HudHeight)
 		return SModuleLayout{};
 
 	SModuleLayout Layout = gs_aRuntimeLayouts[Module];
+	if(Module == MODULE_NOTIFY_LAST && !gs_aHasPositionOverride[MODULE_NOTIFY_LAST])
+	{
+		Layout.m_X = (g_Config.m_TcNotifyWhenLastX / 100.0f) * HudWidth;
+		Layout.m_Y = (g_Config.m_TcNotifyWhenLastY / 100.0f) * HudHeight;
+		return Layout;
+	}
 	// Si tiene posición específica calculada en lienzo, mapear X proporcionalmente al ancho de pantalla
 	Layout.m_X = CanvasXToHud(Layout.m_X, HudWidth);
 	return Layout;
@@ -377,6 +395,23 @@ SModuleRect ClampRectToScreen(const SModuleRect &Rect, float HudWidth, float Hud
 	Result.m_X = std::clamp(Result.m_X, 0.0f, std::max(0.0f, HudWidth - Result.m_W));
 	Result.m_Y = std::clamp(Result.m_Y, 0.0f, std::max(0.0f, HudHeight - Result.m_H));
 	return Result;
+}
+
+int BackgroundCorners(int DefaultCorners, float RectX, float RectY, float RectW, float RectH, float CanvasWidth, float CanvasHeight)
+{
+	int Corners = DefaultCorners;
+	const float Eps = 0.01f;
+	if(RectW <= 0.0f || RectH <= 0.0f)
+		return Corners;
+	if(RectX <= Eps)
+		Corners &= ~IGraphics::CORNER_L;
+	if(RectX + RectW >= CanvasWidth - Eps)
+		Corners &= ~IGraphics::CORNER_R;
+	if(RectY <= Eps)
+		Corners &= ~IGraphics::CORNER_T;
+	if(RectY + RectH >= CanvasHeight - Eps)
+		Corners &= ~IGraphics::CORNER_B;
+	return Corners;
 }
 
 void OnConsoleInit(IConsole *pConsole, IConfigManager *pConfigManager)

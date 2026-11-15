@@ -51,6 +51,7 @@ void CTrails::OnRender()
 
 	const CScreenRect TrailCullRect = ComputeAcFogScreenRect(Graphics()->GetScreen(), IsAcFpsFogActive() ? 64.0f : 256.0f);
 	const int SpecId = GameClient()->m_Snap.m_SpecInfo.m_Active ? GameClient()->m_Snap.m_SpecInfo.m_SpectatorId : -1;
+	const ColorRGBA SolidColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcTeeTrailColor));
 
 	for(int ClientId = 0; ClientId < MAX_CLIENTS; ClientId++)
 	{
@@ -71,8 +72,6 @@ void CTrails::OnRender()
 		}
 		else
 			m_HistoryValid[ClientId] = true;
-
-		CTeeRenderInfo TeeInfo = GameClient()->m_aClients[ClientId].m_RenderInfo;
 
 		const bool PredictPlayer = ShouldPredictPlayer(ClientId);
 		int StartTick;
@@ -132,6 +131,7 @@ void CTrails::OnRender()
 		// TODO: figure out why this is required
 		if(!PredictPlayer)
 			TrailLength += 2;
+		s_Trail.reserve((size_t)std::max(0, TrailLength) + 2);
 		bool TrailFull = false;
 		// Fill trail list with initial positions
 		for(int i = 0; i < TrailLength; i++)
@@ -179,6 +179,9 @@ void CTrails::OnRender()
 		if(TrailFull)
 			s_Trail.at(s_Trail.size() - 1).m_Pos = mix(s_Trail.at(s_Trail.size() - 1).m_Pos, s_Trail.at(s_Trail.size() - 2).m_Pos, std::fmod(IntraTick, 1.0f));
 
+		const CTeeRenderInfo &TeeInfo = GameClient()->m_aClients[ClientId].m_RenderInfo;
+		const ColorRGBA TeeColor = TeeInfo.m_CustomColoredSkin ? TeeInfo.m_ColorBody : TeeInfo.m_BloodColor;
+
 		// Set progress
 		for(int i = 0; i < (int)s_Trail.size(); i++)
 		{
@@ -194,13 +197,10 @@ void CTrails::OnRender()
 			switch(g_Config.m_TcTeeTrailColorMode)
 			{
 			case COLORMODE_SOLID:
-				Part.m_Col = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcTeeTrailColor));
+				Part.m_Col = SolidColor;
 				break;
 			case COLORMODE_TEE:
-				if(TeeInfo.m_CustomColoredSkin)
-					Part.m_Col = TeeInfo.m_ColorBody;
-				else
-					Part.m_Col = TeeInfo.m_BloodColor;
+				Part.m_Col = TeeColor;
 				break;
 			case COLORMODE_RAINBOW:
 			{

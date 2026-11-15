@@ -21,6 +21,8 @@
 #include <vulkan/vk_platform.h>
 #include <vulkan/vulkan_core.h>
 
+#include <game/client/components/tclient/motion_blur.h>
+
 #include <algorithm>
 #include <array>
 #include <condition_variable>
@@ -860,6 +862,8 @@ class CCommandProcessorFragment_Vulkan : public CCommandProcessorFragment_GLBase
 		VkImageView m_ImgView = VK_NULL_HANDLE;
 	};
 
+#include <game/client/components/tclient/motion_blur_vulkan_members.inl>
+
 	/************************
 	 * MEMBER VARIABLES
 	 ************************/
@@ -963,6 +967,7 @@ class CCommandProcessorFragment_Vulkan : public CCommandProcessorFragment_GLBase
 private:
 	std::vector<VkImageView> m_vSwapChainImageViewList;
 	std::vector<SSwapChainMultiSampleImage> m_vSwapChainMultiSamplingImages;
+#include <game/client/components/tclient/motion_blur_vulkan_state.inl>
 	std::vector<VkFramebuffer> m_vFramebufferList;
 	std::vector<VkCommandBuffer> m_vMainDrawCommandBuffers;
 
@@ -1309,6 +1314,7 @@ protected:
 		m_aCommandCallbacks[CommandBufferCMDOff(CCommandBuffer::CMD_TEXT_TEXTURES_CREATE)] = {false, [](SRenderCommandExecuteBuffer &ExecBuffer, const CCommandBuffer::SCommand *pBaseCommand) {}, [this](const CCommandBuffer::SCommand *pBaseCommand, SRenderCommandExecuteBuffer &ExecBuffer) { return Cmd_TextTextures_Create(static_cast<const CCommandBuffer::SCommand_TextTextures_Create *>(pBaseCommand)); }};
 		m_aCommandCallbacks[CommandBufferCMDOff(CCommandBuffer::CMD_TEXT_TEXTURES_DESTROY)] = {false, [](SRenderCommandExecuteBuffer &ExecBuffer, const CCommandBuffer::SCommand *pBaseCommand) {}, [this](const CCommandBuffer::SCommand *pBaseCommand, SRenderCommandExecuteBuffer &ExecBuffer) { return Cmd_TextTextures_Destroy(static_cast<const CCommandBuffer::SCommand_TextTextures_Destroy *>(pBaseCommand)); }};
 		m_aCommandCallbacks[CommandBufferCMDOff(CCommandBuffer::CMD_TEXT_TEXTURE_UPDATE)] = {false, [](SRenderCommandExecuteBuffer &ExecBuffer, const CCommandBuffer::SCommand *pBaseCommand) {}, [this](const CCommandBuffer::SCommand *pBaseCommand, SRenderCommandExecuteBuffer &ExecBuffer) { return Cmd_TextTexture_Update(static_cast<const CCommandBuffer::SCommand_TextTexture_Update *>(pBaseCommand)); }};
+		m_aCommandCallbacks[CommandBufferCMDOff(CCommandBuffer::CMD_TEXTURE_UPDATE)] = {false, [](SRenderCommandExecuteBuffer &ExecBuffer, const CCommandBuffer::SCommand *pBaseCommand) {}, [this](const CCommandBuffer::SCommand *pBaseCommand, SRenderCommandExecuteBuffer &ExecBuffer) { return Cmd_Texture_Update(static_cast<const CCommandBuffer::SCommand_Texture_Update *>(pBaseCommand)); }};
 
 		m_aCommandCallbacks[CommandBufferCMDOff(CCommandBuffer::CMD_CLEAR)] = {true, [this](SRenderCommandExecuteBuffer &ExecBuffer, const CCommandBuffer::SCommand *pBaseCommand) { Cmd_Clear_FillExecuteBuffer(ExecBuffer, static_cast<const CCommandBuffer::SCommand_Clear *>(pBaseCommand)); }, [this](const CCommandBuffer::SCommand *pBaseCommand, SRenderCommandExecuteBuffer &ExecBuffer) { return Cmd_Clear(ExecBuffer, static_cast<const CCommandBuffer::SCommand_Clear *>(pBaseCommand)); }};
 		m_aCommandCallbacks[CommandBufferCMDOff(CCommandBuffer::CMD_RENDER)] = {true, [this](SRenderCommandExecuteBuffer &ExecBuffer, const CCommandBuffer::SCommand *pBaseCommand) { Cmd_Render_FillExecuteBuffer(ExecBuffer, static_cast<const CCommandBuffer::SCommand_Render *>(pBaseCommand)); }, [this](const CCommandBuffer::SCommand *pBaseCommand, SRenderCommandExecuteBuffer &ExecBuffer) { return Cmd_Render(static_cast<const CCommandBuffer::SCommand_Render *>(pBaseCommand), ExecBuffer); }};
@@ -2318,6 +2324,15 @@ protected:
 			}
 		}
 
+		const bool FrameBlendEnabled = AcMotionBlurEnabled();
+		if(FrameBlendEnabled != m_FrameBlendEnabledLastFrame)
+		{
+			ResetFrameBlendHistory();
+			m_FrameBlendEnabledLastFrame = FrameBlendEnabled;
+		}
+		if(FrameBlendEnabled && !RenderFrameBlend(CommandBuffer))
+			return false;
+
 		vkCmdEndRenderPass(CommandBuffer);
 
 		if(vkEndCommandBuffer(CommandBuffer) != VK_SUCCESS)
@@ -2474,6 +2489,13 @@ protected:
 		{
 			SetError(EGfxErrorType::GFX_ERROR_TYPE_RENDER_RECORDING, "Command buffer cannot be filled anymore.");
 			return false;
+		}
+
+		if(AcMotionBlurEnabled() && m_LastPresentedSwapChainImageIndex != std::numeric_limits<decltype(m_LastPresentedSwapChainImageIndex)>::max() && m_LastPresentedSwapChainImageIndex != m_CurImageIndex && m_LastPresentedSwapChainImageIndex < m_vFrameBlendImages.size())
+		{
+			auto &HistoryImage = m_vFrameBlendImages[m_LastPresentedSwapChainImageIndex];
+			if(HistoryImage.m_Valid)
+				FrameBlendImageBarrier(CommandBuffer, HistoryImage.m_Image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		}
 
 		VkRenderPassBeginInfo RenderPassInfo{};
@@ -4515,6 +4537,8 @@ public:
 		m_vSwapChainMultiSamplingImages.clear();
 	}
 
+#include <game/client/components/tclient/motion_blur_vulkan.inl>
+
 	[[nodiscard]] bool CreateRenderPass(bool ClearAttachments)
 	{
 		bool HasMultiSamplingTargets = HasMultiSampling();
@@ -5555,6 +5579,8 @@ public:
 		DestroyFramebuffers();
 
 		DestroyRenderPass();
+
+		DestroyFrameBlendImages();
 
 		DestroyMultiSamplerImageAttachments();
 
@@ -6842,6 +6868,19 @@ public:
 		uint8_t *pData = pCommand->m_pData;
 
 		if(!UpdateTexture(IndexTex, VK_FORMAT_R8_UNORM, pData, pCommand->m_X, pCommand->m_Y, pCommand->m_Width, pCommand->m_Height))
+			return false;
+
+		free(pData);
+
+		return true;
+	}
+
+	[[nodiscard]] bool Cmd_Texture_Update(const CCommandBuffer::SCommand_Texture_Update *pCommand)
+	{
+		size_t IndexTex = pCommand->m_Slot;
+		uint8_t *pData = pCommand->m_pData;
+
+		if(!UpdateTexture(IndexTex, VK_FORMAT_R8G8B8A8_UNORM, pData, pCommand->m_X, pCommand->m_Y, pCommand->m_Width, pCommand->m_Height))
 			return false;
 
 		free(pData);

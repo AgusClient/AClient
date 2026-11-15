@@ -87,6 +87,9 @@
 #include "components/tclient/aclient_gameskins.h"
 #include "components/tclient/hud_layout.h"
 #include "components/tclient/hud_editor.h"
+#include "components/tclient/gradient.h"
+#include "components/tclient/keystrokes.h"
+#include "components/tclient/menu_media_background.h"
 #include "components/tclient/fast_practice.h"
 #include "components/tclient/scripting.h"
 #include "components/tclient/skinprofiles.h"
@@ -244,6 +247,9 @@ public:
 	CAClientAuth m_AClientAuth;
 	CAClientGameSkins m_AClientGameSkins;
 	CHudEditor m_HudEditor;
+	CAcGradient m_AcGradient;
+	CKeystrokes m_Keystrokes;
+	CMenuMediaBackground m_MenuMediaBackground;
 	CPlayerProfiles m_PlayerProfiles;
 	CFastPractice m_FastPractice;
 	CBindChat m_BindChat;

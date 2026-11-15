@@ -11,6 +11,7 @@
 #endif
 
 #include "backend_opengl.h"
+#include <game/client/components/tclient/motion_blur_opengl.h>
 
 class CGLSLPrimitiveExProgram;
 class CGLSLQuadProgram;
@@ -79,6 +80,11 @@ protected:
 	void UploadStreamBufferData(EPrimitiveType PrimitiveType, const void *pVertices, size_t VertSize, unsigned int PrimitiveCount, bool AsTex3D = false);
 	void RenderText(const CCommandBuffer::SState &State, int DrawNum, int TextTextureIndex, int TextOutlineTextureIndex, int TextureSize, const ColorRGBA &TextColor, const ColorRGBA &TextOutlineColor);
 
+	SAcMotionBlurOpenGLState m_MotionBlur;
+	void EnsureMotionBlurTexture();
+	void DestroyMotionBlurTexture();
+	void RenderMotionBlurGL();
+
 	void TextureUpdate(int Slot, int X, int Y, int Width, int Height, int GLFormat, uint8_t *pTexData);
 	void TextureCreate(int Slot, int Width, int Height, int GLFormat, int GLStoreFormat, int Flags, uint8_t *pTexData);
 
@@ -87,6 +93,7 @@ protected:
 	void Cmd_Texture_Destroy(const CCommandBuffer::SCommand_Texture_Destroy *pCommand) override;
 	void Cmd_Texture_Create(const CCommandBuffer::SCommand_Texture_Create *pCommand) override;
 	void Cmd_TextTexture_Update(const CCommandBuffer::SCommand_TextTexture_Update *pCommand) override;
+	void Cmd_Texture_Update(const CCommandBuffer::SCommand_Texture_Update *pCommand) override;
 	void Cmd_TextTextures_Destroy(const CCommandBuffer::SCommand_TextTextures_Destroy *pCommand) override;
 	void Cmd_TextTextures_Create(const CCommandBuffer::SCommand_TextTextures_Create *pCommand) override;
 	void Cmd_Clear(const CCommandBuffer::SCommand_Clear *pCommand) override;
@@ -111,6 +118,7 @@ protected:
 	void Cmd_RenderQuadContainer(const CCommandBuffer::SCommand_RenderQuadContainer *pCommand) override;
 	void Cmd_RenderQuadContainerEx(const CCommandBuffer::SCommand_RenderQuadContainerEx *pCommand) override;
 	void Cmd_RenderQuadContainerAsSpriteMultiple(const CCommandBuffer::SCommand_RenderQuadContainerAsSpriteMultiple *pCommand) override;
+	void Cmd_BeforeSwap() override;
 
 public:
 	CCommandProcessorFragment_OpenGL3_3() = default;

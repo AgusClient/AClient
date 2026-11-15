@@ -248,7 +248,7 @@ int CMenus::DoButton_MenuTab(CButtonContainer *pButtonContainer, const char *pTe
 		{
 			CUIRect Underline;
 			Rect.HSplitBottom(2.5f, nullptr, &Underline);
-			Underline.Draw(GetThemeColor(0.95f), IGraphics::CORNER_B, EdgeRounding > 0.0f ? 1.0f : 0.0f);
+			Underline.Draw(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_AcColorDetails)).WithAlpha(0.95f), IGraphics::CORNER_B, EdgeRounding > 0.0f ? 1.0f : 0.0f);
 		}
 	}
 	else
@@ -1129,7 +1129,12 @@ void CMenus::Render()
 	}
 	else
 	{
-		if(!GameClient()->m_MenuBackground.Render())
+		const float MediaScreenHeight = 300.0f;
+		const float MediaScreenWidth = MediaScreenHeight * Graphics()->ScreenAspect();
+		CMenuMediaBackground &MediaBackground = GameClient()->m_MenuMediaBackground;
+		MediaBackground.SyncFromConfig(g_Config.m_AcMenuMediaBackground, g_Config.m_AcMenuMediaBackgroundPath);
+		MediaBackground.Update();
+		if(!MediaBackground.Render(MediaScreenWidth, MediaScreenHeight) && !GameClient()->m_MenuBackground.Render())
 		{
 			RenderBackground();
 		}

@@ -7,6 +7,7 @@
 #include <game/client/gameclient.h>
 
 #include <algorithm>
+#include <vector>
 
 #if defined(CONF_FAMILY_WINDOWS)
 #ifndef WIN32_LEAN_AND_MEAN
@@ -16,37 +17,72 @@
 #include <tlhelp32.h>
 #include <wchar.h>
 
-static void EnforceDiscordNormalPriority()
+static void NormalizeProcessPriority(DWORD Pid, bool &Alive)
 {
-	HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-	if(hSnapshot == INVALID_HANDLE_VALUE)
+	Alive = false;
+	HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SET_INFORMATION, FALSE, Pid);
+	if(hProcess == nullptr)
 		return;
 
-	PROCESSENTRY32W Entry{};
-	Entry.dwSize = sizeof(Entry);
-	if(Process32FirstW(hSnapshot, &Entry))
+	DWORD ExitCode = 0;
+	if(GetExitCodeProcess(hProcess, &ExitCode) && ExitCode == STILL_ACTIVE)
 	{
-		do
-		{
-			if(_wcsicmp(Entry.szExeFile, L"Discord.exe") != 0 &&
-				_wcsicmp(Entry.szExeFile, L"DiscordPTB.exe") != 0 &&
-				_wcsicmp(Entry.szExeFile, L"DiscordCanary.exe") != 0)
-			{
-				continue;
-			}
+		Alive = true;
+		const DWORD Priority = GetPriorityClass(hProcess);
+		if(Priority != 0 && Priority != NORMAL_PRIORITY_CLASS)
+			SetPriorityClass(hProcess, NORMAL_PRIORITY_CLASS);
+	}
+	CloseHandle(hProcess);
+}
 
-			HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SET_INFORMATION, FALSE, Entry.th32ProcessID);
-			if(hProcess != nullptr)
+static void EnforceDiscordNormalPriority(int64_t Now)
+{
+	static std::vector<DWORD> s_vDiscordPids;
+	static int64_t s_LastFullScan = 0;
+
+	const int64_t RescanInterval = 30 * time_freq();
+	if(s_vDiscordPids.empty() || Now - s_LastFullScan >= RescanInterval)
+	{
+		s_LastFullScan = Now;
+		s_vDiscordPids.clear();
+
+		HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+		if(hSnapshot == INVALID_HANDLE_VALUE)
+			return;
+
+		PROCESSENTRY32W Entry{};
+		Entry.dwSize = sizeof(Entry);
+		if(Process32FirstW(hSnapshot, &Entry))
+		{
+			do
 			{
-				const DWORD Priority = GetPriorityClass(hProcess);
-				if(Priority != 0 && Priority != NORMAL_PRIORITY_CLASS)
-					SetPriorityClass(hProcess, NORMAL_PRIORITY_CLASS);
-				CloseHandle(hProcess);
-			}
-		} while(Process32NextW(hSnapshot, &Entry));
+				if(_wcsicmp(Entry.szExeFile, L"Discord.exe") != 0 &&
+					_wcsicmp(Entry.szExeFile, L"DiscordPTB.exe") != 0 &&
+					_wcsicmp(Entry.szExeFile, L"DiscordCanary.exe") != 0)
+				{
+					continue;
+				}
+
+				bool Alive = false;
+				NormalizeProcessPriority(Entry.th32ProcessID, Alive);
+				if(Alive)
+					s_vDiscordPids.push_back(Entry.th32ProcessID);
+			} while(Process32NextW(hSnapshot, &Entry));
+		}
+
+		CloseHandle(hSnapshot);
+		return;
 	}
 
-	CloseHandle(hSnapshot);
+	size_t WriteIdx = 0;
+	for(size_t i = 0; i < s_vDiscordPids.size(); ++i)
+	{
+		bool Alive = false;
+		NormalizeProcessPriority(s_vDiscordPids[i], Alive);
+		if(Alive)
+			s_vDiscordPids[WriteIdx++] = s_vDiscordPids[i];
+	}
+	s_vDiscordPids.resize(WriteIdx);
 }
 #endif
 
@@ -81,10 +117,10 @@ void CAcOptimizer::OnRender()
 	if(DiscordNormalPrio)
 	{
 		const int64_t Now = time_get();
-		if(!m_LastDiscordNormalPriority || Now - m_LastDiscordPriorityCheck >= 2 * time_freq())
+		if(!m_LastDiscordNormalPriority || Now - m_LastDiscordPriorityCheck >= 5 * time_freq())
 		{
 			m_LastDiscordPriorityCheck = Now;
-			EnforceDiscordNormalPriority();
+			EnforceDiscordNormalPriority(Now);
 		}
 	}
 	m_LastDiscordNormalPriority = DiscordNormalPrio;

@@ -941,8 +941,29 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 					Player.m_MuteMark.Render(TextRender(), vec2(NameTextOffset, TextY), NameColor);
 					NameTextOffset += Player.m_MuteMark.Width();
 				}
-				Player.m_Name.Update(TextRender(), aBuf, FontSize, std::max(NameLength - (NameTextOffset - NameOffset), 0.0f), TEXTFLAG_RENDER | TEXTFLAG_ELLIPSIS_AT_END);
-				Player.m_Name.Render(TextRender(), vec2(NameTextOffset, TextY), NameColor);
+				const bool HasWarNameColor = pInfo->m_ClientId >= 0 && g_Config.m_TcWarList && g_Config.m_TcWarListScoreboard && GameClient()->m_WarList.GetAnyWar(pInfo->m_ClientId);
+				if(!HasWarNameColor && pInfo->m_ClientId >= 0 && g_Config.m_AcNameplateGradient && CAcGradient::AppliesTo(pInfo->m_ClientId, GameClient()))
+				{
+					const float Phase = CAcGradient::AnimatePhase(Client()->GlobalTime());
+					static std::vector<STextColorSplit> s_vGradientSplits;
+					if(ClientData.m_AuthLevel)
+					{
+						const ColorRGBA Auth = NameColor.WithAlpha(1.0f);
+						const ColorRGBA AuthDim = ColorRGBA(Auth.r * 0.4f, Auth.g * 0.4f, Auth.b * 0.4f, 1.0f);
+						CAcGradient::AppendAnimatedColorSplits(aBuf, AuthDim, Auth, Phase, s_vGradientSplits);
+					}
+					else
+					{
+						CAcGradient::AppendAnimatedTextSplits(aBuf, pInfo->m_ClientId, GameClient(), Phase, s_vGradientSplits);
+					}
+					Player.m_Name.UpdateColored(TextRender(), aBuf, FontSize, s_vGradientSplits, std::max(NameLength - (NameTextOffset - NameOffset), 0.0f), TEXTFLAG_RENDER | TEXTFLAG_ELLIPSIS_AT_END);
+					Player.m_Name.Render(TextRender(), vec2(NameTextOffset, TextY), ColorRGBA(1.0f, 1.0f, 1.0f, NameColor.a));
+				}
+				else
+				{
+					Player.m_Name.Update(TextRender(), aBuf, FontSize, std::max(NameLength - (NameTextOffset - NameOffset), 0.0f), TEXTFLAG_RENDER | TEXTFLAG_ELLIPSIS_AT_END);
+					Player.m_Name.Render(TextRender(), vec2(NameTextOffset, TextY), NameColor);
+				}
 
 				// ready / watching
 				if(Client()->IsSixup() && Client()->m_TranslationContext.m_aClients[pInfo->m_ClientId].m_PlayerFlags7 & protocol7::PLAYERFLAG_READY)
@@ -965,8 +986,30 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 					ClanColor = GameClient()->m_WarList.GetClanColor(pInfo->m_ClientId);
 				}
 
-				Player.m_Clan.Update(TextRender(), ClientData.m_aClan, FontSize, ClanLength, TEXTFLAG_RENDER | TEXTFLAG_ELLIPSIS_AT_END);
-				Player.m_Clan.Render(TextRender(), vec2(ClanOffset + (ClanLength - std::min(Player.m_Clan.Width(), ClanLength)) / 2.0f, TextY), ClanColor);
+				const bool HasWarClanColor = pInfo->m_ClientId >= 0 && g_Config.m_TcWarList && g_Config.m_TcWarListScoreboard && GameClient()->m_WarList.GetAnyWar(pInfo->m_ClientId);
+				const bool SameClanColor = GameClient()->m_aLocalIds[g_Config.m_ClDummy] >= 0 && ClientData.m_aClan[0] != '\0' && str_comp(ClientData.m_aClan, GameClient()->m_aClients[GameClient()->m_aLocalIds[g_Config.m_ClDummy]].m_aClan) == 0;
+				if(!HasWarClanColor && pInfo->m_ClientId >= 0 && g_Config.m_AcNameplateGradientClan && CAcGradient::AppliesTo(pInfo->m_ClientId, GameClient()))
+				{
+					const float Phase = CAcGradient::AnimatePhase(Client()->GlobalTime());
+					static std::vector<STextColorSplit> s_vGradientSplits;
+					if(SameClanColor)
+					{
+						const ColorRGBA Clan = ClanColor.WithAlpha(1.0f);
+						const ColorRGBA ClanDim = ColorRGBA(Clan.r * 0.4f, Clan.g * 0.4f, Clan.b * 0.4f, 1.0f);
+						CAcGradient::AppendAnimatedColorSplits(ClientData.m_aClan, ClanDim, Clan, Phase, s_vGradientSplits);
+					}
+					else
+					{
+						CAcGradient::AppendAnimatedTextSplits(ClientData.m_aClan, pInfo->m_ClientId, GameClient(), Phase, s_vGradientSplits);
+					}
+					Player.m_Clan.UpdateColored(TextRender(), ClientData.m_aClan, FontSize, s_vGradientSplits, ClanLength, TEXTFLAG_RENDER | TEXTFLAG_ELLIPSIS_AT_END);
+					Player.m_Clan.Render(TextRender(), vec2(ClanOffset + (ClanLength - std::min(Player.m_Clan.Width(), ClanLength)) / 2.0f, TextY), ColorRGBA(1.0f, 1.0f, 1.0f, ClanColor.a));
+				}
+				else
+				{
+					Player.m_Clan.Update(TextRender(), ClientData.m_aClan, FontSize, ClanLength, TEXTFLAG_RENDER | TEXTFLAG_ELLIPSIS_AT_END);
+					Player.m_Clan.Render(TextRender(), vec2(ClanOffset + (ClanLength - std::min(Player.m_Clan.Width(), ClanLength)) / 2.0f, TextY), ClanColor);
+				}
 			}
 
 			// country flag

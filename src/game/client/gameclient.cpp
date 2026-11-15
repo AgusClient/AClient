@@ -149,6 +149,7 @@ void CGameClient::OnConsoleInit()
 					      &m_Translate, // TClient
 					      &m_Ghost,
 					      &m_TClient, // TClient (Must be before chat and players)
+					      &m_AcGradient, // AClient
 					      &m_Players,
 					      &m_MovingTilesBackground, // TClient
 					      &m_MapLayersForeground,
@@ -175,6 +176,7 @@ void CGameClient::OnConsoleInit()
 					      &m_StatusBar, // TClient
 					      &m_RaceStats, // TClient
 					      &m_AClientHud, // AClient
+					      &m_Keystrokes, // AClient
 					      &m_AClientAuth, // AClient
 					      &m_AClientGameSkins,
 					      &m_PlayerProfiles, // TClient
@@ -367,6 +369,7 @@ void CGameClient::OnInit()
 
 	m_pGraphics = Kernel()->RequestInterface<IGraphics>();
 	m_pEngineGraphics = Kernel()->RequestInterface<IEngineGraphics>();
+	m_MenuMediaBackground.Init(m_pGraphics, Kernel()->RequestInterface<IStorage>());
 
 	// propagate pointers
 	m_UI.Init(Kernel());

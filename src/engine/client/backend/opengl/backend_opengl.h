@@ -100,6 +100,7 @@ protected:
 	virtual void Cmd_Texture_Destroy(const CCommandBuffer::SCommand_Texture_Destroy *pCommand);
 	virtual void Cmd_Texture_Create(const CCommandBuffer::SCommand_Texture_Create *pCommand);
 	virtual void Cmd_TextTexture_Update(const CCommandBuffer::SCommand_TextTexture_Update *pCommand);
+	virtual void Cmd_Texture_Update(const CCommandBuffer::SCommand_Texture_Update *pCommand);
 	virtual void Cmd_TextTextures_Destroy(const CCommandBuffer::SCommand_TextTextures_Destroy *pCommand);
 	virtual void Cmd_TextTextures_Create(const CCommandBuffer::SCommand_TextTextures_Create *pCommand);
 	virtual void Cmd_Clear(const CCommandBuffer::SCommand_Clear *pCommand);
@@ -107,6 +108,7 @@ protected:
 	virtual void Cmd_RenderTex3D(const CCommandBuffer::SCommand_RenderTex3D *pCommand) { dbg_assert_failed("Call of unsupported Cmd_RenderTex3D"); }
 	virtual void Cmd_ReadPixel(const CCommandBuffer::SCommand_TrySwapAndReadPixel *pCommand);
 	virtual void Cmd_Screenshot(const CCommandBuffer::SCommand_TrySwapAndScreenshot *pCommand);
+	virtual void Cmd_BeforeSwap() {}
 
 	virtual void Cmd_Update_Viewport(const CCommandBuffer::SCommand_Update_Viewport *pCommand);
 

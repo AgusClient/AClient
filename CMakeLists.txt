@@ -2112,6 +2112,8 @@ set(EXPECTED_DATA
   tclient/fonts/minecraft_font.ttf
   tclient/aclient_logo.png
   tclient/aclient_tab_logo.png
+  AClient/keystrokes/mouse.png
+  AClient/keystrokes/wasd.png
   tclient/gui_logo.png
   tclient/languages/arabic.txt
   tclient/languages/azerbaijani.txt
@@ -2922,6 +2924,21 @@ if(CLIENT)
     components/tclient/hud_layout.h
     components/tclient/hud_editor.cpp
     components/tclient/hud_editor.h
+    components/tclient/subsystem_runtime.h
+    components/tclient/media_decoder.cpp
+    components/tclient/media_decoder.h
+    components/tclient/menu_media_background.cpp
+    components/tclient/menu_media_background.h
+    components/tclient/gradient.cpp
+    components/tclient/gradient.h
+    components/tclient/keystrokes.cpp
+    components/tclient/keystrokes.h
+    components/tclient/motion_blur.h
+    components/tclient/motion_blur_opengl.h
+    components/tclient/motion_blur_opengl.inl
+    components/tclient/motion_blur_vulkan.inl
+    components/tclient/motion_blur_vulkan_members.inl
+    components/tclient/motion_blur_vulkan_state.inl
     components/tclient/fast_practice.cpp
     components/tclient/fast_practice.h
     components/tclient/scripting.cpp

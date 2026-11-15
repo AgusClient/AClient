@@ -2,6 +2,7 @@
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
 #include "ui.h"
 
+#include "components/tclient/gradient.h"
 #include "ui_scrollregion.h"
 
 #include <base/dbg.h>
@@ -879,6 +880,14 @@ void CUi::DoLabelStreamed(CUIElement::SUIElementRect &RectEl, const CUIRect *pRe
 	const int ReadCursorGlyphCount = pReadCursor == nullptr ? -1 : pReadCursor->m_GlyphCount;
 	bool NeedsRecreate = false;
 	bool ColorChanged = RectEl.m_TextColor != TextRender()->GetTextColor() || RectEl.m_TextOutlineColor != TextRender()->GetTextOutlineColor();
+	int GradientPhaseBucket = -1;
+	if(g_Config.m_AcNameplateGradientEverything)
+	{
+		const float Phase = CAcGradient::AnimatePhase(Client()->GlobalTime());
+		GradientPhaseBucket = (int)(Phase * 64.0f) % 64;
+		if(RectEl.m_GradientPhaseBucket != GradientPhaseBucket)
+			NeedsRecreate = true;
+	}
 	if((!RectEl.m_UITextContainer.Valid() && pText[0] != '\0' && StrLen != 0) || RectEl.m_Width != pRect->w || RectEl.m_Height != pRect->h || ColorChanged || RectEl.m_ReadCursorGlyphCount != ReadCursorGlyphCount)
 	{
 		NeedsRecreate = true;
@@ -898,6 +907,7 @@ void CUi::DoLabelStreamed(CUIElement::SUIElementRect &RectEl, const CUIRect *pRe
 	}
 	RectEl.m_X = pRect->x;
 	RectEl.m_Y = pRect->y;
+	RectEl.m_GradientPhaseBucket = GradientPhaseBucket;
 	if(NeedsRecreate)
 	{
 		TextRender()->DeleteTextContainer(RectEl.m_UITextContainer);
@@ -1643,7 +1653,7 @@ void CUi::RenderProgressBar(CUIRect ProgressBar, float Progress)
 
 void CCachedText::Update(ITextRender *pTextRender, const char *pText, float FontSize, float LineWidth, int CursorFlags)
 {
-	if(m_FontSize == FontSize && m_LineWidth == LineWidth && m_CursorFlags == CursorFlags && m_Text == pText)
+	if(!m_Colored && m_FontSize == FontSize && m_LineWidth == LineWidth && m_CursorFlags == CursorFlags && m_Text == pText)
 		return;
 
 	// The render flags of a text container are fixed when it is created and depend on the
@@ -1655,6 +1665,7 @@ void CCachedText::Update(ITextRender *pTextRender, const char *pText, float Font
 	m_FontSize = FontSize;
 	m_LineWidth = LineWidth;
 	m_CursorFlags = CursorFlags;
+	m_Colored = false;
 
 	CTextCursor Cursor;
 	Cursor.m_FontSize = FontSize;
@@ -1662,6 +1673,34 @@ void CCachedText::Update(ITextRender *pTextRender, const char *pText, float Font
 	Cursor.m_Flags = CursorFlags;
 
 	// The color is applied when rendering, so it must not be baked into the quads.
+	const ColorRGBA OldColor = pTextRender->GetTextColor();
+	pTextRender->TextColor(pTextRender->DefaultTextColor());
+	if(ReuseContainer)
+		pTextRender->RecreateTextContainerSoft(m_TextContainerIndex, &Cursor, m_Text.c_str());
+	else
+		pTextRender->RecreateTextContainer(m_TextContainerIndex, &Cursor, m_Text.c_str());
+	pTextRender->TextColor(OldColor);
+
+	m_BoundingBox = Cursor.BoundingBox();
+	m_MaxCharacterHeight = Cursor.m_MaxCharacterHeight;
+}
+
+void CCachedText::UpdateColored(ITextRender *pTextRender, const char *pText, float FontSize, const std::vector<STextColorSplit> &vColorSplits, float LineWidth, int CursorFlags)
+{
+	const bool ReuseContainer = m_TextContainerIndex.Valid() && m_LineWidth == LineWidth && m_CursorFlags == CursorFlags;
+
+	m_Text = pText;
+	m_FontSize = FontSize;
+	m_LineWidth = LineWidth;
+	m_CursorFlags = CursorFlags;
+	m_Colored = true;
+
+	CTextCursor Cursor;
+	Cursor.m_FontSize = FontSize;
+	Cursor.m_LineWidth = LineWidth;
+	Cursor.m_Flags = CursorFlags;
+	Cursor.m_vColorSplits = vColorSplits;
+
 	const ColorRGBA OldColor = pTextRender->GetTextColor();
 	pTextRender->TextColor(pTextRender->DefaultTextColor());
 	if(ReuseContainer)

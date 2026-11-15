@@ -148,6 +148,27 @@ void COutlines::OnRender()
 		return;
 	if(!g_Config.m_TcOutline)
 		return;
+	if(!g_Config.m_TcOutlineSolid &&
+		!g_Config.m_TcOutlineFreeze &&
+		!g_Config.m_TcOutlineUnfreeze &&
+		!g_Config.m_TcOutlineKill &&
+		!g_Config.m_TcOutlineTele)
+		return;
+
+	struct SOutlineStyle
+	{
+		bool m_Enabled;
+		float m_Width;
+		ColorRGBA m_Color;
+	};
+	const SOutlineStyle aStyles[6] = {
+		{false, 0.0f, ColorRGBA()}, // OUTLINE_NONE
+		{g_Config.m_TcOutlineUnfreeze != 0 && g_Config.m_TcOutlineWidthUnfreeze > 0, (float)g_Config.m_TcOutlineWidthUnfreeze, color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcOutlineColorUnfreeze, true))}, // OUTLINE_UNFREEZE
+		{g_Config.m_TcOutlineFreeze != 0 && g_Config.m_TcOutlineWidthFreeze > 0, (float)g_Config.m_TcOutlineWidthFreeze, color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcOutlineColorFreeze, true))}, // OUTLINE_FREEZE
+		{g_Config.m_TcOutlineTele != 0 && g_Config.m_TcOutlineWidthTele > 0, (float)g_Config.m_TcOutlineWidthTele, color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcOutlineColorTele, true))}, // OUTLINE_TELE
+		{g_Config.m_TcOutlineKill != 0 && g_Config.m_TcOutlineWidthKill > 0, (float)g_Config.m_TcOutlineWidthKill, color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcOutlineColorKill, true))}, // OUTLINE_KILL
+		{g_Config.m_TcOutlineSolid != 0 && g_Config.m_TcOutlineWidthSolid > 0, (float)g_Config.m_TcOutlineWidthSolid, color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcOutlineColorSolid, true))}, // OUTLINE_SOLID
+	};
 
 	const float Scale = 32.0f;
 
@@ -178,6 +199,7 @@ void COutlines::OnRender()
 	Graphics()->TextureClear();
 	Graphics()->QuadsBegin();
 
+	int LastType = -1;
 	for(int y = StartY; y < EndY; y++)
 	{
 		for(int x = StartX; x < EndX; x++)
@@ -185,27 +207,9 @@ void COutlines::OnRender()
 			const int Type = GetTile(x, y);
 			if(Type == OUTLINE_NONE)
 				continue;
-			class COutlineConfig
-			{
-			public:
-				const int &m_Enable;
-				const int &m_Width;
-				const unsigned int &m_Color;
-			};
-			const COutlineConfig Config = [&]() -> COutlineConfig {
-				if(Type == OUTLINE_SOLID)
-					return {g_Config.m_TcOutlineSolid, g_Config.m_TcOutlineWidthSolid, g_Config.m_TcOutlineColorSolid};
-				if(Type == OUTLINE_FREEZE)
-					return {g_Config.m_TcOutlineFreeze, g_Config.m_TcOutlineWidthFreeze, g_Config.m_TcOutlineColorFreeze};
-				if(Type == OUTLINE_UNFREEZE)
-					return {g_Config.m_TcOutlineUnfreeze, g_Config.m_TcOutlineWidthUnfreeze, g_Config.m_TcOutlineColorUnfreeze};
-				if(Type == OUTLINE_KILL)
-					return {g_Config.m_TcOutlineKill, g_Config.m_TcOutlineWidthKill, g_Config.m_TcOutlineColorKill};
-				if(Type == OUTLINE_TELE)
-					return {g_Config.m_TcOutlineTele, g_Config.m_TcOutlineWidthTele, g_Config.m_TcOutlineColorTele};
-				dbg_assert(false, "Invalid value for Type at %d, %d/%d, %d", x, y, m_MapDataSize.x, m_MapDataSize.y);
-			}();
-			if(!Config.m_Enable || Config.m_Width <= 0)
+			dbg_assert(Type > OUTLINE_NONE && Type <= OUTLINE_SOLID, "Invalid value for Type at %d, %d/%d, %d", x, y, m_MapDataSize.x, m_MapDataSize.y);
+			const SOutlineStyle &Style = aStyles[Type];
+			if(!Style.m_Enabled)
 				continue;
 			// Find neighbours
 			const bool aNeighbors[8] = {
@@ -221,48 +225,53 @@ void COutlines::OnRender()
 			// Figure out edges
 			IGraphics::CQuadItem aQuads[8];
 			int NumQuads = 0;
+			const float OutlineWidth = Style.m_Width;
 			// Lone corners first
 			if(!aNeighbors[0] && aNeighbors[1] && aNeighbors[3])
-				aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale, y * Scale, Config.m_Width, Config.m_Width);
+				aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale, y * Scale, OutlineWidth, OutlineWidth);
 			if(!aNeighbors[2] && aNeighbors[1] && aNeighbors[4])
-				aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale + Scale - Config.m_Width, y * Scale, Config.m_Width, Config.m_Width);
+				aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale + Scale - OutlineWidth, y * Scale, OutlineWidth, OutlineWidth);
 			if(!aNeighbors[5] && aNeighbors[3] && aNeighbors[6])
-				aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale, y * Scale + Scale - Config.m_Width, Config.m_Width, Config.m_Width);
+				aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale, y * Scale + Scale - OutlineWidth, OutlineWidth, OutlineWidth);
 			if(!aNeighbors[7] && aNeighbors[6] && aNeighbors[4])
-				aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale + Scale - Config.m_Width, y * Scale + Scale - Config.m_Width, Config.m_Width, Config.m_Width);
+				aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale + Scale - OutlineWidth, y * Scale + Scale - OutlineWidth, OutlineWidth, OutlineWidth);
 			// Top
 			if(!aNeighbors[1])
-				aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale, y * Scale, Scale, Config.m_Width);
+				aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale, y * Scale, Scale, OutlineWidth);
 			// Bottom
 			if(!aNeighbors[6])
-				aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale, y * Scale + Scale - Config.m_Width, Scale, Config.m_Width);
+				aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale, y * Scale + Scale - OutlineWidth, Scale, OutlineWidth);
 			// Left
 			if(!aNeighbors[3])
 			{
 				if(aNeighbors[1] && aNeighbors[6])
-					aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale, y * Scale, Config.m_Width, Scale);
+					aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale, y * Scale, OutlineWidth, Scale);
 				else if(aNeighbors[6])
-					aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale, y * Scale + Config.m_Width, Config.m_Width, Scale - Config.m_Width);
+					aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale, y * Scale + OutlineWidth, OutlineWidth, Scale - OutlineWidth);
 				else if(aNeighbors[1])
-					aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale, y * Scale, Config.m_Width, Scale - Config.m_Width);
+					aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale, y * Scale, OutlineWidth, Scale - OutlineWidth);
 				else
-					aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale, y * Scale + Config.m_Width, Config.m_Width, Scale - Config.m_Width * 2.0f);
+					aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale, y * Scale + OutlineWidth, OutlineWidth, Scale - OutlineWidth * 2.0f);
 			}
 			// Right
 			if(!aNeighbors[4])
 			{
 				if(aNeighbors[1] && aNeighbors[6])
-					aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale + Scale - Config.m_Width, y * Scale, Config.m_Width, Scale);
+					aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale + Scale - OutlineWidth, y * Scale, OutlineWidth, Scale);
 				else if(aNeighbors[6])
-					aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale + Scale - Config.m_Width, y * Scale + Config.m_Width, Config.m_Width, Scale - Config.m_Width);
+					aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale + Scale - OutlineWidth, y * Scale + OutlineWidth, OutlineWidth, Scale - OutlineWidth);
 				else if(aNeighbors[1])
-					aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale + Scale - Config.m_Width, y * Scale, Config.m_Width, Scale - Config.m_Width);
+					aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale + Scale - OutlineWidth, y * Scale, OutlineWidth, Scale - OutlineWidth);
 				else
-					aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale + Scale - Config.m_Width, y * Scale + Config.m_Width, Config.m_Width, Scale - Config.m_Width * 2.0f);
+					aQuads[NumQuads++] = IGraphics::CQuadItem(x * Scale + Scale - OutlineWidth, y * Scale + OutlineWidth, OutlineWidth, Scale - OutlineWidth * 2.0f);
 			}
 			if(NumQuads <= 0)
 				continue;
-			Graphics()->SetColor(color_cast<ColorRGBA>(ColorHSLA(Config.m_Color, true)));
+			if(Type != LastType)
+			{
+				Graphics()->SetColor(Style.m_Color);
+				LastType = Type;
+			}
 			Graphics()->QuadsDrawTL(aQuads, NumQuads);
 		}
 	}

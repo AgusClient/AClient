@@ -182,6 +182,8 @@ public:
 
 		ColorRGBA m_QuadColor;
 
+		int m_GradientPhaseBucket = -1;
+
 		void Reset();
 		void Draw(const CUIRect *pRect, ColorRGBA Color, int Corners, float Rounding);
 	};
@@ -317,6 +319,7 @@ class CCachedText
 	int m_CursorFlags = 0;
 	STextBoundingBox m_BoundingBox = {0.0f, 0.0f, 0.0f, 0.0f};
 	float m_MaxCharacterHeight = 0.0f;
+	bool m_Colored = false;
 
 public:
 	CCachedText() = default;
@@ -325,6 +328,7 @@ public:
 	CCachedText &operator=(const CCachedText &) = delete;
 
 	void Update(ITextRender *pTextRender, const char *pText, float FontSize, float LineWidth = -1.0f, int CursorFlags = TEXTFLAG_RENDER);
+	void UpdateColored(ITextRender *pTextRender, const char *pText, float FontSize, const std::vector<STextColorSplit> &vColorSplits, float LineWidth = -1.0f, int CursorFlags = TEXTFLAG_RENDER);
 	void Render(ITextRender *pTextRender, vec2 Pos, ColorRGBA Color) const;
 	void Reset(ITextRender *pTextRender);
 

@@ -1429,6 +1429,9 @@ void CPlayers::OnRender()
 	const bool IsTeamPlay = GameClient()->IsTeamPlay();
 	for(int i = 0; i < MAX_CLIENTS; ++i)
 	{
+		if(!IsPlayerInfoAvailable(i))
+			continue;
+
 		aRenderInfo[i] = GameClient()->m_aClients[i].m_RenderInfo;
 		aRenderInfo[i].m_TeeRenderFlags = 0;
 

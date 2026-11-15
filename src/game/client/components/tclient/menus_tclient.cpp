@@ -27,6 +27,8 @@
 #include <game/client/components/sounds.h>
 #include <game/client/components/tclient/bindchat.h>
 #include <game/client/components/tclient/bindwheel.h>
+#include <game/client/components/tclient/hud_layout.h>
+#include <game/client/components/tclient/media_decoder.h>
 #include <game/client/components/tclient/race_stats.h>
 #include <game/client/components/tclient/trails.h>
 #include <game/client/gameclient.h>
@@ -3676,27 +3678,37 @@ void CMenus::RenderSettingsAClient(CUIRect MainView)
 {
 	CUIRect TabBar, Button;
 	MainView.HSplitTop(LineSize, &TabBar, &MainView);
-	const float TabWidth = TabBar.w / 5.0f;
-	static CButtonContainer s_aAClientTabs[5] = {};
-	const char *apTabNames[5] = {
+	const float TabWidth = TabBar.w / 6.0f;
+	static CButtonContainer s_aAClientTabs[6] = {};
+	const char *apTabNames[6] = {
 		TCLocalize("Settings"),
+		TCLocalize("Visual & HUD"),
 		TCLocalize("Race Stats"),
 		TCLocalize("Perfiles"),
 		TCLocalize("Commands"),
 		TCLocalize("Mod")};
+	const int aTabIds[6] = {
+		ACLIENT_TAB_SETTINGS,
+		ACLIENT_TAB_HUD,
+		ACLIENT_TAB_RACESTATS,
+		ACLIENT_TAB_PROFILES,
+		ACLIENT_TAB_COMMANDS,
+		ACLIENT_TAB_MOD};
 
-	for(int Tab = 0; Tab < 5; ++Tab)
+	for(int Tab = 0; Tab < 6; ++Tab)
 	{
 		TabBar.VSplitLeft(TabWidth, &Button, &TabBar);
-		const int Corners = Tab == 0 ? IGraphics::CORNER_L : (Tab == 4 ? IGraphics::CORNER_R : IGraphics::CORNER_NONE);
-		if(DoButton_MenuTab(&s_aAClientTabs[Tab], apTabNames[Tab], m_CurAClientTab == Tab, &Button, Corners, nullptr, nullptr, nullptr, nullptr, 4.0f))
-			m_CurAClientTab = Tab;
+		const int Corners = Tab == 0 ? IGraphics::CORNER_L : (Tab == 5 ? IGraphics::CORNER_R : IGraphics::CORNER_NONE);
+		if(DoButton_MenuTab(&s_aAClientTabs[Tab], apTabNames[Tab], m_CurAClientTab == aTabIds[Tab], &Button, Corners, nullptr, nullptr, nullptr, nullptr, 4.0f))
+			m_CurAClientTab = aTabIds[Tab];
 	}
 
 	MainView.HSplitTop(Margin, nullptr, &MainView);
 
 	if(m_CurAClientTab == ACLIENT_TAB_SETTINGS)
 		RenderSettingsAClientSettings(MainView);
+	else if(m_CurAClientTab == ACLIENT_TAB_HUD)
+		RenderSettingsAClientHud(MainView);
 	else if(m_CurAClientTab == ACLIENT_TAB_RACESTATS)
 		RenderSettingsTClientRaceStats(MainView);
 	else if(m_CurAClientTab == ACLIENT_TAB_PROFILES)
@@ -3705,6 +3717,11 @@ void CMenus::RenderSettingsAClient(CUIRect MainView)
 		RenderSettingsAClientCommands(MainView);
 	else
 		RenderSettingsAClientMod(MainView);
+}
+
+void CMenus::RenderSettingsAClientHud(CUIRect MainView)
+{
+	RenderSettingsAClientSettings(MainView);
 }
 
 void CMenus::RenderSettingsAClientCommands(CUIRect MainView)
@@ -3987,6 +4004,10 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		}
 	};
 
+	const bool VisualTab = (m_CurAClientTab == ACLIENT_TAB_HUD);
+
+	if(!VisualTab)
+	{
 	// ***** Network & Anti-Ping ***** //
 	Column.HSplitTop(Margin, nullptr, &Column);
 	s_SectionBoxesAc.push_back(Column);
@@ -4501,9 +4522,12 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 
 	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
+	}
 
+	if(VisualTab)
+	{
 	// ***** Keystrokes HUD ***** //
-	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	Column.HSplitTop(Margin, nullptr, &Column);
 	s_SectionBoxesAc.push_back(Column);
 	Column.HSplitTop(HeadlineHeight, &Label, &Column);
 	Ui()->DoLabel(&Label, TCLocalize("Keystrokes HUD"), HeadlineFontSize, TEXTALIGN_ML);
@@ -4579,10 +4603,15 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	static CButtonContainer s_ColorBgReset;
 	DoLine_ColorPicker(&s_ColorBgReset, LineSize, 12.0f, MarginSmall, &Column, TCLocalize("Color del fondo"), (unsigned int *)&g_Config.m_AcColorBg, color_cast<ColorRGBA>(ColorHSLA(3215086858, true)), false, nullptr, true);
 
+	static CButtonContainer s_ColorDetailsReset;
+	DoLine_ColorPicker(&s_ColorDetailsReset, LineSize, 12.0f, MarginSmall, &Column, TCLocalize("Color detalles"), (unsigned int *)&g_Config.m_AcColorDetails, color_cast<ColorRGBA>(ColorHSLA(12050856)), false);
+
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
+	}
 
-
+	if(!VisualTab)
+	{
 	// ***** FPS Booster / Optimizer ***** //
 	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 	s_SectionBoxesAc.push_back(Column);
@@ -4650,7 +4679,10 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
+	}
 
+	if(VisualTab)
+	{
 	// ***** Custom Aspect Ratio & Black Bars ***** //
 	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 	s_SectionBoxesAc.push_back(Column);
@@ -4789,12 +4821,371 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
+	}
 
+	if(VisualTab)
+	{
+	// ***** Bloque: Fondos Multimedia (Menu & In-Game) ***** //
+	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	s_SectionBoxesAc.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("Fondos Multimedia"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	auto ReloadAcMediaFromConfig = [&]() {
+		CMenuMediaBackground &MediaBackground = GameClient()->m_MenuMediaBackground;
+		if(Client()->State() == IClient::STATE_ONLINE || Client()->State() == IClient::STATE_DEMOPLAYBACK)
+			MediaBackground.ReloadFromConfig(g_Config.m_AcGameMediaBackground, g_Config.m_AcMenuMediaBackgroundPath);
+		else
+			MediaBackground.ReloadFromConfig(g_Config.m_AcMenuMediaBackground, g_Config.m_AcMenuMediaBackgroundPath);
+	};
+
+	const bool MenuMediaChanged = DoCheckboxWithHelp(&g_Config.m_AcMenuMediaBackground, TCLocalize("Activar en menu principal"), TCLocalize("Reemplaza el fondo del menu principal con una imagen, GIF o video (mp4/webm/etc.)."), &g_Config.m_AcMenuMediaBackground, &Column, LineSize);
+	const bool GameMediaChanged = DoCheckboxWithHelp(&g_Config.m_AcGameMediaBackground, TCLocalize("Activar en fondo del juego"), TCLocalize("Muestra el fondo multimedia detras del mapa cuando Overlay Entities es mayor a 0."), &g_Config.m_AcGameMediaBackground, &Column, LineSize);
+	if(MenuMediaChanged || GameMediaChanged)
+		ReloadAcMediaFromConfig();
+
+	{
+		static std::vector<std::string> s_vMediaFileLabels;
+		static std::vector<std::string> s_vMediaFilePaths;
+		static std::vector<std::string> s_vMediaDropDownLabels;
+		static std::vector<const char *> s_vMediaDropDownPtrs;
+		static std::vector<int> s_vSortedIndices;
+		static int64_t s_LastMediaScanTick = 0;
+
+		auto ScanMediaFolder = [&]() {
+			struct SScanCtx
+			{
+				std::vector<std::string> *m_pLabels;
+				std::vector<std::string> *m_pPaths;
+			};
+			auto ScanCb = [](const char *pName, int IsDir, int StorageType, void *pUser) {
+				(void)StorageType;
+				if(IsDir)
+					return 0;
+				auto *pCtx = static_cast<SScanCtx *>(pUser);
+				const std::string Ext = MediaDecoder::ExtractExtensionLower(pName);
+				const bool SupportedImage = Ext == "png" || Ext == "jpg" || Ext == "jpeg" || Ext == "webp" || Ext == "bmp" || Ext == "avif" || Ext == "gif";
+				const bool SupportedVideo = Ext == "mp4" || Ext == "webm" || Ext == "mov" || Ext == "m4v" || Ext == "mkv" || Ext == "avi";
+				if(!SupportedImage && !SupportedVideo)
+					return 0;
+				pCtx->m_pLabels->emplace_back(pName);
+				pCtx->m_pPaths->emplace_back(std::string("AClient/backgrounds/") + pName);
+				return 0;
+			};
+
+			Storage()->CreateFolder("AClient", IStorage::TYPE_SAVE);
+			Storage()->CreateFolder("AClient/backgrounds", IStorage::TYPE_SAVE);
+			s_vMediaFileLabels.clear();
+			s_vMediaFilePaths.clear();
+			SScanCtx Ctx{&s_vMediaFileLabels, &s_vMediaFilePaths};
+			Storage()->ListDirectory(IStorage::TYPE_SAVE, "AClient/backgrounds", ScanCb, &Ctx);
+
+			s_vSortedIndices.resize(s_vMediaFileLabels.size());
+			for(size_t i = 0; i < s_vSortedIndices.size(); ++i)
+				s_vSortedIndices[i] = (int)i;
+			std::sort(s_vSortedIndices.begin(), s_vSortedIndices.end(), [&](int L, int R) {
+				return str_comp_nocase(s_vMediaFileLabels[L].c_str(), s_vMediaFileLabels[R].c_str()) < 0;
+			});
+
+			s_vMediaDropDownLabels.clear();
+			s_vMediaDropDownPtrs.clear();
+			s_vMediaDropDownLabels.reserve(s_vSortedIndices.size());
+			s_vMediaDropDownPtrs.reserve(s_vSortedIndices.size());
+			for(int Idx : s_vSortedIndices)
+				s_vMediaDropDownLabels.push_back(s_vMediaFileLabels[Idx]);
+			for(const std::string &Lbl : s_vMediaDropDownLabels)
+				s_vMediaDropDownPtrs.push_back(Lbl.c_str());
+			s_LastMediaScanTick = time_get();
+		};
+
+		const int64_t NowTick = time_get();
+		if(s_LastMediaScanTick == 0 || NowTick - s_LastMediaScanTick > time_freq() * 2)
+			ScanMediaFolder();
+
+		int SelectedMediaFile = -1;
+		for(size_t i = 0; i < s_vSortedIndices.size(); ++i)
+		{
+			if(str_comp(g_Config.m_AcMenuMediaBackgroundPath, s_vMediaFilePaths[s_vSortedIndices[i]].c_str()) == 0)
+			{
+				SelectedMediaFile = (int)i;
+				break;
+			}
+		}
+
+		CUIRect MediaRow, MediaDropDown, MediaReloadBtn, MediaFolderBtn;
+		Column.HSplitTop(LineSize, &MediaRow, &Column);
+		MediaRow.VSplitRight(20.0f, &MediaRow, &MediaFolderBtn);
+		MediaRow.VSplitRight(MarginSmall, &MediaRow, nullptr);
+		MediaRow.VSplitRight(20.0f, &MediaRow, &MediaReloadBtn);
+		MediaRow.VSplitRight(MarginSmall, &MediaRow, nullptr);
+		MediaDropDown = MediaRow;
+
+		if(s_vMediaDropDownPtrs.empty())
+		{
+			static CButtonContainer s_MediaEmptyBtn;
+			DoButton_Menu(&s_MediaEmptyBtn, TCLocalize("Sin archivos en AClient/backgrounds"), -1, &MediaDropDown);
+		}
+		else
+		{
+			static CUi::SDropDownState s_MediaDropDownState;
+			static CScrollRegion s_MediaDropDownScroll;
+			s_MediaDropDownState.m_SelectionPopupContext.m_pScrollRegion = &s_MediaDropDownScroll;
+			const int NewSel = Ui()->DoDropDown(&MediaDropDown, SelectedMediaFile, s_vMediaDropDownPtrs.data(), s_vMediaDropDownPtrs.size(), s_MediaDropDownState);
+			if(NewSel != SelectedMediaFile && NewSel >= 0 && NewSel < (int)s_vSortedIndices.size())
+			{
+				str_copy(g_Config.m_AcMenuMediaBackgroundPath, s_vMediaFilePaths[s_vSortedIndices[NewSel]].c_str(), sizeof(g_Config.m_AcMenuMediaBackgroundPath));
+				ReloadAcMediaFromConfig();
+			}
+		}
+
+		TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+		TextRender()->SetRenderFlags(ETextRenderFlags::TEXT_RENDER_FLAG_ONLY_ADVANCE_WIDTH | ETextRenderFlags::TEXT_RENDER_FLAG_NO_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_Y_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT);
+		static CButtonContainer s_MediaReloadBtnId;
+		if(DoButton_Menu(&s_MediaReloadBtnId, FontIcon::ARROW_ROTATE_RIGHT, 0, &MediaReloadBtn))
+		{
+			ScanMediaFolder();
+			ReloadAcMediaFromConfig();
+		}
+		GameClient()->m_Tooltips.DoToolTip(&s_MediaReloadBtnId, &MediaReloadBtn, TCLocalize("Recargar fondo multimedia"));
+
+		static CButtonContainer s_MediaFolderBtnId;
+		if(DoButton_Menu(&s_MediaFolderBtnId, FontIcon::FOLDER, 0, &MediaFolderBtn))
+		{
+			Storage()->CreateFolder("AClient", IStorage::TYPE_SAVE);
+			Storage()->CreateFolder("AClient/backgrounds", IStorage::TYPE_SAVE);
+			char aFolderPath[IO_MAX_PATH_LENGTH];
+			Storage()->GetCompletePath(IStorage::TYPE_SAVE, "AClient/backgrounds", aFolderPath, sizeof(aFolderPath));
+			Client()->ViewFile(aFolderPath);
+		}
+		GameClient()->m_Tooltips.DoToolTip(&s_MediaFolderBtnId, &MediaFolderBtn, TCLocalize("Abrir carpeta AClient/backgrounds"));
+		TextRender()->SetRenderFlags(0);
+		TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+	}
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	{
+		CUIRect OffsetRow;
+		Column.HSplitTop(LineSize, &OffsetRow, &Column);
+		Ui()->DoScrollbarOption(&g_Config.m_AcGameMediaBackgroundOffset, &g_Config.m_AcGameMediaBackgroundOffset, &OffsetRow, TCLocalize("Parallax del mapa"), 0, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");
+		GameClient()->m_Tooltips.DoToolTip(&g_Config.m_AcGameMediaBackgroundOffset, &OffsetRow, TCLocalize("0 mantiene el fondo fijo. Valores mayores agregan parallax al mover la camara."));
+	}
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	{
+		CUIRect StatusRow;
+		Column.HSplitTop(LineSize, &StatusRow, &Column);
+		const bool InGame = Client()->State() == IClient::STATE_ONLINE || Client()->State() == IClient::STATE_DEMOPLAYBACK;
+		const CMenuMediaBackground &MediaSrc = GameClient()->m_MenuMediaBackground;
+		const char *pStatusText = MediaSrc.StatusText();
+		char aStatusBuf[256];
+		if(InGame && MediaSrc.IsLoaded() && g_Config.m_AcGameMediaBackground && g_Config.m_ClOverlayEntities == 0)
+		{
+			str_format(aStatusBuf, sizeof(aStatusBuf), "%s %s", pStatusText, TCLocalize("(Oculto: Overlay Entities es 0)"));
+			pStatusText = aStatusBuf;
+			TextRender()->TextColor(ColorRGBA(1.0f, 0.85f, 0.45f, 1.0f));
+		}
+		else if(MediaSrc.HasError())
+			TextRender()->TextColor(ColorRGBA(1.0f, 0.45f, 0.45f, 1.0f));
+		else if(MediaSrc.IsLoaded())
+			TextRender()->TextColor(ColorRGBA(0.55f, 1.0f, 0.55f, 1.0f));
+		Ui()->DoLabel(&StatusRow, pStatusText, 11.0f, TEXTALIGN_ML);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
+	}
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
+
+	// ***** Bloque: Gradientes de Texto ***** //
+	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	s_SectionBoxesAc.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("Gradientes de Texto"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	DoCheckboxWithHelp(&g_Config.m_AcNameplateGradient, TCLocalize("Gradiente en nicks"), TCLocalize("Aplica gradiente animado a los nombres en nameplates y scoreboard."), &g_Config.m_AcNameplateGradient, &Column, LineSize);
+	DoCheckboxWithHelp(&g_Config.m_AcNameplateGradientClan, TCLocalize("Gradiente en clanes"), TCLocalize("Aplica gradiente animado a los clanes en nameplates y scoreboard."), &g_Config.m_AcNameplateGradientClan, &Column, LineSize);
+	DoCheckboxWithHelp(&g_Config.m_AcNameplateGradientSkin, TCLocalize("Gradiente en skin (cuerpo y pies)"), TCLocalize("Anima el color del cuerpo y pies del tee con los colores del gradiente."), &g_Config.m_AcNameplateGradientSkin, &Column, LineSize);
+	DoCheckboxWithHelp(&g_Config.m_AcNameplateGradientEverything, TCLocalize("Gradiente en todo el texto (UI/HUD)"), TCLocalize("Aplica el gradiente a todos los textos renderizados de la interfaz y HUD."), &g_Config.m_AcNameplateGradientEverything, &Column, LineSize);
+
+	{
+		CUIRect SpeedRow;
+		Column.HSplitTop(LineSize, &SpeedRow, &Column);
+		Ui()->DoScrollbarOption(&g_Config.m_AcNameplateGradientAnimateSpeed, &g_Config.m_AcNameplateGradientAnimateSpeed, &SpeedRow, TCLocalize("Velocidad de animacion"), 1, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");
+	}
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	{
+		CUIRect ModeRow, BtnSkin, BtnCustom, BtnRainbow;
+		Column.HSplitTop(LineSize, &ModeRow, &Column);
+		ModeRow.VSplitLeft(ModeRow.w / 3.0f, &BtnSkin, &ModeRow);
+		ModeRow.VSplitMid(&BtnCustom, &BtnRainbow);
+		g_Config.m_AcNameplateGradientMode = std::clamp(g_Config.m_AcNameplateGradientMode, 0, 2);
+		static CButtonContainer s_GradModeSkin, s_GradModeCustom, s_GradModeRainbow;
+		if(DoButton_Menu(&s_GradModeSkin, TCLocalize("Skin"), g_Config.m_AcNameplateGradientMode == AC_GRADIENT_MODE_SKIN, &BtnSkin, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+			g_Config.m_AcNameplateGradientMode = AC_GRADIENT_MODE_SKIN;
+		if(DoButton_Menu(&s_GradModeCustom, TCLocalize("Custom"), g_Config.m_AcNameplateGradientMode == AC_GRADIENT_MODE_CUSTOM, &BtnCustom, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_NONE))
+			g_Config.m_AcNameplateGradientMode = AC_GRADIENT_MODE_CUSTOM;
+		if(DoButton_Menu(&s_GradModeRainbow, TCLocalize("Rainbow"), g_Config.m_AcNameplateGradientMode == AC_GRADIENT_MODE_RAINBOW, &BtnRainbow, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+			g_Config.m_AcNameplateGradientMode = AC_GRADIENT_MODE_RAINBOW;
+	}
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	{
+		CUIRect TargetRow, BtnOwn, BtnOthers, BtnAll;
+		Column.HSplitTop(LineSize, &TargetRow, &Column);
+		TargetRow.VSplitLeft(TargetRow.w / 3.0f, &BtnOwn, &TargetRow);
+		TargetRow.VSplitMid(&BtnOthers, &BtnAll);
+		g_Config.m_AcNameplateGradientTarget = std::clamp(g_Config.m_AcNameplateGradientTarget, 0, 2);
+		static CButtonContainer s_GradTargetOwn, s_GradTargetOthers, s_GradTargetAll;
+		if(DoButton_Menu(&s_GradTargetOwn, TCLocalize("Solo yo"), g_Config.m_AcNameplateGradientTarget == AC_GRADIENT_TARGET_OWN, &BtnOwn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+			g_Config.m_AcNameplateGradientTarget = AC_GRADIENT_TARGET_OWN;
+		if(DoButton_Menu(&s_GradTargetOthers, TCLocalize("Otros"), g_Config.m_AcNameplateGradientTarget == AC_GRADIENT_TARGET_OTHERS, &BtnOthers, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_NONE))
+			g_Config.m_AcNameplateGradientTarget = AC_GRADIENT_TARGET_OTHERS;
+		if(DoButton_Menu(&s_GradTargetAll, TCLocalize("Todos"), g_Config.m_AcNameplateGradientTarget == AC_GRADIENT_TARGET_ALL, &BtnAll, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+			g_Config.m_AcNameplateGradientTarget = AC_GRADIENT_TARGET_ALL;
+	}
+
+	if(g_Config.m_AcNameplateGradientMode == AC_GRADIENT_MODE_CUSTOM)
+	{
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		CUIRect CountRow, Btn2, Btn3, Btn4;
+		Column.HSplitTop(LineSize, &CountRow, &Column);
+		CountRow.VSplitLeft(CountRow.w / 3.0f, &Btn2, &CountRow);
+		CountRow.VSplitMid(&Btn3, &Btn4);
+		g_Config.m_AcNameplateGradientColorCount = std::clamp(g_Config.m_AcNameplateGradientColorCount, 2, 4);
+		static CButtonContainer s_GradCnt2, s_GradCnt3, s_GradCnt4;
+		if(DoButton_Menu(&s_GradCnt2, "2 colores", g_Config.m_AcNameplateGradientColorCount == 2, &Btn2, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+			g_Config.m_AcNameplateGradientColorCount = 2;
+		if(DoButton_Menu(&s_GradCnt3, "3 colores", g_Config.m_AcNameplateGradientColorCount == 3, &Btn3, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_NONE))
+			g_Config.m_AcNameplateGradientColorCount = 3;
+		if(DoButton_Menu(&s_GradCnt4, "4 colores", g_Config.m_AcNameplateGradientColorCount == 4, &Btn4, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+			g_Config.m_AcNameplateGradientColorCount = 4;
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		static CButtonContainer s_GradCol1, s_GradCol2, s_GradCol3, s_GradCol4;
+		DoLine_ColorPicker(&s_GradCol1, LineSize, 13.0f, MarginSmall, &Column, TCLocalize("Color 1"), &g_Config.m_AcNameplateGradientColor1, color_cast<ColorRGBA>(ColorHSLA(DefaultConfig::AcNameplateGradientColor1, true)), false);
+		DoLine_ColorPicker(&s_GradCol2, LineSize, 13.0f, MarginSmall, &Column, TCLocalize("Color 2"), &g_Config.m_AcNameplateGradientColor2, color_cast<ColorRGBA>(ColorHSLA(DefaultConfig::AcNameplateGradientColor2, true)), false);
+		if(g_Config.m_AcNameplateGradientColorCount >= 3)
+			DoLine_ColorPicker(&s_GradCol3, LineSize, 13.0f, MarginSmall, &Column, TCLocalize("Color 3"), &g_Config.m_AcNameplateGradientColor3, color_cast<ColorRGBA>(ColorHSLA(DefaultConfig::AcNameplateGradientColor3, true)), false);
+		if(g_Config.m_AcNameplateGradientColorCount >= 4)
+			DoLine_ColorPicker(&s_GradCol4, LineSize, 13.0f, MarginSmall, &Column, TCLocalize("Color 4"), &g_Config.m_AcNameplateGradientColor4, color_cast<ColorRGBA>(ColorHSLA(DefaultConfig::AcNameplateGradientColor4, true)), false);
+	}
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
+
+	// ***** Bloque: Motion Blur ***** //
+	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	s_SectionBoxesAc.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("Motion Blur"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	DoCheckboxWithHelp(&g_Config.m_AcMotionBlur, TCLocalize("Activar Motion Blur"), TCLocalize("Suaviza el movimiento mezclando el frame anterior con el actual (OpenGL 3.3 y Vulkan)."), &g_Config.m_AcMotionBlur, &Column, LineSize);
+	if(g_Config.m_AcMotionBlur)
+	{
+		CUIRect BlurRow;
+		Column.HSplitTop(LineSize, &BlurRow, &Column);
+		Ui()->DoScrollbarOption(&g_Config.m_AcMotionBlurStrength, &g_Config.m_AcMotionBlurStrength, &BlurRow, TCLocalize("Intensidad"), 0, 95, &CUi::ms_LinearScrollbarScale, 0u, "%");
+	}
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
+
+	// ***** Bloque: Keystrokes Separado (Teclado + Mouse) ***** //
+	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	s_SectionBoxesAc.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("Keystrokes Separado (Teclado + Mouse)"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	{
+		CUIRect StyleRow, BtnClassic, BtnMc;
+		Column.HSplitTop(LineSize, &StyleRow, &Column);
+		StyleRow.VSplitMid(&BtnClassic, &BtnMc);
+		g_Config.m_AcKeystrokesStyle = std::clamp(g_Config.m_AcKeystrokesStyle, 0, 1);
+		static CButtonContainer s_KsStyleClassic, s_KsStyleMc;
+		if(DoButton_Menu(&s_KsStyleClassic, TCLocalize("Clasico (Texturas)"), g_Config.m_AcKeystrokesStyle == 0, &BtnClassic, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+			g_Config.m_AcKeystrokesStyle = 0;
+		if(DoButton_Menu(&s_KsStyleMc, TCLocalize("Minecraft"), g_Config.m_AcKeystrokesStyle == 1, &BtnMc, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+			g_Config.m_AcKeystrokesStyle = 1;
+	}
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	if(DoCheckboxWithHelp(&g_Config.m_AcKeystrokesKeyboard, TCLocalize("Mostrar Teclado (HUD)"), TCLocalize("Muestra el modulo independiente de teclado, movible en el Editor de HUD."), &g_Config.m_AcKeystrokesKeyboard, &Column, LineSize))
+		HudLayout::SetEnabled(HudLayout::MODULE_KEYSTROKES_KEYBOARD, g_Config.m_AcKeystrokesKeyboard != 0);
+	if(g_Config.m_AcKeystrokesStyle == 0 && g_Config.m_AcKeystrokesKeyboard)
+	{
+		CUIRect KbRow, BtnMin, BtnFull, BtnMicro;
+		Column.HSplitTop(LineSize, &KbRow, &Column);
+		KbRow.VSplitLeft(KbRow.w / 3.0f, &BtnMin, &KbRow);
+		KbRow.VSplitMid(&BtnFull, &BtnMicro);
+		g_Config.m_AcKeystrokesKeyboardPreset = std::clamp(g_Config.m_AcKeystrokesKeyboardPreset, 0, 2);
+		static CButtonContainer s_KbPresetMin, s_KbPresetFull, s_KbPresetMicro;
+		if(DoButton_Menu(&s_KbPresetMin, "Minimal", g_Config.m_AcKeystrokesKeyboardPreset == 0, &BtnMin, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+			g_Config.m_AcKeystrokesKeyboardPreset = 0;
+		if(DoButton_Menu(&s_KbPresetFull, "Full", g_Config.m_AcKeystrokesKeyboardPreset == 1, &BtnFull, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_NONE))
+			g_Config.m_AcKeystrokesKeyboardPreset = 1;
+		if(DoButton_Menu(&s_KbPresetMicro, "Micro", g_Config.m_AcKeystrokesKeyboardPreset == 2, &BtnMicro, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+			g_Config.m_AcKeystrokesKeyboardPreset = 2;
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+	}
+
+	if(DoCheckboxWithHelp(&g_Config.m_AcKeystrokesMouse, TCLocalize("Mostrar Mouse (HUD)"), TCLocalize("Muestra el modulo independiente de mouse, movible en el Editor de HUD."), &g_Config.m_AcKeystrokesMouse, &Column, LineSize))
+		HudLayout::SetEnabled(HudLayout::MODULE_KEYSTROKES_MOUSE, g_Config.m_AcKeystrokesMouse != 0);
+	if(g_Config.m_AcKeystrokesMouse)
+	{
+		CUIRect MsRow, BtnArrow, BtnDot, BtnClean;
+		Column.HSplitTop(LineSize, &MsRow, &Column);
+		MsRow.VSplitLeft(MsRow.w / 3.0f, &BtnArrow, &MsRow);
+		MsRow.VSplitMid(&BtnDot, &BtnClean);
+		g_Config.m_AcKeystrokesMousePreset = std::clamp(g_Config.m_AcKeystrokesMousePreset, 1, 3);
+		static CButtonContainer s_MsPresetArrow, s_MsPresetDot, s_MsPresetClean;
+		if(DoButton_Menu(&s_MsPresetArrow, "Arrow", g_Config.m_AcKeystrokesMousePreset == 1, &BtnArrow, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+			g_Config.m_AcKeystrokesMousePreset = 1;
+		if(DoButton_Menu(&s_MsPresetDot, "Dot", g_Config.m_AcKeystrokesMousePreset == 2, &BtnDot, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_NONE))
+			g_Config.m_AcKeystrokesMousePreset = 2;
+		if(DoButton_Menu(&s_MsPresetClean, "Simple", g_Config.m_AcKeystrokesMousePreset == 3, &BtnClean, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+			g_Config.m_AcKeystrokesMousePreset = 3;
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+	}
+
+	if(g_Config.m_AcKeystrokesStyle == 1)
+	{
+		CUIRect McLayoutRow, BtnMcFull, BtnMcAd;
+		Column.HSplitTop(LineSize, &McLayoutRow, &Column);
+		McLayoutRow.VSplitMid(&BtnMcFull, &BtnMcAd);
+		g_Config.m_AcKeystrokesMcLayout = std::clamp(g_Config.m_AcKeystrokesMcLayout, 0, 1);
+		static CButtonContainer s_McFull, s_McAd;
+		if(DoButton_Menu(&s_McFull, "MC: WASD", g_Config.m_AcKeystrokesMcLayout == 0, &BtnMcFull, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+			g_Config.m_AcKeystrokesMcLayout = 0;
+		if(DoButton_Menu(&s_McAd, "MC: Solo A/D", g_Config.m_AcKeystrokesMcLayout == 1, &BtnMcAd, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+			g_Config.m_AcKeystrokesMcLayout = 1;
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+		if(g_Config.m_AcKeystrokesMcLayout == 1)
+		{
+			DoCheckboxWithHelp(&g_Config.m_AcKeystrokesMcShowLmb, TCLocalize("Mostrar LMB (Click Izq)"), TCLocalize("Muestra el boton LMB en el layout A/D de Minecraft."), &g_Config.m_AcKeystrokesMcShowLmb, &Column, LineSize);
+			DoCheckboxWithHelp(&g_Config.m_AcKeystrokesMcShowRmb, TCLocalize("Mostrar RMB (Click Der)"), TCLocalize("Muestra el boton RMB en el layout A/D de Minecraft."), &g_Config.m_AcKeystrokesMcShowRmb, &Column, LineSize);
+			DoCheckboxWithHelp(&g_Config.m_AcKeystrokesMcShowSpace, TCLocalize("Mostrar Space"), TCLocalize("Muestra la barra Space en el layout A/D de Minecraft."), &g_Config.m_AcKeystrokesMcShowSpace, &Column, LineSize);
+		}
+
+		CUIRect OpacityRow;
+		Column.HSplitTop(LineSize, &OpacityRow, &Column);
+		Ui()->DoScrollbarOption(&g_Config.m_AcKeystrokesMcPressedOpacity, &g_Config.m_AcKeystrokesMcPressedOpacity, &OpacityRow, TCLocalize("Opacidad tecla presionada"), 0, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");
+	}
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
+	}
 
 	// ***** Right Column: HUD, Social, Chat & Alerts ***** //
 	LeftView = Column;
 	Column = RightView;
 
+	if(VisualTab)
+	{
 	// ***** Overlay RaceStats ***** //
 	Column.HSplitTop(Margin, nullptr, &Column);
 	s_SectionBoxesAc.push_back(Column);
@@ -5095,9 +5486,12 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 
 	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
+	}
 
+	if(!VisualTab)
+	{
 	// ***** Background Alerts (Tabbed out) ***** //
-	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	Column.HSplitTop(Margin, nullptr, &Column);
 	s_SectionBoxesAc.push_back(Column);
 	Column.HSplitTop(HeadlineHeight, &Label, &Column);
 	Ui()->DoLabel(&Label, TCLocalize("Background Alerts (Tabbed out)"), HeadlineFontSize, TEXTALIGN_ML);
@@ -5234,9 +5628,12 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
+	}
 
 	RightView = Column;
 
+	if(!VisualTab)
+	{
 	// ***** Bloque: Actualizador Integrado de AClient ***** //
 	CUIRect UpdateSection;
 	UpdateSection.x = LeftView.x;
@@ -5621,6 +6018,7 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 
 	LeftView.y = BottomWhatsNew.y;
 	RightView.y = BottomWhatsNew.y;
+	}
 
 	CUIRect ScrollRegion;
 	ScrollRegion.x = MainView.x;

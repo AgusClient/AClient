@@ -2,9 +2,9 @@
 #ifndef GAME_CLIENT_COMPONENTS_TCLIENT_HUD_EDITOR_H
 #define GAME_CLIENT_COMPONENTS_TCLIENT_HUD_EDITOR_H
 
-#include <game/client/component.h>
-#include <engine/console.h>
 #include "hud_layout.h"
+#include <engine/console.h>
+#include <game/client/component.h>
 #include <game/client/ui.h>
 
 class CHudEditor : public CComponent
@@ -23,15 +23,15 @@ public:
 	bool IsActive() const { return m_Active; }
 
 private:
-	static constexpr int MAX_MODULE_VISUALS = 16;
+	static constexpr int MAX_MODULE_VISUALS = 24;
 
 	struct SModuleVisual
 	{
 		HudLayout::EModule m_Module = HudLayout::MODULE_SCORE;
 		CUIRect m_Rect{};
 		int m_Corners = IGraphics::CORNER_ALL;
-		float m_Rounding = 5.0f;
-		bool m_Editable = true;
+		float m_Rounding = 6.0f;
+		bool m_Editable = false;
 		bool m_Enabled = true;
 	};
 
@@ -42,6 +42,7 @@ private:
 		CUIRect m_TargetRect{};
 		int m_StartScale = 100;
 		int m_TargetScale = 100;
+		int m_Kind = 0;
 		float m_Phase = 0.0f;
 	};
 
@@ -60,12 +61,23 @@ private:
 	CUIRect m_ResizeAnchorRect{};
 	int m_ResizeStartScale = 100;
 	vec2 m_DragMouseOffset = vec2(0.0f, 0.0f);
+	vec2 m_PressMousePos = vec2(0.0f, 0.0f);
+
 	SPopupMenuId m_SettingsPopupId;
+	bool m_PopupGrowFromRight = false;
 	float m_PopupRevealPhase = 0.0f;
+	bool m_SuppressCloseAnim = false;
+	bool m_PopupClosing = false;
+	float m_PopupClosePhase = 0.0f;
 	CUIRect m_LastPopupOuterRect{};
 
 	SResetAnim m_aResetAnims[MAX_MODULE_VISUALS];
 	int m_ResetAnimCount = 0;
+
+	// Cache por frame en O(1) para evitar recomputar visuales multiples veces por frame
+	SModuleVisual m_aFrameVisuals[MAX_MODULE_VISUALS];
+	int m_FrameVisualCount = 0;
+	int m_aVisualIndex[HudLayout::MODULE_COUNT];
 
 	CButtonContainer m_ResetAllButton;
 	CButtonContainer m_ToggleModuleButton;
@@ -79,14 +91,22 @@ private:
 	float HudHeight() const;
 	bool IsEditableModule(HudLayout::EModule Module) const;
 	bool IsModuleEnabled(HudLayout::EModule Module) const;
-	void CollectModuleVisuals(SModuleVisual *pOut, int &Count) const;
+	void RebuildFrameVisuals();
+	void RefreshFrameVisual(HudLayout::EModule Module);
+	const SModuleVisual *FindFrameVisual(HudLayout::EModule Module) const;
 	HudLayout::EModule HitTestModule(vec2 MousePos) const;
 	HudLayout::EModule HitTestResizeHandle(vec2 MousePos, int &OutCorner) const;
 	void UpdateDragging(vec2 MousePos);
 	void UpdateResizing(vec2 MousePos);
+	void StartResetAnimation(HudLayout::EModule Module, int Kind);
+	void CancelResetAnimation(HudLayout::EModule Module);
+	SResetAnim *FindOrAddResetAnim(HudLayout::EModule Module);
+	void UpdateResetAnimation();
 	void RenderOverlay(vec2 MousePos);
+	void RenderModulePreview(const SModuleVisual &Visual) const;
 	void RenderModuleOutline(const SModuleVisual &Visual, bool Hovered, bool Selected) const;
 	void RenderResizeHandles(const SModuleVisual &Visual) const;
+	void RenderClosingPopupFrame() const;
 	void RenderModuleLabel(const SModuleVisual &Visual) const;
 	void OpenModuleSettings(const SModuleVisual &Visual);
 	void ApplyDraggedPosition(HudLayout::EModule Module, const CUIRect &Rect);

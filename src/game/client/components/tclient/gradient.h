@@ -1,0 +1,67 @@
+#ifndef GAME_CLIENT_COMPONENTS_TCLIENT_GRADIENT_H
+#define GAME_CLIENT_COMPONENTS_TCLIENT_GRADIENT_H
+
+#include <base/color.h>
+
+#include <engine/shared/protocol.h>
+#include <engine/textrender.h>
+
+#include <game/client/component.h>
+
+#include <vector>
+
+class CGameClient;
+
+enum
+{
+	AC_GRADIENT_MODE_SKIN = 0,
+	AC_GRADIENT_MODE_CUSTOM = 1,
+	AC_GRADIENT_MODE_RAINBOW = 2,
+};
+
+enum
+{
+	AC_GRADIENT_TARGET_OWN = 0,
+	AC_GRADIENT_TARGET_OTHERS = 1,
+	AC_GRADIENT_TARGET_ALL = 2,
+};
+
+class CAcGradient : public CComponent
+{
+	ColorRGBA m_aOriginalBody[MAX_CLIENTS];
+	ColorRGBA m_aOriginalFeet[MAX_CLIENTS];
+	bool m_aHasOriginal[MAX_CLIENTS] = {};
+	bool m_HadSkinGradient = false;
+
+	int m_LastEverything = -1;
+	int m_LastNick = -1;
+	int m_LastClan = -1;
+	int m_LastTarget = -1;
+	int m_LastMode = -1;
+	int m_LastColorCount = -1;
+	int m_LastAnimateSpeed = -1;
+	unsigned m_LastColor1 = 0;
+	unsigned m_LastColor2 = 0;
+	unsigned m_LastColor3 = 0;
+	unsigned m_LastColor4 = 0;
+
+	void RefreshCachedText();
+
+public:
+	int Sizeof() const override { return sizeof(*this); }
+	void OnInit() override;
+	void OnShutdown() override;
+	void OnRender() override;
+
+	static bool AppliesTo(int ClientId, const CGameClient *pGameClient);
+	static float AnimatePhase(double GlobalTime);
+	static ColorRGBA SampleRainbow(float Hue);
+	static void GetSkinToneColors(int ClientId, const CGameClient *pGameClient, ColorRGBA &Body, ColorRGBA &Feet);
+	static void GetAnimatedEndpointColors(int ClientId, const CGameClient *pGameClient, float Phase, ColorRGBA &Color1, ColorRGBA &Color2);
+
+	static void AppendAnimatedColorSplits(const char *pText, const ColorRGBA &Color1, const ColorRGBA &Color2, float Phase, std::vector<STextColorSplit> &vOut, int CharOffset = 0, bool Clear = true);
+	static void AppendAnimatedTextSplits(const char *pText, int ClientId, CGameClient *pGameClient, float Phase, std::vector<STextColorSplit> &vOut, int CharOffset = 0, bool Clear = true);
+	static void ApplyEverythingGradient(CTextCursor *pCursor, const char *pText, int Length, CGameClient *pGameClient);
+};
+
+#endif
