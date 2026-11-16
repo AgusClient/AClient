@@ -109,7 +109,7 @@ Herramientas avanzadas para administradores y moderadores de servidores:
 ---
 
 ### 7. HUD Modular, Keystrokes y Frametime
-* **Overlay de Teclas (`ac_hud_keystrokes`):** Indicador visual en pantalla de las teclas pulsadas (WASD, salto, disparo y gancho) con layouts estándar y compactos (A/D).
+* **Overlay de Teclas (`ac_keystrokes_keyboard` / `ac_keystrokes_mouse`):** Indicador visual en pantalla con estilo **Clásico** (sprites de teclado y ratón) o **Minecraft** (`ac_keystrokes_style`), con presets WASD minimal, WASD full, micro y solo A/D, además de editor de posición libre en el **Editor de HUD** (basado en la implementación de BestClient).
 * **Velocímetro Digital (`ac_hud_speedometer`):** Monitorización de velocidad vectorial y horizontal en tiempo real.
 * **Frametime Preciso (`ac_show_frametime`):** Lectura numérica en ms en la esquina superior derecha, con baja ocupación visual.
 * **Indicadores de Freeze de Compañeros:** HUD con cantidad de compañeros congelados y estado del equipo.
@@ -154,10 +154,9 @@ Herramientas avanzadas para administradores y moderadores de servidores:
 ## Descarga e Instalación
 
 ### Windows x64 (Binario Precompilado)
-1. Ve a la sección de **[Últimas Releases](https://github.com/AgusClient/AClient/releases/latest)**.
-2. Descarga el paquete recomendado:
-   * **`AClient-windows-v2.7.2.zip` (Recomendado):** Incluye `DDNet.exe`, la carpeta [`data/`](data/) completa (incluyendo shaders `.spv` para Vulkan 1.1.0), todas las librerías dinámicas (`SDL2.dll`, `libcurl.dll`, `vulkan-1.dll`, etc.) y archivos de configuración iniciales. Simplemente descomprime y ejecuta `DDNet.exe`.
-   * **`DDNet.exe`:** Solo el binario ejecutable para actualizar una instalación existente de DDNet/AClient.
+1. Ve a la sección de **[Últimas Releases](https://github.com/AgusClient/AClient/releases)**.
+2. Descarga el paquete recomendado (por ejemplo `AClient-windows-v2.7.8.zip` o la última pre-release `AClient-windows-v2.7.9-pre1.zip`):
+   * Incluye `DDNet.exe`, la carpeta [`data/`](data/) completa (incluyendo shaders `.spv` para Vulkan 1.1.0), todas las librerías dinámicas (`SDL2.dll`, `libcurl.dll`, `vulkan-1.dll`, etc.) y archivos de configuración iniciales. Simplemente descomprime y ejecuta `DDNet.exe`.
 
 ---
 
@@ -181,7 +180,11 @@ Herramientas avanzadas para administradores y moderadores de servidores:
 | `ac_statboard_background_calc` | `0` | Calcula estadísticas en segundo plano aunque el overlay esté oculto |
 | `ac_mini_statboard_anim` | `1` | Animación fluida de posiciones estilo F1 |
 | `ac_statboard_keep_on_death` | `0` | Mantiene las estadísticas tras morir con `/kill` |
-| `ac_hud_keystrokes` | `0` | Muestra el panel en pantalla de teclas pulsadas |
+| `ac_keystrokes_style` | `0` | Estilo de Keystrokes (`0` Clásico con sprites, `1` Minecraft) |
+| `ac_keystrokes_keyboard` | `0` | Muestra el HUD de teclado en pantalla |
+| `ac_keystrokes_mouse` | `0` | Muestra el HUD de ratón en pantalla |
+| `ac_scoreboard_gameskin_actions` | `1` | Acciones rápidas en Tab para copiar/ocultar Gameskin y Entities |
+| `ac_zoom_cooldown_ms` | `50` | Cooldown mínimo en ms entre pasos de `zoom+`/`zoom-` (`0..250`) |
 | `ac_hud_speedometer` | `0` | Muestra el velocímetro digital |
 | `ac_show_frametime` | `0` | Monitor numérico de frametime en la esquina superior |
 
@@ -253,6 +256,7 @@ El ejecutable resultante estará en `build/release/DDNet.exe` (o `build/Release/
 * **[DDraceNetwork (DDNet)](https://ddnet.org):** Base de código abierta mantenida por Dennis Felsing (`def-`) y la comunidad de DDNet.
 * **[Teeworlds](https://teeworlds.com):** Juego original creado por Magnus Auvinen (`matricks`).
 * **[TClient](https://github.com/TaterClient/TClient):** Base de herramientas extendidas.
-* **AClient:** Desarrollado, adaptado y optimizado por el equipo de **[AgusClient](https://github.com/agusx30/AClient-Dev)**.
+* **[BestClient](https://github.com/BestProjectTeam/BestClient) ([bestclient.fun](https://bestclient.fun)):** Créditos al equipo de **BestProjectTeam** por el sistema de **Keystrokes HUD** (estilos Clásico y Minecraft, sprites y presets de teclado/ratón), el **Editor de HUD / HUD Layout** modular y la base de **Práctica Rápida (Fast Practice)** adaptados e integrados en AClient.
+* **AClient:** Desarrollado, adaptado y optimizado por el equipo de **[AgusClient](https://github.com/AgusClient/AClient)**.
 
 Distribuido bajo la licencia [Zlib](license.txt) junto con las licencias correspondientes de dependencias de terceros en [license.txt](license.txt).
