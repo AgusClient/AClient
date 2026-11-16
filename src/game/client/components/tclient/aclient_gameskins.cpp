@@ -1261,27 +1261,10 @@ void CAClientGameSkins::UpdateAllPlayerSkins()
 
 		if(i == LocalClientId)
 		{
-			// Load local entities texture for hooked tile rendering
-			// (when controlling the dummy, the local player is the dummy)
-			const char *pLocalEnt = nullptr;
-			if(pManualEnt)
-				pLocalEnt = pManualEnt;
-			else if(i == DummyClientId && g_Config.m_ClDummyAssetEntities[0] != '\0')
-				pLocalEnt = g_Config.m_ClDummyAssetEntities;
-			else if(g_Config.m_ClAssetsEntities[0] != '\0')
-				pLocalEnt = g_Config.m_ClAssetsEntities;
-			if(pLocalEnt && str_comp(pLocalEnt, "default") == 0)
-				pLocalEnt = nullptr;
-			if(pLocalEnt)
-			{
-				str_copy(GameClient()->m_aClients[i].m_aCustomEntitiesName, pLocalEnt);
-				GameClient()->m_aClients[i].m_CustomEntitiesTexture = GetOrLoadEntitiesTexture(pLocalEnt);
-			}
-			else
-			{
-				GameClient()->m_aClients[i].m_aCustomEntitiesName[0] = '\0';
-				GameClient()->m_aClients[i].m_CustomEntitiesTexture = IGraphics::CTextureHandle();
-			}
+			// Local entities are already rendered by the map; never assign m_CustomEntitiesTexture
+			// on the local player (remote-entities-on-hook is strictly for other players).
+			GameClient()->m_aClients[i].m_aCustomEntitiesName[0] = '\0';
+			GameClient()->m_aClients[i].m_CustomEntitiesTexture = IGraphics::CTextureHandle();
 			continue;
 		}
 
@@ -1345,7 +1328,7 @@ void CAClientGameSkins::UpdateAllPlayerSkins()
 		if(pEntitiesToLoad && pEntitiesToLoad[0] != '\0' && str_comp(pEntitiesToLoad, "default") != 0)
 		{
 			str_copy(GameClient()->m_aClients[i].m_aCustomEntitiesName, pEntitiesToLoad);
-			GameClient()->m_aClients[i].m_CustomEntitiesTexture = IsEntitiesBlacklisted(pEntitiesToLoad) ? IGraphics::CTextureHandle() : GetOrLoadEntitiesTexture(pEntitiesToLoad);
+			GameClient()->m_aClients[i].m_CustomEntitiesTexture = (g_Config.m_AcShowRemoteEntitiesOnHook && !IsEntitiesBlacklisted(pEntitiesToLoad)) ? GetOrLoadEntitiesTexture(pEntitiesToLoad) : IGraphics::CTextureHandle();
 		}
 		else
 		{
@@ -1365,6 +1348,13 @@ void CAClientGameSkins::UpdateAllPlayerSkins()
 
 void CAClientGameSkins::OnRender()
 {
+	static int s_LastShowRemoteEntitiesOnHook = g_Config.m_AcShowRemoteEntitiesOnHook;
+	if(s_LastShowRemoteEntitiesOnHook != g_Config.m_AcShowRemoteEntitiesOnHook)
+	{
+		s_LastShowRemoteEntitiesOnHook = g_Config.m_AcShowRemoteEntitiesOnHook;
+		UpdateAllPlayerSkins();
+	}
+
 	if(m_PendingAnnounce && Client()->State() == IClient::STATE_ONLINE)
 	{
 		const int LocalId = GameClient()->m_aLocalIds[0];
@@ -1635,9 +1625,10 @@ void CAClientGameSkins::OnRender()
 				}
 			}
 
-			if(g_Config.m_ClDownloadEntities && GameClient()->m_aClients[i].m_aCustomEntitiesName[0] != '\0' && !GameClient()->m_aClients[i].m_CustomEntitiesTexture.IsValid())
+			if(g_Config.m_AcShowRemoteEntitiesOnHook && g_Config.m_ClDownloadEntities && GameClient()->m_aClients[i].m_aCustomEntitiesName[0] != '\0' && !GameClient()->m_aClients[i].m_CustomEntitiesTexture.IsValid())
 			{
-				if(m_sFailedEntities.find(GameClient()->m_aClients[i].m_aCustomEntitiesName) == m_sFailedEntities.end())
+				if(!IsEntitiesBlacklisted(GameClient()->m_aClients[i].m_aCustomEntitiesName) &&
+					m_sFailedEntities.find(GameClient()->m_aClients[i].m_aCustomEntitiesName) == m_sFailedEntities.end())
 				{
 					GameClient()->m_aClients[i].m_CustomEntitiesTexture = GetOrLoadEntitiesTexture(GameClient()->m_aClients[i].m_aCustomEntitiesName);
 				}

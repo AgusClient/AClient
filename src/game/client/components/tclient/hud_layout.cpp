@@ -8,6 +8,7 @@
 #include <engine/shared/config.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 
 float GetKeystrokesKeyboardPresetWidthHudPx(int Preset);
@@ -24,30 +25,36 @@ struct SModuleMeta
 	const char *m_pName;
 	bool m_IsEditor;
 	bool m_IsPersisted;
+	bool m_ScaleSupported;
+	bool m_AlphaSupported;
+	int m_MinScale;
+	int m_MaxScale;
+	int m_MinAlpha;
+	int m_MaxAlpha;
 };
 
 static const SModuleMeta gs_aModuleMeta[MODULE_COUNT] = {
-	{"score", "Score", true, true},
-	{"chat", "Chat", true, true},
-	{"votes", "Votes", true, true},
-	{"mini_statboard", "RaceStats Overlay", true, true},
-	{"speedometer", "Speedometer", true, true},
-	{"spectator_count", "Spectator Count", true, true},
-	{"dummy_actions", "Dummy Actions", true, true},
-	{"movement_info", "Movement Info", true, true},
-	{"game_timer", "Game Timer", true, true},
-	{"local_time", "Local Time", true, true},
-	{"frozen_hud", "Frozen HUD", true, true},
-	{"notify_last", "Notify Last", true, true},
-	{"keystrokes_keyboard", "Keystrokes Keyboard", true, true},
-	{"keystrokes_mouse", "Keystrokes Mouse", true, true},
+	{"score", "Score", true, true, false, true, 100, 100, 0, 100},
+	{"chat", "Chat", true, true, false, true, 100, 100, 0, 100},
+	{"votes", "Votes", true, true, true, true, 50, 200, 0, 100},
+	{"mini_statboard", "RaceStats Overlay", true, true, true, true, 20, 200, 0, 100},
+	{"speedometer", "Speedometer", true, true, true, true, 25, 300, 0, 100},
+	{"spectator_count", "Spectator Count", true, true, true, true, 25, 300, 0, 100},
+	{"dummy_actions", "Dummy Actions", true, true, true, true, 25, 300, 0, 100},
+	{"movement_info", "Movement Info", true, true, false, true, 100, 100, 0, 100},
+	{"game_timer", "Game Timer", true, true, true, true, 25, 300, 0, 100},
+	{"local_time", "Local Time", true, true, true, true, 50, 200, 0, 100},
+	{"frozen_hud", "Frozen HUD", true, true, true, true, 25, 300, 0, 100},
+	{"notify_last", "Notify Last", true, true, true, true, 25, 300, 0, 100},
+	{"keystrokes_keyboard", "Keystrokes Keyboard", true, true, true, false, 25, 300, 100, 100},
+	{"keystrokes_mouse", "Keystrokes Mouse", true, true, true, false, 25, 300, 100, 100},
 };
 
 static const SModuleLayout gs_aDefaultLayouts[MODULE_COUNT] = {
 	{435.0f, 229.0f, 100, 0, true, true, 0x40000000U, 100}, // MODULE_SCORE
 	{5.0f, 220.0f, 100, 0, true, false, 0x66000000U, 100},   // MODULE_CHAT
 	{0.0f, 60.0f, 100, 0, true, true, 0x66000000U, 100},     // MODULE_VOTES
-	{370.0f, 120.0f, 70, 0, true, true, 0x99000000U, 100},   // MODULE_MINI_STATBOARD
+	{370.0f, 120.0f, 70, 0, true, true, 0x99000000U, 60},    // MODULE_MINI_STATBOARD
 	{212.0f, 260.0f, 100, 0, true, true, 0x88000000U, 85},   // MODULE_SPEEDOMETER
 	{460.0f, 141.0f, 100, 0, true, true, 0x66000000U, 100},  // MODULE_SPECTATOR_COUNT
 	{484.0f, 172.0f, 100, 0, true, true, 0x66000000U, 100},  // MODULE_DUMMY_ACTIONS
@@ -64,6 +71,30 @@ static SModuleLayout gs_aRuntimeLayouts[MODULE_COUNT];
 static bool gs_aHasRuntimeOverride[MODULE_COUNT] = {false};
 static bool gs_aHasPositionOverride[MODULE_COUNT] = {false};
 static bool gs_Initialized = false;
+
+void SanitizeHudDims(float &HudWidth, float &HudHeight)
+{
+	if(!std::isfinite(HudHeight) || HudHeight < 1.0f)
+		HudHeight = CANVAS_HEIGHT;
+	if(!std::isfinite(HudWidth) || HudWidth < 1.0f)
+		HudWidth = HudHeight * (16.0f / 9.0f);
+}
+
+void RefreshRuntimeOverrideFlag(EModule Module)
+{
+	const SModuleLayout &Cur = gs_aRuntimeLayouts[Module];
+	const SModuleLayout &Def = gs_aDefaultLayouts[Module];
+	if(!gs_aHasPositionOverride[Module] &&
+		Cur.m_Scale == Def.m_Scale &&
+		Cur.m_Mode == Def.m_Mode &&
+		Cur.m_Enabled == Def.m_Enabled &&
+		Cur.m_BackgroundEnabled == Def.m_BackgroundEnabled &&
+		Cur.m_BackgroundColor == Def.m_BackgroundColor &&
+		Cur.m_Alpha == Def.m_Alpha)
+	{
+		gs_aHasRuntimeOverride[Module] = false;
+	}
+}
 
 void SyncModuleToConfig(EModule Module)
 {
@@ -91,6 +122,113 @@ void SyncModuleToConfig(EModule Module)
 	}
 }
 
+float EstimateMovementInfoBoxHeight()
+{
+	constexpr float LineH = 8.0f;
+	float BoxH = 3.0f * LineH * (float)(g_Config.m_ClShowhudPlayerPosition + g_Config.m_ClShowhudPlayerSpeed) +
+		     2.0f * LineH * (float)g_Config.m_ClShowhudPlayerAngle;
+	if(g_Config.m_ClShowhudPlayerPosition || g_Config.m_ClShowhudPlayerSpeed || g_Config.m_ClShowhudPlayerAngle)
+		BoxH += 2.0f;
+	return BoxH;
+}
+
+void EstimateModuleBounds(EModule Module, const SModuleLayout &Layout, float HudWidth, float HudHeight, float &OutW, float &OutH)
+{
+	(void)HudHeight;
+	const SModuleMeta &Meta = gs_aModuleMeta[Module];
+	const float S = Meta.m_ScaleSupported ? std::clamp(Layout.m_Scale / 100.0f, Meta.m_MinScale / 100.0f, Meta.m_MaxScale / 100.0f) : 1.0f;
+
+	switch(Module)
+	{
+	case MODULE_SCORE:
+		OutW = 58.0f;
+		OutH = 46.0f;
+		break;
+	case MODULE_CHAT:
+		OutW = 180.0f;
+		OutH = 58.0f;
+		break;
+	case MODULE_VOTES:
+		OutW = 120.0f * S;
+		OutH = 38.0f * S;
+		break;
+	case MODULE_MINI_STATBOARD:
+		OutW = 60.0f * S;
+		OutH = 24.0f * S;
+		break;
+	case MODULE_SPEEDOMETER:
+		OutW = 75.0f * S;
+		OutH = 18.0f * S;
+		break;
+	case MODULE_SPECTATOR_COUNT:
+		OutW = 17.0f * S;
+		OutH = 14.0f * S;
+		break;
+	case MODULE_DUMMY_ACTIONS:
+		OutW = 16.0f * S;
+		OutH = 29.0f * S;
+		break;
+	case MODULE_MOVEMENT_INFO:
+		OutW = 62.0f;
+		OutH = std::max(26.0f, EstimateMovementInfoBoxHeight());
+		break;
+	case MODULE_GAME_TIMER:
+		OutW = 50.0f * S;
+		OutH = 14.0f * S;
+		break;
+	case MODULE_LOCAL_TIME:
+		OutW = 26.0f * S;
+		OutH = 12.5f * S;
+		break;
+	case MODULE_FROZEN_HUD:
+	{
+		const float TeeSize = g_Config.m_TcFrozenHudTeeSize * S;
+		OutW = std::min(HudWidth, TeeSize * 3.0f);
+		OutH = TeeSize + 3.0f;
+		break;
+	}
+	case MODULE_NOTIFY_LAST:
+	{
+		const float FontSize = std::clamp(g_Config.m_TcNotifyWhenLastSize * S, 1.0f, 50.0f * S);
+		OutW = std::max(FontSize, 8.0f);
+		OutH = FontSize + 2.0f * S;
+		break;
+	}
+	case MODULE_KEYSTROKES_KEYBOARD:
+	{
+		const float KbScale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
+		OutW = GetKeystrokesKeyboardPresetWidthHudPx(g_Config.m_AcKeystrokesKeyboardPreset) * KbScale;
+		if(g_Config.m_AcKeystrokesStyle == 1)
+		{
+			const bool OnlyAd = g_Config.m_AcKeystrokesMcLayout == 1;
+			int Rows = OnlyAd ? 1 : 2;
+			if(!OnlyAd || g_Config.m_AcKeystrokesMcShowLmb != 0 || g_Config.m_AcKeystrokesMcShowRmb != 0)
+				++Rows;
+			if(!OnlyAd || g_Config.m_AcKeystrokesMcShowSpace != 0)
+				++Rows;
+			const float McH = (float)Rows * 150.0f + (float)(Rows - 1) * 8.0f;
+			OutH = McH * 0.14f * KbScale;
+		}
+		else
+		{
+			OutH = (g_Config.m_AcKeystrokesKeyboardPreset == 2 ? 261.0f : 394.0f) * 0.14f * KbScale;
+		}
+		break;
+	}
+	case MODULE_KEYSTROKES_MOUSE:
+	{
+		const float MsScale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f) * 0.14f;
+		OutW = 285.0f * MsScale;
+		OutH = 421.0f * MsScale;
+		break;
+	}
+	default:
+		OutW = 40.0f * S;
+		OutH = 20.0f * S;
+		break;
+	}
+}
+
 void EnsureInitialized()
 {
 	if(gs_Initialized)
@@ -113,10 +251,17 @@ void ConHudLayoutSet(IConsole::IResult *pResult, void *pUserData)
 	if(Module == MODULE_COUNT)
 		return;
 
+	const SModuleMeta &Meta = gs_aModuleMeta[Module];
 	SModuleLayout &Layout = gs_aRuntimeLayouts[Module];
-	Layout.m_X = pResult->GetFloat(1);
-	Layout.m_Y = pResult->GetFloat(2);
-	Layout.m_Scale = std::clamp(pResult->GetInteger(3), 20, 300);
+	float X = pResult->GetFloat(1);
+	float Y = pResult->GetFloat(2);
+	if(!std::isfinite(X))
+		X = gs_aDefaultLayouts[Module].m_X;
+	if(!std::isfinite(Y))
+		Y = gs_aDefaultLayouts[Module].m_Y;
+	Layout.m_X = std::clamp(X, 0.0f, CANVAS_WIDTH);
+	Layout.m_Y = std::clamp(Y, 0.0f, CANVAS_HEIGHT);
+	Layout.m_Scale = Meta.m_ScaleSupported ? std::clamp(pResult->GetInteger(3), Meta.m_MinScale, Meta.m_MaxScale) : 100;
 	Layout.m_Mode = pResult->GetInteger(4);
 	Layout.m_BackgroundEnabled = pResult->GetInteger(5) != 0;
 	if(pResult->NumArguments() > 6)
@@ -124,10 +269,21 @@ void ConHudLayoutSet(IConsole::IResult *pResult, void *pUserData)
 	if(pResult->NumArguments() > 7)
 		Layout.m_Enabled = pResult->GetInteger(7) != 0;
 	if(pResult->NumArguments() > 8)
-		Layout.m_Alpha = std::clamp(pResult->GetInteger(8), 0, 100);
+		Layout.m_Alpha = Meta.m_AlphaSupported ? std::clamp(pResult->GetInteger(8), Meta.m_MinAlpha, Meta.m_MaxAlpha) : 100;
 
+	bool HasPosOverride = true;
+	if(pResult->NumArguments() > 9)
+		HasPosOverride = pResult->GetInteger(9) != 0;
+	if(!HasPosOverride)
+	{
+		Layout.m_X = gs_aDefaultLayouts[Module].m_X;
+		Layout.m_Y = gs_aDefaultLayouts[Module].m_Y;
+		Layout.m_Mode = gs_aDefaultLayouts[Module].m_Mode;
+	}
+
+	gs_aHasPositionOverride[Module] = HasPosOverride;
 	gs_aHasRuntimeOverride[Module] = true;
-	gs_aHasPositionOverride[Module] = true;
+	RefreshRuntimeOverrideFlag(Module);
 	SyncModuleToConfig(Module);
 }
 
@@ -160,7 +316,7 @@ void ConfigSaveCallback(IConfigManager *pConfig, void *pUserData)
 		str_format(
 			aBuf,
 			sizeof(aBuf),
-			"hud_layout_set \"%s\" %.3f %.3f %d %d %d %d %d %d",
+			"hud_layout_set \"%s\" %.3f %.3f %d %d %d %d %d %d %d",
 			Id(Module),
 			Layout.m_X,
 			Layout.m_Y,
@@ -169,7 +325,8 @@ void ConfigSaveCallback(IConfigManager *pConfig, void *pUserData)
 			Layout.m_BackgroundEnabled ? 1 : 0,
 			(int)Layout.m_BackgroundColor,
 			Layout.m_Enabled ? 1 : 0,
-			Layout.m_Alpha);
+			Layout.m_Alpha,
+			gs_aHasPositionOverride[Module] ? 1 : 0);
 		pConfig->WriteLine(aBuf);
 	}
 }
@@ -188,6 +345,48 @@ bool IsPersistedModule(EModule Module)
 	if(Module < 0 || Module >= MODULE_COUNT)
 		return false;
 	return gs_aModuleMeta[Module].m_IsPersisted;
+}
+
+bool IsScaleSupported(EModule Module)
+{
+	if(Module < 0 || Module >= MODULE_COUNT)
+		return false;
+	return gs_aModuleMeta[Module].m_ScaleSupported;
+}
+
+bool IsAlphaSupported(EModule Module)
+{
+	if(Module < 0 || Module >= MODULE_COUNT)
+		return false;
+	return gs_aModuleMeta[Module].m_AlphaSupported;
+}
+
+int MinScale(EModule Module)
+{
+	if(Module < 0 || Module >= MODULE_COUNT)
+		return 100;
+	return gs_aModuleMeta[Module].m_MinScale;
+}
+
+int MaxScale(EModule Module)
+{
+	if(Module < 0 || Module >= MODULE_COUNT)
+		return 100;
+	return gs_aModuleMeta[Module].m_MaxScale;
+}
+
+int MinAlpha(EModule Module)
+{
+	if(Module < 0 || Module >= MODULE_COUNT)
+		return 100;
+	return gs_aModuleMeta[Module].m_MinAlpha;
+}
+
+int MaxAlpha(EModule Module)
+{
+	if(Module < 0 || Module >= MODULE_COUNT)
+		return 100;
+	return gs_aModuleMeta[Module].m_MaxAlpha;
 }
 
 const char *Id(EModule Module)
@@ -218,6 +417,10 @@ EModule ModuleFromId(const char *pId)
 
 float CanvasXToHud(float CanvasX, float HudWidth)
 {
+	if(!std::isfinite(CanvasX))
+		return 0.0f;
+	if(!std::isfinite(HudWidth) || HudWidth <= 0.0f)
+		return CanvasX;
 	return CanvasX * (HudWidth / CANVAS_WIDTH);
 }
 
@@ -227,23 +430,151 @@ SModuleLayout Get(EModule Module, float HudWidth, float HudHeight)
 	if(Module < 0 || Module >= MODULE_COUNT)
 		return SModuleLayout{};
 
+	SanitizeHudDims(HudWidth, HudHeight);
 	SModuleLayout Layout = gs_aRuntimeLayouts[Module];
-	if(Module == MODULE_NOTIFY_LAST && !gs_aHasPositionOverride[MODULE_NOTIFY_LAST])
+	const SModuleMeta &Meta = gs_aModuleMeta[Module];
+
+	if(Module == MODULE_MINI_STATBOARD)
 	{
-		Layout.m_X = (g_Config.m_TcNotifyWhenLastX / 100.0f) * HudWidth;
-		Layout.m_Y = (g_Config.m_TcNotifyWhenLastY / 100.0f) * HudHeight;
-		return Layout;
+		Layout.m_Enabled = Layout.m_Enabled && (g_Config.m_AcMiniStatboard != 0);
+		Layout.m_Scale = std::clamp(g_Config.m_AcMiniStatboardScale, Meta.m_MinScale, Meta.m_MaxScale);
+		Layout.m_Alpha = std::clamp(g_Config.m_AcMiniStatboardOpacity, Meta.m_MinAlpha, Meta.m_MaxAlpha);
 	}
-	if(Module == MODULE_KEYSTROKES_MOUSE && !gs_aHasPositionOverride[MODULE_KEYSTROKES_MOUSE])
+	else if(Module == MODULE_SPEEDOMETER)
 	{
-		if(!gs_aHasRuntimeOverride[MODULE_KEYSTROKES_KEYBOARD])
-			Layout.m_X = GetKeystrokesKeyboardPresetWidthHudPx(g_Config.m_AcKeystrokesKeyboardPreset) + 5.0f;
-		else
+		Layout.m_Enabled = Layout.m_Enabled && (g_Config.m_AcHudSpeedometer != 0);
+		if(!gs_aHasRuntimeOverride[MODULE_SPEEDOMETER])
+		{
+			Layout.m_Scale = std::clamp(g_Config.m_AcHudSpeedometerScale, 50, 200);
+			Layout.m_Alpha = std::clamp(g_Config.m_AcHudSpeedometerAlpha, 20, 100);
+		}
+	}
+	else if(Module == MODULE_KEYSTROKES_KEYBOARD)
+	{
+		Layout.m_Enabled = Layout.m_Enabled && (g_Config.m_AcKeystrokesKeyboard != 0);
+	}
+	else if(Module == MODULE_KEYSTROKES_MOUSE)
+	{
+		Layout.m_Enabled = Layout.m_Enabled && (g_Config.m_AcKeystrokesMouse != 0);
+	}
+
+	Layout.m_Scale = Meta.m_ScaleSupported ? std::clamp(Layout.m_Scale, Meta.m_MinScale, Meta.m_MaxScale) : 100;
+	Layout.m_Alpha = Meta.m_AlphaSupported ? std::clamp(Layout.m_Alpha, Meta.m_MinAlpha, Meta.m_MaxAlpha) : 100;
+
+	float EstW = 0.0f;
+	float EstH = 0.0f;
+	EstimateModuleBounds(Module, Layout, HudWidth, HudHeight, EstW, EstH);
+
+	if(!gs_aHasPositionOverride[Module])
+	{
+		const float S = Meta.m_ScaleSupported ? (Layout.m_Scale / 100.0f) : 1.0f;
+		switch(Module)
+		{
+		case MODULE_SCORE:
+			Layout.m_X = std::max(0.0f, HudWidth - 65.0f);
+			Layout.m_Y = 229.0f;
+			break;
+		case MODULE_CHAT:
+		{
+			const float ChatFont = g_Config.m_ClChatFontSize / 10.0f;
+			const float StatusH = g_Config.m_TcStatusBar ? (float)g_Config.m_TcStatusBarHeight : 0.0f;
+			const float PreviewBaseY = 300.0f - (20.0f * ChatFont / 6.0f + StatusH);
+			Layout.m_X = 5.0f;
+			Layout.m_Y = std::max(0.0f, PreviewBaseY - 58.0f);
+			break;
+		}
+		case MODULE_VOTES:
+			Layout.m_X = 0.0f;
+			Layout.m_Y = 60.0f;
+			break;
+		case MODULE_MINI_STATBOARD:
+		{
+			const float StatW = 130.0f * S;
+			const float StatH = 55.0f * S;
+			const float PctX = std::clamp((float)g_Config.m_AcMiniStatboardX / 100.0f, 0.0f, 1.0f);
+			const float PctY = std::clamp((float)g_Config.m_AcMiniStatboardY / 100.0f, 0.0f, 1.0f);
+			Layout.m_X = std::max(0.0f, HudWidth - StatW) * PctX;
+			Layout.m_Y = std::max(0.0f, HudHeight - StatH) * PctY;
+			break;
+		}
+		case MODULE_SPEEDOMETER:
+		{
+			const float PctX = std::clamp((float)g_Config.m_AcHudSpeedometerX / 100.0f, 0.0f, 1.0f);
+			const float PctY = std::clamp((float)g_Config.m_AcHudSpeedometerY / 100.0f, 0.0f, 1.0f);
+			Layout.m_X = std::max(0.0f, HudWidth - EstW) * PctX;
+			Layout.m_Y = std::max(0.0f, HudHeight - EstH) * PctY;
+			break;
+		}
+		case MODULE_SPECTATOR_COUNT:
+		{
+			const float MoveH = EstimateMovementInfoBoxHeight();
+			const float MoveGap = (g_Config.m_ClShowhudPlayerPosition || g_Config.m_ClShowhudPlayerSpeed || g_Config.m_ClShowhudPlayerAngle) ? 4.0f : 0.0f;
+			Layout.m_X = std::max(0.0f, HudWidth - EstW);
+			Layout.m_Y = 285.0f - EstH - 4.0f - MoveGap - MoveH - (g_Config.m_ClShowhudScore ? 56.0f : 0.0f);
+			break;
+		}
+		case MODULE_DUMMY_ACTIONS:
+		{
+			const float MoveH = EstimateMovementInfoBoxHeight();
+			const float MoveGap = (g_Config.m_ClShowhudPlayerPosition || g_Config.m_ClShowhudPlayerSpeed || g_Config.m_ClShowhudPlayerAngle) ? 4.0f : 0.0f;
+			Layout.m_X = std::max(0.0f, HudWidth - EstW);
+			Layout.m_Y = 285.0f - EstH - 4.0f - MoveGap - MoveH - (g_Config.m_ClShowhudScore ? 56.0f : 0.0f);
+			break;
+		}
+		case MODULE_MOVEMENT_INFO:
+		{
+			const float MoveH = EstimateMovementInfoBoxHeight();
+			Layout.m_X = std::max(0.0f, HudWidth - 62.0f);
+			Layout.m_Y = 285.0f - std::max(26.0f, MoveH) - 4.0f - (g_Config.m_ClShowhudScore ? 56.0f : 0.0f);
+			break;
+		}
+		case MODULE_GAME_TIMER:
+			Layout.m_X = std::max(0.0f, HudWidth * 0.5f - 25.0f * S);
+			Layout.m_Y = 2.0f;
+			break;
+		case MODULE_LOCAL_TIME:
+		{
+			const float EstTextW = (g_Config.m_TcShowLocalTimeSeconds ? 24.0f : 15.0f) * S;
+			Layout.m_X = std::max(0.0f, (HudWidth / 7.0f) * 3.0f - (EstTextW + 15.0f));
+			Layout.m_Y = 0.0f;
+			break;
+		}
+		case MODULE_FROZEN_HUD:
+		{
+			const float TeeSize = g_Config.m_TcFrozenHudTeeSize * S;
+			const float Aspect = HudWidth / HudHeight;
+			Layout.m_X = std::max(0.0f, HudWidth * 0.5f + 38.0f * Aspect / 1.78f - TeeSize * 0.5f);
+			Layout.m_Y = 0.0f;
+			break;
+		}
+		case MODULE_NOTIFY_LAST:
+			Layout.m_X = (g_Config.m_TcNotifyWhenLastX / 100.0f) * HudWidth;
+			Layout.m_Y = (g_Config.m_TcNotifyWhenLastY / 100.0f) * HudHeight;
+			break;
+		case MODULE_KEYSTROKES_MOUSE:
+			if(!gs_aHasPositionOverride[MODULE_KEYSTROKES_KEYBOARD])
+			{
+				const float KbScale = std::clamp(gs_aRuntimeLayouts[MODULE_KEYSTROKES_KEYBOARD].m_Scale / 100.0f, 0.25f, 3.0f);
+				const float KbX = CanvasXToHud(gs_aDefaultLayouts[MODULE_KEYSTROKES_KEYBOARD].m_X, HudWidth);
+				Layout.m_X = KbX + GetKeystrokesKeyboardPresetWidthHudPx(g_Config.m_AcKeystrokesKeyboardPreset) * KbScale + 5.0f;
+			}
+			else
+			{
+				Layout.m_X = CanvasXToHud(Layout.m_X, HudWidth);
+			}
+			break;
+		default:
 			Layout.m_X = CanvasXToHud(Layout.m_X, HudWidth);
-		return Layout;
+			break;
+		}
 	}
-	// Si tiene posición específica calculada en lienzo, mapear X proporcionalmente al ancho de pantalla
-	Layout.m_X = CanvasXToHud(Layout.m_X, HudWidth);
+	else
+	{
+		Layout.m_X = CanvasXToHud(Layout.m_X, HudWidth);
+	}
+
+	Layout.m_X = std::clamp(Layout.m_X, 0.0f, std::max(0.0f, HudWidth - EstW));
+	Layout.m_Y = std::clamp(Layout.m_Y, 0.0f, std::max(0.0f, HudHeight - EstH));
 	return Layout;
 }
 
@@ -252,6 +583,7 @@ SModuleLayout GetDefault(EModule Module, float HudWidth, float HudHeight)
 	if(Module < 0 || Module >= MODULE_COUNT)
 		return SModuleLayout{};
 
+	SanitizeHudDims(HudWidth, HudHeight);
 	SModuleLayout Layout = gs_aDefaultLayouts[Module];
 	Layout.m_X = CanvasXToHud(Layout.m_X, HudWidth);
 	return Layout;
@@ -283,9 +615,11 @@ void SetPosition(EModule Module, float X, float Y, EPositionMode PositionMode)
 	EnsureInitialized();
 	if(Module < 0 || Module >= MODULE_COUNT)
 		return;
+	if(!std::isfinite(X) || !std::isfinite(Y))
+		return;
 
-	gs_aRuntimeLayouts[Module].m_X = X;
-	gs_aRuntimeLayouts[Module].m_Y = Y;
+	gs_aRuntimeLayouts[Module].m_X = std::clamp(X, 0.0f, CANVAS_WIDTH);
+	gs_aRuntimeLayouts[Module].m_Y = std::clamp(Y, 0.0f, CANVAS_HEIGHT);
 	gs_aRuntimeLayouts[Module].m_Mode = PositionMode;
 	gs_aHasRuntimeOverride[Module] = true;
 	gs_aHasPositionOverride[Module] = true;
@@ -297,8 +631,10 @@ void SetScale(EModule Module, int Scale)
 	if(Module < 0 || Module >= MODULE_COUNT)
 		return;
 
-	gs_aRuntimeLayouts[Module].m_Scale = std::clamp(Scale, 20, 300);
+	const SModuleMeta &Meta = gs_aModuleMeta[Module];
+	gs_aRuntimeLayouts[Module].m_Scale = Meta.m_ScaleSupported ? std::clamp(Scale, Meta.m_MinScale, Meta.m_MaxScale) : 100;
 	gs_aHasRuntimeOverride[Module] = true;
+	RefreshRuntimeOverrideFlag(Module);
 	SyncModuleToConfig(Module);
 }
 
@@ -310,6 +646,7 @@ void SetEnabled(EModule Module, bool Enabled)
 
 	gs_aRuntimeLayouts[Module].m_Enabled = Enabled;
 	gs_aHasRuntimeOverride[Module] = true;
+	RefreshRuntimeOverrideFlag(Module);
 	SyncModuleToConfig(Module);
 }
 
@@ -319,8 +656,10 @@ void SetAlpha(EModule Module, int Alpha)
 	if(Module < 0 || Module >= MODULE_COUNT)
 		return;
 
-	gs_aRuntimeLayouts[Module].m_Alpha = std::clamp(Alpha, 0, 100);
+	const SModuleMeta &Meta = gs_aModuleMeta[Module];
+	gs_aRuntimeLayouts[Module].m_Alpha = Meta.m_AlphaSupported ? std::clamp(Alpha, Meta.m_MinAlpha, Meta.m_MaxAlpha) : 100;
 	gs_aHasRuntimeOverride[Module] = true;
+	RefreshRuntimeOverrideFlag(Module);
 	SyncModuleToConfig(Module);
 }
 
@@ -329,7 +668,19 @@ bool IsEnabled(EModule Module)
 	EnsureInitialized();
 	if(Module < 0 || Module >= MODULE_COUNT)
 		return false;
-	return gs_aRuntimeLayouts[Module].m_Enabled;
+	switch(Module)
+	{
+	case MODULE_MINI_STATBOARD:
+		return gs_aRuntimeLayouts[Module].m_Enabled && (g_Config.m_AcMiniStatboard != 0);
+	case MODULE_SPEEDOMETER:
+		return gs_aRuntimeLayouts[Module].m_Enabled && (g_Config.m_AcHudSpeedometer != 0);
+	case MODULE_KEYSTROKES_KEYBOARD:
+		return gs_aRuntimeLayouts[Module].m_Enabled && (g_Config.m_AcKeystrokesKeyboard != 0);
+	case MODULE_KEYSTROKES_MOUSE:
+		return gs_aRuntimeLayouts[Module].m_Enabled && (g_Config.m_AcKeystrokesMouse != 0);
+	default:
+		return gs_aRuntimeLayouts[Module].m_Enabled;
+	}
 }
 
 int Alpha(EModule Module)
@@ -337,6 +688,10 @@ int Alpha(EModule Module)
 	EnsureInitialized();
 	if(Module < 0 || Module >= MODULE_COUNT)
 		return 100;
+	if(Module == MODULE_MINI_STATBOARD)
+		return std::clamp(g_Config.m_AcMiniStatboardOpacity, 0, 100);
+	if(Module == MODULE_SPEEDOMETER && !gs_aHasRuntimeOverride[MODULE_SPEEDOMETER])
+		return std::clamp(g_Config.m_AcHudSpeedometerAlpha, 20, 100);
 	return gs_aRuntimeLayouts[Module].m_Alpha;
 }
 
@@ -355,6 +710,7 @@ void ResetPosition(EModule Module)
 	gs_aRuntimeLayouts[Module].m_Y = gs_aDefaultLayouts[Module].m_Y;
 	gs_aRuntimeLayouts[Module].m_Mode = gs_aDefaultLayouts[Module].m_Mode;
 	gs_aHasPositionOverride[Module] = false;
+	RefreshRuntimeOverrideFlag(Module);
 }
 
 void ResetScale(EModule Module)
@@ -364,6 +720,7 @@ void ResetScale(EModule Module)
 		return;
 
 	gs_aRuntimeLayouts[Module].m_Scale = gs_aDefaultLayouts[Module].m_Scale;
+	RefreshRuntimeOverrideFlag(Module);
 	SyncModuleToConfig(Module);
 }
 
@@ -392,9 +749,14 @@ void ResetEditableModules()
 SModuleRect ClampRectToScreen(const SModuleRect &Rect, float HudWidth, float HudHeight)
 {
 	SModuleRect Result = Rect;
-	if(Result.m_W <= 0.0f || Result.m_H <= 0.0f)
+	if(!std::isfinite(Result.m_X))
+		Result.m_X = 0.0f;
+	if(!std::isfinite(Result.m_Y))
+		Result.m_Y = 0.0f;
+	if(!std::isfinite(Result.m_W) || !std::isfinite(Result.m_H) || Result.m_W <= 0.0f || Result.m_H <= 0.0f)
 		return Result;
 
+	SanitizeHudDims(HudWidth, HudHeight);
 	Result.m_X = std::clamp(Result.m_X, 0.0f, std::max(0.0f, HudWidth - Result.m_W));
 	Result.m_Y = std::clamp(Result.m_Y, 0.0f, std::max(0.0f, HudHeight - Result.m_H));
 	return Result;
@@ -424,7 +786,7 @@ void OnConsoleInit(IConsole *pConsole, IConfigManager *pConfigManager)
 	{
 		pConsole->Register(
 			"hud_layout_set",
-			"s[id] f[x] f[y] i[scale] i[mode] i[bg] ?i[bgcolor] ?i[enabled] ?i[alpha]",
+			"s[id] f[x] f[y] i[scale] i[mode] i[bg] ?i[bgcolor] ?i[enabled] ?i[alpha] ?i[pos_override]",
 			CFGFLAG_CLIENT | CFGFLAG_SAVE,
 			ConHudLayoutSet,
 			nullptr,

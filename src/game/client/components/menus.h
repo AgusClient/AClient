@@ -766,7 +766,7 @@ public:
 		ACLIENT_TAB_SETTINGS = 0,
 		ACLIENT_TAB_RACESTATS,
 		ACLIENT_TAB_PROFILES,
-		ACLIENT_TAB_COMMANDS,
+		ACLIENT_TAB_GAMES,
 		ACLIENT_TAB_MOD,
 		ACLIENT_TAB_HUD,
 		NUM_ACLIENT_TABS
@@ -926,7 +926,7 @@ private:
 	void RenderSettingsTClientRaceStats(CUIRect MainView);
 	void RenderSettingsAClient(CUIRect MainView);
 	void RenderSettingsAClientSettings(CUIRect MainView);
-	void RenderSettingsAClientCommands(CUIRect MainView);
+	void RenderSettingsAClientGames(CUIRect MainView);
 	void RenderSettingsAClientMod(CUIRect MainView);
 	void RenderSettingsAClientProfiles(CUIRect MainView);
 	void RenderSettingsAClientHud(CUIRect MainView);
@@ -1044,6 +1044,7 @@ public:
 	};
 
 	SAssetsEditorState m_AssetsEditorState;
+	bool OnChessNetworkMessage(int ClientId, int Team, const char *pLine);
 
 private:
 	void RenderAssetsEditorScreen(CUIRect MainView);

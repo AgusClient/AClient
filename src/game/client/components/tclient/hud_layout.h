@@ -62,6 +62,12 @@ enum EPositionMode
 
 bool IsEditorModule(EModule Module);
 bool IsPersistedModule(EModule Module);
+bool IsScaleSupported(EModule Module);
+bool IsAlphaSupported(EModule Module);
+int MinScale(EModule Module);
+int MaxScale(EModule Module);
+int MinAlpha(EModule Module);
+int MaxAlpha(EModule Module);
 const char *Id(EModule Module);
 const char *Name(EModule Module);
 EModule ModuleFromId(const char *pId);

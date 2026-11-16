@@ -625,6 +625,7 @@ public:
 		vec2 m_aPredVel[200];
 		vec2 m_aPredHookPos[200];
 		int m_aPredHookState[200];
+		int m_aPredHookedPlayer[200];
 		int m_aPredTick[200];
 		bool m_SpecCharPresent;
 		vec2 m_SpecChar;
@@ -950,7 +951,7 @@ public:
 	vec2 GetSmoothPos(int ClientId);
 	vec2 GetFreezePos(int ClientId);
 	vec2 GetFastInputPos(int ClientId);
-	bool GetFastInputHookPos(int ClientId, vec2 &OutHookPos, bool &OutHookActive);
+	bool GetFastInputHookPos(int ClientId, vec2 &OutHookPos, bool &OutHookActive, bool &OutHookGrabbed, vec2 &OutGrabbedHookPos);
 	bool IsPlayerFrozen(int ClientId) const;
 
 	int m_MultiViewTeam;

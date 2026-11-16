@@ -3043,6 +3043,7 @@ void CGameClient::OnPredict()
 			m_aClients[i].m_aPredVel[StartTick % 200] = pChar->Core()->m_Vel;
 			m_aClients[i].m_aPredHookPos[StartTick % 200] = pChar->Core()->m_HookPos;
 			m_aClients[i].m_aPredHookState[StartTick % 200] = pChar->Core()->m_HookState;
+			m_aClients[i].m_aPredHookedPlayer[StartTick % 200] = pChar->Core()->HookedPlayer();
 			m_aClients[i].m_aPredTick[StartTick % 200] = StartTick;
 		}
 	}
@@ -3170,6 +3171,7 @@ void CGameClient::OnPredict()
 				m_aClients[i].m_aPredVel[Tick % 200] = pChar->Core()->m_Vel;
 				m_aClients[i].m_aPredHookPos[Tick % 200] = pChar->Core()->m_HookPos;
 				m_aClients[i].m_aPredHookState[Tick % 200] = pChar->Core()->m_HookState;
+				m_aClients[i].m_aPredHookedPlayer[Tick % 200] = pChar->Core()->HookedPlayer();
 				m_aClients[i].m_aPredTick[Tick % 200] = Tick;
 			}
 
@@ -3812,6 +3814,7 @@ void CGameClient::CClientData::Reset()
 	std::fill(std::begin(m_aPredVel), std::end(m_aPredVel), vec2(0.0f, 0.0f));
 	std::fill(std::begin(m_aPredHookPos), std::end(m_aPredHookPos), vec2(0.0f, 0.0f));
 	std::fill(std::begin(m_aPredHookState), std::end(m_aPredHookState), 0);
+	std::fill(std::begin(m_aPredHookedPlayer), std::end(m_aPredHookedPlayer), -1);
 	std::fill(std::begin(m_aPredTick), std::end(m_aPredTick), 0);
 	m_SpecCharPresent = false;
 	m_SpecChar = vec2(0.0f, 0.0f);
@@ -4592,6 +4595,7 @@ void CGameClient::UpdatePrediction()
 					m_aClients[i].m_aPredVel[Tick % 200] = pChar->Core()->m_Vel;
 					m_aClients[i].m_aPredHookPos[Tick % 200] = pChar->Core()->m_HookPos;
 					m_aClients[i].m_aPredHookState[Tick % 200] = pChar->Core()->m_HookState;
+					m_aClients[i].m_aPredHookedPlayer[Tick % 200] = pChar->Core()->HookedPlayer();
 					m_aClients[i].m_aPredTick[Tick % 200] = Tick;
 				}
 		}
@@ -4632,6 +4636,7 @@ void CGameClient::UpdatePrediction()
 			m_aClients[i].m_aPredVel[CurGameTick % 200] = pChar->Core()->m_Vel;
 			m_aClients[i].m_aPredHookPos[CurGameTick % 200] = pChar->Core()->m_HookPos;
 			m_aClients[i].m_aPredHookState[CurGameTick % 200] = pChar->Core()->m_HookState;
+			m_aClients[i].m_aPredHookedPlayer[CurGameTick % 200] = pChar->Core()->HookedPlayer();
 			m_aClients[i].m_aPredTick[CurGameTick % 200] = CurGameTick;
 		}
 
@@ -5194,7 +5199,7 @@ vec2 CGameClient::GetFastInputPos(int ClientId)
 	return Pos;
 }
 
-bool CGameClient::GetFastInputHookPos(int ClientId, vec2 &OutHookPos, bool &OutHookActive)
+bool CGameClient::GetFastInputHookPos(int ClientId, vec2 &OutHookPos, bool &OutHookActive, bool &OutHookGrabbed, vec2 &OutGrabbedHookPos)
 {
 	if(ClientId < 0 || ClientId >= MAX_CLIENTS || !m_aClients[ClientId].m_IsPredicted)
 		return false;
@@ -5233,13 +5238,18 @@ bool CGameClient::GetFastInputHookPos(int ClientId, vec2 &OutHookPos, bool &OutH
 	if(State0 <= 0 && State1 <= 0)
 	{
 		OutHookActive = false;
+		OutHookGrabbed = false;
 		OutHookPos = m_aClients[ClientId].m_RenderPos;
+		OutGrabbedHookPos = OutHookPos;
 		return true;
 	}
 
 	OutHookActive = true;
 	const vec2 H0 = (State0 > 0) ? m_aClients[ClientId].m_aPredHookPos[(PredTick - 1) % 200] : m_aClients[ClientId].m_aPredPos[(PredTick - 1) % 200];
 	const vec2 H1 = (State1 > 0) ? m_aClients[ClientId].m_aPredHookPos[PredTick % 200] : m_aClients[ClientId].m_aPredPos[PredTick % 200];
+	const int HookedPlayer1 = m_aClients[ClientId].m_aPredHookedPlayer[PredTick % 200];
+	OutHookGrabbed = (State1 == HOOK_GRABBED && HookedPlayer1 < 0);
+	OutGrabbedHookPos = H1;
 	if(distance(H0, H1) > 350.0f)
 	{
 		OutHookPos = H1;

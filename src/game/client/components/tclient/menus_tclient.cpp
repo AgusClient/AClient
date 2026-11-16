@@ -40,9 +40,14 @@
 #include <game/localization.h>
 
 #include <algorithm>
+#include <array>
+#include <cctype>
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <functional>
+
+#include "chess_assets.inl"
 
 enum
 {
@@ -3685,14 +3690,14 @@ void CMenus::RenderSettingsAClient(CUIRect MainView)
 		TCLocalize("Visual & HUD"),
 		TCLocalize("Race Stats"),
 		TCLocalize("Perfiles"),
-		TCLocalize("Commands"),
+		TCLocalize("Games"),
 		TCLocalize("Mod")};
 	const int aTabIds[6] = {
 		ACLIENT_TAB_SETTINGS,
 		ACLIENT_TAB_HUD,
 		ACLIENT_TAB_RACESTATS,
 		ACLIENT_TAB_PROFILES,
-		ACLIENT_TAB_COMMANDS,
+		ACLIENT_TAB_GAMES,
 		ACLIENT_TAB_MOD};
 
 	for(int Tab = 0; Tab < 6; ++Tab)
@@ -3713,8 +3718,8 @@ void CMenus::RenderSettingsAClient(CUIRect MainView)
 		RenderSettingsTClientRaceStats(MainView);
 	else if(m_CurAClientTab == ACLIENT_TAB_PROFILES)
 		RenderSettingsAClientProfiles(MainView);
-	else if(m_CurAClientTab == ACLIENT_TAB_COMMANDS)
-		RenderSettingsAClientCommands(MainView);
+	else if(m_CurAClientTab == ACLIENT_TAB_GAMES)
+		RenderSettingsAClientGames(MainView);
 	else
 		RenderSettingsAClientMod(MainView);
 }
@@ -3724,213 +3729,2616 @@ void CMenus::RenderSettingsAClientHud(CUIRect MainView)
 	RenderSettingsAClientSettings(MainView);
 }
 
-void CMenus::RenderSettingsAClientCommands(CUIRect MainView)
+static const char *GetChessPieceIcon(char Piece)
 {
-	CUIRect Column, LeftView, RightView, Label, Row;
-
-	static CScrollRegion s_ScrollRegionCommands;
-	CScrollRegionParams ScrollParams;
-	ScrollParams.m_ScrollUnit = 60.0f;
-	ScrollParams.m_ForceShowScrollbar = true;
-	ScrollParams.m_ScrollbarMargin = 5.0f;
-	s_ScrollRegionCommands.Begin(&MainView, &ScrollParams);
-
-	static std::vector<CUIRect> s_SectionBoxesCmds;
-	const float ScrollOffset = MainView.y;
-	static float s_PrevScrollOffsetCmds = 0.0f;
-
-	MainView.VSplitRight(5.0f, &MainView, nullptr);
-	MainView.VSplitLeft(5.0f, nullptr, &MainView);
-
-	MainView.VSplitMid(&LeftView, &RightView, MarginBetweenViews);
-	LeftView.VSplitLeft(MarginSmall, nullptr, &LeftView);
-	RightView.VSplitRight(MarginSmall, &RightView, nullptr);
-
-	for(CUIRect &Section : s_SectionBoxesCmds)
+	switch((char)toupper((unsigned char)Piece))
 	{
-		float Padding = MarginBetweenViews * 0.6666f;
-		Section.w += Padding;
-		Section.h += Padding;
-		Section.x -= Padding * 0.5f;
-		Section.y -= Padding * 0.5f;
-		Section.y -= s_PrevScrollOffsetCmds - ScrollOffset;
-		if(Section.x < MainView.x + 1.0f)
+	case 'P': return FontIcon::CIRCLE;
+	case 'N': return FontIcon::ARROWS_LEFT_RIGHT;
+	case 'B': return FontIcon::BRUSH;
+	case 'R': return FontIcon::SQUARE_PLUS;
+	case 'Q': return FontIcon::STAR;
+	case 'K': return FontIcon::USER;
+	default: return nullptr;
+	}
+}
+
+static int GetChessPieceAtlasCol(char Piece)
+{
+	switch((char)toupper((unsigned char)Piece))
+	{
+	case 'P': return 0;
+	case 'N': return 1;
+	case 'B': return 2;
+	case 'R': return 3;
+	case 'Q': return 4;
+	case 'K': return 5;
+	default: return -1;
+	}
+}
+
+struct SChessMove
+{
+	int m_FromX = 0;
+	int m_FromY = 0;
+	int m_ToX = 0;
+	int m_ToY = 0;
+	char m_Promo = 0; // 'Q', 'R', 'B', 'N' or 0
+};
+
+struct SChessOpeningStep
+{
+	int m_FromX;
+	int m_FromY;
+	int m_ToX;
+	int m_ToY;
+	const char *m_pNote;
+};
+
+struct SChessOpening
+{
+	const char *m_pName;
+	bool m_WhitePerspective;
+	const char *m_pSummary;
+	int m_Count;
+	SChessOpeningStep m_aSteps[10];
+};
+
+static const SChessOpening gs_aChessOpenings[10] = {
+	{
+		"[B] Italiana",
+		true,
+		"Control rapido del centro y ataque directo sobre f7.",
+		9,
 		{
-			float Diff = (MainView.x + 1.0f) - Section.x;
-			Section.x += Diff;
-			Section.w -= Diff;
+			{4, 6, 4, 4, "1. e4 - Ocupa el centro y abre al alfil"},
+			{4, 1, 4, 3, "1... e5 - Rival simetrico en el centro"},
+			{6, 7, 5, 5, "2. Cf3 - Desarrolla y ataca e5"},
+			{1, 0, 2, 2, "2... Cc6 - Defiende e5 desarrollando"},
+			{5, 7, 2, 4, "3. Ac4 - Clave de la Italiana: apunta a f7"},
+			{5, 0, 2, 3, "3... Ac5 - Desarrollo clasico (Giuoco Piano)"},
+			{2, 6, 2, 5, "4. c3 - Prepara d4 para dominar el centro"},
+			{6, 0, 5, 2, "4... Cf6 - Contraataca el peon e4"},
+			{3, 6, 3, 5, "5. d3 - Sostiene e4 y abre el alfil de c1"},
+		},
+	},
+	{
+		"[B] Espanola (Ruy Lopez)",
+		true,
+		"Presiona al defensor de e5 y busca ventaja a largo plazo.",
+		9,
+		{
+			{4, 6, 4, 4, "1. e4 - Apertura de peon de rey"},
+			{4, 1, 4, 3, "1... e5 - Respuesta simetrica"},
+			{6, 7, 5, 5, "2. Cf3 - Ataca e5"},
+			{1, 0, 2, 2, "2... Cc6 - Defiende e5"},
+			{5, 7, 1, 3, "3. Ab5 - Espanola: presiona al caballo de c6"},
+			{0, 1, 0, 2, "3... a6 - Variante Morphy, expulsa el alfil"},
+			{1, 3, 0, 4, "4. Aa4 - Mantiene la clavada y presion"},
+			{6, 0, 5, 2, "4... Cf6 - Desarrolla y presiona e4"},
+			{4, 7, 6, 7, "5. O-O - Enroque rapido para proteger al rey"},
+		},
+	},
+	{
+		"[B] Gambito de Dama",
+		true,
+		"Presiona el centro con c4 para debilitar d5.",
+		9,
+		{
+			{3, 6, 3, 4, "1. d4 - Toma espacio central con la dama"},
+			{3, 1, 3, 3, "1... d5 - Impide e4 directo"},
+			{2, 6, 2, 4, "2. c4 - Gambito de Dama: desafia d5"},
+			{4, 1, 4, 2, "2... e6 - Gambito declinado, sostiene d5"},
+			{1, 7, 2, 5, "3. Cc3 - Desarrolla y refuerza d5/e4"},
+			{6, 0, 5, 2, "3... Cf6 - Desarrollo natural del flanco rey"},
+			{2, 7, 6, 3, "4. Ag5 - Clava al caballo de f6"},
+			{5, 0, 4, 1, "4... Ae7 - Desclava y prepara enroque"},
+			{4, 6, 4, 5, "5. e3 - Consolida d4 y libera el alfil de f1"},
+		},
+	},
+	{
+		"[B] Sistema Londres",
+		true,
+		"Esquema solido con alfil en f4 y piramide de peones.",
+		9,
+		{
+			{3, 6, 3, 4, "1. d4 - Control del centro"},
+			{3, 1, 3, 3, "1... d5 - Respuesta cerrada"},
+			{2, 7, 5, 4, "2. Af4 - Firma del Sistema Londres antes de e3"},
+			{6, 0, 5, 2, "2... Cf6 - Desarrollo del rival"},
+			{4, 6, 4, 5, "3. e3 - Refuerza d4 y abre f1"},
+			{2, 1, 2, 3, "3... c5 - Las negras golpean el centro"},
+			{2, 6, 2, 5, "4. c3 - Crea el triangulo indestructible c3-d4-e3"},
+			{1, 0, 2, 2, "4... Cc6 - Presion adicional sobre d4"},
+			{1, 7, 3, 6, "5. Cd2 - Desarrolla apoyando e4"},
+		},
+	},
+	{
+		"[B] Gambito de Rey",
+		true,
+		"Sacrificio agresivo para abrir la columna f y atacar.",
+		9,
+		{
+			{4, 6, 4, 4, "1. e4 - Centro abierto"},
+			{4, 1, 4, 3, "1... e5 - Respuesta clasica"},
+			{5, 6, 5, 4, "2. f4 - Gambito de Rey: desvia el peon e5"},
+			{4, 3, 5, 4, "2... exf4 - Gambito aceptado"},
+			{6, 7, 5, 5, "3. Cf3 - Evita Dh4+ y desarrolla"},
+			{6, 1, 6, 3, "3... g5 - Intenta sostener el peon de mas"},
+			{5, 7, 2, 4, "4. Ac4 - Apunta directo a f7"},
+			{5, 0, 6, 1, "4... Ag7 - Defiende f6/g5 en fianchetto"},
+			{4, 7, 6, 7, "5. O-O - Enroque listo para abrir la columna f"},
+		},
+	},
+	{
+		"[N] Siciliana Najdorf",
+		false,
+		"Defensa asimetrica muy combativa contra 1.e4.",
+		10,
+		{
+			{4, 6, 4, 4, "1. e4 - Blancas abren con peon de rey"},
+			{2, 1, 2, 3, "1... c5 - Defensa Siciliana: lucha por d4"},
+			{6, 7, 5, 5, "2. Cf3 - Prepara d4"},
+			{3, 1, 3, 2, "2... d6 - Controla e5 y prepara Cf6"},
+			{3, 6, 3, 4, "3. d4 - Siciliana Abierta"},
+			{2, 3, 3, 4, "3... cxd4 - Cambia peon lateral por central"},
+			{5, 5, 3, 4, "4. Cxd4 - Recaptura en el centro"},
+			{6, 0, 5, 2, "4... Cf6 - Ataca e4 de inmediato"},
+			{1, 7, 2, 5, "5. Cc3 - Defiende e4"},
+			{0, 1, 0, 2, "5... a6 - Najdorf: evita Ab5/Cb5 y prepara b5"},
+		},
+	},
+	{
+		"[N] Defensa Francesa",
+		false,
+		"Estructura solida que contraataca la cadena blanca en d4.",
+		10,
+		{
+			{4, 6, 4, 4, "1. e4 - Blancas toman el centro"},
+			{4, 1, 4, 2, "1... e6 - Defensa Francesa: prepara d5"},
+			{3, 6, 3, 4, "2. d4 - Blancas ocupan el centro completo"},
+			{3, 1, 3, 3, "2... d5 - Golpea inmediatamente e4"},
+			{1, 7, 2, 5, "3. Cc3 - Desarrolla y defiende e4"},
+			{6, 0, 5, 2, "3... Cf6 - Variante Clasica: presiona e4"},
+			{4, 4, 4, 3, "4. e5 - Gana espacio y expulsa al caballo"},
+			{5, 2, 3, 1, "4... Cfd7 - Retirada clave para preparar c5"},
+			{5, 6, 5, 4, "5. f4 - Sostiene la cadena de peones"},
+			{2, 1, 2, 3, "5... c5 - Ruptura principal contra la base d4"},
+		},
+	},
+	{
+		"[N] Defensa Caro-Kann",
+		false,
+		"Solidez extrema sin encerrar al alfil de c8.",
+		10,
+		{
+			{4, 6, 4, 4, "1. e4 - Apertura de rey"},
+			{2, 1, 2, 2, "1... c6 - Caro-Kann: prepara d5 con apoyo"},
+			{3, 6, 3, 4, "2. d4 - Centro clasico"},
+			{3, 1, 3, 3, "2... d5 - Disputa e4"},
+			{1, 7, 2, 5, "3. Cc3 - Defiende e4"},
+			{3, 3, 4, 4, "3... dxe4 - Simplifica el centro"},
+			{2, 5, 4, 4, "4. Cxe4 - Caballo centralizado"},
+			{2, 0, 5, 3, "4... Af5 - Desarrolla el alfil fuera de la cadena"},
+			{4, 4, 6, 5, "5. Cg3 - Gana tiempo atacando al alfil"},
+			{5, 3, 6, 2, "5... Ag6 - Alfil seguro en la gran diagonal"},
+		},
+	},
+	{
+		"[N] India de Rey",
+		false,
+		"Hipermoderna: cede el centro para contraatacarlo luego.",
+		10,
+		{
+			{3, 6, 3, 4, "1. d4 - Apertura de dama"},
+			{6, 0, 5, 2, "1... Cf6 - Controla e4 y d5 con pieza"},
+			{2, 6, 2, 4, "2. c4 - Gana espacio en el flanco dama"},
+			{6, 1, 6, 2, "2... g6 - Prepara el fianchetto de alfil"},
+			{1, 7, 2, 5, "3. Cc3 - Prepara e4"},
+			{5, 0, 6, 1, "3... Ag7 - Alfil fianchettado domina la diagonal"},
+			{4, 6, 4, 4, "4. e4 - Centro amplio blanco"},
+			{3, 1, 3, 2, "4... d6 - Frena e5 y prepara e5/c5"},
+			{6, 7, 5, 5, "5. Cf3 - Desarrollo natural"},
+			{4, 0, 6, 0, "5... O-O - Enroque listo para romper con e5"},
+		},
+	},
+	{
+		"[N] Defensa Escandinava",
+		false,
+		"Desafia e4 desde la primera jugada con desarrollo activo.",
+		10,
+		{
+			{4, 6, 4, 4, "1. e4 - Apertura de rey"},
+			{3, 1, 3, 3, "1... d5 - Escandinava: rompe el centro ya"},
+			{4, 4, 3, 3, "2. exd5 - Captura obligada para mantener iniciativa"},
+			{3, 0, 3, 3, "2... Dxd5 - Recaptura con la dama"},
+			{1, 7, 2, 5, "3. Cc3 - Desarrolla ganando tiempo sobre la dama"},
+			{3, 3, 0, 3, "3... Da5 - Casilla segura clavando hacia e1"},
+			{3, 6, 3, 4, "4. d4 - Toma el centro"},
+			{6, 0, 5, 2, "4... Cf6 - Desarrollo activo sobre d5/e4"},
+			{6, 7, 5, 5, "5. Cf3 - Desarrollo normal"},
+			{2, 0, 5, 3, "5... Af5 - Alfil activo fuera de la cadena de peones"},
+		},
+	},
+};
+
+struct SChessOnlineContext
+{
+	bool m_InOnlineMatch = false;
+	bool m_PendingStartOnlineMatch = false;
+	int m_OpponentClientId = -1;
+	char m_aOpponentName[MAX_NAME_LENGTH] = "";
+	bool m_LocalIsWhite = true;
+	bool m_OpponentResigned = false;
+
+	int m_SelectedTargetId = -1;
+	int m_WaitingInviteTargetId = -1;
+	char m_aWaitingInviteName[MAX_NAME_LENGTH] = "";
+	bool m_WaitingLocalIsWhite = true;
+
+	int m_IncomingInviteClientId = -1;
+	char m_aIncomingInviteName[MAX_NAME_LENGTH] = "";
+	bool m_IncomingLocalIsWhite = false;
+
+	std::vector<SChessMove> m_vPendingRemoteMoves;
+};
+
+static SChessOnlineContext gs_ChessOnline;
+
+static void SendChessWhisper(CGameClient *pGameClient, int TargetId, const char *pTargetName, const char *pPayload)
+{
+	if(!pGameClient || !pTargetName || pTargetName[0] == '\0' || !pPayload)
+		return;
+	if(pGameClient->Client()->IsSixup() && TargetId >= 0 && TargetId < MAX_CLIENTS)
+	{
+		char aMsg[MAX_CHAT_LENGTH];
+		str_format(aMsg, sizeof(aMsg), "[AC-CHESS] %s", pPayload);
+		protocol7::CNetMsg_Cl_Say Msg7;
+		Msg7.m_Mode = protocol7::CHAT_WHISPER;
+		Msg7.m_Target = TargetId;
+		Msg7.m_pMessage = aMsg;
+		pGameClient->Client()->SendPackMsgActive(&Msg7, MSGFLAG_VITAL, true);
+		return;
+	}
+	char aSafeTarget[MAX_NAME_LENGTH];
+	str_copy(aSafeTarget, pTargetName);
+	for(char *p = aSafeTarget; *p; ++p)
+	{
+		if(*p == '"')
+			*p = '\'';
+	}
+	char aCmd[MAX_CHAT_LENGTH];
+	str_format(aCmd, sizeof(aCmd), "/w \"%s\" [AC-CHESS] %s", aSafeTarget, pPayload);
+	pGameClient->m_Chat.SendChat(0, aCmd);
+}
+
+bool CMenus::OnChessNetworkMessage(int ClientId, int Team, const char *pLine)
+{
+	if(!pLine)
+		return false;
+	const char *pTag = str_find(pLine, "[AC-CHESS]");
+	if(!pTag)
+		return false;
+
+	// Suppress whisper send echo (Team == 2) or messages from local client IDs
+	if(Team == 2 || ClientId == GameClient()->m_aLocalIds[0] || ClientId == GameClient()->m_aLocalIds[1])
+		return true;
+
+	// Fallback for servers without VERSION_DDNET_WHISPER that format as "[← Name] [AC-CHESS] ..."
+	if(ClientId < 0)
+	{
+		const char *pArrow = str_find(pLine, "← ");
+		const char *pBracket = pArrow ? str_find(pArrow + 4, "]") : nullptr;
+		if(pArrow && pBracket && pBracket > pArrow + 4)
+		{
+			char aNameBuf[MAX_NAME_LENGTH];
+			str_truncate(aNameBuf, sizeof(aNameBuf), pArrow + 4, (int)(pBracket - (pArrow + 4)));
+			for(int i = 0; i < MAX_CLIENTS; ++i)
+			{
+				if(GameClient()->m_aClients[i].m_Active && str_comp(GameClient()->m_aClients[i].m_aName, aNameBuf) == 0)
+				{
+					ClientId = i;
+					break;
+				}
+			}
 		}
-		if(Section.x + Section.w > MainView.x + MainView.w - 1.0f)
+	}
+
+	if(ClientId < 0 || ClientId >= MAX_CLIENTS || !GameClient()->m_aClients[ClientId].m_Active)
+		return true;
+
+	const char *pCmd = pTag + 10; // past "[AC-CHESS]"
+	if(*pCmd == ' ')
+		pCmd++;
+	const char *pSenderName = GameClient()->m_aClients[ClientId].m_aName;
+
+	if(str_startswith(pCmd, "INV "))
+	{
+		const char ChallengerColor = pCmd[4];
+		gs_ChessOnline.m_IncomingInviteClientId = ClientId;
+		str_copy(gs_ChessOnline.m_aIncomingInviteName, pSenderName);
+		gs_ChessOnline.m_IncomingLocalIsWhite = (ChallengerColor != 'W');
+		char aEcho[256];
+		str_format(aEcho, sizeof(aEcho), "Ajedrez: '%s' te reto 1v1 (juegas %s). Acepta en AClient -> Games.",
+			pSenderName, gs_ChessOnline.m_IncomingLocalIsWhite ? "Blancas" : "Negras");
+		GameClient()->m_Chat.Echo(aEcho);
+	}
+	else if(str_startswith(pCmd, "ACC"))
+	{
+		if(gs_ChessOnline.m_WaitingInviteTargetId == ClientId)
 		{
-			Section.w = (MainView.x + MainView.w - 1.0f) - Section.x;
+			gs_ChessOnline.m_InOnlineMatch = true;
+			gs_ChessOnline.m_PendingStartOnlineMatch = true;
+			gs_ChessOnline.m_OpponentClientId = ClientId;
+			str_copy(gs_ChessOnline.m_aOpponentName, pSenderName);
+			gs_ChessOnline.m_LocalIsWhite = gs_ChessOnline.m_WaitingLocalIsWhite;
+			gs_ChessOnline.m_OpponentResigned = false;
+			gs_ChessOnline.m_WaitingInviteTargetId = -1;
+			gs_ChessOnline.m_IncomingInviteClientId = -1;
+			gs_ChessOnline.m_vPendingRemoteMoves.clear();
+			char aEcho[256];
+			str_format(aEcho, sizeof(aEcho), "Ajedrez: '%s' acepto el reto! Ve a AClient -> Games.", pSenderName);
+			GameClient()->m_Chat.Echo(aEcho);
 		}
-		if(g_Config.m_AcModernUi)
+	}
+	else if(str_startswith(pCmd, "DEC"))
+	{
+		if(gs_ChessOnline.m_WaitingInviteTargetId == ClientId)
 		{
-			Section.Draw(GetColorBorder(0.40f), IGraphics::CORNER_ALL, 10.0f);
-			CUIRect Inner = Section;
-			Inner.Margin(1.0f, &Inner);
-			Inner.Draw(GetColorBg(), IGraphics::CORNER_ALL, 9.0f);
+			gs_ChessOnline.m_WaitingInviteTargetId = -1;
+			char aEcho[256];
+			str_format(aEcho, sizeof(aEcho), "Ajedrez: '%s' rechazo tu reto.", pSenderName);
+			GameClient()->m_Chat.Echo(aEcho);
+		}
+	}
+	else if(str_startswith(pCmd, "MOV "))
+	{
+		const char *pMoveStr = pCmd + 4;
+		if(gs_ChessOnline.m_InOnlineMatch && ClientId == gs_ChessOnline.m_OpponentClientId && str_length(pMoveStr) >= 4)
+		{
+			const int FX = pMoveStr[0] - '0';
+			const int FY = pMoveStr[1] - '0';
+			const int TX = pMoveStr[2] - '0';
+			const int TY = pMoveStr[3] - '0';
+			const char Promo = (pMoveStr[4] == 'Q' || pMoveStr[4] == 'R' || pMoveStr[4] == 'B' || pMoveStr[4] == 'N') ? pMoveStr[4] : 0;
+			if(FX >= 0 && FX < 8 && FY >= 0 && FY < 8 && TX >= 0 && TX < 8 && TY >= 0 && TY < 8)
+				gs_ChessOnline.m_vPendingRemoteMoves.push_back({FX, FY, TX, TY, Promo});
+		}
+	}
+	else if(str_startswith(pCmd, "RES"))
+	{
+		if(gs_ChessOnline.m_InOnlineMatch && ClientId == gs_ChessOnline.m_OpponentClientId)
+			gs_ChessOnline.m_OpponentResigned = true;
+	}
+
+	return true;
+}
+
+void CMenus::RenderSettingsAClientGames(CUIRect MainView)
+{
+	const float AnimTime = time_get() / (float)time_freq();
+	auto RenderIconLabel = [&](const CUIRect &Rect, const char *pIcon, float Size, int Align, const ColorRGBA *pColor = nullptr) {
+		const ColorRGBA Color = pColor ? *pColor : TextRender()->DefaultTextColor();
+		TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+		TextRender()->SetRenderFlags(ETextRenderFlags::TEXT_RENDER_FLAG_ONLY_ADVANCE_WIDTH | ETextRenderFlags::TEXT_RENDER_FLAG_NO_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_Y_BEARING);
+		TextRender()->TextColor(Color);
+		Ui()->DoLabel(&Rect, pIcon, Size, Align);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
+		TextRender()->SetRenderFlags(0);
+		TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+	};
+
+	static IGraphics::CTextureHandle s_ChessPiecesTex;
+	static bool s_ChessPiecesLoaded = false;
+	if(!s_ChessPiecesLoaded)
+	{
+		s_ChessPiecesLoaded = true;
+		CImageInfo Image;
+		if(Graphics()->LoadPng(Image, gs_aChessPiecesPng, sizeof(gs_aChessPiecesPng), "chess_pieces"))
+		{
+			s_ChessPiecesTex = Graphics()->LoadTextureRawMove(Image, 0, "chess_pieces");
+		}
+	}
+
+	using TChessBoard = std::array<std::array<char, 8>, 8>;
+
+	struct SChessPosState
+	{
+		TChessBoard m_Board{};
+		bool m_WhiteTurn = true;
+		bool m_WhiteKingSideCastle = true;
+		bool m_WhiteQueenSideCastle = true;
+		bool m_BlackKingSideCastle = true;
+		bool m_BlackQueenSideCastle = true;
+		int m_EnPassantColumn = -1;
+		int m_HalfMoveClock = 0;
+	};
+
+	struct SChessSnapshot
+	{
+		SChessPosState m_Pos;
+		bool m_HasLastMove = false;
+		int m_LastFromX = -1;
+		int m_LastFromY = -1;
+		int m_LastToX = -1;
+		int m_LastToY = -1;
+		std::vector<char> m_vCapturedByWhite;
+		std::vector<char> m_vCapturedByBlack;
+	};
+
+	struct SChessState
+	{
+		bool m_Initialized = false;
+		SChessPosState m_Pos;
+		bool m_GameOver = false;
+		bool m_WhiteWon = false;
+		bool m_Stalemate = false;
+		bool m_FiftyMove = false;
+		bool m_Threefold = false;
+		bool m_Resigned = false;
+		bool m_GameLogged = false;
+
+		int m_SelectedX = -1;
+		int m_SelectedY = -1;
+		bool m_Dragging = false;
+		int m_DragFromX = -1;
+		int m_DragFromY = -1;
+		vec2 m_DragMouse = vec2(0.0f, 0.0f);
+
+		bool m_HasMoveAnim = false;
+		char m_AnimPiece = '.';
+		int m_AnimFromX = -1;
+		int m_AnimFromY = -1;
+		int m_AnimToX = -1;
+		int m_AnimToY = -1;
+		bool m_HasRookAnim = false;
+		char m_AnimRookPiece = '.';
+		int m_AnimRookFromX = -1;
+		int m_AnimRookToX = -1;
+		int m_AnimRookY = -1;
+		float m_AnimStart = 0.0f;
+		float m_AnimDuration = 0.16f;
+
+		bool m_HasLastMove = false;
+		int m_LastFromX = -1;
+		int m_LastFromY = -1;
+		int m_LastToX = -1;
+		int m_LastToY = -1;
+
+		// Settings: Board Theme (0=Verde Foto, 1=Madera, 2=Azul, 3=Oscuro)
+		int m_BoardTheme = 0;
+		// Piece Model (0=Clasico Foto, 1=Iconos)
+		int m_PieceStyle = 0;
+		// Color Mode (0=Blancas, 1=Random, 2=Negras)
+		int m_ColorChoice = 0;
+		bool m_PlayerIsWhite = true;
+		bool m_ManualFlip = false;
+		// Difficulty (0=Facil, 1=Medio, 2=Dificil, 3=Experto, 4=2 Jugadores, 5=1v1 Servidor, 6=Aperturas)
+		int m_Difficulty = 2;
+		float m_BotReadyTime = 0.0f;
+
+		// Opening Trainer state
+		int m_OpeningIndex = 0;
+		int m_OpeningStep = 0;
+		bool m_OpeningShowHint = true;
+		bool m_OpeningRevealHint = false;
+		char m_aOpeningFeedback[96] = "";
+
+		// Pending promotion for human
+		bool m_PendingPromotion = false;
+		SChessMove m_PromoMove;
+
+		std::unordered_map<std::string, int> m_RepetitionTable;
+		std::vector<SChessSnapshot> m_vHistory;
+		std::vector<std::string> m_vMoveNotation;
+		std::vector<char> m_vCapturedByWhite; // lowercase black pieces captured by white
+		std::vector<char> m_vCapturedByBlack; // uppercase white pieces captured by black
+
+		struct SChessArrow
+		{
+			int m_FromX = 0;
+			int m_FromY = 0;
+			int m_ToX = 0;
+			int m_ToY = 0;
+			bool operator==(const SChessArrow &O) const { return m_FromX == O.m_FromX && m_FromY == O.m_FromY && m_ToX == O.m_ToX && m_ToY == O.m_ToY; }
+		};
+		std::vector<SChessArrow> m_vArrows;
+		bool m_aMarkedSquares[8][8] = {};
+		bool m_aValidTargets[8][8] = {};
+		int m_CachedSelX = -2;
+		int m_CachedSelY = -2;
+		int m_CachedSelPly = -1;
+		bool m_RightDragging = false;
+		int m_RightFromX = -1;
+		int m_RightFromY = -1;
+	};
+
+	static SChessState s_Chess;
+
+	auto IsWhitePiece = [](char Piece) { return Piece >= 'A' && Piece <= 'Z'; };
+	auto IsBlackPiece = [](char Piece) { return Piece >= 'a' && Piece <= 'z'; };
+
+	auto MakeStateKey = [&](const SChessPosState &Pos) {
+		std::string Key;
+		Key.reserve(71);
+		for(int y = 0; y < 8; ++y)
+			for(int x = 0; x < 8; ++x)
+				Key += Pos.m_Board[y][x];
+		Key += Pos.m_WhiteTurn ? 'w' : 'b';
+		Key += Pos.m_WhiteKingSideCastle ? 'K' : '-';
+		Key += Pos.m_WhiteQueenSideCastle ? 'Q' : '-';
+		Key += Pos.m_BlackKingSideCastle ? 'k' : '-';
+		Key += Pos.m_BlackQueenSideCastle ? 'q' : '-';
+		Key += (Pos.m_EnPassantColumn != -1) ? (char)('a' + Pos.m_EnPassantColumn) : '-';
+		return Key;
+	};
+
+	auto ResetChess = [&]() {
+		static const char *s_apSetup[8] = {
+			"rnbqkbnr",
+			"pppppppp",
+			"........",
+			"........",
+			"........",
+			"........",
+			"PPPPPPPP",
+			"RNBQKBNR"};
+		s_Chess.m_Initialized = true;
+		s_Chess.m_Pos = SChessPosState{};
+		for(int y = 0; y < 8; ++y)
+			for(int x = 0; x < 8; ++x)
+				s_Chess.m_Pos.m_Board[y][x] = s_apSetup[y][x];
+
+		if(s_Chess.m_Difficulty == 6)
+			s_Chess.m_PlayerIsWhite = gs_aChessOpenings[std::clamp(s_Chess.m_OpeningIndex, 0, 9)].m_WhitePerspective;
+		else if(s_Chess.m_ColorChoice == 0)
+			s_Chess.m_PlayerIsWhite = true;
+		else if(s_Chess.m_ColorChoice == 2)
+			s_Chess.m_PlayerIsWhite = false;
+		else
+			s_Chess.m_PlayerIsWhite = (rand() % 2) == 0;
+
+		s_Chess.m_ManualFlip = false;
+		s_Chess.m_GameOver = false;
+		s_Chess.m_WhiteWon = false;
+		s_Chess.m_Stalemate = false;
+		s_Chess.m_FiftyMove = false;
+		s_Chess.m_Threefold = false;
+		s_Chess.m_Resigned = false;
+		s_Chess.m_GameLogged = false;
+		s_Chess.m_OpeningStep = 0;
+		s_Chess.m_OpeningRevealHint = false;
+		s_Chess.m_aOpeningFeedback[0] = '\0';
+		s_Chess.m_SelectedX = -1;
+		s_Chess.m_SelectedY = -1;
+		s_Chess.m_Dragging = false;
+		s_Chess.m_DragFromX = -1;
+		s_Chess.m_DragFromY = -1;
+		s_Chess.m_HasMoveAnim = false;
+		s_Chess.m_HasRookAnim = false;
+		s_Chess.m_AnimPiece = '.';
+		s_Chess.m_HasLastMove = false;
+		s_Chess.m_PendingPromotion = false;
+		s_Chess.m_BotReadyTime = AnimTime + 0.16f;
+
+		s_Chess.m_RepetitionTable.clear();
+		s_Chess.m_RepetitionTable[MakeStateKey(s_Chess.m_Pos)] = 1;
+		s_Chess.m_vHistory.clear();
+		s_Chess.m_vMoveNotation.clear();
+		s_Chess.m_vCapturedByWhite.clear();
+		s_Chess.m_vCapturedByBlack.clear();
+		s_Chess.m_vArrows.clear();
+		memset(s_Chess.m_aMarkedSquares, 0, sizeof(s_Chess.m_aMarkedSquares));
+		s_Chess.m_RightDragging = false;
+	};
+
+	auto IsPathClearOnBoard = [](const TChessBoard &Board, int FromX, int FromY, int ToX, int ToY) {
+		const int StepX = (ToX > FromX) - (ToX < FromX);
+		const int StepY = (ToY > FromY) - (ToY < FromY);
+		int x = FromX + StepX;
+		int y = FromY + StepY;
+		while(x != ToX || y != ToY)
+		{
+			if(Board[y][x] != '.')
+				return false;
+			x += StepX;
+			y += StepY;
+		}
+		return true;
+	};
+
+	auto IsUnderAttack = [&](const TChessBoard &Board, int ToX, int ToY, bool TargetIsWhite) {
+		for(int FromY = 0; FromY < 8; ++FromY)
+		{
+			for(int FromX = 0; FromX < 8; ++FromX)
+			{
+				if(FromX == ToX && FromY == ToY)
+					continue;
+				const char Piece = Board[FromY][FromX];
+				if(Piece == '.' || IsWhitePiece(Piece) == TargetIsWhite)
+					continue;
+
+				const int Dx = ToX - FromX;
+				const int Dy = ToY - FromY;
+				const int AbsDx = abs(Dx);
+				const int AbsDy = abs(Dy);
+				const char UpperPiece = (char)toupper((unsigned char)Piece);
+
+				if(UpperPiece == 'P')
+				{
+					const int Backward = TargetIsWhite ? 1 : -1;
+					if(Dy == Backward && AbsDx == 1)
+						return true;
+				}
+				else if(UpperPiece == 'N')
+				{
+					if((AbsDx == 1 && AbsDy == 2) || (AbsDx == 2 && AbsDy == 1))
+						return true;
+				}
+				else if(UpperPiece == 'B' || UpperPiece == 'R' || UpperPiece == 'Q')
+				{
+					bool IsValidLine = false;
+					if(UpperPiece == 'B')
+						IsValidLine = (AbsDx == AbsDy);
+					else if(UpperPiece == 'R')
+						IsValidLine = (Dx == 0 || Dy == 0);
+					else
+						IsValidLine = ((AbsDx == AbsDy) || (Dx == 0 || Dy == 0));
+					if(IsValidLine && IsPathClearOnBoard(Board, FromX, FromY, ToX, ToY))
+						return true;
+				}
+				else if(UpperPiece == 'K')
+				{
+					if(AbsDx <= 1 && AbsDy <= 1)
+						return true;
+				}
+			}
+		}
+		return false;
+	};
+
+	auto FindKingPos = [&](const TChessBoard &Board, bool WhiteKing, int &OutX, int &OutY) {
+		const char TargetKing = WhiteKing ? 'K' : 'k';
+		for(int y = 0; y < 8; ++y)
+		{
+			for(int x = 0; x < 8; ++x)
+			{
+				if(Board[y][x] == TargetKing)
+				{
+					OutX = x;
+					OutY = y;
+					return true;
+				}
+			}
+		}
+		return false;
+	};
+
+	auto IsCheckOnBoard = [&](const TChessBoard &Board, bool WhiteTurn) {
+		int Kx = -1, Ky = -1;
+		if(!FindKingPos(Board, WhiteTurn, Kx, Ky))
+			return false;
+		return IsUnderAttack(Board, Kx, Ky, WhiteTurn);
+	};
+
+	auto IsValidMoveInState = [&](const SChessPosState &Pos, int FromX, int FromY, int ToX, int ToY) {
+		if(FromX == ToX && FromY == ToY)
+			return false;
+		if(ToX < 0 || ToY < 0 || ToX >= 8 || ToY >= 8)
+			return false;
+
+		const TChessBoard &Board = Pos.m_Board;
+		const char Piece = Board[FromY][FromX];
+		const char Target = Board[ToY][ToX];
+		if(Piece == '.')
+			return false;
+		if(Target != '.' && IsWhitePiece(Piece) == IsWhitePiece(Target))
+			return false;
+		if(Target != '.' && (char)toupper((unsigned char)Target) == 'K')
+			return false;
+
+		const int Dx = ToX - FromX;
+		const int Dy = ToY - FromY;
+		const int AbsDx = abs(Dx);
+		const int AbsDy = abs(Dy);
+		const char UpperPiece = (char)toupper((unsigned char)Piece);
+
+		bool IsBasicMoveValid = false;
+		if(UpperPiece == 'P')
+		{
+			const int Forward = IsWhitePiece(Piece) ? -1 : 1;
+			const int StartRow = IsWhitePiece(Piece) ? 6 : 1;
+			if(Dx == 0 && Target == '.')
+			{
+				if(Dy == Forward)
+					IsBasicMoveValid = true;
+				else if(FromY == StartRow && Dy == Forward * 2 && Board[FromY + Forward][FromX] == '.')
+					IsBasicMoveValid = true;
+			}
+			else if(AbsDx == 1 && Dy == Forward)
+			{
+				if(Target != '.' && IsWhitePiece(Target) != IsWhitePiece(Piece))
+					IsBasicMoveValid = true;
+				else if(Target == '.' && ToX == Pos.m_EnPassantColumn)
+				{
+					const int EnPassantRow = IsWhitePiece(Piece) ? 3 : 4;
+					const char EnPassantVictim = Board[FromY][ToX];
+					if(FromY == EnPassantRow && (char)toupper((unsigned char)EnPassantVictim) == 'P' && IsWhitePiece(EnPassantVictim) != IsWhitePiece(Piece))
+						IsBasicMoveValid = true;
+				}
+			}
+		}
+		else if(UpperPiece == 'N')
+			IsBasicMoveValid = (AbsDx == 1 && AbsDy == 2) || (AbsDx == 2 && AbsDy == 1);
+		else if(UpperPiece == 'B')
+			IsBasicMoveValid = AbsDx == AbsDy && IsPathClearOnBoard(Board, FromX, FromY, ToX, ToY);
+		else if(UpperPiece == 'R')
+			IsBasicMoveValid = (Dx == 0 || Dy == 0) && IsPathClearOnBoard(Board, FromX, FromY, ToX, ToY);
+		else if(UpperPiece == 'Q')
+			IsBasicMoveValid = ((AbsDx == AbsDy) || (Dx == 0 || Dy == 0)) && IsPathClearOnBoard(Board, FromX, FromY, ToX, ToY);
+		else if(UpperPiece == 'K')
+		{
+			if(IsUnderAttack(Board, ToX, ToY, IsWhitePiece(Piece)))
+				return false;
+
+			if(AbsDx == 2 && AbsDy == 0)
+			{
+				const int KingStartY = IsWhitePiece(Piece) ? 7 : 0;
+				if(FromX != 4 || FromY != KingStartY || ToY != KingStartY)
+					return false;
+
+				const int RookPos = Dx == 2 ? 7 : 0;
+				const char ExpectedRook = IsWhitePiece(Piece) ? 'R' : 'r';
+				if(Board[ToY][RookPos] != ExpectedRook)
+					return false;
+				if(!IsPathClearOnBoard(Board, FromX, FromY, RookPos, ToY))
+					return false;
+				if(IsUnderAttack(Board, FromX, FromY, IsWhitePiece(Piece)))
+					return false;
+				if(IsUnderAttack(Board, FromX + Dx / 2, FromY, IsWhitePiece(Piece)))
+					return false;
+				if(IsUnderAttack(Board, FromX + Dx, FromY, IsWhitePiece(Piece)))
+					return false;
+
+				IsBasicMoveValid = (Dx == 2) ? (IsWhitePiece(Piece) ? Pos.m_WhiteKingSideCastle : Pos.m_BlackKingSideCastle) : (IsWhitePiece(Piece) ? Pos.m_WhiteQueenSideCastle : Pos.m_BlackQueenSideCastle);
+			}
+			else
+			{
+				IsBasicMoveValid = AbsDx <= 1 && AbsDy <= 1;
+			}
+		}
+
+		if(!IsBasicMoveValid)
+			return false;
+
+		TChessBoard TempBoard = Board;
+		TempBoard[ToY][ToX] = Piece;
+		TempBoard[FromY][FromX] = '.';
+
+		if(UpperPiece == 'P' && FromX != ToX && Target == '.')
+		{
+			const char EnPassantVictim = TempBoard[FromY][ToX];
+			if((char)toupper((unsigned char)EnPassantVictim) == 'P' && IsWhitePiece(EnPassantVictim) != IsWhitePiece(Piece))
+				TempBoard[FromY][ToX] = '.';
+		}
+		else if(UpperPiece == 'K' && AbsDx == 2)
+		{
+			const bool KingSide = ToX > FromX;
+			const int RookFromX = KingSide ? 7 : 0;
+			const int RookToX = KingSide ? 5 : 3;
+			TempBoard[FromY][RookToX] = TempBoard[FromY][RookFromX];
+			TempBoard[FromY][RookFromX] = '.';
+		}
+
+		if(IsCheckOnBoard(TempBoard, IsWhitePiece(Piece)))
+			return false;
+
+		return true;
+	};
+
+	auto CollectLegalMovesInState = [&](const SChessPosState &Pos, bool WhiteTurn) {
+		std::vector<SChessMove> vMoves;
+		vMoves.reserve(40);
+		for(int y = 0; y < 8; ++y)
+		{
+			for(int x = 0; x < 8; ++x)
+			{
+				const char Piece = Pos.m_Board[y][x];
+				if(Piece == '.' || (WhiteTurn != IsWhitePiece(Piece)))
+					continue;
+				for(int ty = 0; ty < 8; ++ty)
+				{
+					for(int tx = 0; tx < 8; ++tx)
+					{
+						if(IsValidMoveInState(Pos, x, y, tx, ty))
+							vMoves.push_back({x, y, tx, ty, 0});
+					}
+				}
+			}
+		}
+		return vMoves;
+	};
+
+	auto HasAnyLegalMoveInState = [&](const SChessPosState &Pos, bool WhiteTurn) {
+		for(int y = 0; y < 8; ++y)
+		{
+			for(int x = 0; x < 8; ++x)
+			{
+				const char Piece = Pos.m_Board[y][x];
+				if(Piece == '.' || (WhiteTurn != IsWhitePiece(Piece)))
+					continue;
+				for(int ty = 0; ty < 8; ++ty)
+				{
+					for(int tx = 0; tx < 8; ++tx)
+					{
+						if(IsValidMoveInState(Pos, x, y, tx, ty))
+							return true;
+					}
+				}
+			}
+		}
+		return false;
+	};
+
+	auto PieceValue = [](char Piece) {
+		switch((char)toupper((unsigned char)Piece))
+		{
+		case 'P': return 100;
+		case 'N': return 320;
+		case 'B': return 330;
+		case 'R': return 500;
+		case 'Q': return 900;
+		case 'K': return 20000;
+		default: return 0;
+		}
+	};
+
+	auto ApplyMoveInState = [&](SChessPosState &Pos, const SChessMove &Move, char *pOutRealCaptured = nullptr) {
+		const char MovingPiece = Pos.m_Board[Move.m_FromY][Move.m_FromX];
+		char RealCaptured = Pos.m_Board[Move.m_ToY][Move.m_ToX];
+		const char Upper = (char)toupper((unsigned char)MovingPiece);
+		const bool MovingWhite = IsWhitePiece(MovingPiece);
+
+		Pos.m_Board[Move.m_ToY][Move.m_ToX] = MovingPiece;
+		Pos.m_Board[Move.m_FromY][Move.m_FromX] = '.';
+
+		if(Upper == 'P' && (Move.m_ToY == 0 || Move.m_ToY == 7))
+		{
+			const char PromoUpper = (Move.m_Promo == 'R' || Move.m_Promo == 'B' || Move.m_Promo == 'N') ? Move.m_Promo : 'Q';
+			Pos.m_Board[Move.m_ToY][Move.m_ToX] = MovingWhite ? PromoUpper : (char)tolower((unsigned char)PromoUpper);
+		}
+
+		if(Upper == 'K' && abs(Move.m_ToX - Move.m_FromX) == 2)
+		{
+			const bool KingSide = Move.m_ToX > Move.m_FromX;
+			const int RookFromX = KingSide ? 7 : 0;
+			const int RookToX = KingSide ? 5 : 3;
+			Pos.m_Board[Move.m_FromY][RookToX] = Pos.m_Board[Move.m_FromY][RookFromX];
+			Pos.m_Board[Move.m_FromY][RookFromX] = '.';
+		}
+
+		if(Upper == 'P' && Move.m_FromX != Move.m_ToX && RealCaptured == '.')
+		{
+			const char EnPassantVictim = Pos.m_Board[Move.m_FromY][Move.m_ToX];
+			if((char)toupper((unsigned char)EnPassantVictim) == 'P' && IsWhitePiece(EnPassantVictim) != MovingWhite)
+			{
+				RealCaptured = EnPassantVictim;
+				Pos.m_Board[Move.m_FromY][Move.m_ToX] = '.';
+			}
+		}
+
+		if(MovingPiece == 'K')
+		{
+			Pos.m_WhiteKingSideCastle = false;
+			Pos.m_WhiteQueenSideCastle = false;
+		}
+		else if(MovingPiece == 'k')
+		{
+			Pos.m_BlackKingSideCastle = false;
+			Pos.m_BlackQueenSideCastle = false;
+		}
+		else if(MovingPiece == 'R')
+		{
+			if(Move.m_FromX == 0 && Move.m_FromY == 7)
+				Pos.m_WhiteQueenSideCastle = false;
+			else if(Move.m_FromX == 7 && Move.m_FromY == 7)
+				Pos.m_WhiteKingSideCastle = false;
+		}
+		else if(MovingPiece == 'r')
+		{
+			if(Move.m_FromX == 0 && Move.m_FromY == 0)
+				Pos.m_BlackQueenSideCastle = false;
+			else if(Move.m_FromX == 7 && Move.m_FromY == 0)
+				Pos.m_BlackKingSideCastle = false;
+		}
+
+		if(RealCaptured == 'R' && Move.m_ToX == 0 && Move.m_ToY == 7)
+			Pos.m_WhiteQueenSideCastle = false;
+		else if(RealCaptured == 'R' && Move.m_ToX == 7 && Move.m_ToY == 7)
+			Pos.m_WhiteKingSideCastle = false;
+		else if(RealCaptured == 'r' && Move.m_ToX == 0 && Move.m_ToY == 0)
+			Pos.m_BlackQueenSideCastle = false;
+		else if(RealCaptured == 'r' && Move.m_ToX == 7 && Move.m_ToY == 0)
+			Pos.m_BlackKingSideCastle = false;
+
+		if(Upper == 'P' && abs(Move.m_FromY - Move.m_ToY) == 2)
+			Pos.m_EnPassantColumn = Move.m_ToX;
+		else
+			Pos.m_EnPassantColumn = -1;
+
+		if(RealCaptured != '.' || Upper == 'P')
+			Pos.m_HalfMoveClock = 0;
+		else
+			Pos.m_HalfMoveClock++;
+
+		Pos.m_WhiteTurn = !Pos.m_WhiteTurn;
+		if(pOutRealCaptured)
+			*pOutRealCaptured = RealCaptured;
+		return RealCaptured;
+	};
+
+	auto EvaluateBoard = [&](const TChessBoard &Board) {
+		static const int s_aPstP[64] = {
+			0, 0, 0, 0, 0, 0, 0, 0,
+			50, 50, 50, 50, 50, 50, 50, 50,
+			10, 10, 20, 30, 30, 20, 10, 10,
+			5, 5, 10, 25, 25, 10, 5, 5,
+			0, 0, 0, 20, 20, 0, 0, 0,
+			5, -5, -10, 0, 0, -10, -5, 5,
+			5, 10, 10, -20, -20, 10, 10, 5,
+			0, 0, 0, 0, 0, 0, 0, 0};
+		static const int s_aPstN[64] = {
+			-50, -40, -30, -30, -30, -30, -40, -50,
+			-40, -20, 0, 0, 0, 0, -20, -40,
+			-30, 0, 10, 15, 15, 10, 0, -30,
+			-30, 5, 15, 20, 20, 15, 5, -30,
+			-30, 0, 15, 20, 20, 15, 0, -30,
+			-30, 5, 10, 15, 15, 10, 5, -30,
+			-40, -20, 0, 5, 5, 0, -20, -40,
+			-50, -40, -30, -30, -30, -30, -40, -50};
+		static const int s_aPstB[64] = {
+			-20, -10, -10, -10, -10, -10, -10, -20,
+			-10, 0, 0, 0, 0, 0, 0, -10,
+			-10, 0, 5, 10, 10, 5, 0, -10,
+			-10, 5, 5, 10, 10, 5, 5, -10,
+			-10, 0, 10, 10, 10, 10, 0, -10,
+			-10, 10, 10, 10, 10, 10, 10, -10,
+			-10, 5, 0, 0, 0, 0, 5, -10,
+			-20, -10, -10, -10, -10, -10, -10, -20};
+		static const int s_aPstR[64] = {
+			0, 0, 0, 0, 0, 0, 0, 0,
+			5, 10, 10, 10, 10, 10, 10, 5,
+			-5, 0, 0, 0, 0, 0, 0, -5,
+			-5, 0, 0, 0, 0, 0, 0, -5,
+			-5, 0, 0, 0, 0, 0, 0, -5,
+			-5, 0, 0, 0, 0, 0, 0, -5,
+			-5, 0, 0, 0, 0, 0, 0, -5,
+			0, 0, 0, 5, 5, 0, 0, 0};
+		static const int s_aPstQ[64] = {
+			-20, -10, -10, -5, -5, -10, -10, -20,
+			-10, 0, 0, 0, 0, 0, 0, -10,
+			-10, 0, 5, 5, 5, 5, 0, -10,
+			-5, 0, 5, 5, 5, 5, 0, -5,
+			0, 0, 5, 5, 5, 5, 0, -5,
+			-10, 5, 5, 5, 5, 5, 0, -10,
+			-10, 0, 5, 0, 0, 0, 0, -10,
+			-20, -10, -10, -5, -5, -10, -10, -20};
+		static const int s_aPstKMid[64] = {
+			-30, -40, -40, -50, -50, -40, -40, -30,
+			-30, -40, -40, -50, -50, -40, -40, -30,
+			-30, -40, -40, -50, -50, -40, -40, -30,
+			-30, -40, -40, -50, -50, -40, -40, -30,
+			-20, -30, -30, -40, -40, -30, -30, -20,
+			-10, -20, -20, -20, -20, -20, -20, -10,
+			20, 20, 0, 0, 0, 0, 20, 20,
+			20, 30, 10, 0, 0, 10, 30, 20};
+
+		bool WhiteKingAlive = false;
+		bool BlackKingAlive = false;
+		int Score = 0;
+		for(int y = 0; y < 8; ++y)
+		{
+			for(int x = 0; x < 8; ++x)
+			{
+				const char Piece = Board[y][x];
+				if(Piece == '.')
+					continue;
+				const bool White = IsWhitePiece(Piece);
+				const char Upper = (char)toupper((unsigned char)Piece);
+				if(Upper == 'K')
+				{
+					if(White)
+						WhiteKingAlive = true;
+					else
+						BlackKingAlive = true;
+				}
+				const int Material = PieceValue(Piece);
+				const int Sq = White ? (y * 8 + x) : ((7 - y) * 8 + x);
+				int Pst = 0;
+				switch(Upper)
+				{
+				case 'P': Pst = s_aPstP[Sq]; break;
+				case 'N': Pst = s_aPstN[Sq]; break;
+				case 'B': Pst = s_aPstB[Sq]; break;
+				case 'R': Pst = s_aPstR[Sq]; break;
+				case 'Q': Pst = s_aPstQ[Sq]; break;
+				case 'K': Pst = s_aPstKMid[Sq]; break;
+				default: break;
+				}
+				int Local = Material + Pst;
+				if(Upper == 'P')
+					Local += White ? (6 - y) * 4 : (y - 1) * 4;
+				Score += White ? -Local : Local;
+			}
+		}
+
+		if(!BlackKingAlive)
+			return -1000000;
+		if(!WhiteKingAlive)
+			return 1000000;
+		return Score;
+	};
+
+	auto IsValidMove = [&](int FromX, int FromY, int ToX, int ToY) {
+		return IsValidMoveInState(s_Chess.m_Pos, FromX, FromY, ToX, ToY);
+	};
+
+	auto ResolveEffectiveTarget = [&](int FromX, int FromY, int RawToX, int RawToY, int &OutToX, int &OutToY) {
+		OutToX = RawToX;
+		OutToY = RawToY;
+		if(FromX < 0 || FromY < 0 || RawToX < 0 || RawToY < 0)
+			return;
+		const char MovingPiece = s_Chess.m_Pos.m_Board[FromY][FromX];
+		const char TargetPiece = s_Chess.m_Pos.m_Board[RawToY][RawToX];
+		if((char)toupper((unsigned char)MovingPiece) == 'K' && (char)toupper((unsigned char)TargetPiece) == 'R' &&
+			IsWhitePiece(MovingPiece) == IsWhitePiece(TargetPiece) && FromX == 4 && FromY == RawToY && (RawToX == 0 || RawToX == 7))
+		{
+			const int CastleToX = (RawToX == 7) ? 6 : 2;
+			if(IsValidMove(FromX, FromY, CastleToX, FromY))
+			{
+				OutToX = CastleToX;
+				OutToY = FromY;
+			}
+		}
+	};
+
+	auto OrderMovesForSearch = [&](const TChessBoard &Board, std::vector<SChessMove> &vMoves) {
+		std::sort(vMoves.begin(), vMoves.end(), [&](const SChessMove &A, const SChessMove &B) {
+			const char MovA = Board[A.m_FromY][A.m_FromX];
+			const char MovB = Board[B.m_FromY][B.m_FromX];
+			const char CapA = Board[A.m_ToY][A.m_ToX];
+			const char CapB = Board[B.m_ToY][B.m_ToX];
+			int ScoreA = PieceValue(CapA) * 16 - PieceValue(MovA) / 10;
+			int ScoreB = PieceValue(CapB) * 16 - PieceValue(MovB) / 10;
+			if((char)toupper((unsigned char)MovA) == 'P' && (A.m_ToY == 0 || A.m_ToY == 7))
+				ScoreA += 8000;
+			if((char)toupper((unsigned char)MovB) == 'P' && (B.m_ToY == 0 || B.m_ToY == 7))
+				ScoreB += 8000;
+			if((char)toupper((unsigned char)MovA) == 'K' && abs(A.m_ToX - A.m_FromX) == 2)
+				ScoreA += 400;
+			if((char)toupper((unsigned char)MovB) == 'K' && abs(B.m_ToX - B.m_FromX) == 2)
+				ScoreB += 400;
+			return ScoreA > ScoreB;
+		});
+	};
+
+	auto PickBotMove = [&](SChessMove &OutMove, bool BotIsWhite) {
+		const SChessPosState RootPos = s_Chess.m_Pos;
+		std::vector<SChessMove> vRootMoves = CollectLegalMovesInState(RootPos, BotIsWhite);
+		if(vRootMoves.empty())
+			return false;
+
+		if(s_Chess.m_Difficulty == 0 && (rand() % 100) < 30)
+		{
+			OutMove = vRootMoves[rand() % vRootMoves.size()];
+			return true;
+		}
+
+		OrderMovesForSearch(RootPos.m_Board, vRootMoves);
+
+		constexpr int INF = 10000000;
+		int SearchDepth = 3;
+		int RandomMargin = 8;
+		if(s_Chess.m_Difficulty == 0)
+		{
+			SearchDepth = 1;
+			RandomMargin = 65;
+		}
+		else if(s_Chess.m_Difficulty == 1)
+		{
+			SearchDepth = 2;
+			RandomMargin = 25;
+		}
+		else if(s_Chess.m_Difficulty == 2)
+		{
+			SearchDepth = 3;
+			RandomMargin = 8;
 		}
 		else
 		{
-			Section.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 10.0f);
+			SearchDepth = 4;
+			RandomMargin = 0;
 		}
-	}
-	s_PrevScrollOffsetCmds = ScrollOffset;
-	s_SectionBoxesCmds.clear();
 
-	auto DrawCommandCard = [&](CUIRect &Col, const char *pCmd, const char *pDesc) {
-		Col.HSplitTop(44.0f, &Row, &Col);
-		if(s_ScrollRegionCommands.AddRect(Row))
+		const int Perspective = BotIsWhite ? -1 : 1;
+
+		std::function<int(const SChessPosState &, int, int, int, bool)> Minimax =
+			[&](const SChessPosState &Pos, int Depth, int Alpha, int Beta, bool MaximizingBot) -> int {
+			if(Depth <= 0)
+				return EvaluateBoard(Pos.m_Board) * Perspective;
+
+			const bool SideWhite = MaximizingBot ? BotIsWhite : !BotIsWhite;
+			std::vector<SChessMove> vMoves = CollectLegalMovesInState(Pos, SideWhite);
+			if(vMoves.empty())
+			{
+				if(IsCheckOnBoard(Pos.m_Board, SideWhite))
+					return MaximizingBot ? (-INF + (SearchDepth - Depth)) : (INF - (SearchDepth - Depth));
+				return 0;
+			}
+
+			OrderMovesForSearch(Pos.m_Board, vMoves);
+
+			if(MaximizingBot)
+			{
+				int Best = -INF;
+				for(const SChessMove &Move : vMoves)
+				{
+					SChessPosState Next = Pos;
+					ApplyMoveInState(Next, Move);
+					Best = std::max(Best, Minimax(Next, Depth - 1, Alpha, Beta, false));
+					Alpha = std::max(Alpha, Best);
+					if(Beta <= Alpha)
+						break;
+				}
+				return Best;
+			}
+
+			int Best = INF;
+			for(const SChessMove &Move : vMoves)
+			{
+				SChessPosState Next = Pos;
+				ApplyMoveInState(Next, Move);
+				Best = std::min(Best, Minimax(Next, Depth - 1, Alpha, Beta, true));
+				Beta = std::min(Beta, Best);
+				if(Beta <= Alpha)
+					break;
+			}
+			return Best;
+		};
+
+		int BestScore = -INF;
+		std::vector<SChessMove> vBestMoves;
+		for(const SChessMove &Move : vRootMoves)
 		{
-			Row.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.28f), IGraphics::CORNER_ALL, 6.0f);
-			Row.Margin(5.0f, &Row);
-			CUIRect TopLine, BottomLine;
-			Row.HSplitMid(&TopLine, &BottomLine);
-			TextRender()->TextColor(1.0f, 0.88f, 0.35f, 1.0f);
-			Ui()->DoLabel(&TopLine, pCmd, 13.0f, TEXTALIGN_ML);
-			TextRender()->TextColor(0.85f, 0.88f, 0.94f, 0.95f);
-			Ui()->DoLabel(&BottomLine, pDesc, 11.0f, TEXTALIGN_ML);
-			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+			SChessPosState AfterBot = RootPos;
+			const char Captured = ApplyMoveInState(AfterBot, Move);
+			int Score;
+			if((char)toupper((unsigned char)Captured) == 'K')
+				Score = INF;
+			else
+				Score = Minimax(AfterBot, SearchDepth - 1, -INF, INF, false);
+
+			if(Score > BestScore + RandomMargin)
+			{
+				BestScore = Score;
+				vBestMoves.clear();
+				vBestMoves.push_back(Move);
+			}
+			else if(abs(Score - BestScore) <= RandomMargin)
+			{
+				vBestMoves.push_back(Move);
+			}
 		}
-		Col.HSplitTop(MarginSmall, nullptr, &Col);
+
+		if(vBestMoves.empty())
+			return false;
+		OutMove = vBestMoves[rand() % vBestMoves.size()];
+		return true;
 	};
 
-	// ==================== COLUMNA IZQUIERDA ====================
-	// 1. General & Chat
-	Column = LeftView;
-	Column.HSplitTop(Margin, nullptr, &Column);
-	s_SectionBoxesCmds.push_back(Column);
-	Column.HSplitTop(HeadlineHeight, &Label, &Column);
-	Ui()->DoLabel(&Label, TCLocalize("General & Chat"), HeadlineFontSize, TEXTALIGN_ML);
-	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	auto FormatMoveNotation = [&](const SChessPosState &BeforePos, const SChessMove &Move, char Captured, bool IsMate, bool IsCheck) {
+		const char MovingPiece = BeforePos.m_Board[Move.m_FromY][Move.m_FromX];
+		const char Upper = (char)toupper((unsigned char)MovingPiece);
+		std::string Note;
+		if(Upper == 'K' && abs(Move.m_ToX - Move.m_FromX) == 2)
+		{
+			Note = (Move.m_ToX > Move.m_FromX) ? "O-O" : "O-O-O";
+		}
+		else
+		{
+			if(Upper != 'P')
+				Note += Upper;
+			else if(Captured != '.')
+				Note += (char)('a' + Move.m_FromX);
+			if(Captured != '.')
+				Note += 'x';
+			Note += (char)('a' + Move.m_ToX);
+			Note += (char)('8' - Move.m_ToY);
+			if(Upper == 'P' && (Move.m_ToY == 0 || Move.m_ToY == 7))
+			{
+				const char PromoUpper = (Move.m_Promo == 'R' || Move.m_Promo == 'B' || Move.m_Promo == 'N') ? Move.m_Promo : 'Q';
+				Note += '=';
+				Note += PromoUpper;
+			}
+		}
+		if(IsMate)
+			Note += '#';
+		else if(IsCheck)
+			Note += '+';
+		return Note;
+	};
 
-	DrawCommandCard(Column, "ac_save_config", TCLocalize("Save current AClient configuration to settings_aclient.cfg."));
-	DrawCommandCard(Column, "ac_show_chat_client [0|1]", TCLocalize("Toggle showing local client echo messages in chat."));
-	DrawCommandCard(Column, "ac_silent_typing [0|1]", TCLocalize("Hide your own typing chat bubble (Silent Typing)."));
-	DrawCommandCard(Column, "ac_hide_others_chat_bubbles [0|1]", TCLocalize("Hide typing chat bubbles of other players on your screen."));
-	DrawCommandCard(Column, "ac_auto_team_lock [0|1]", TCLocalize("Automatically lock team (/lock 1) after joining a team."));
-	DrawCommandCard(Column, "ac_auto_team_lock_delay [sec]", TCLocalize("Delay in seconds before sending /lock 1 after joining."));
-	DrawCommandCard(Column, "/invite friends", TCLocalize("Invites only connected players on your friends list to your team."));
-	DrawCommandCard(Column, "/team last / team_invite", TCLocalize("Se une instantaneamente al ultimo equipo al que fuiste invitado."));
-	DrawCommandCard(Column, "greet_last / greet [mensaje]", TCLocalize("Saluda a la ultima persona que te taggeo o susurro (personalizable con {name})."));
-	s_SectionBoxesCmds.back().h = Column.y - s_SectionBoxesCmds.back().y;
+	auto ApplyChessMove = [&](const SChessMove &Move) {
+		SChessSnapshot Snap;
+		Snap.m_Pos = s_Chess.m_Pos;
+		Snap.m_HasLastMove = s_Chess.m_HasLastMove;
+		Snap.m_LastFromX = s_Chess.m_LastFromX;
+		Snap.m_LastFromY = s_Chess.m_LastFromY;
+		Snap.m_LastToX = s_Chess.m_LastToX;
+		Snap.m_LastToY = s_Chess.m_LastToY;
+		Snap.m_vCapturedByWhite = s_Chess.m_vCapturedByWhite;
+		Snap.m_vCapturedByBlack = s_Chess.m_vCapturedByBlack;
 
-	// 2. RaceStats & HUD
-	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
-	s_SectionBoxesCmds.push_back(Column);
-	Column.HSplitTop(HeadlineHeight, &Label, &Column);
-	Ui()->DoLabel(&Label, TCLocalize("RaceStats & Mini Statboard"), HeadlineFontSize, TEXTALIGN_ML);
-	Column.HSplitTop(MarginSmall, nullptr, &Column);
+		const char MovingPiece = s_Chess.m_Pos.m_Board[Move.m_FromY][Move.m_FromX];
+		const char Upper = (char)toupper((unsigned char)MovingPiece);
+		const bool WhiteMoved = IsWhitePiece(MovingPiece);
+		char CapturedPiece = '.';
+		ApplyMoveInState(s_Chess.m_Pos, Move, &CapturedPiece);
 
-	DrawCommandCard(Column, "toggle ac_mini_statboard 0 1", TCLocalize("Toggles the mini statboard HUD overlay visibility."));
-	DrawCommandCard(Column, "ac_save_racestats", TCLocalize("Manually saves current run stats to history log."));
-	DrawCommandCard(Column, "ac_clear_racestats_history", TCLocalize("Clears all saved RaceStats history."));
-	DrawCommandCard(Column, "ac_mini_statboard_sort [0-8]", TCLocalize("Sort stat: 0=Default, 1=Saves, 2=Deaths, 3=Freezes, 4=Eff, 5=Net, 6=Time, 7=Hook, 8=Lasts."));
-	DrawCommandCard(Column, "ac_mini_statboard_anim [0|1]", TCLocalize("Toggle smooth F1-style ladder animation when ranks change."));
-	DrawCommandCard(Column, "ac_mini_statboard_anim_speed [3-30]", TCLocalize("Speed of F1 ladder rank transitions (default: 10)."));
-	DrawCommandCard(Column, "ac_mini_statboard_show_tees [0|1]", TCLocalize("Show mini Tee skins next to names in overlay (default: 1)."));
-	DrawCommandCard(Column, "ac_statboard_background_calc [0|1]", TCLocalize("Calculate stats in background even when overlay is hidden."));
-	DrawCommandCard(Column, "ac_statboard_keep_on_death [0|1]", TCLocalize("Keep accumulated stats on death/kill (do not reset)."));
-	DrawCommandCard(Column, "ac_statboard_reset_on_team_kill [0|1]", TCLocalize("Reset stats when all team dies or you switch team."));
-	DrawCommandCard(Column, "ac_statboard_auto_save [0|1]", TCLocalize("Auto-save stats before resetting on kill or team switch."));
-	DrawCommandCard(Column, "ac_mini_statboard_columns [1-255]", TCLocalize("Bitmask of visible columns in the mini statboard HUD."));
-	DrawCommandCard(Column, "ac_mini_statboard_scale [20-200]", TCLocalize("HUD scale percentage for the mini statboard overlay."));
-	DrawCommandCard(Column, "ac_mini_statboard_opacity [0-100]", TCLocalize("Background opacity percentage for the mini statboard."));
-	DrawCommandCard(Column, "ac_mini_statboard_x / y [0-100]", TCLocalize("Screen position (percent) of the mini statboard overlay."));
-	s_SectionBoxesCmds.back().h = Column.y - s_SectionBoxesCmds.back().y;
+		if(CapturedPiece != '.')
+		{
+			if(WhiteMoved)
+				s_Chess.m_vCapturedByWhite.push_back(CapturedPiece);
+			else
+				s_Chess.m_vCapturedByBlack.push_back(CapturedPiece);
+		}
 
-	LeftView = Column; // Guarda la posición final de la columna izquierda
+		s_Chess.m_HasLastMove = true;
+		s_Chess.m_LastFromX = Move.m_FromX;
+		s_Chess.m_LastFromY = Move.m_FromY;
+		s_Chess.m_LastToX = Move.m_ToX;
+		s_Chess.m_LastToY = Move.m_ToY;
 
-	// 2.5 FPS Booster & Optimizer
-	Column.HSplitTop(Margin, nullptr, &Column);
-	s_SectionBoxesCmds.push_back(Column);
-	Column.HSplitTop(HeadlineHeight, &Label, &Column);
-	Ui()->DoLabel(&Label, TCLocalize("FPS Booster & Optimizer"), HeadlineFontSize, TEXTALIGN_ML);
-	Column.HSplitTop(MarginSmall, nullptr, &Column);
+		s_Chess.m_HasMoveAnim = true;
+		s_Chess.m_AnimPiece = s_Chess.m_Pos.m_Board[Move.m_ToY][Move.m_ToX];
+		s_Chess.m_AnimFromX = Move.m_FromX;
+		s_Chess.m_AnimFromY = Move.m_FromY;
+		s_Chess.m_AnimToX = Move.m_ToX;
+		s_Chess.m_AnimToY = Move.m_ToY;
+		s_Chess.m_AnimStart = AnimTime;
 
-	DrawCommandCard(Column, "ac_optimizer [0|1] / ac_optimizer_toggle", TCLocalize("Toggle the master FPS Booster / Optimizer mode."));
-	DrawCommandCard(Column, "ac_optimizer_disable_particles [0|1]", TCLocalize("Disable updating and rendering all particle effects."));
-	DrawCommandCard(Column, "ac_optimizer_disable_quads [0|1]", TCLocalize("Skip decorative map quads (clouds, lights, art)."));
-	DrawCommandCard(Column, "ac_optimizer_disable_high_detail [0|1]", TCLocalize("Automatically force off high detail map layers."));
-	DrawCommandCard(Column, "ac_optimizer_fps_fog [0|1]", TCLocalize("Limit rendering to camera radius (FOV culling)."));
-	DrawCommandCard(Column, "ac_optimizer_fps_fog_radius_tiles [15-80]", TCLocalize("View radius in tiles for FPS Fog culling (default: 35)."));
-	DrawCommandCard(Column, "ac_optimizer_fps_fog_cull_map_tiles [0|1]", TCLocalize("Cull map tiles outside the FPS Fog radius."));
-	DrawCommandCard(Column, "ac_optimizer_high_priority [0|1]", TCLocalize("Automatically set Windows process priority to High."));
-	DrawCommandCard(Column, "ac_optimizer_discord_normal_priority [0|1]", TCLocalize("Keep Discord processes at Normal priority in Windows."));
-	s_SectionBoxesCmds.back().h = Column.y - s_SectionBoxesCmds.back().y;
+		if(Upper == 'K' && abs(Move.m_ToX - Move.m_FromX) == 2)
+		{
+			const bool KingSide = Move.m_ToX > Move.m_FromX;
+			s_Chess.m_HasRookAnim = true;
+			s_Chess.m_AnimRookPiece = WhiteMoved ? 'R' : 'r';
+			s_Chess.m_AnimRookFromX = KingSide ? 7 : 0;
+			s_Chess.m_AnimRookToX = KingSide ? 5 : 3;
+			s_Chess.m_AnimRookY = Move.m_FromY;
+		}
+		else
+		{
+			s_Chess.m_HasRookAnim = false;
+		}
 
-	LeftView = Column;
+		if(CapturedPiece != '.' || Upper == 'P')
+			s_Chess.m_RepetitionTable.clear();
 
-	// ==================== COLUMNA DERECHA ====================
-	// 3. Fast Input & Predicción
-	Column = RightView;
-	Column.HSplitTop(Margin, nullptr, &Column);
-	s_SectionBoxesCmds.push_back(Column);
-	Column.HSplitTop(HeadlineHeight, &Label, &Column);
-	Ui()->DoLabel(&Label, TCLocalize("Fast Input & Prediction"), HeadlineFontSize, TEXTALIGN_ML);
-	Column.HSplitTop(MarginSmall, nullptr, &Column);
+		const std::string Key = MakeStateKey(s_Chess.m_Pos);
+		s_Chess.m_RepetitionTable[Key]++;
+		s_Chess.m_BotReadyTime = AnimTime + 0.18f;
 
-	DrawCommandCard(Column, "ac_inputs [0-9]", TCLocalize("Prediction mode: 0=Off, 1=Fast, 2=Best, 3=Saiko, 4=Delta, 5=F, 6=Cloud, 7=AClient, 8=aX30, 9=aXv2."));
-	DrawCommandCard(Column, "cl_prediction_margin [-50 to 50]", TCLocalize("Prediction margin in ms (Anti-lag tool)."));
-	DrawCommandCard(Column, "ac_ax30_input_amount / others", TCLocalize("Prediction offset in 0.01 ticks for aX30 mode."));
-	DrawCommandCard(Column, "ac_ax30_adaptive_jitter [0|1]", TCLocalize("Adaptive latency compensation for aX30."));
-	DrawCommandCard(Column, "ac_ax30_collision_clamp [0|1]", TCLocalize("Safety boundary filter for aX30."));
-	DrawCommandCard(Column, "ac_aclient_input_amount / others", TCLocalize("Prediction offset in 0.01 ticks for AClient mode."));
-	DrawCommandCard(Column, "ac_aclient_input_latency_comp [0-50]", TCLocalize("Latency compensation percentage for AClient mode."));
-	DrawCommandCard(Column, "ac_fast_input_amount / others", TCLocalize("Prediction offset in ms for Fast mode (self and others)."));
-	DrawCommandCard(Column, "ac_best_input_amount / others", TCLocalize("Prediction offset in 0.01 ticks for Best mode."));
-	DrawCommandCard(Column, "ac_best_input_smoothing [0-100]", TCLocalize("Input smoothing amount percentage for Best mode."));
-	DrawCommandCard(Column, "ac_best_input_latency_comp [0-50]", TCLocalize("Latency compensation percentage for Best mode."));
-	DrawCommandCard(Column, "ac_saiko_input_amount / others", TCLocalize("Prediction offset in 0.01 ticks for Saiko mode."));
-	DrawCommandCard(Column, "ac_delta_input_amount / others", TCLocalize("Prediction offset in 0.01 ticks for Delta mode."));
-	DrawCommandCard(Column, "ac_f_input_amount / others", TCLocalize("Prediction offset in 0.001 ticks for F mode."));
-	DrawCommandCard(Column, "ac_cloud_input_amount / others", TCLocalize("Prediction offset in 0.01 ticks for Cloud mode."));
-	DrawCommandCard(Column, "ac_fast_input_repredict_hook [0|1]", TCLocalize("Repredict hook trajectory when direction changes."));
-	DrawCommandCard(Column, "ac_fast_input_others_only_frozen [0|1]", TCLocalize("Only apply fast input to other tees when they are frozen."));
-	s_SectionBoxesCmds.back().h = Column.y - s_SectionBoxesCmds.back().y;
+		const bool OpponentInCheck = IsCheckOnBoard(s_Chess.m_Pos.m_Board, s_Chess.m_Pos.m_WhiteTurn);
+		const bool OpponentHasMove = HasAnyLegalMoveInState(s_Chess.m_Pos, s_Chess.m_Pos.m_WhiteTurn);
+		const bool IsCheckmate = OpponentInCheck && !OpponentHasMove;
+		const bool IsStalemate = !OpponentInCheck && !OpponentHasMove;
 
-	// 4. Background Alerts (AFK)
-	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
-	s_SectionBoxesCmds.push_back(Column);
-	Column.HSplitTop(HeadlineHeight, &Label, &Column);
-	Ui()->DoLabel(&Label, TCLocalize("Background Alerts (AFK)"), HeadlineFontSize, TEXTALIGN_ML);
-	Column.HSplitTop(MarginSmall, nullptr, &Column);
+		s_Chess.m_vMoveNotation.push_back(FormatMoveNotation(Snap.m_Pos, Move, CapturedPiece, IsCheckmate, OpponentInCheck));
+		s_Chess.m_vHistory.push_back(std::move(Snap));
 
-	DrawCommandCard(Column, "ac_notify_unfreeze [0|1]", TCLocalize("Alert when unfreezing while tabbed out / minimized."));
-	DrawCommandCard(Column, "ac_change_tile_notification [0|1]", TCLocalize("Alert when moved or tile changes while tabbed out."));
-	DrawCommandCard(Column, "ac_notify_sound / flash / desktop", TCLocalize("Independent alert channels (Sound, Taskbar flash, Toast)."));
-	DrawCommandCard(Column, "cl_shownotifications [0|1]", TCLocalize("Desktop notifications on chat mentions and alerts."));
-	DrawCommandCard(Column, "/notifications / /notif [0|1]", TCLocalize("Toggle desktop notifications on or off directly from chat."));
-	s_SectionBoxesCmds.back().h = Column.y - s_SectionBoxesCmds.back().y;
+		if(IsCheckmate)
+		{
+			s_Chess.m_GameOver = true;
+			s_Chess.m_WhiteWon = !s_Chess.m_Pos.m_WhiteTurn;
+			s_Chess.m_Stalemate = false;
+		}
+		else if(IsStalemate)
+		{
+			s_Chess.m_GameOver = true;
+			s_Chess.m_WhiteWon = false;
+			s_Chess.m_Stalemate = true;
+		}
+		else if(s_Chess.m_Pos.m_HalfMoveClock >= 100)
+		{
+			s_Chess.m_GameOver = true;
+			s_Chess.m_WhiteWon = false;
+			s_Chess.m_FiftyMove = true;
+		}
+		else if(s_Chess.m_RepetitionTable[Key] >= 3)
+		{
+			s_Chess.m_GameOver = true;
+			s_Chess.m_WhiteWon = false;
+			s_Chess.m_Threefold = true;
+		}
+	};
 
-	// 5. Fast Practice (Ghost Mode)
-	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
-	s_SectionBoxesCmds.push_back(Column);
-	Column.HSplitTop(HeadlineHeight, &Label, &Column);
-	Ui()->DoLabel(&Label, TCLocalize("Fast Practice / Ghost Mode"), HeadlineFontSize, TEXTALIGN_ML);
-	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	auto UndoMove = [&]() {
+		if(s_Chess.m_vHistory.empty() || s_Chess.m_PendingPromotion)
+			return;
+		auto PopOne = [&]() {
+			if(s_Chess.m_vHistory.empty())
+				return;
+			const std::string CurKey = MakeStateKey(s_Chess.m_Pos);
+			auto It = s_Chess.m_RepetitionTable.find(CurKey);
+			if(It != s_Chess.m_RepetitionTable.end() && It->second > 0)
+				It->second--;
 
-	DrawCommandCard(Column, "ac_fast_practice_toggle", TCLocalize("Enables or disables ghost practice mode without leaving your run."));
-	DrawCommandCard(Column, "ac_fast_practice_ghost_alpha [0-100]", TCLocalize("Ghost tee transparency percentage in Fast Practice."));
-	DrawCommandCard(Column, "ac_fast_practice_spec_original [0|1]", TCLocalize("Put original tee in spectator mode (/spec) when practicing."));
-	DrawCommandCard(Column, "ac_fast_practice_show_text [0|1]", TCLocalize("Show top help text (/tp /tc /invincible) in practice."));
-	DrawCommandCard(Column, "/tp & /tc", TCLocalize("Teleports to cursor (/tp) or toggles telecursor aim (/tc)."));
-	DrawCommandCard(Column, "/invincible & /weapons", TCLocalize("Local freeze invincibility and all weapons in practice."));
-	DrawCommandCard(Column, "/save & /load", TCLocalize("Saves and loads local practice positions to repeat map parts."));
-	DrawCommandCard(Column, "/fastinput [0-40|off]", TCLocalize("Configures Fast Input prediction offset in ms for practice."));
-	DrawCommandCard(Column, "ac_fast_practice_fast_input_amount [0-40]", TCLocalize("Fast input prediction offset in ms while in Fast Practice."));
-	s_SectionBoxesCmds.back().h = Column.y - s_SectionBoxesCmds.back().y;
+			const SChessSnapshot &Snap = s_Chess.m_vHistory.back();
+			s_Chess.m_Pos = Snap.m_Pos;
+			s_Chess.m_HasLastMove = Snap.m_HasLastMove;
+			s_Chess.m_LastFromX = Snap.m_LastFromX;
+			s_Chess.m_LastFromY = Snap.m_LastFromY;
+			s_Chess.m_LastToX = Snap.m_LastToX;
+			s_Chess.m_LastToY = Snap.m_LastToY;
+			s_Chess.m_vCapturedByWhite = Snap.m_vCapturedByWhite;
+			s_Chess.m_vCapturedByBlack = Snap.m_vCapturedByBlack;
+			s_Chess.m_vHistory.pop_back();
+			if(!s_Chess.m_vMoveNotation.empty())
+				s_Chess.m_vMoveNotation.pop_back();
+		};
 
-	RightView = Column; // Guarda la posición final de la columna derecha
+		PopOne();
+		if((s_Chess.m_Difficulty < 4 || s_Chess.m_Difficulty == 6) && s_Chess.m_Pos.m_WhiteTurn != s_Chess.m_PlayerIsWhite && !s_Chess.m_vHistory.empty())
+			PopOne();
 
-	CUIRect ScrollRegion;
-	ScrollRegion.x = MainView.x;
-	ScrollRegion.y = std::max(LeftView.y, RightView.y) + MarginSmall * 2.0f;
-	ScrollRegion.w = MainView.w;
-	ScrollRegion.h = 0.0f;
-	s_ScrollRegionCommands.AddRect(ScrollRegion);
-	s_ScrollRegionCommands.End();
+		s_Chess.m_GameOver = false;
+		s_Chess.m_WhiteWon = false;
+		s_Chess.m_Stalemate = false;
+		s_Chess.m_FiftyMove = false;
+		s_Chess.m_Threefold = false;
+		s_Chess.m_Resigned = false;
+		s_Chess.m_GameLogged = false;
+		s_Chess.m_OpeningStep = std::min(s_Chess.m_OpeningStep, (int)s_Chess.m_vMoveNotation.size());
+		s_Chess.m_OpeningRevealHint = false;
+		s_Chess.m_aOpeningFeedback[0] = '\0';
+		s_Chess.m_SelectedX = -1;
+		s_Chess.m_SelectedY = -1;
+		s_Chess.m_Dragging = false;
+		s_Chess.m_HasMoveAnim = false;
+		s_Chess.m_HasRookAnim = false;
+		s_Chess.m_BotReadyTime = AnimTime + 0.25f;
+	};
+
+	auto SaveChessGameLog = [&](bool ManualTrigger) {
+		if(s_Chess.m_vMoveNotation.empty())
+		{
+			if(ManualTrigger)
+				GameClient()->m_Chat.Echo("Ajedrez: No hay jugadas para guardar.");
+			return;
+		}
+		char aTimestamp[32];
+		str_timestamp_format(aTimestamp, sizeof(aTimestamp), "%Y-%m-%d %H:%M:%S");
+
+		const char *pResult = "*";
+		if(s_Chess.m_GameOver)
+		{
+			if(s_Chess.m_Stalemate || s_Chess.m_FiftyMove || s_Chess.m_Threefold)
+				pResult = "1/2-1/2";
+			else
+				pResult = s_Chess.m_WhiteWon ? "1-0" : "0-1";
+		}
+
+		static const char *const s_apBotNames[4] = {"Bot Facil", "Bot Medio", "Bot Dificil", "Bot Experto"};
+		const char *pModeName = "Ajedrez";
+		char aWhite[64], aBlack[64];
+		if(s_Chess.m_Difficulty >= 0 && s_Chess.m_Difficulty <= 3)
+		{
+			pModeName = s_apBotNames[s_Chess.m_Difficulty];
+			str_copy(aWhite, s_Chess.m_PlayerIsWhite ? "Jugador" : pModeName);
+			str_copy(aBlack, s_Chess.m_PlayerIsWhite ? pModeName : "Jugador");
+		}
+		else if(s_Chess.m_Difficulty == 4)
+		{
+			pModeName = "2P Local";
+			str_copy(aWhite, "Jugador 1 (Blancas)");
+			str_copy(aBlack, "Jugador 2 (Negras)");
+		}
+		else if(s_Chess.m_Difficulty == 5)
+		{
+			pModeName = "1v1 Servidor DDNet";
+			str_copy(aWhite, s_Chess.m_PlayerIsWhite ? "Tu" : gs_ChessOnline.m_aOpponentName);
+			str_copy(aBlack, s_Chess.m_PlayerIsWhite ? gs_ChessOnline.m_aOpponentName : "Tu");
+		}
+		else
+		{
+			pModeName = gs_aChessOpenings[std::clamp(s_Chess.m_OpeningIndex, 0, 9)].m_pName;
+			str_copy(aWhite, "Blancas");
+			str_copy(aBlack, "Negras");
+		}
+
+		std::string LogText;
+		LogText.reserve(512);
+		char aHdr[320];
+		str_format(aHdr, sizeof(aHdr),
+			"[Event \"AClient Chess (%s)\"]\n[Date \"%s\"]\n[White \"%s\"]\n[Black \"%s\"]\n[Result \"%s\"]\n\n",
+			pModeName, aTimestamp, aWhite, aBlack, pResult);
+		LogText += aHdr;
+
+		for(size_t i = 0; i < s_Chess.m_vMoveNotation.size(); i += 2)
+		{
+			char aTurn[40];
+			const int TurnNum = (int)(i / 2) + 1;
+			if(i + 1 < s_Chess.m_vMoveNotation.size())
+				str_format(aTurn, sizeof(aTurn), "%d. %s %s ", TurnNum, s_Chess.m_vMoveNotation[i].c_str(), s_Chess.m_vMoveNotation[i + 1].c_str());
+			else
+				str_format(aTurn, sizeof(aTurn), "%d. %s ", TurnNum, s_Chess.m_vMoveNotation[i].c_str());
+			LogText += aTurn;
+		}
+		LogText += pResult;
+		LogText += "\n\n";
+
+		char aWholePath[IO_MAX_PATH_LENGTH] = "";
+		IOHANDLE File = Storage()->OpenFile("chess_games.log", IOFLAG_APPEND, IStorage::TYPE_SAVE, aWholePath, sizeof(aWholePath));
+		if(File)
+		{
+			io_write(File, LogText.c_str(), (unsigned)LogText.size());
+			io_close(File);
+			s_Chess.m_GameLogged = true;
+		}
+
+		if(ManualTrigger)
+		{
+			Input()->SetClipboardText(LogText.c_str());
+			char aEcho[IO_MAX_PATH_LENGTH + 64];
+			if(File)
+				str_format(aEcho, sizeof(aEcho), "Ajedrez: Partida guardada en %s (y copiada al portapapeles)", aWholePath);
+			else
+				str_copy(aEcho, "Ajedrez: Partida copiada al portapapeles.");
+			GameClient()->m_Chat.Echo(aEcho);
+		}
+	};
+
+	if(!s_Chess.m_Initialized)
+		ResetChess();
+
+	if(gs_ChessOnline.m_InOnlineMatch)
+	{
+		const bool OpponentGone = (Client()->State() != IClient::STATE_ONLINE) ||
+			gs_ChessOnline.m_OpponentClientId < 0 || gs_ChessOnline.m_OpponentClientId >= MAX_CLIENTS ||
+			!GameClient()->m_aClients[gs_ChessOnline.m_OpponentClientId].m_Active;
+		if(OpponentGone && !s_Chess.m_GameOver)
+		{
+			s_Chess.m_GameOver = true;
+			s_Chess.m_WhiteWon = gs_ChessOnline.m_LocalIsWhite;
+			s_Chess.m_Resigned = true;
+			gs_ChessOnline.m_InOnlineMatch = false;
+		}
+	}
+	if(gs_ChessOnline.m_PendingStartOnlineMatch)
+	{
+		gs_ChessOnline.m_PendingStartOnlineMatch = false;
+		s_Chess.m_Difficulty = 5;
+		ResetChess();
+		s_Chess.m_PlayerIsWhite = gs_ChessOnline.m_LocalIsWhite;
+	}
+	if(gs_ChessOnline.m_OpponentResigned)
+	{
+		gs_ChessOnline.m_OpponentResigned = false;
+		if(!s_Chess.m_GameOver)
+		{
+			s_Chess.m_GameOver = true;
+			s_Chess.m_WhiteWon = gs_ChessOnline.m_LocalIsWhite;
+			s_Chess.m_Resigned = true;
+		}
+		gs_ChessOnline.m_InOnlineMatch = false;
+	}
+
+	if(s_Chess.m_GameOver && !s_Chess.m_GameLogged && !s_Chess.m_vMoveNotation.empty() && s_Chess.m_Difficulty != 6)
+		SaveChessGameLog(false);
+
+	// Layout: Top status bar + Board on left + Settings/Info sidebar on right
+	CUIRect TopBarChess, ContentArea, BoardArea, SidePanel;
+	MainView.HSplitTop(LineSize * 1.2f, &TopBarChess, &ContentArea);
+	ContentArea.HSplitTop(MarginSmall, nullptr, &ContentArea);
+	ContentArea.VSplitRight(235.0f, &BoardArea, &SidePanel);
+	BoardArea.VSplitRight(MarginSmall * 2.0f, &BoardArea, nullptr);
+
+	const SChessOpening &CurOpening = gs_aChessOpenings[std::clamp(s_Chess.m_OpeningIndex, 0, 9)];
+
+	// Status bar
+	const bool SideInCheck = !s_Chess.m_GameOver && IsCheckOnBoard(s_Chess.m_Pos.m_Board, s_Chess.m_Pos.m_WhiteTurn);
+	char aStatusBuf[128];
+	if(s_Chess.m_GameOver)
+	{
+		if(s_Chess.m_Resigned)
+			str_copy(aStatusBuf, (s_Chess.m_WhiteWon == s_Chess.m_PlayerIsWhite) ? Localize("¡Victoria por abandono del rival!") : Localize("Derrota por abandono"));
+		else if(s_Chess.m_Stalemate)
+			str_copy(aStatusBuf, Localize("Tablas - Ahogado"));
+		else if(s_Chess.m_FiftyMove)
+			str_copy(aStatusBuf, Localize("Tablas - Regla 50 jugadas"));
+		else if(s_Chess.m_Threefold)
+			str_copy(aStatusBuf, Localize("Tablas - Triple repetición"));
+		else
+			str_copy(aStatusBuf, s_Chess.m_WhiteWon ? Localize("Jaque Mate - Ganan Blancas") : Localize("Jaque Mate - Ganan Negras"));
+	}
+	else if(s_Chess.m_Difficulty == 6)
+	{
+		if(s_Chess.m_OpeningStep >= CurOpening.m_Count)
+			str_format(aStatusBuf, sizeof(aStatusBuf), "¡Apertura completada! (%s)", CurOpening.m_pName);
+		else
+			str_format(aStatusBuf, sizeof(aStatusBuf), "%s (%d/%d)", CurOpening.m_pName, s_Chess.m_OpeningStep, CurOpening.m_Count);
+	}
+	else if(s_Chess.m_Difficulty == 5 && gs_ChessOnline.m_InOnlineMatch)
+	{
+		const bool MyTurn = (s_Chess.m_Pos.m_WhiteTurn == s_Chess.m_PlayerIsWhite);
+		str_format(aStatusBuf, sizeof(aStatusBuf), "%s vs %s%s",
+			MyTurn ? Localize("Tu turno") : Localize("Turno rival"),
+			gs_ChessOnline.m_aOpponentName,
+			SideInCheck ? " (¡JAQUE!)" : "");
+	}
+	else if(s_Chess.m_Difficulty == 5)
+	{
+		str_copy(aStatusBuf, Localize("1v1 Servidor - Elige o espera rival"));
+	}
+	else if(SideInCheck)
+	{
+		str_copy(aStatusBuf, s_Chess.m_Pos.m_WhiteTurn ? Localize("Turno: Blancas (¡JAQUE!)") : Localize("Turno: Negras (¡JAQUE!)"));
+	}
+	else
+	{
+		str_copy(aStatusBuf, s_Chess.m_Pos.m_WhiteTurn ? Localize("Turno: Blancas") : Localize("Turno: Negras"));
+	}
+	const char *pStatus = aStatusBuf;
+
+	CUIRect TurnLabel, TopActions, UndoBtn, FlipBtn, RestartBtn;
+	TopBarChess.VSplitRight(285.0f, &TurnLabel, &TopActions);
+	TopActions.VSplitLeft(92.0f, &UndoBtn, &TopActions);
+	TopActions.VSplitLeft(MarginSmall, nullptr, &TopActions);
+	TopActions.VSplitLeft(86.0f, &FlipBtn, &TopActions);
+	TopActions.VSplitLeft(MarginSmall, nullptr, &TopActions);
+	RestartBtn = TopActions;
+
+	TextRender()->TextColor(SideInCheck ? ColorRGBA(1.0f, 0.42f, 0.38f, 1.0f) : TextRender()->DefaultTextColor());
+	Ui()->DoLabel(&TurnLabel, pStatus, FontSize, TEXTALIGN_ML);
+	TextRender()->TextColor(TextRender()->DefaultTextColor());
+
+	static CButtonContainer s_UndoBtn, s_FlipBtn, s_RestartBtn;
+	if(DoButton_Menu(&s_UndoBtn, Localize("Deshacer"), gs_ChessOnline.m_InOnlineMatch ? 1 : 0, &UndoBtn) && !gs_ChessOnline.m_InOnlineMatch)
+		UndoMove();
+	if(DoButton_Menu(&s_FlipBtn, Localize("Girar"), 0, &FlipBtn))
+		s_Chess.m_ManualFlip = !s_Chess.m_ManualFlip;
+	if(gs_ChessOnline.m_InOnlineMatch)
+	{
+		if(DoButton_Menu(&s_RestartBtn, Localize("Rendirse"), 0, &RestartBtn))
+		{
+			SendChessWhisper(GameClient(), gs_ChessOnline.m_OpponentClientId, gs_ChessOnline.m_aOpponentName, "RES");
+			gs_ChessOnline.m_InOnlineMatch = false;
+			s_Chess.m_GameOver = true;
+			s_Chess.m_Resigned = true;
+			s_Chess.m_WhiteWon = !s_Chess.m_PlayerIsWhite;
+		}
+	}
+	else
+	{
+		if(DoButton_Menu(&s_RestartBtn, Localize("Reiniciar"), 0, &RestartBtn))
+			ResetChess();
+	}
+
+	// Sidebar controls
+	SidePanel.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 5.0f);
+	SidePanel.Margin(6.0f, &SidePanel);
+
+	// Incoming 1v1 challenge banner
+	if(gs_ChessOnline.m_IncomingInviteClientId >= 0)
+	{
+		CUIRect InviteBox, InviteLabel, InviteBtns, AcceptBtn, DeclineBtn;
+		SidePanel.HSplitTop(42.0f, &InviteBox, &SidePanel);
+		SidePanel.HSplitTop(4.0f, nullptr, &SidePanel);
+		InviteBox.Draw(ColorRGBA(0.18f, 0.36f, 0.20f, 0.85f), IGraphics::CORNER_ALL, 4.0f);
+		InviteBox.Margin(4.0f, &InviteBox);
+		InviteBox.HSplitTop(15.0f, &InviteLabel, &InviteBtns);
+		char aInv[64];
+		str_format(aInv, sizeof(aInv), "Reto de %s (%s)", gs_ChessOnline.m_aIncomingInviteName,
+			gs_ChessOnline.m_IncomingLocalIsWhite ? "Blancas" : "Negras");
+		Ui()->DoLabel(&InviteLabel, aInv, 10.5f, TEXTALIGN_ML);
+		InviteBtns.VSplitMid(&AcceptBtn, &DeclineBtn, 4.0f);
+		static CButtonContainer s_AcceptInvBtn, s_DeclineInvBtn;
+		if(DoButton_Menu(&s_AcceptInvBtn, Localize("Aceptar"), 0, &AcceptBtn))
+		{
+			SendChessWhisper(GameClient(), gs_ChessOnline.m_IncomingInviteClientId, gs_ChessOnline.m_aIncomingInviteName, "ACC");
+			gs_ChessOnline.m_InOnlineMatch = true;
+			gs_ChessOnline.m_PendingStartOnlineMatch = true;
+			gs_ChessOnline.m_OpponentClientId = gs_ChessOnline.m_IncomingInviteClientId;
+			str_copy(gs_ChessOnline.m_aOpponentName, gs_ChessOnline.m_aIncomingInviteName);
+			gs_ChessOnline.m_LocalIsWhite = gs_ChessOnline.m_IncomingLocalIsWhite;
+			gs_ChessOnline.m_OpponentResigned = false;
+			gs_ChessOnline.m_WaitingInviteTargetId = -1;
+			gs_ChessOnline.m_IncomingInviteClientId = -1;
+			gs_ChessOnline.m_vPendingRemoteMoves.clear();
+		}
+		if(DoButton_Menu(&s_DeclineInvBtn, Localize("Rechazar"), 0, &DeclineBtn))
+		{
+			SendChessWhisper(GameClient(), gs_ChessOnline.m_IncomingInviteClientId, gs_ChessOnline.m_aIncomingInviteName, "DEC");
+			gs_ChessOnline.m_IncomingInviteClientId = -1;
+		}
+	}
+
+	auto DrawSegmentedRow = [&](const char *pTitle, int Count, const char *const *ppLabels, int &Selected, CButtonContainer *pBtns, bool ResetOnSelect) {
+		CUIRect TitleRect, RowRect;
+		SidePanel.HSplitTop(15.0f, &TitleRect, &SidePanel);
+		Ui()->DoLabel(&TitleRect, pTitle, 11.0f, TEXTALIGN_ML);
+		SidePanel.HSplitTop(20.0f, &RowRect, &SidePanel);
+		SidePanel.HSplitTop(5.0f, nullptr, &SidePanel);
+		const float Gap = 3.0f;
+		const float BtnW = (RowRect.w - Gap * (Count - 1)) / (float)Count;
+		for(int i = 0; i < Count; ++i)
+		{
+			CUIRect Btn;
+			RowRect.VSplitLeft(BtnW, &Btn, &RowRect);
+			if(i + 1 < Count)
+				RowRect.VSplitLeft(Gap, nullptr, &RowRect);
+			const int Corners = (i == 0) ? IGraphics::CORNER_L : (i == Count - 1 ? IGraphics::CORNER_R : IGraphics::CORNER_NONE);
+			if(DoButton_MenuTab(&pBtns[i], ppLabels[i], Selected == i, &Btn, Corners, nullptr, nullptr, nullptr, nullptr, 3.0f))
+			{
+				if(ResetOnSelect && (gs_ChessOnline.m_InOnlineMatch || s_Chess.m_Difficulty == 6))
+					continue;
+				if(Selected != i || (ResetOnSelect && i == 1))
+				{
+					Selected = i;
+					if(ResetOnSelect)
+						ResetChess();
+				}
+			}
+		}
+	};
+
+	static CButtonContainer s_aColorBtns[3];
+	const char *apColorLabels[3] = {Localize("Blancas"), Localize("Random"), Localize("Negras")};
+	DrawSegmentedRow(Localize("Tu color"), 3, apColorLabels, s_Chess.m_ColorChoice, s_aColorBtns, true);
+
+	{
+		CUIRect TitleRect, Row1, Row2, LocalBtn, OnlineBtn, OpenBtn;
+		SidePanel.HSplitTop(15.0f, &TitleRect, &SidePanel);
+		Ui()->DoLabel(&TitleRect, Localize("Nivel / Modo"), 11.0f, TEXTALIGN_ML);
+		SidePanel.HSplitTop(20.0f, &Row1, &SidePanel);
+		SidePanel.HSplitTop(3.0f, nullptr, &SidePanel);
+		SidePanel.HSplitTop(20.0f, &Row2, &SidePanel);
+		SidePanel.HSplitTop(5.0f, nullptr, &SidePanel);
+		static CButtonContainer s_aDiffBtns[7];
+		const char *apDiffLabels[4] = {Localize("Fácil"), Localize("Medio"), Localize("Difícil"), Localize("Experto")};
+		const float Gap = 3.0f;
+		const float BtnW = (Row1.w - Gap * 3) / 4.0f;
+		for(int i = 0; i < 4; ++i)
+		{
+			CUIRect Btn;
+			Row1.VSplitLeft(BtnW, &Btn, &Row1);
+			if(i < 3)
+				Row1.VSplitLeft(Gap, nullptr, &Row1);
+			const int Corners = (i == 0) ? IGraphics::CORNER_L : (i == 3 ? IGraphics::CORNER_R : IGraphics::CORNER_NONE);
+			if(DoButton_MenuTab(&s_aDiffBtns[i], apDiffLabels[i], s_Chess.m_Difficulty == i, &Btn, Corners, nullptr, nullptr, nullptr, nullptr, 3.0f) && !gs_ChessOnline.m_InOnlineMatch)
+			{
+				if(s_Chess.m_Difficulty == 6)
+				{
+					s_Chess.m_Difficulty = i;
+					ResetChess();
+				}
+				else
+					s_Chess.m_Difficulty = i;
+			}
+		}
+		const float W2 = (Row2.w - 6.0f) / 3.0f;
+		Row2.VSplitLeft(W2, &LocalBtn, &Row2);
+		Row2.VSplitLeft(3.0f, nullptr, &Row2);
+		Row2.VSplitLeft(W2, &OnlineBtn, &Row2);
+		Row2.VSplitLeft(3.0f, nullptr, &OpenBtn);
+		if(DoButton_MenuTab(&s_aDiffBtns[4], Localize("2P Local"), s_Chess.m_Difficulty == 4, &LocalBtn, IGraphics::CORNER_L, nullptr, nullptr, nullptr, nullptr, 3.0f) && !gs_ChessOnline.m_InOnlineMatch)
+		{
+			if(s_Chess.m_Difficulty == 6)
+				ResetChess();
+			s_Chess.m_Difficulty = 4;
+		}
+		if(DoButton_MenuTab(&s_aDiffBtns[5], Localize("1v1 Serv."), s_Chess.m_Difficulty == 5, &OnlineBtn, IGraphics::CORNER_NONE, nullptr, nullptr, nullptr, nullptr, 3.0f) && !gs_ChessOnline.m_InOnlineMatch)
+		{
+			if(s_Chess.m_Difficulty == 6)
+				ResetChess();
+			s_Chess.m_Difficulty = 5;
+		}
+		if(DoButton_MenuTab(&s_aDiffBtns[6], Localize("Aperturas"), s_Chess.m_Difficulty == 6, &OpenBtn, IGraphics::CORNER_R, nullptr, nullptr, nullptr, nullptr, 3.0f) && !gs_ChessOnline.m_InOnlineMatch)
+		{
+			s_Chess.m_Difficulty = 6;
+			ResetChess();
+			s_Chess.m_PlayerIsWhite = gs_aChessOpenings[std::clamp(s_Chess.m_OpeningIndex, 0, 9)].m_WhitePerspective;
+		}
+	}
+
+	static CButtonContainer s_aThemeBtns[4];
+	const char *apThemeLabels[4] = {Localize("Verde"), Localize("Madera"), Localize("Azul"), Localize("Oscuro")};
+	DrawSegmentedRow(Localize("Modelo de Tablero"), 4, apThemeLabels, s_Chess.m_BoardTheme, s_aThemeBtns, false);
+
+	static CButtonContainer s_aPieceBtns[2];
+	const char *apPieceLabels[2] = {Localize("Clásico (Foto)"), Localize("Iconos")};
+	DrawSegmentedRow(Localize("Modelo de Fichas"), 2, apPieceLabels, s_Chess.m_PieceStyle, s_aPieceBtns, false);
+
+	auto DrawSpriteSingle = [&](const CUIRect &Rect, char Piece, float Alpha) {
+		const int Col = GetChessPieceAtlasCol(Piece);
+		if(Col < 0)
+			return;
+		const int Row = IsWhitePiece(Piece) ? 0 : 1;
+		Graphics()->QuadsSetSubset(Col / 6.0f, Row / 2.0f, (Col + 1) / 6.0f, (Row + 1) / 2.0f);
+		Graphics()->SetColor(1.0f, 1.0f, 1.0f, Alpha);
+		const float Pad = Rect.w * 0.04f;
+		IGraphics::CQuadItem Quad(Rect.x + Pad, Rect.y + Pad, Rect.w - Pad * 2.0f, Rect.h - Pad * 2.0f);
+		Graphics()->QuadsDrawTL(&Quad, 1);
+	};
+
+	auto RenderIconFallbackPiece = [&](const CUIRect &Rect, char Piece, float Alpha) {
+		const char *pIcon = GetChessPieceIcon(Piece);
+		if(!pIcon)
+			return;
+		const bool White = IsWhitePiece(Piece);
+		const ColorRGBA PieceColor = White ? ColorRGBA(0.97f, 0.97f, 0.97f, Alpha) : ColorRGBA(0.08f, 0.08f, 0.08f, Alpha);
+		const float SizeScale = ((char)toupper((unsigned char)Piece) == 'P') ? 0.45f : 0.60f;
+		RenderIconLabel(Rect, pIcon, Rect.h * SizeScale, TEXTALIGN_MC, &PieceColor);
+		if((char)toupper((unsigned char)Piece) == 'K')
+		{
+			CUIRect Crown = Rect;
+			Crown.h *= 0.4f;
+			TextRender()->TextColor(ColorRGBA(1.0f, 0.85f, 0.25f, Alpha));
+			Ui()->DoLabel(&Crown, "+", Rect.h * 0.34f, TEXTALIGN_MC);
+			TextRender()->TextColor(TextRender()->DefaultTextColor());
+		}
+	};
+
+	const bool UseSpriteAtlas = (s_Chess.m_PieceStyle == 0) && s_ChessPiecesTex.IsValid() && !s_ChessPiecesTex.IsNullTexture();
+
+	if(s_Chess.m_Difficulty == 5 && !gs_ChessOnline.m_InOnlineMatch)
+	{
+		CUIRect LobbyTitle, ListBox, ActionBar;
+		SidePanel.HSplitTop(15.0f, &LobbyTitle, &SidePanel);
+		Ui()->DoLabel(&LobbyTitle, Localize("Jugadores en servidor"), 11.0f, TEXTALIGN_ML);
+		SidePanel.HSplitBottom(22.0f, &ListBox, &ActionBar);
+		ListBox.HSplitBottom(4.0f, &ListBox, nullptr);
+		ListBox.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.22f), IGraphics::CORNER_ALL, 4.0f);
+
+		if(Client()->State() != IClient::STATE_ONLINE)
+		{
+			Ui()->DoLabel(&ListBox, Localize("Conéctate a un servidor"), 11.0f, TEXTALIGN_MC);
+		}
+		else
+		{
+			static CScrollRegion s_ChessPlayersScroll;
+			static CButtonContainer s_aPlayerRowBtns[MAX_CLIENTS];
+			CScrollRegionParams Params;
+			Params.m_ScrollUnit = 18.0f;
+			Params.m_ScrollbarMargin = 2.0f;
+			s_ChessPlayersScroll.Begin(&ListBox, &Params);
+			int PlayerCount = 0;
+			for(int i = 0; i < MAX_CLIENTS; ++i)
+			{
+				if(!GameClient()->m_aClients[i].m_Active)
+					continue;
+				if(i == GameClient()->m_aLocalIds[0] || i == GameClient()->m_aLocalIds[1])
+					continue;
+				if(gs_ChessOnline.m_SelectedTargetId < 0 || !GameClient()->m_aClients[gs_ChessOnline.m_SelectedTargetId].m_Active)
+					gs_ChessOnline.m_SelectedTargetId = i;
+				PlayerCount++;
+				CUIRect Row;
+				ListBox.HSplitTop(17.0f, &Row, &ListBox);
+				ListBox.HSplitTop(2.0f, nullptr, &ListBox);
+				s_ChessPlayersScroll.AddRect(Row);
+				if(!s_ChessPlayersScroll.RectClipped(Row))
+				{
+					const bool Selected = (gs_ChessOnline.m_SelectedTargetId == i);
+					if(DoButton_MenuTab(&s_aPlayerRowBtns[i], GameClient()->m_aClients[i].m_aName, Selected, &Row, IGraphics::CORNER_ALL, nullptr, nullptr, nullptr, nullptr, 3.0f))
+						gs_ChessOnline.m_SelectedTargetId = i;
+				}
+			}
+			if(PlayerCount == 0)
+			{
+				CUIRect EmptyRow;
+				ListBox.HSplitTop(20.0f, &EmptyRow, &ListBox);
+				s_ChessPlayersScroll.AddRect(EmptyRow);
+				Ui()->DoLabel(&EmptyRow, Localize("No hay otros jugadores"), 10.5f, TEXTALIGN_MC);
+			}
+			s_ChessPlayersScroll.End();
+		}
+
+		static CButtonContainer s_ChallengeBtn;
+		if(gs_ChessOnline.m_WaitingInviteTargetId >= 0)
+		{
+			char aWait[64];
+			str_format(aWait, sizeof(aWait), "Cancelar (%s)", gs_ChessOnline.m_aWaitingInviteName);
+			if(DoButton_Menu(&s_ChallengeBtn, aWait, 0, &ActionBar))
+				gs_ChessOnline.m_WaitingInviteTargetId = -1;
+		}
+		else
+		{
+			const bool ValidTarget = (Client()->State() == IClient::STATE_ONLINE) &&
+				gs_ChessOnline.m_SelectedTargetId >= 0 && gs_ChessOnline.m_SelectedTargetId < MAX_CLIENTS &&
+				GameClient()->m_aClients[gs_ChessOnline.m_SelectedTargetId].m_Active;
+			if(DoButton_Menu(&s_ChallengeBtn, Localize("Retar a 1v1"), 0, &ActionBar) && ValidTarget)
+			{
+				const int Id = gs_ChessOnline.m_SelectedTargetId;
+				bool LocalW = true;
+				if(s_Chess.m_ColorChoice == 2)
+					LocalW = false;
+				else if(s_Chess.m_ColorChoice == 1)
+					LocalW = (rand() % 2) == 0;
+				gs_ChessOnline.m_WaitingInviteTargetId = Id;
+				str_copy(gs_ChessOnline.m_aWaitingInviteName, GameClient()->m_aClients[Id].m_aName);
+				gs_ChessOnline.m_WaitingLocalIsWhite = LocalW;
+				SendChessWhisper(GameClient(), Id, gs_ChessOnline.m_aWaitingInviteName, LocalW ? "INV W" : "INV B");
+				char aEcho[128];
+				str_format(aEcho, sizeof(aEcho), "Ajedrez: Reto enviado a '%s' (%s).", gs_ChessOnline.m_aWaitingInviteName, LocalW ? "Blancas" : "Negras");
+				GameClient()->m_Chat.Echo(aEcho);
+			}
+		}
+	}
+	else if(s_Chess.m_Difficulty == 6)
+	{
+		CUIRect CtrlRow, HintBtn, PlayBotBtn, ListTitle, OpenList, NoteBox;
+		SidePanel.HSplitTop(20.0f, &CtrlRow, &SidePanel);
+		SidePanel.HSplitTop(4.0f, nullptr, &SidePanel);
+		CtrlRow.VSplitMid(&HintBtn, &PlayBotBtn, 4.0f);
+		static CButtonContainer s_HintBtn, s_ContinueBotBtn;
+		if(DoButton_MenuTab(&s_HintBtn, s_Chess.m_OpeningShowHint ? Localize("Pista: ON") : Localize("Pista: OFF"), s_Chess.m_OpeningShowHint, &HintBtn, IGraphics::CORNER_ALL, nullptr, nullptr, nullptr, nullptr, 3.0f))
+			s_Chess.m_OpeningShowHint = !s_Chess.m_OpeningShowHint;
+		const bool Completed = (s_Chess.m_OpeningStep >= CurOpening.m_Count);
+		if(DoButton_Menu(&s_ContinueBotBtn, Completed ? Localize("Seguir vs Bot") : Localize("Repetir"), 0, &PlayBotBtn))
+		{
+			if(Completed)
+			{
+				s_Chess.m_Difficulty = 2; // Continue from reached opening position vs Medio/Dificil Bot
+				s_Chess.m_BotReadyTime = AnimTime + 0.25f;
+			}
+			else
+			{
+				ResetChess();
+				s_Chess.m_PlayerIsWhite = CurOpening.m_WhitePerspective;
+			}
+		}
+
+		SidePanel.HSplitTop(15.0f, &ListTitle, &SidePanel);
+		Ui()->DoLabel(&ListTitle, Localize("Aperturas populares"), 11.0f, TEXTALIGN_ML);
+		SidePanel.HSplitBottom(66.0f, &OpenList, &NoteBox);
+		OpenList.HSplitBottom(4.0f, &OpenList, nullptr);
+		OpenList.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.22f), IGraphics::CORNER_ALL, 4.0f);
+
+		static CScrollRegion s_OpeningScroll;
+		static CButtonContainer s_aOpeningBtns[10];
+		CScrollRegionParams Params;
+		Params.m_ScrollUnit = 18.0f;
+		Params.m_ScrollbarMargin = 2.0f;
+		s_OpeningScroll.Begin(&OpenList, &Params);
+		for(int i = 0; i < 10; ++i)
+		{
+			CUIRect Row;
+			OpenList.HSplitTop(17.0f, &Row, &OpenList);
+			OpenList.HSplitTop(2.0f, nullptr, &OpenList);
+			s_OpeningScroll.AddRect(Row);
+			if(!s_OpeningScroll.RectClipped(Row))
+			{
+				if(DoButton_MenuTab(&s_aOpeningBtns[i], gs_aChessOpenings[i].m_pName, s_Chess.m_OpeningIndex == i, &Row, IGraphics::CORNER_ALL, nullptr, nullptr, nullptr, nullptr, 3.0f))
+				{
+					s_Chess.m_OpeningIndex = i;
+					ResetChess();
+					s_Chess.m_PlayerIsWhite = gs_aChessOpenings[i].m_WhitePerspective;
+				}
+			}
+		}
+		s_OpeningScroll.End();
+
+		NoteBox.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.26f), IGraphics::CORNER_ALL, 4.0f);
+		NoteBox.Margin(4.0f, &NoteBox);
+		CUIRect NoteTitle, NoteBody;
+		NoteBox.HSplitTop(15.0f, &NoteTitle, &NoteBody);
+		if(s_Chess.m_aOpeningFeedback[0] != '\0')
+		{
+			TextRender()->TextColor(ColorRGBA(1.0f, 0.45f, 0.35f, 1.0f));
+			Ui()->DoLabel(&NoteTitle, s_Chess.m_aOpeningFeedback, 10.5f, TEXTALIGN_ML);
+			TextRender()->TextColor(TextRender()->DefaultTextColor());
+		}
+		else if(Completed)
+		{
+			TextRender()->TextColor(ColorRGBA(0.40f, 0.92f, 0.50f, 1.0f));
+			Ui()->DoLabel(&NoteTitle, Localize("¡Apertura completada!"), 10.5f, TEXTALIGN_ML);
+			TextRender()->TextColor(TextRender()->DefaultTextColor());
+		}
+		else
+		{
+			char aStepHdr[48];
+			str_format(aStepHdr, sizeof(aStepHdr), "Paso %d de %d", s_Chess.m_OpeningStep + 1, CurOpening.m_Count);
+			Ui()->DoLabel(&NoteTitle, aStepHdr, 10.5f, TEXTALIGN_ML);
+		}
+		const char *pExplain = Completed ? CurOpening.m_pSummary : CurOpening.m_aSteps[s_Chess.m_OpeningStep].m_pNote;
+		SLabelProperties Props;
+		Props.m_MaxWidth = NoteBody.w;
+		Ui()->DoLabel(&NoteBody, pExplain, 10.0f, TEXTALIGN_TL, Props);
+	}
+	else
+	{
+		{
+			int WhiteCapVal = 0;
+			for(char P : s_Chess.m_vCapturedByWhite)
+				WhiteCapVal += PieceValue(P) / 100;
+			int BlackCapVal = 0;
+			for(char P : s_Chess.m_vCapturedByBlack)
+				BlackCapVal += PieceValue(P) / 100;
+			const int Adv = WhiteCapVal - BlackCapVal;
+
+			CUIRect CapTitle, CapWhiteRow, CapBlackRow;
+			SidePanel.HSplitTop(15.0f, &CapTitle, &SidePanel);
+			char aCapHeader[64];
+			if(Adv > 0)
+				str_format(aCapHeader, sizeof(aCapHeader), "Capturas (Blancas +%d)", Adv);
+			else if(Adv < 0)
+				str_format(aCapHeader, sizeof(aCapHeader), "Capturas (Negras +%d)", -Adv);
+			else
+				str_copy(aCapHeader, Localize("Capturas (Igualado)"));
+			Ui()->DoLabel(&CapTitle, aCapHeader, 11.0f, TEXTALIGN_ML);
+
+			auto RenderCapturedRow = [&](CUIRect RowRect, const std::vector<char> &vCaps) {
+				RowRect.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.20f), IGraphics::CORNER_ALL, 3.0f);
+				const float IconSz = std::min(15.0f, RowRect.h);
+				const int MaxShow = std::min((int)vCaps.size(), (int)(RowRect.w / (IconSz * 0.85f)));
+				if(UseSpriteAtlas)
+				{
+					Graphics()->TextureSet(s_ChessPiecesTex);
+					Graphics()->QuadsBegin();
+					for(int i = 0; i < MaxShow; ++i)
+					{
+						CUIRect R = {RowRect.x + 2.0f + i * (IconSz * 0.85f), RowRect.y + (RowRect.h - IconSz) * 0.5f, IconSz, IconSz};
+						DrawSpriteSingle(R, vCaps[i], 0.95f);
+					}
+					Graphics()->QuadsEnd();
+				}
+				else
+				{
+					for(int i = 0; i < MaxShow; ++i)
+					{
+						CUIRect R = {RowRect.x + 2.0f + i * (IconSz * 0.85f), RowRect.y + (RowRect.h - IconSz) * 0.5f, IconSz, IconSz};
+						RenderIconFallbackPiece(R, vCaps[i], 0.95f);
+					}
+				}
+			};
+
+			SidePanel.HSplitTop(17.0f, &CapWhiteRow, &SidePanel);
+			SidePanel.HSplitTop(2.0f, nullptr, &SidePanel);
+			RenderCapturedRow(CapWhiteRow, s_Chess.m_vCapturedByWhite);
+			SidePanel.HSplitTop(17.0f, &CapBlackRow, &SidePanel);
+			SidePanel.HSplitTop(6.0f, nullptr, &SidePanel);
+			RenderCapturedRow(CapBlackRow, s_Chess.m_vCapturedByBlack);
+		}
+
+		{
+			CUIRect HistHeader, HistLabel, SaveLogBtn, HistBox;
+			SidePanel.HSplitTop(17.0f, &HistHeader, &SidePanel);
+			HistHeader.VSplitRight(76.0f, &HistLabel, &SaveLogBtn);
+			Ui()->DoLabel(&HistLabel, Localize("Historial"), 11.0f, TEXTALIGN_ML);
+			static CButtonContainer s_SaveLogBtn;
+			if(DoButton_Menu(&s_SaveLogBtn, Localize("Guardar Log"), 0, &SaveLogBtn))
+				SaveChessGameLog(true);
+			SidePanel.HSplitTop(2.0f, nullptr, &SidePanel);
+			HistBox = SidePanel;
+			HistBox.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.22f), IGraphics::CORNER_ALL, 4.0f);
+			HistBox.Margin(4.0f, &HistBox);
+
+			const float RowH = 14.0f;
+			const int MaxRows = std::max(1, (int)(HistBox.h / RowH));
+			const int TotalTurns = ((int)s_Chess.m_vMoveNotation.size() + 1) / 2;
+			const int StartTurn = std::max(0, TotalTurns - MaxRows);
+			for(int t = StartTurn; t < TotalTurns; ++t)
+			{
+				CUIRect Row;
+				HistBox.HSplitTop(RowH, &Row, &HistBox);
+				const int WIdx = t * 2;
+				const int BIdx = t * 2 + 1;
+				char aLine[48];
+				if(BIdx < (int)s_Chess.m_vMoveNotation.size())
+					str_format(aLine, sizeof(aLine), "%d. %-7s %s", t + 1, s_Chess.m_vMoveNotation[WIdx].c_str(), s_Chess.m_vMoveNotation[BIdx].c_str());
+				else
+					str_format(aLine, sizeof(aLine), "%d. %s", t + 1, s_Chess.m_vMoveNotation[WIdx].c_str());
+				Ui()->DoLabel(&Row, aLine, 10.5f, TEXTALIGN_ML);
+			}
+		}
+	}
+
+	const bool FlipBoard = ((s_Chess.m_Difficulty < 4 || s_Chess.m_Difficulty == 5 || s_Chess.m_Difficulty == 6) ? !s_Chess.m_PlayerIsWhite : false) ^ s_Chess.m_ManualFlip;
+	auto BoardToDisplayX = [&](int Bx) { return FlipBoard ? (7 - Bx) : Bx; };
+	auto BoardToDisplayY = [&](int By) { return FlipBoard ? (7 - By) : By; };
+	auto DisplayToBoardX = [&](int Dx) { return FlipBoard ? (7 - Dx) : Dx; };
+	auto DisplayToBoardY = [&](int Dy) { return FlipBoard ? (7 - Dy) : Dy; };
+
+	const float BoardSize = std::min(BoardArea.w, BoardArea.h);
+	const float CellSize = BoardSize / 8.0f;
+	CUIRect Board;
+	Board.w = BoardSize;
+	Board.h = BoardSize;
+	Board.x = BoardArea.x + (BoardArea.w - Board.w) / 2.0f;
+	Board.y = BoardArea.y + (BoardArea.h - Board.h) / 2.0f;
+	Board.DrawOutline(ColorRGBA(0.0f, 0.0f, 0.0f, 0.55f));
+
+	int HoverX = -1;
+	int HoverY = -1;
+	if(Ui()->MouseInside(&Board))
+	{
+		const vec2 Mouse = Ui()->MousePos();
+		const int DispX = std::clamp((int)((Mouse.x - Board.x) / CellSize), 0, 7);
+		const int DispY = std::clamp((int)((Mouse.y - Board.y) / CellSize), 0, 7);
+		HoverX = DisplayToBoardX(DispX);
+		HoverY = DisplayToBoardY(DispY);
+	}
+
+	if(s_Chess.m_HasMoveAnim && AnimTime - s_Chess.m_AnimStart >= s_Chess.m_AnimDuration)
+	{
+		s_Chess.m_HasMoveAnim = false;
+		s_Chess.m_HasRookAnim = false;
+	}
+
+	auto ApplyLocalMoveAndSync = [&](const SChessMove &Move) {
+		ApplyChessMove(Move);
+		if(s_Chess.m_Difficulty == 5 && gs_ChessOnline.m_InOnlineMatch)
+		{
+			char aPayload[16];
+			str_format(aPayload, sizeof(aPayload), "MOV %d%d%d%d%c", Move.m_FromX, Move.m_FromY, Move.m_ToX, Move.m_ToY, Move.m_Promo ? Move.m_Promo : '0');
+			SendChessWhisper(GameClient(), gs_ChessOnline.m_OpponentClientId, gs_ChessOnline.m_aOpponentName, aPayload);
+			if(s_Chess.m_GameOver)
+				gs_ChessOnline.m_InOnlineMatch = false;
+		}
+	};
+
+	auto ExecuteHumanMoveOrPromo = [&](const SChessMove &Move) {
+		if(s_Chess.m_Difficulty == 6)
+		{
+			if(s_Chess.m_OpeningStep >= CurOpening.m_Count)
+				return;
+			const SChessOpeningStep &Step = CurOpening.m_aSteps[s_Chess.m_OpeningStep];
+			if(Move.m_FromX != Step.m_FromX || Move.m_FromY != Step.m_FromY || Move.m_ToX != Step.m_ToX || Move.m_ToY != Step.m_ToY)
+			{
+				s_Chess.m_OpeningRevealHint = true;
+				str_format(s_Chess.m_aOpeningFeedback, sizeof(s_Chess.m_aOpeningFeedback), "Incorrecto: juega %c%c -> %c%c",
+					'a' + Step.m_FromX, '8' - Step.m_FromY, 'a' + Step.m_ToX, '8' - Step.m_ToY);
+				s_Chess.m_SelectedX = -1;
+				s_Chess.m_SelectedY = -1;
+				return;
+			}
+			s_Chess.m_aOpeningFeedback[0] = '\0';
+			s_Chess.m_OpeningRevealHint = false;
+			s_Chess.m_OpeningStep++;
+		}
+		const char MovingPiece = s_Chess.m_Pos.m_Board[Move.m_FromY][Move.m_FromX];
+		if((char)toupper((unsigned char)MovingPiece) == 'P' && (Move.m_ToY == 0 || Move.m_ToY == 7))
+		{
+			s_Chess.m_PendingPromotion = true;
+			s_Chess.m_PromoMove = Move;
+			s_Chess.m_SelectedX = -1;
+			s_Chess.m_SelectedY = -1;
+			return;
+		}
+		ApplyLocalMoveAndSync(Move);
+		s_Chess.m_SelectedX = -1;
+		s_Chess.m_SelectedY = -1;
+	};
+
+	if(!s_Chess.m_GameOver && !s_Chess.m_PendingPromotion)
+	{
+		const bool BotTurn = (s_Chess.m_Difficulty < 4) && (s_Chess.m_Pos.m_WhiteTurn != s_Chess.m_PlayerIsWhite);
+		const bool OnlineOpponentTurn = (s_Chess.m_Difficulty == 5) && (!gs_ChessOnline.m_InOnlineMatch || s_Chess.m_Pos.m_WhiteTurn != s_Chess.m_PlayerIsWhite);
+		const bool OpeningDone = (s_Chess.m_Difficulty == 6) && (s_Chess.m_OpeningStep >= CurOpening.m_Count);
+		const bool OpeningAutoTurn = (s_Chess.m_Difficulty == 6) && !OpeningDone && (s_Chess.m_Pos.m_WhiteTurn != s_Chess.m_PlayerIsWhite);
+		const bool MoveAnimBusy = s_Chess.m_HasMoveAnim && AnimTime - s_Chess.m_AnimStart < s_Chess.m_AnimDuration;
+		if(OpeningAutoTurn && !s_Chess.m_Dragging && !MoveAnimBusy && AnimTime >= s_Chess.m_BotReadyTime)
+		{
+			const SChessOpeningStep &Step = CurOpening.m_aSteps[s_Chess.m_OpeningStep];
+			if(IsValidMove(Step.m_FromX, Step.m_FromY, Step.m_ToX, Step.m_ToY))
+			{
+				ApplyChessMove({Step.m_FromX, Step.m_FromY, Step.m_ToX, Step.m_ToY, 0});
+				s_Chess.m_OpeningStep++;
+			}
+		}
+		else if(s_Chess.m_Difficulty == 5 && gs_ChessOnline.m_InOnlineMatch && OnlineOpponentTurn && !gs_ChessOnline.m_vPendingRemoteMoves.empty())
+		{
+			const SChessMove RemoteMove = gs_ChessOnline.m_vPendingRemoteMoves.front();
+			gs_ChessOnline.m_vPendingRemoteMoves.erase(gs_ChessOnline.m_vPendingRemoteMoves.begin());
+			const char RemotePiece = s_Chess.m_Pos.m_Board[RemoteMove.m_FromY][RemoteMove.m_FromX];
+			if(RemotePiece != '.' && IsWhitePiece(RemotePiece) == s_Chess.m_Pos.m_WhiteTurn &&
+				IsValidMove(RemoteMove.m_FromX, RemoteMove.m_FromY, RemoteMove.m_ToX, RemoteMove.m_ToY))
+			{
+				ApplyChessMove(RemoteMove);
+				if(s_Chess.m_GameOver)
+					gs_ChessOnline.m_InOnlineMatch = false;
+			}
+		}
+		else if(BotTurn && !s_Chess.m_Dragging && !MoveAnimBusy && AnimTime >= s_Chess.m_BotReadyTime)
+		{
+			SChessMove BotMove;
+			if(!PickBotMove(BotMove, !s_Chess.m_PlayerIsWhite))
+			{
+				s_Chess.m_GameOver = true;
+				if(IsCheckOnBoard(s_Chess.m_Pos.m_Board, s_Chess.m_Pos.m_WhiteTurn))
+				{
+					s_Chess.m_WhiteWon = !s_Chess.m_Pos.m_WhiteTurn;
+					s_Chess.m_Stalemate = false;
+				}
+				else
+				{
+					s_Chess.m_WhiteWon = false;
+					s_Chess.m_Stalemate = true;
+				}
+			}
+			else
+			{
+				ApplyChessMove(BotMove);
+			}
+		}
+		else if(!BotTurn && !OnlineOpponentTurn && !OpeningAutoTurn && !OpeningDone)
+		{
+			if(HoverX >= 0 && HoverY >= 0 && Ui()->MouseButtonClicked(0))
+			{
+				s_Chess.m_vArrows.clear();
+				memset(s_Chess.m_aMarkedSquares, 0, sizeof(s_Chess.m_aMarkedSquares));
+				bool HandledClickMove = false;
+				if(s_Chess.m_SelectedX >= 0 && s_Chess.m_SelectedY >= 0)
+				{
+					int EffX = HoverX, EffY = HoverY;
+					ResolveEffectiveTarget(s_Chess.m_SelectedX, s_Chess.m_SelectedY, HoverX, HoverY, EffX, EffY);
+					if(!(EffX == s_Chess.m_SelectedX && EffY == s_Chess.m_SelectedY) && IsValidMove(s_Chess.m_SelectedX, s_Chess.m_SelectedY, EffX, EffY))
+					{
+						ExecuteHumanMoveOrPromo({s_Chess.m_SelectedX, s_Chess.m_SelectedY, EffX, EffY, 0});
+						HandledClickMove = true;
+					}
+				}
+
+				if(!HandledClickMove)
+				{
+					const char ClickedPiece = s_Chess.m_Pos.m_Board[HoverY][HoverX];
+					const bool OwnPiece = ClickedPiece != '.' && (s_Chess.m_Pos.m_WhiteTurn ? IsWhitePiece(ClickedPiece) : IsBlackPiece(ClickedPiece));
+					if(OwnPiece)
+					{
+						s_Chess.m_Dragging = true;
+						s_Chess.m_DragFromX = HoverX;
+						s_Chess.m_DragFromY = HoverY;
+						s_Chess.m_DragMouse = Ui()->MousePos();
+						s_Chess.m_SelectedX = HoverX;
+						s_Chess.m_SelectedY = HoverY;
+					}
+					else
+					{
+						s_Chess.m_SelectedX = -1;
+						s_Chess.m_SelectedY = -1;
+					}
+				}
+			}
+
+			if(s_Chess.m_Dragging)
+			{
+				s_Chess.m_DragMouse = Ui()->MousePos();
+				if(!Ui()->MouseButton(0))
+				{
+					const int FromX = s_Chess.m_DragFromX;
+					const int FromY = s_Chess.m_DragFromY;
+					if(HoverX >= 0 && HoverY >= 0)
+					{
+						int EffX = HoverX, EffY = HoverY;
+						ResolveEffectiveTarget(FromX, FromY, HoverX, HoverY, EffX, EffY);
+						if(!(EffX == FromX && EffY == FromY) && IsValidMove(FromX, FromY, EffX, EffY))
+						{
+							ExecuteHumanMoveOrPromo({FromX, FromY, EffX, EffY, 0});
+						}
+						else
+						{
+							const char HoverPiece = s_Chess.m_Pos.m_Board[HoverY][HoverX];
+							const bool OwnPiece = HoverPiece != '.' && (s_Chess.m_Pos.m_WhiteTurn ? IsWhitePiece(HoverPiece) : IsBlackPiece(HoverPiece));
+							s_Chess.m_SelectedX = OwnPiece ? HoverX : FromX;
+							s_Chess.m_SelectedY = OwnPiece ? HoverY : FromY;
+						}
+					}
+					else
+					{
+						s_Chess.m_SelectedX = FromX;
+						s_Chess.m_SelectedY = FromY;
+					}
+					s_Chess.m_Dragging = false;
+					s_Chess.m_DragFromX = -1;
+					s_Chess.m_DragFromY = -1;
+				}
+			}
+		}
+	}
+
+	static const ColorRGBA s_aLightColors[4] = {
+		ColorRGBA(235.0f / 255.0f, 236.0f / 255.0f, 208.0f / 255.0f, 1.0f),
+		ColorRGBA(0.93f, 0.86f, 0.74f, 0.92f),
+		ColorRGBA(0.88f, 0.92f, 0.96f, 0.96f),
+		ColorRGBA(0.76f, 0.77f, 0.80f, 0.96f)};
+	static const ColorRGBA s_aDarkColors[4] = {
+		ColorRGBA(115.0f / 255.0f, 149.0f / 255.0f, 82.0f / 255.0f, 1.0f),
+		ColorRGBA(0.53f, 0.39f, 0.27f, 0.92f),
+		ColorRGBA(0.36f, 0.54f, 0.72f, 0.96f),
+		ColorRGBA(0.28f, 0.30f, 0.34f, 0.96f)};
+	const ColorRGBA LightSquareCol = s_aLightColors[std::clamp(s_Chess.m_BoardTheme, 0, 3)];
+	const ColorRGBA DarkSquareCol = s_aDarkColors[std::clamp(s_Chess.m_BoardTheme, 0, 3)];
+
+	int CheckKingX = -1, CheckKingY = -1;
+	if(SideInCheck)
+		FindKingPos(s_Chess.m_Pos.m_Board, s_Chess.m_Pos.m_WhiteTurn, CheckKingX, CheckKingY);
+
+	const bool MoveAnimActive = s_Chess.m_HasMoveAnim && AnimTime - s_Chess.m_AnimStart < s_Chess.m_AnimDuration;
+
+	const int CurPly = (int)s_Chess.m_vMoveNotation.size();
+	if(s_Chess.m_CachedSelX != s_Chess.m_SelectedX || s_Chess.m_CachedSelY != s_Chess.m_SelectedY || s_Chess.m_CachedSelPly != CurPly)
+	{
+		s_Chess.m_CachedSelX = s_Chess.m_SelectedX;
+		s_Chess.m_CachedSelY = s_Chess.m_SelectedY;
+		s_Chess.m_CachedSelPly = CurPly;
+		memset(s_Chess.m_aValidTargets, 0, sizeof(s_Chess.m_aValidTargets));
+		if(s_Chess.m_SelectedX >= 0 && s_Chess.m_SelectedY >= 0)
+		{
+			for(int y = 0; y < 8; ++y)
+			{
+				for(int x = 0; x < 8; ++x)
+				{
+					int EffX = x, EffY = y;
+					ResolveEffectiveTarget(s_Chess.m_SelectedX, s_Chess.m_SelectedY, x, y, EffX, EffY);
+					if(!(EffX == s_Chess.m_SelectedX && EffY == s_Chess.m_SelectedY) && IsValidMove(s_Chess.m_SelectedX, s_Chess.m_SelectedY, EffX, EffY))
+						s_Chess.m_aValidTargets[y][x] = true;
+				}
+			}
+		}
+	}
+
+	for(int dy = 0; dy < 8; ++dy)
+	{
+		for(int dx = 0; dx < 8; ++dx)
+		{
+			const int bx = DisplayToBoardX(dx);
+			const int by = DisplayToBoardY(dy);
+			CUIRect Cell;
+			Cell.x = Board.x + dx * CellSize;
+			Cell.y = Board.y + dy * CellSize;
+			Cell.w = CellSize;
+			Cell.h = CellSize;
+
+			const bool LightSquare = ((bx + by) % 2) == 0;
+			Cell.Draw(LightSquare ? LightSquareCol : DarkSquareCol, IGraphics::CORNER_NONE, 0.0f);
+
+			if(s_Chess.m_HasLastMove && ((bx == s_Chess.m_LastFromX && by == s_Chess.m_LastFromY) || (bx == s_Chess.m_LastToX && by == s_Chess.m_LastToY)))
+				Cell.Draw(ColorRGBA(0.96f, 0.92f, 0.28f, 0.38f), IGraphics::CORNER_NONE, 0.0f);
+
+			if(bx == CheckKingX && by == CheckKingY)
+				Cell.Draw(ColorRGBA(0.95f, 0.18f, 0.15f, 0.55f), IGraphics::CORNER_NONE, 0.0f);
+
+			if(s_Chess.m_aMarkedSquares[by][bx])
+				Cell.Draw(ColorRGBA(0.92f, 0.30f, 0.24f, 0.55f), IGraphics::CORNER_NONE, 0.0f);
+
+			if(bx == s_Chess.m_SelectedX && by == s_Chess.m_SelectedY)
+				Cell.Draw(ColorRGBA(0.30f, 0.80f, 1.0f, 0.35f), IGraphics::CORNER_NONE, 0.0f);
+			else if(bx == HoverX && by == HoverY && !s_Chess.m_PendingPromotion)
+				Cell.Draw(ColorRGBA(1.0f, 1.0f, 1.0f, 0.12f), IGraphics::CORNER_NONE, 0.0f);
+
+			if(!s_Chess.m_PendingPromotion && s_Chess.m_SelectedX >= 0 && s_Chess.m_SelectedY >= 0 && s_Chess.m_aValidTargets[by][bx])
+			{
+				{
+					const bool IsOccupiedOrCastle = s_Chess.m_Pos.m_Board[by][bx] != '.';
+					if(IsOccupiedOrCastle)
+					{
+						CUIRect Ring = Cell;
+						Ring.Margin(CellSize * 0.08f, &Ring);
+						Ring.DrawOutline(ColorRGBA(0.15f, 0.15f, 0.15f, 0.35f));
+						Ring.Margin(2.0f, &Ring);
+						Ring.DrawOutline(ColorRGBA(0.15f, 0.15f, 0.15f, 0.35f));
+					}
+					else
+					{
+						const float DotSz = CellSize * 0.28f;
+						CUIRect Dot = {Cell.x + (Cell.w - DotSz) * 0.5f, Cell.y + (Cell.h - DotSz) * 0.5f, DotSz, DotSz};
+						Dot.Draw(ColorRGBA(0.10f, 0.10f, 0.10f, 0.24f), IGraphics::CORNER_ALL, DotSz * 0.5f);
+					}
+				}
+			}
+
+			const ColorRGBA CoordCol = LightSquare ? DarkSquareCol : LightSquareCol;
+			if(dx == 0)
+			{
+				char aRank[2] = {(char)('8' - by), 0};
+				TextRender()->TextColor(CoordCol);
+				TextRender()->Text(Cell.x + 2.0f, Cell.y + 1.5f, CellSize * 0.20f, aRank, -1.0f);
+			}
+			if(dy == 7)
+			{
+				char aFile[2] = {(char)('a' + bx), 0};
+				TextRender()->TextColor(CoordCol);
+				TextRender()->Text(Cell.x + Cell.w - CellSize * 0.22f, Cell.y + Cell.h - CellSize * 0.26f, CellSize * 0.20f, aFile, -1.0f);
+			}
+			TextRender()->TextColor(TextRender()->DefaultTextColor());
+		}
+	}
+
+	auto ShouldSkipBoardPiece = [&](int bx, int by) {
+		if(s_Chess.m_Dragging && bx == s_Chess.m_DragFromX && by == s_Chess.m_DragFromY)
+			return true;
+		if(MoveAnimActive && bx == s_Chess.m_AnimToX && by == s_Chess.m_AnimToY)
+			return true;
+		if(MoveAnimActive && s_Chess.m_HasRookAnim && bx == s_Chess.m_AnimRookToX && by == s_Chess.m_AnimRookY)
+			return true;
+		return false;
+	};
+
+	const float AnimEase = MoveAnimActive ? (1.0f - powf(1.0f - std::clamp((AnimTime - s_Chess.m_AnimStart) / s_Chess.m_AnimDuration, 0.0f, 1.0f), 3.0f)) : 1.0f;
+
+	if(UseSpriteAtlas)
+	{
+		Graphics()->TextureSet(s_ChessPiecesTex);
+		Graphics()->QuadsBegin();
+		for(int dy = 0; dy < 8; ++dy)
+		{
+			for(int dx = 0; dx < 8; ++dx)
+			{
+				const int bx = DisplayToBoardX(dx);
+				const int by = DisplayToBoardY(dy);
+				if(ShouldSkipBoardPiece(bx, by))
+					continue;
+				const char Piece = s_Chess.m_Pos.m_Board[by][bx];
+				if(Piece != '.')
+				{
+					CUIRect Cell = {Board.x + dx * CellSize, Board.y + dy * CellSize, CellSize, CellSize};
+					DrawSpriteSingle(Cell, Piece, 1.0f);
+				}
+			}
+		}
+
+		if(MoveAnimActive && s_Chess.m_AnimPiece != '.')
+		{
+			const float FX = (float)BoardToDisplayX(s_Chess.m_AnimFromX);
+			const float FY = (float)BoardToDisplayY(s_Chess.m_AnimFromY);
+			const float TX = (float)BoardToDisplayX(s_Chess.m_AnimToX);
+			const float TY = (float)BoardToDisplayY(s_Chess.m_AnimToY);
+			CUIRect AnimRect = {Board.x + (FX + (TX - FX) * AnimEase) * CellSize, Board.y + (FY + (TY - FY) * AnimEase) * CellSize, CellSize, CellSize};
+			DrawSpriteSingle(AnimRect, s_Chess.m_AnimPiece, 0.98f);
+		}
+		if(MoveAnimActive && s_Chess.m_HasRookAnim && s_Chess.m_AnimRookPiece != '.')
+		{
+			const float FX = (float)BoardToDisplayX(s_Chess.m_AnimRookFromX);
+			const float TX = (float)BoardToDisplayX(s_Chess.m_AnimRookToX);
+			const float RY = (float)BoardToDisplayY(s_Chess.m_AnimRookY);
+			CUIRect AnimRect = {Board.x + (FX + (TX - FX) * AnimEase) * CellSize, Board.y + RY * CellSize, CellSize, CellSize};
+			DrawSpriteSingle(AnimRect, s_Chess.m_AnimRookPiece, 0.98f);
+		}
+		if(s_Chess.m_Dragging && s_Chess.m_DragFromX >= 0 && s_Chess.m_DragFromY >= 0)
+		{
+			const char DragPiece = s_Chess.m_Pos.m_Board[s_Chess.m_DragFromY][s_Chess.m_DragFromX];
+			CUIRect DragRect = {s_Chess.m_DragMouse.x - CellSize * 0.54f, s_Chess.m_DragMouse.y - CellSize * 0.54f, CellSize * 1.08f, CellSize * 1.08f};
+			DrawSpriteSingle(DragRect, DragPiece, 0.96f);
+		}
+		Graphics()->QuadsEnd();
+	}
+	else
+	{
+		for(int dy = 0; dy < 8; ++dy)
+		{
+			for(int dx = 0; dx < 8; ++dx)
+			{
+				const int bx = DisplayToBoardX(dx);
+				const int by = DisplayToBoardY(dy);
+				if(ShouldSkipBoardPiece(bx, by))
+					continue;
+				const char Piece = s_Chess.m_Pos.m_Board[by][bx];
+				if(Piece != '.')
+				{
+					CUIRect Cell = {Board.x + dx * CellSize, Board.y + dy * CellSize, CellSize, CellSize};
+					RenderIconFallbackPiece(Cell, Piece, 1.0f);
+				}
+			}
+		}
+		if(MoveAnimActive && s_Chess.m_AnimPiece != '.')
+		{
+			const float FX = (float)BoardToDisplayX(s_Chess.m_AnimFromX);
+			const float FY = (float)BoardToDisplayY(s_Chess.m_AnimFromY);
+			const float TX = (float)BoardToDisplayX(s_Chess.m_AnimToX);
+			const float TY = (float)BoardToDisplayY(s_Chess.m_AnimToY);
+			CUIRect AnimRect = {Board.x + (FX + (TX - FX) * AnimEase) * CellSize, Board.y + (FY + (TY - FY) * AnimEase) * CellSize, CellSize, CellSize};
+			RenderIconFallbackPiece(AnimRect, s_Chess.m_AnimPiece, 0.98f);
+		}
+		if(MoveAnimActive && s_Chess.m_HasRookAnim && s_Chess.m_AnimRookPiece != '.')
+		{
+			const float FX = (float)BoardToDisplayX(s_Chess.m_AnimRookFromX);
+			const float TX = (float)BoardToDisplayX(s_Chess.m_AnimRookToX);
+			const float RY = (float)BoardToDisplayY(s_Chess.m_AnimRookY);
+			CUIRect AnimRect = {Board.x + (FX + (TX - FX) * AnimEase) * CellSize, Board.y + RY * CellSize, CellSize, CellSize};
+			RenderIconFallbackPiece(AnimRect, s_Chess.m_AnimRookPiece, 0.98f);
+		}
+		if(s_Chess.m_Dragging && s_Chess.m_DragFromX >= 0 && s_Chess.m_DragFromY >= 0)
+		{
+			const char DragPiece = s_Chess.m_Pos.m_Board[s_Chess.m_DragFromY][s_Chess.m_DragFromX];
+			CUIRect DragRect = {s_Chess.m_DragMouse.x - CellSize * 0.5f, s_Chess.m_DragMouse.y - CellSize * 0.5f, CellSize, CellSize};
+			RenderIconFallbackPiece(DragRect, DragPiece, 0.96f);
+		}
+	}
+
+	// Right-click arrows & square marking input
+	if(!s_Chess.m_PendingPromotion)
+	{
+		if(HoverX >= 0 && HoverY >= 0 && Ui()->MouseButtonClicked(1))
+		{
+			s_Chess.m_RightDragging = true;
+			s_Chess.m_RightFromX = HoverX;
+			s_Chess.m_RightFromY = HoverY;
+		}
+		if(s_Chess.m_RightDragging && !Ui()->MouseButton(1))
+		{
+			if(HoverX >= 0 && HoverY >= 0)
+			{
+				if(HoverX == s_Chess.m_RightFromX && HoverY == s_Chess.m_RightFromY)
+				{
+					s_Chess.m_aMarkedSquares[HoverY][HoverX] = !s_Chess.m_aMarkedSquares[HoverY][HoverX];
+				}
+				else
+				{
+					const SChessState::SChessArrow Arrow = {s_Chess.m_RightFromX, s_Chess.m_RightFromY, HoverX, HoverY};
+					auto It = std::find(s_Chess.m_vArrows.begin(), s_Chess.m_vArrows.end(), Arrow);
+					if(It != s_Chess.m_vArrows.end())
+						s_Chess.m_vArrows.erase(It);
+					else
+						s_Chess.m_vArrows.push_back(Arrow);
+				}
+			}
+			s_Chess.m_RightDragging = false;
+			s_Chess.m_RightFromX = -1;
+			s_Chess.m_RightFromY = -1;
+		}
+	}
+
+	// Render right-click arrows and Opening Trainer hint arrow in a single O(1) batched draw call
+	{
+		const bool HasPreviewArrow = s_Chess.m_RightDragging && HoverX >= 0 && HoverY >= 0 && !(HoverX == s_Chess.m_RightFromX && HoverY == s_Chess.m_RightFromY);
+		const bool HasOpeningHint = (s_Chess.m_Difficulty == 6) && !s_Chess.m_GameOver && (s_Chess.m_OpeningStep < CurOpening.m_Count) &&
+			(s_Chess.m_Pos.m_WhiteTurn == s_Chess.m_PlayerIsWhite) && (s_Chess.m_OpeningShowHint || s_Chess.m_OpeningRevealHint);
+		if(!s_Chess.m_vArrows.empty() || HasPreviewArrow || HasOpeningHint)
+		{
+			auto SquareCenter = [&](int bx, int by) {
+				const int dx = BoardToDisplayX(bx);
+				const int dy = BoardToDisplayY(by);
+				return vec2(Board.x + (dx + 0.5f) * CellSize, Board.y + (dy + 0.5f) * CellSize);
+			};
+
+			auto EmitSegmentAndHead = [&](vec2 Start, vec2 End, bool DrawHead, float ShaftW, float HeadLen, float HeadHalfW) {
+				const vec2 Delta = End - Start;
+				const float Len = length(Delta);
+				if(Len < 1.0f)
+					return;
+				const vec2 Dir = Delta / Len;
+				const vec2 Perp(-Dir.y, Dir.x);
+				const vec2 ShaftEnd = DrawHead ? (End - Dir * HeadLen) : End;
+				if(length(ShaftEnd - Start) >= 0.5f || !DrawHead)
+				{
+					const vec2 Half = Perp * (ShaftW * 0.5f);
+					const IGraphics::CFreeformItem Shaft(Start + Half, Start - Half, ShaftEnd - Half, ShaftEnd + Half);
+					Graphics()->QuadsDrawFreeform(&Shaft, 1);
+				}
+				if(DrawHead)
+				{
+					const vec2 Base = End - Dir * HeadLen;
+					const IGraphics::CFreeformItem Head(End, Base + Perp * HeadHalfW, Base - Perp * HeadHalfW, Base - Perp * HeadHalfW);
+					Graphics()->QuadsDrawFreeform(&Head, 1);
+				}
+			};
+
+			auto DrawChessArrow = [&](int FromX, int FromY, int ToX, int ToY) {
+				const float ShaftW = CellSize * 0.22f;
+				const float HeadLen = CellSize * 0.36f;
+				const float HeadHalfW = CellSize * 0.30f;
+				const vec2 P0 = SquareCenter(FromX, FromY);
+				const vec2 P1 = SquareCenter(ToX, ToY);
+				const int Dx = abs(ToX - FromX);
+				const int Dy = abs(ToY - FromY);
+				if((Dx == 1 && Dy == 2) || (Dx == 2 && Dy == 1))
+				{
+					// L-shaped Knight arrow
+					const vec2 Corner = (Dy == 2) ? SquareCenter(FromX, ToY) : SquareCenter(ToX, FromY);
+					const vec2 D1 = normalize(Corner - P0);
+					const vec2 D2 = normalize(P1 - Corner);
+					const vec2 Start = P0 + D1 * (CellSize * 0.26f);
+					const vec2 End = P1 - D2 * (CellSize * 0.14f);
+					EmitSegmentAndHead(Start, Corner + D1 * (ShaftW * 0.5f), false, ShaftW, HeadLen, HeadHalfW);
+					EmitSegmentAndHead(Corner - D2 * (ShaftW * 0.5f), End, true, ShaftW, HeadLen, HeadHalfW);
+				}
+				else
+				{
+					const vec2 Dir = normalize(P1 - P0);
+					const vec2 Start = P0 + Dir * (CellSize * 0.28f);
+					const vec2 End = P1 - Dir * (CellSize * 0.14f);
+					EmitSegmentAndHead(Start, End, true, ShaftW, HeadLen, HeadHalfW);
+				}
+			};
+
+			Graphics()->TextureClear();
+			Graphics()->QuadsBegin();
+			Graphics()->SetColor(1.0f, 0.67f, 0.10f, 0.80f);
+			for(const auto &A : s_Chess.m_vArrows)
+				DrawChessArrow(A.m_FromX, A.m_FromY, A.m_ToX, A.m_ToY);
+			if(HasPreviewArrow)
+			{
+				Graphics()->SetColor(1.0f, 0.67f, 0.10f, 0.55f);
+				DrawChessArrow(s_Chess.m_RightFromX, s_Chess.m_RightFromY, HoverX, HoverY);
+			}
+			if(HasOpeningHint)
+			{
+				const SChessOpeningStep &HintStep = CurOpening.m_aSteps[s_Chess.m_OpeningStep];
+				Graphics()->SetColor(0.18f, 0.86f, 0.52f, 0.84f);
+				DrawChessArrow(HintStep.m_FromX, HintStep.m_FromY, HintStep.m_ToX, HintStep.m_ToY);
+			}
+			Graphics()->QuadsEnd();
+		}
+	}
+
+	if(s_Chess.m_PendingPromotion)
+	{
+		CUIRect Dim = Board;
+		Dim.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.45f), IGraphics::CORNER_ALL, 4.0f);
+
+		const float BoxW = CellSize * 4.4f;
+		const float BoxH = CellSize * 1.45f;
+		CUIRect PromoBox = {Board.x + (Board.w - BoxW) * 0.5f, Board.y + (Board.h - BoxH) * 0.5f, BoxW, BoxH};
+		PromoBox.Draw(ColorRGBA(0.14f, 0.16f, 0.20f, 0.96f), IGraphics::CORNER_ALL, 6.0f);
+		PromoBox.DrawOutline(ColorRGBA(1.0f, 1.0f, 1.0f, 0.35f));
+
+		CUIRect LabelRect, PiecesRow;
+		PromoBox.HSplitTop(18.0f, &LabelRect, &PiecesRow);
+		Ui()->DoLabel(&LabelRect, Localize("Elige pieza de coronación"), 11.5f, TEXTALIGN_MC);
+		PiecesRow.Margin(4.0f, &PiecesRow);
+
+		static CButtonContainer s_aPromoBtns[4];
+		const char aPromoUpper[4] = {'Q', 'R', 'B', 'N'};
+		const bool PromoWhite = IsWhitePiece(s_Chess.m_Pos.m_Board[s_Chess.m_PromoMove.m_FromY][s_Chess.m_PromoMove.m_FromX]);
+		const float SlotW = PiecesRow.w / 4.0f;
+		for(int i = 0; i < 4; ++i)
+		{
+			CUIRect Slot;
+			PiecesRow.VSplitLeft(SlotW, &Slot, &PiecesRow);
+			Slot.Margin(2.0f, &Slot);
+			if(DoButton_Menu(&s_aPromoBtns[i], "", 0, &Slot))
+			{
+				s_Chess.m_PromoMove.m_Promo = aPromoUpper[i];
+				s_Chess.m_PendingPromotion = false;
+				ApplyLocalMoveAndSync(s_Chess.m_PromoMove);
+				break;
+			}
+			const char DrawChar = PromoWhite ? aPromoUpper[i] : (char)tolower((unsigned char)aPromoUpper[i]);
+			const float IconSz = std::min(Slot.w, Slot.h);
+			CUIRect IconR = {Slot.x + (Slot.w - IconSz) * 0.5f, Slot.y + (Slot.h - IconSz) * 0.5f, IconSz, IconSz};
+			if(UseSpriteAtlas)
+			{
+				Graphics()->TextureSet(s_ChessPiecesTex);
+				Graphics()->QuadsBegin();
+				DrawSpriteSingle(IconR, DrawChar, 1.0f);
+				Graphics()->QuadsEnd();
+			}
+			else
+			{
+				RenderIconFallbackPiece(IconR, DrawChar, 1.0f);
+			}
+		}
+	}
+
+	if(s_Chess.m_GameOver)
+	{
+		CUIRect Overlay = Board;
+		Overlay.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.36f), IGraphics::CORNER_ALL, 4.0f);
+
+		const char *pResult;
+		if(s_Chess.m_Resigned)
+			pResult = (s_Chess.m_WhiteWon == s_Chess.m_PlayerIsWhite) ? Localize("¡Victoria por abandono!") : Localize("Derrota por abandono");
+		else if(s_Chess.m_Stalemate)
+			pResult = Localize("Tablas - Ahogado");
+		else if(s_Chess.m_FiftyMove)
+			pResult = Localize("Tablas - Regla de 50 jugadas");
+		else if(s_Chess.m_Threefold)
+			pResult = Localize("Tablas - Triple repetición");
+		else
+			pResult = s_Chess.m_WhiteWon ? Localize("¡Ganan Blancas!") : Localize("¡Ganan Negras!");
+
+		Ui()->DoLabel(&Overlay, pResult, HeadlineFontSize, TEXTALIGN_MC);
+	}
 }
 
 void CMenus::RenderSettingsAClientSettings(CUIRect MainView)

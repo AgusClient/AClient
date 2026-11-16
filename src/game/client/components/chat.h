@@ -15,7 +15,9 @@
 #include <game/client/component.h>
 #include <game/client/lineinput.h>
 #include <game/client/render.h>
+#include <game/client/ui.h>
 
+#include <optional>
 #include <vector>
 
 class CTranslateResponse
@@ -173,6 +175,22 @@ class CChat : public CComponent
 	int m_TaggedWhileTabbedCount;
 	int64_t m_aLastAfkReplyTime[MAX_CLIENTS];
 
+	std::optional<vec2> m_LastMousePos;
+	CButtonContainer m_TranslateSettingsButton;
+	CButtonContainer m_TranslateSettingsIncomingButton;
+	CButtonContainer m_TranslateSettingsOutgoingButton;
+	SPopupMenuId m_TranslateSettingsPopupId;
+	bool m_TranslateSettingsInputActive = false;
+	bool m_TranslateButtonPressed = false;
+	bool m_TranslateButtonRectValid = false;
+	CUIRect m_TranslateButtonRect;
+	CUIRect m_TranslateButtonUiRect;
+
+	vec2 ChatMousePos() const;
+	void OpenTranslateSettingsPopup();
+	void RenderTranslateSettingsButton(const CUIRect &ButtonRect);
+	static CUi::EPopupMenuFunctionResult PopupTranslateSettings(void *pContext, CUIRect View, bool Active);
+
 	bool TryHandleBulkInviteCommand(const char *pLine);
 	bool TryHandleStealSkinCommand(const char *pLine);
 	bool TryHandleProfileCommand(const char *pLine);
@@ -236,6 +254,7 @@ public:
 	void OnRelease() override;
 	void OnMessage(int MsgType, void *pRawMsg) override;
 	bool OnInput(const IInput::CEvent &Event) override;
+	bool OnCursorMove(float x, float y, IInput::ECursorType CursorType) override;
 	void OnInit() override;
 
 	void RebuildChat();

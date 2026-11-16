@@ -2,26 +2,106 @@
 
 #include "data_version.h"
 
+#include <base/detect.h>
 #include <base/io.h>
 #include <base/log.h>
+#include <base/time.h>
 
 #include <engine/client.h>
 #include <engine/client/enums.h>
 #include <engine/external/regex.h>
 #include <engine/external/tinyexpr.h>
 #include <engine/graphics.h>
+#include <engine/map.h>
+#include <engine/notifications.h>
 #include <engine/shared/config.h>
 #include <engine/shared/json.h>
+#include <engine/sound.h>
 
 #include <generated/client_data.h>
 
 #include <game/client/animstate.h>
 #include <game/client/components/chat.h>
+#include <game/client/components/sounds.h>
 #include <game/client/gameclient.h>
 #include <game/client/render.h>
 #include <game/client/ui.h>
 #include <game/localization.h>
 #include <game/version.h>
+
+#include <algorithm>
+#include <cmath>
+
+#if defined(CONF_FAMILY_WINDOWS)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOGDI
+#define NOGDI
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#ifdef ERROR
+#undef ERROR
+#endif
+#endif
+
+namespace
+{
+struct SBackgroundAlertState
+{
+	int64_t m_aLastMinimizedReplyTime[MAX_CLIENTS] = {};
+	int64_t m_aLastMutedReplyTime[MAX_CLIENTS] = {};
+	bool m_Initialized = false;
+	bool m_WasActive = false;
+	bool m_WasSpectating = false;
+	int m_LastLocalId = -1;
+	int m_LastDummy = -1;
+	int m_LastTile = -1;
+	bool m_LastFrozen = false;
+	vec2 m_LastPos = vec2(0.0f, 0.0f);
+	int m_LastRoundStartTick = -1;
+	int m_LastGameTick = -1;
+	unsigned m_LastMapCrc = 0;
+	int m_LastMapSize = -1;
+	int m_SnapshotCountSinceReset = 0;
+	int64_t m_GraceUntil = 0;
+	int64_t m_LastUnfreezeAlertTime = 0;
+	int64_t m_LastTileAlertTime = 0;
+	INotifications *m_pNotifications = nullptr;
+
+	void ResetBaseline()
+	{
+		m_Initialized = false;
+		m_WasActive = false;
+		m_WasSpectating = false;
+		m_LastLocalId = -1;
+		m_LastDummy = -1;
+		m_LastTile = -1;
+		m_LastFrozen = false;
+		m_LastPos = vec2(0.0f, 0.0f);
+		m_LastRoundStartTick = -1;
+		m_LastGameTick = -1;
+	}
+
+	void ResetAll()
+	{
+		ResetBaseline();
+		std::fill(std::begin(m_aLastMinimizedReplyTime), std::end(m_aLastMinimizedReplyTime), 0);
+		std::fill(std::begin(m_aLastMutedReplyTime), std::end(m_aLastMutedReplyTime), 0);
+		m_LastMapCrc = 0;
+		m_LastMapSize = -1;
+		m_SnapshotCountSinceReset = 0;
+		m_GraceUntil = 0;
+		m_LastUnfreezeAlertTime = 0;
+		m_LastTileAlertTime = 0;
+	}
+};
+
+SBackgroundAlertState gs_BgAlerts;
+} // namespace
 
 static constexpr const char *ACLIENT_LATEST_RELEASE_URL = "https://api.github.com/repos/AgusClient/AClient/releases";
 
@@ -253,6 +333,8 @@ void CTClient::OnInit()
 {
 	TextRender()->SetCustomFace(g_Config.m_TcCustomFont);
 	m_pGraphics = Kernel()->RequestInterface<IEngineGraphics>();
+	gs_BgAlerts.ResetAll();
+	gs_BgAlerts.m_pNotifications = Kernel()->RequestInterface<INotifications>();
 
 	// Cleanup old binary if left over from previous in-game update
 	Storage()->RemoveBinaryFile("DDNet.old");
@@ -287,10 +369,10 @@ bool CTClient::SendNonDuplicateMessage(int Team, const char *pLine)
 {
 	if(str_comp(pLine, m_PreviousOwnMessage) != 0)
 	{
+		str_copy(m_PreviousOwnMessage, pLine, sizeof(m_PreviousOwnMessage));
 		GameClient()->m_Chat.SendChat(Team, pLine);
 		return true;
 	}
-	str_copy(m_PreviousOwnMessage, pLine);
 	return false;
 }
 
@@ -304,21 +386,24 @@ void CTClient::OnMessage(int MsgType, void *pRawMsg)
 		CNetMsg_Sv_Chat *pMsg = (CNetMsg_Sv_Chat *)pRawMsg;
 		int ClientId = pMsg->m_ClientId;
 
-		if(ClientId < 0 || ClientId > MAX_CLIENTS)
+		if(ClientId < 0 || ClientId >= MAX_CLIENTS)
 			return;
 		int LocalId = GameClient()->m_Snap.m_LocalClientId;
 		if(ClientId == LocalId)
 			str_copy(m_PreviousOwnMessage, pMsg->m_pMessage);
 
+		const bool DummyConnected = GameClient()->Client()->DummyConnected();
+		const bool IsOwnClient = (LocalId >= 0 && ClientId == LocalId) ||
+					 (GameClient()->m_aLocalIds[0] >= 0 && ClientId == GameClient()->m_aLocalIds[0]) ||
+					 (DummyConnected && GameClient()->m_aLocalIds[1] >= 0 && ClientId == GameClient()->m_aLocalIds[1]);
+		if(IsOwnClient)
+			return;
+
 		bool PingMessage = false;
-
-		bool ValidIds = !(GameClient()->m_aLocalIds[0] < 0 || (GameClient()->Client()->DummyConnected() && GameClient()->m_aLocalIds[1] < 0));
-
-		if(ValidIds && ClientId >= 0 && ClientId != GameClient()->m_aLocalIds[0] && (!GameClient()->Client()->DummyConnected() || ClientId != GameClient()->m_aLocalIds[1]))
-		{
+		if(GameClient()->m_aLocalIds[0] >= 0)
 			PingMessage |= LineShouldHighlight(pMsg->m_pMessage, GameClient()->m_aClients[GameClient()->m_aLocalIds[0]].m_aName);
-			PingMessage |= GameClient()->Client()->DummyConnected() && LineShouldHighlight(pMsg->m_pMessage, GameClient()->m_aClients[GameClient()->m_aLocalIds[1]].m_aName);
-		}
+		if(DummyConnected && GameClient()->m_aLocalIds[1] >= 0)
+			PingMessage |= LineShouldHighlight(pMsg->m_pMessage, GameClient()->m_aClients[GameClient()->m_aLocalIds[1]].m_aName);
 
 		if(pMsg->m_Team == TEAM_WHISPER_RECV)
 			PingMessage = true;
@@ -328,36 +413,50 @@ void CTClient::OnMessage(int MsgType, void *pRawMsg)
 
 		char aPlayerName[MAX_NAME_LENGTH];
 		str_copy(aPlayerName, GameClient()->m_aClients[ClientId].m_aName, sizeof(aPlayerName));
+		if(aPlayerName[0] == '\0')
+			return;
+
+		const int64_t Now = time_get();
+		const int64_t ReplyCooldown = time_freq() * 5;
 
 		bool PlayerMuted = GameClient()->m_aClients[ClientId].m_Foe || GameClient()->m_aClients[ClientId].m_ChatIgnore;
-		if(g_Config.m_TcAutoReplyMuted && PlayerMuted)
+		if(g_Config.m_TcAutoReplyMuted && PlayerMuted && g_Config.m_TcAutoReplyMutedMessage[0] != '\0')
 		{
-			char aBuf[256];
-			if(pMsg->m_Team == TEAM_WHISPER_RECV || ServerCommandExists("w"))
-				str_format(aBuf, sizeof(aBuf), "/w %s %s", aPlayerName, g_Config.m_TcAutoReplyMutedMessage);
-			else
-				str_format(aBuf, sizeof(aBuf), "%s: %s", aPlayerName, g_Config.m_TcAutoReplyMutedMessage);
-			SendNonDuplicateMessage(0, aBuf);
+			if(gs_BgAlerts.m_aLastMutedReplyTime[ClientId] == 0 || (Now - gs_BgAlerts.m_aLastMutedReplyTime[ClientId]) >= ReplyCooldown)
+			{
+				char aBuf[256];
+				if(pMsg->m_Team == TEAM_WHISPER_RECV || ServerCommandExists("w"))
+					str_format(aBuf, sizeof(aBuf), "/w %s %s", aPlayerName, g_Config.m_TcAutoReplyMutedMessage);
+				else
+					str_format(aBuf, sizeof(aBuf), "%s: %s", aPlayerName, g_Config.m_TcAutoReplyMutedMessage);
+				if(SendNonDuplicateMessage(0, aBuf))
+					gs_BgAlerts.m_aLastMutedReplyTime[ClientId] = Now;
+			}
 			return;
 		}
 
-		bool WindowActive = m_pGraphics && m_pGraphics->WindowActive();
-		if(g_Config.m_TcAutoReplyMinimized && !WindowActive && m_pGraphics)
+		IEngineGraphics *pGraphics = m_pGraphics ? m_pGraphics : GameClient()->EngineGraphics();
+		bool WindowActive = !pGraphics || pGraphics->WindowActive();
+		if(g_Config.m_TcAutoReplyMinimized && !WindowActive && g_Config.m_TcAutoReplyMinimizedMessage[0] != '\0')
 		{
-			char aBuf[256];
-			if(pMsg->m_Team == TEAM_WHISPER_RECV || ServerCommandExists("w"))
-				str_format(aBuf, sizeof(aBuf), "/w %s %s", aPlayerName, g_Config.m_TcAutoReplyMinimizedMessage);
-			else
-				str_format(aBuf, sizeof(aBuf), "%s: %s", aPlayerName, g_Config.m_TcAutoReplyMinimizedMessage);
-			SendNonDuplicateMessage(0, aBuf);
+			if(gs_BgAlerts.m_aLastMinimizedReplyTime[ClientId] == 0 || (Now - gs_BgAlerts.m_aLastMinimizedReplyTime[ClientId]) >= ReplyCooldown)
+			{
+				char aBuf[256];
+				if(pMsg->m_Team == TEAM_WHISPER_RECV || ServerCommandExists("w"))
+					str_format(aBuf, sizeof(aBuf), "/w %s %s", aPlayerName, g_Config.m_TcAutoReplyMinimizedMessage);
+				else
+					str_format(aBuf, sizeof(aBuf), "%s: %s", aPlayerName, g_Config.m_TcAutoReplyMinimizedMessage);
+				if(SendNonDuplicateMessage(0, aBuf))
+					gs_BgAlerts.m_aLastMinimizedReplyTime[ClientId] = Now;
+			}
 			return;
 		}
 	}
 
 	if(MsgType == NETMSGTYPE_SV_VOTESET)
 	{
-		const int LocalId = GameClient()->m_aLocalIds[g_Config.m_ClDummy]; // Do not care about spec behaviour
-		const bool Afk = LocalId >= 0 && GameClient()->m_aClients[LocalId].m_Afk; // TODO Depends on server afk time
+		const int LocalId = GameClient()->m_aLocalIds[std::clamp(g_Config.m_ClDummy, 0, NUM_DUMMIES - 1)]; // Do not care about spec behaviour
+		const bool Afk = in_range(LocalId, 0, MAX_CLIENTS - 1) && GameClient()->m_aClients[LocalId].m_Afk; // TODO Depends on server afk time
 		CNetMsg_Sv_VoteSet *pMsg = (CNetMsg_Sv_VoteSet *)pRawMsg;
 		if(pMsg->m_Timeout && !Afk)
 		{
@@ -401,7 +500,8 @@ void CTClient::OnMessage(int MsgType, void *pRawMsg)
 					if(pVoteCaller)
 					{
 						bool Friend = pVoteCaller->m_Friend;
-						bool SameTeam = GameClient()->m_Teams.Team(GameClient()->m_Snap.m_LocalClientId) == pVoteCaller->m_Team && pVoteCaller->m_Team != 0;
+						const int SnapLocalId = GameClient()->m_Snap.m_LocalClientId;
+						bool SameTeam = in_range(SnapLocalId, 0, MAX_CLIENTS - 1) && GameClient()->m_Teams.Team(SnapLocalId) == pVoteCaller->m_Team && pVoteCaller->m_Team != 0;
 						bool MySelf = CallerId == LocalId;
 
 						if(!Friend && !SameTeam && !MySelf)
@@ -479,7 +579,7 @@ void CTClient::SpecId(int ClientId)
 		return;
 	}
 
-	if(ClientId < 0 || ClientId > (int)std::size(GameClient()->m_aClients))
+	if(ClientId < 0 || ClientId >= (int)std::size(GameClient()->m_aClients))
 		return;
 	const auto &Player = GameClient()->m_aClients[ClientId];
 	if(!Player.m_Active)
@@ -504,6 +604,8 @@ void CTClient::ConEmoteCycle(IConsole::IResult *pResult, void *pUserData)
 void CTClient::AirRescue()
 {
 	if(Client()->State() != IClient::STATE_ONLINE)
+		return;
+	if(Collision()->GetWidth() <= 0 || Collision()->GetHeight() <= 0)
 		return;
 	const int ClientId = GameClient()->m_Snap.m_LocalClientId;
 	if(ClientId < 0 || !GameClient()->m_Snap.m_aCharacters[ClientId].m_Active)
@@ -558,7 +660,7 @@ void CTClient::ConCalc(IConsole::IResult *pResult, void *pUserData)
 {
 	int Error = 0;
 	double Out = te_interp(pResult->GetString(0), &Error);
-	if(Out == NAN || Error != 0)
+	if(std::isnan(Out) || Error != 0)
 		log_info("tclient", "Calc error: %d", Error);
 	else
 		log_info("tclient", "Calc result: %lf", Out);
@@ -616,6 +718,8 @@ void CTClient::RandomSkin(void *pUserData)
 {
 	CTClient *pThis = static_cast<CTClient *>(pUserData);
 	const auto &Skins = pThis->GameClient()->m_Skins.SkinList().Skins();
+	if(Skins.empty())
+		return;
 	str_copy(g_Config.m_ClPlayerSkin, Skins[std::rand() % (int)Skins.size()].SkinContainer()->Name());
 }
 
@@ -624,6 +728,8 @@ void CTClient::RandomFlag(void *pUserData)
 	CTClient *pThis = static_cast<CTClient *>(pUserData);
 	// get the flag count
 	int FlagCount = pThis->GameClient()->m_CountryFlags.Num();
+	if(FlagCount <= 0)
+		return;
 
 	// get a random flag number
 	int FlagNumber = std::rand() % FlagCount;
@@ -637,7 +743,7 @@ void CTClient::RandomFlag(void *pUserData)
 
 void CTClient::DoFinishCheck()
 {
-	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
+	if(Client()->State() != IClient::STATE_ONLINE)
 		return;
 	if(g_Config.m_TcChangeNameNearFinish <= 0)
 		return;
@@ -645,22 +751,29 @@ void CTClient::DoFinishCheck()
 	if(m_FinishTextTimeout > 0.0f)
 		return;
 	m_FinishTextTimeout = 1.0f;
-	// Check for finish tile
+
+	const int Dummy = std::clamp(g_Config.m_ClDummy, 0, NUM_DUMMIES - 1);
+	const int LocalId = GameClient()->m_aLocalIds[Dummy];
+	if(!in_range(LocalId, 0, MAX_CLIENTS - 1) || GameClient()->m_Snap.m_SpecInfo.m_Active || !GameClient()->m_Snap.m_aCharacters[LocalId].m_Active)
+		return;
+
+	// Check for finish tile without per-column heap allocations
 	const auto &NearTile = [this](vec2 Pos, int RadiusInTiles, int Tile) -> bool {
 		const CCollision *pCollision = GameClient()->Collision();
+		const int Width = pCollision->GetWidth();
+		const int Height = pCollision->GetHeight();
+		if(Width <= 0 || Height <= 0)
+			return false;
 		for(int i = 0; i <= RadiusInTiles * 2; ++i)
 		{
 			const float h = std::ceil(std::pow(std::sin((float)i * pi / 2.0f / (float)RadiusInTiles), 0.5f) * pi / 2.0f * (float)RadiusInTiles);
-			const vec2 Pos1 = vec2(Pos.x + (float)(i - RadiusInTiles) * 32.0f, Pos.y - h);
-			const vec2 Pos2 = vec2(Pos.x + (float)(i - RadiusInTiles) * 32.0f, Pos.y + h);
-			std::vector<int> vIndices = pCollision->GetMapIndices(Pos1, Pos2);
-			if(vIndices.empty())
-				vIndices.push_back(pCollision->GetPureMapIndex(Pos1));
-			for(int &Index : vIndices)
+			const int Nx = std::clamp((int)(Pos.x + (float)(i - RadiusInTiles) * 32.0f) / 32, 0, Width - 1);
+			const int Ny0 = std::clamp((int)(Pos.y - h) / 32, 0, Height - 1);
+			const int Ny1 = std::clamp((int)(Pos.y + h) / 32, 0, Height - 1);
+			for(int Ny = Ny0; Ny <= Ny1; ++Ny)
 			{
-				if(pCollision->GetTileIndex(Index) == Tile)
-					return true;
-				if(pCollision->GetFrontTileIndex(Index) == Tile)
+				const int Index = Ny * Width + Nx;
+				if(pCollision->GetTileIndex(Index) == Tile || pCollision->GetFrontTileIndex(Index) == Tile)
 					return true;
 			}
 		}
@@ -680,8 +793,7 @@ void CTClient::DoFinishCheck()
 		Client()->SendMsg(Conn, &Packer, MSGFLAG_VITAL);
 		GameClient()->m_aCheckInfo[Conn] = Client()->GameTickSpeed(); // 1 second
 	};
-	int Dummy = g_Config.m_ClDummy;
-	const auto &Player = GameClient()->m_aClients[GameClient()->m_aLocalIds[Dummy]];
+	const auto &Player = GameClient()->m_aClients[LocalId];
 	if(!Player.m_Active)
 		return;
 	const char *NewName = g_Config.m_TcFinishName;
@@ -701,6 +813,199 @@ bool CTClient::ServerCommandExists(const char *pCommand)
 		if(str_comp_nocase(pCommand, Command.m_aName) == 0)
 			return true;
 	return false;
+}
+
+static void FireBackgroundAlert(
+	CGameClient *pGameClient,
+	IEngineGraphics *pEngineGraphics,
+	ISound *pSound,
+	IKernel *pKernel,
+	const char *pTitle,
+	const char *pMessage)
+{
+	if(g_Config.m_AcNotifySound)
+	{
+		const bool AudioReady = pSound && pSound->IsSoundEnabled() && g_Config.m_SndEnable &&
+					g_Config.m_SndVolume > 0 && g_Config.m_SndChatVolume > 0 &&
+					!g_Config.m_SndNonactiveMute;
+		if(AudioReady)
+		{
+			pGameClient->m_Sounds.Play(CSounds::CHN_GUI, SOUND_CHAT_HIGHLIGHT, 1.0f);
+		}
+#if defined(CONF_FAMILY_WINDOWS)
+		else
+		{
+			MessageBeep(MB_ICONASTERISK);
+		}
+#endif
+	}
+
+	if(g_Config.m_AcNotifyFlash && pEngineGraphics)
+	{
+		pEngineGraphics->NotifyWindow();
+	}
+
+	if(g_Config.m_AcNotifyDesktop)
+	{
+		if(!gs_BgAlerts.m_pNotifications && pKernel)
+			gs_BgAlerts.m_pNotifications = pKernel->RequestInterface<INotifications>();
+		if(gs_BgAlerts.m_pNotifications)
+			gs_BgAlerts.m_pNotifications->Notify(pTitle, pMessage);
+	}
+}
+
+static void UpdateBackgroundAlerts(
+	CGameClient *pGameClient,
+	IClient *pClient,
+	IEngineGraphics *pEngineGraphics,
+	ISound *pSound,
+	CCollision *pCollision,
+	IKernel *pKernel,
+	bool DummySwapping)
+{
+	// Always prevent CGameClient::CheckBackgroundNotifications from emitting duplicate or stale alerts
+	pGameClient->m_NotifInitialized = false;
+
+	if(pClient->State() != IClient::STATE_ONLINE)
+	{
+		gs_BgAlerts.ResetBaseline();
+		return;
+	}
+
+	if(!g_Config.m_AcNotifyUnfreeze && !g_Config.m_AcChangeTileNotification)
+	{
+		gs_BgAlerts.ResetBaseline();
+		return;
+	}
+
+	if(!pEngineGraphics || !pGameClient->Map()->IsLoaded() || pCollision->GetWidth() <= 0 || pCollision->GetHeight() <= 0)
+	{
+		gs_BgAlerts.ResetBaseline();
+		return;
+	}
+
+	const unsigned CurMapCrc = pGameClient->Map()->Crc();
+	const int CurMapSize = pGameClient->Map()->Size();
+	const int64_t Now = time_get();
+	if(CurMapCrc != gs_BgAlerts.m_LastMapCrc || CurMapSize != gs_BgAlerts.m_LastMapSize)
+	{
+		gs_BgAlerts.ResetBaseline();
+		gs_BgAlerts.m_LastMapCrc = CurMapCrc;
+		gs_BgAlerts.m_LastMapSize = CurMapSize;
+		gs_BgAlerts.m_SnapshotCountSinceReset = 0;
+		gs_BgAlerts.m_GraceUntil = Now + time_freq() / 2;
+		return;
+	}
+
+	if(pGameClient->m_SuppressEvents || !pGameClient->m_Snap.m_pGameInfoObj || pGameClient->IsWorldPaused())
+	{
+		gs_BgAlerts.ResetBaseline();
+		return;
+	}
+
+	const int CurDummy = std::clamp(g_Config.m_ClDummy, 0, NUM_DUMMIES - 1);
+	if(DummySwapping || (CurDummy != 0 && !pClient->DummyConnected()))
+	{
+		gs_BgAlerts.ResetBaseline();
+		return;
+	}
+
+	const int CurRoundStartTick = pGameClient->m_Snap.m_pGameInfoObj->m_RoundStartTick;
+	const int CurGameTick = pClient->GameTick(CurDummy);
+	if(gs_BgAlerts.m_Initialized && (CurRoundStartTick != gs_BgAlerts.m_LastRoundStartTick || CurGameTick < gs_BgAlerts.m_LastGameTick))
+	{
+		gs_BgAlerts.ResetBaseline();
+		gs_BgAlerts.m_SnapshotCountSinceReset = 0;
+		gs_BgAlerts.m_GraceUntil = Now + time_freq() / 2;
+		return;
+	}
+
+	const int LocalId = pGameClient->m_Snap.m_LocalClientId;
+	if(!in_range(LocalId, 0, MAX_CLIENTS - 1))
+	{
+		gs_BgAlerts.ResetBaseline();
+		return;
+	}
+
+	const auto &ClientData = pGameClient->m_aClients[LocalId];
+	if(pGameClient->m_Snap.m_SpecInfo.m_Active || ClientData.m_Team == TEAM_SPECTATORS || ClientData.m_Paused || ClientData.m_Spec)
+	{
+		gs_BgAlerts.ResetBaseline();
+		gs_BgAlerts.m_WasSpectating = true;
+		return;
+	}
+
+	const auto &CharSnap = pGameClient->m_Snap.m_aCharacters[LocalId];
+	if(!CharSnap.m_Active)
+	{
+		gs_BgAlerts.ResetBaseline();
+		return;
+	}
+
+	const vec2 Pos = vec2((float)CharSnap.m_Cur.m_X, (float)CharSnap.m_Cur.m_Y);
+	const int CurTile = pCollision->GetPureMapIndex(Pos);
+
+	bool CurFrozen = false;
+	if(CharSnap.m_HasExtendedData)
+		CurFrozen = (CharSnap.m_ExtendedData.m_FreezeEnd != 0);
+	else if(!pGameClient->m_GameInfo.m_EntitiesVanilla)
+		CurFrozen = (CharSnap.m_Cur.m_Weapon == WEAPON_NINJA);
+
+	if(ClientData.m_FreezeEnd != 0 || ClientData.m_DeepFrozen || ClientData.m_LiveFrozen)
+		CurFrozen = true;
+
+	const bool WindowActive = pEngineGraphics->WindowActive() != 0;
+	const bool ContextChanged = !gs_BgAlerts.m_Initialized ||
+				    !gs_BgAlerts.m_WasActive ||
+				    gs_BgAlerts.m_WasSpectating ||
+				    LocalId != gs_BgAlerts.m_LastLocalId ||
+				    CurDummy != gs_BgAlerts.m_LastDummy;
+
+	if(WindowActive || ContextChanged || gs_BgAlerts.m_SnapshotCountSinceReset < 2 || Now < gs_BgAlerts.m_GraceUntil)
+	{
+		gs_BgAlerts.m_Initialized = true;
+		gs_BgAlerts.m_WasActive = true;
+		gs_BgAlerts.m_WasSpectating = false;
+		gs_BgAlerts.m_LastLocalId = LocalId;
+		gs_BgAlerts.m_LastDummy = CurDummy;
+		gs_BgAlerts.m_LastRoundStartTick = CurRoundStartTick;
+		gs_BgAlerts.m_LastGameTick = CurGameTick;
+		gs_BgAlerts.m_LastTile = CurTile;
+		gs_BgAlerts.m_LastFrozen = CurFrozen;
+		gs_BgAlerts.m_LastPos = Pos;
+		return;
+	}
+
+	const bool AnyAlertMethodEnabled = g_Config.m_AcNotifySound || g_Config.m_AcNotifyFlash || g_Config.m_AcNotifyDesktop;
+	const bool Unfroze = g_Config.m_AcNotifyUnfreeze && gs_BgAlerts.m_LastFrozen && !CurFrozen;
+	const bool TileOrPosChanged = g_Config.m_AcChangeTileNotification &&
+				      (CurTile != gs_BgAlerts.m_LastTile || distance(Pos, gs_BgAlerts.m_LastPos) > 32.0f);
+
+	const int64_t Cooldown = time_freq() * 2;
+	if(AnyAlertMethodEnabled)
+	{
+		if(Unfroze && (gs_BgAlerts.m_LastUnfreezeAlertTime == 0 || (Now - gs_BgAlerts.m_LastUnfreezeAlertTime) >= Cooldown))
+		{
+			gs_BgAlerts.m_LastUnfreezeAlertTime = Now;
+			if(TileOrPosChanged)
+				gs_BgAlerts.m_LastTileAlertTime = Now;
+			FireBackgroundAlert(pGameClient, pEngineGraphics, pSound, pKernel, "AClient", TCLocalize("You were unfrozen!"));
+		}
+		else if(TileOrPosChanged && (gs_BgAlerts.m_LastTileAlertTime == 0 || (Now - gs_BgAlerts.m_LastTileAlertTime) >= Cooldown))
+		{
+			gs_BgAlerts.m_LastTileAlertTime = Now;
+			FireBackgroundAlert(pGameClient, pEngineGraphics, pSound, pKernel, "AClient", TCLocalize("You were moved or changed tile!"));
+		}
+	}
+
+	gs_BgAlerts.m_LastFrozen = CurFrozen;
+	gs_BgAlerts.m_LastRoundStartTick = CurRoundStartTick;
+	gs_BgAlerts.m_LastGameTick = CurGameTick;
+	if(CurTile != gs_BgAlerts.m_LastTile || distance(Pos, gs_BgAlerts.m_LastPos) > 32.0f)
+	{
+		gs_BgAlerts.m_LastTile = CurTile;
+		gs_BgAlerts.m_LastPos = Pos;
+	}
 }
 
 void CTClient::OnRender()
@@ -746,6 +1051,15 @@ void CTClient::OnRender()
 	}
 
 	DoFinishCheck();
+
+	UpdateBackgroundAlerts(
+		GameClient(),
+		Client(),
+		m_pGraphics ? m_pGraphics : GameClient()->EngineGraphics(),
+		Sound(),
+		Collision(),
+		Kernel(),
+		GameClient()->m_IsDummySwapping != 0);
 }
 
 bool CTClient::NeedUpdate()
@@ -1084,11 +1398,35 @@ void CTClient::OnStateChange(int OldState, int NewState)
 	SetForcedAspect();
 	for(auto &AirRescuePositions : m_aAirRescuePositions)
 		AirRescuePositions = {};
+	m_PreviousOwnMessage[0] = '\0';
+	m_FinishTextTimeout = 0.0f;
+	gs_BgAlerts.ResetAll();
+	GameClient()->m_NotifInitialized = false;
+	if(Client()->State() == IClient::STATE_ONLINE)
+		gs_BgAlerts.m_GraceUntil = time_get() + time_freq() / 2;
 }
 
 void CTClient::OnNewSnapshot()
 {
 	SetForcedAspect();
+	if(Client()->State() == IClient::STATE_ONLINE)
+	{
+		if(GameClient()->Map()->IsLoaded())
+		{
+			const unsigned CurMapCrc = GameClient()->Map()->Crc();
+			const int CurMapSize = GameClient()->Map()->Size();
+			if(CurMapCrc != gs_BgAlerts.m_LastMapCrc || CurMapSize != gs_BgAlerts.m_LastMapSize)
+			{
+				gs_BgAlerts.ResetBaseline();
+				gs_BgAlerts.m_LastMapCrc = CurMapCrc;
+				gs_BgAlerts.m_LastMapSize = CurMapSize;
+				gs_BgAlerts.m_SnapshotCountSinceReset = 0;
+				gs_BgAlerts.m_GraceUntil = time_get() + time_freq() / 2;
+			}
+		}
+		if(gs_BgAlerts.m_SnapshotCountSinceReset < 1000)
+			gs_BgAlerts.m_SnapshotCountSinceReset++;
+	}
 	// Update volleyball
 	bool IsVolleyBall = false;
 	if(g_Config.m_TcVolleyBallBetterBall > 0 && g_Config.m_TcVolleyBallBetterBallSkin[0] != '\0')
@@ -1208,7 +1546,8 @@ void CTClient::RenderMiniVoteHud()
 	Row.VSplitLeft(2.0f, nullptr, &Row);
 
 	SProgressSpinnerProperties ProgressProps;
-	ProgressProps.m_Progress = std::clamp((time() - GameClient()->m_Voting.m_Opentime) / (float)(GameClient()->m_Voting.m_Closetime - GameClient()->m_Voting.m_Opentime), 0.0f, 1.0f);
+	const int64_t VoteDuration = GameClient()->m_Voting.m_Closetime - GameClient()->m_Voting.m_Opentime;
+	ProgressProps.m_Progress = VoteDuration > 0 ? std::clamp((time() - GameClient()->m_Voting.m_Opentime) / (float)VoteDuration, 0.0f, 1.0f) : 0.0f;
 	Ui()->RenderProgressSpinner(ProgressSpinner.Center(), ProgressSpinner.h / 2.0f, ProgressProps);
 
 	Ui()->DoLabel(&Row, aBuf, 3.0f, TEXTALIGN_ML);
