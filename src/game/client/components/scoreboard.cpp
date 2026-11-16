@@ -477,8 +477,10 @@ void CScoreboard::RenderSpectators(CUIRect Spectators)
 				m_ScoreboardPopupContext.Reset(pInfo->m_ClientId, true, IsLocalTarget);
 
 				const bool CanMod = Client()->RconAuthed() && !m_ScoreboardPopupContext.m_IsLocal;
-				const float Width = CanMod ? 160.0f : 125.0f;
-				const float Height = CanMod ? 238.0f : (m_ScoreboardPopupContext.m_IsLocal ? 73.0f : 124.5f);
+				const bool ShowGameSkinActions = !m_ScoreboardPopupContext.m_IsLocal && g_Config.m_AcScoreboardGameSkinActions != 0;
+				const float ExtraGameSkinHeight = ShowGameSkinActions ? 41.0f : 0.0f;
+				const float Width = (CanMod || ShowGameSkinActions) ? 160.0f : 125.0f;
+				const float Height = (CanMod ? 238.0f : (m_ScoreboardPopupContext.m_IsLocal ? 73.0f : 124.5f)) + ExtraGameSkinHeight;
 
 				Ui()->DoPopupMenu(&m_ScoreboardPopupContext, Ui()->MouseX(), Ui()->MouseY(), Width,
 					Height, &m_ScoreboardPopupContext, CScoreboardPopupContext::Render);
@@ -748,8 +750,10 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 					m_ScoreboardPopupContext.Reset(pInfo->m_ClientId, false, IsLocalTarget);
 
 					const bool CanMod = Client()->RconAuthed() && !m_ScoreboardPopupContext.m_IsLocal;
-					const float Width = CanMod ? 160.0f : 125.0f;
-					const float Height = CanMod ? 238.0f : (m_ScoreboardPopupContext.m_IsLocal ? 101.5f : 152.0f);
+					const bool ShowGameSkinActions = !m_ScoreboardPopupContext.m_IsLocal && g_Config.m_AcScoreboardGameSkinActions != 0;
+					const float ExtraGameSkinHeight = ShowGameSkinActions ? 41.0f : 0.0f;
+					const float Width = (CanMod || ShowGameSkinActions) ? 160.0f : 125.0f;
+					const float Height = (CanMod ? 238.0f : (m_ScoreboardPopupContext.m_IsLocal ? 101.5f : 152.0f)) + ExtraGameSkinHeight;
 
 					Ui()->DoPopupMenu(&m_ScoreboardPopupContext, Ui()->MouseX(), Ui()->MouseY(), Width,
 						Height, &m_ScoreboardPopupContext, CScoreboardPopupContext::Render);
@@ -1523,6 +1527,82 @@ CUi::EPopupMenuFunctionResult CScoreboard::CScoreboardPopupContext::Render(void 
 				if(!pScoreboard->m_Active)
 					pScoreboard->LockMouse();
 				return CUi::POPUP_CLOSE_CURRENT;
+			}
+
+			if(g_Config.m_AcScoreboardGameSkinActions != 0)
+			{
+				auto &GameSkins = pScoreboard->GameClient()->m_AClientGameSkins;
+				const char *pRemoteGameSkin = GameSkins.GetPlayerGameSkinName(pPopupContext->m_ClientId);
+				const char *pRemoteEntities = GameSkins.GetPlayerEntitiesName(pPopupContext->m_ClientId);
+
+				// Row 1: Copiar Gameskin | Ocultar/Mostrar Gameskin
+				View.HSplitTop(ItemSpacing * 1.5f, nullptr, &View);
+				View.HSplitTop(ButtonSize, &Container, &View);
+				CUIRect CopyGsBtn, HideGsBtn;
+				Container.VSplitMid(&CopyGsBtn, &HideGsBtn, ItemSpacing);
+
+				ColorRGBA CopyGsColor = ColorRGBA(0.55f, 0.45f, 0.95f, (pRemoteGameSkin ? 0.65f : 0.30f) * pUi->ButtonColorMul(&pPopupContext->m_CopyGameSkinButton));
+				if(pUi->DoButton_PopupMenu(&pPopupContext->m_CopyGameSkinButton, TCLocalize("Copiar Gameskin"), &CopyGsBtn, FontSize - 2.5f, TEXTALIGN_MC, 0.0f, false, true, CopyGsColor))
+				{
+					GameSkins.CopyPlayerGameSkin(pPopupContext->m_ClientId);
+					return CUi::POPUP_CLOSE_CURRENT;
+				}
+
+				const bool GsHidden = pRemoteGameSkin ? GameSkins.IsGameSkinBlacklisted(pRemoteGameSkin) : (g_Config.m_AcShowRemoteGameSkins == 0);
+				const char *pHideGsLabel = GsHidden ? TCLocalize("Mostrar GS") : TCLocalize("Ocultar GS");
+				ColorRGBA HideGsColor = GsHidden ? ColorRGBA(0.35f, 0.85f, 0.45f, 0.65f * pUi->ButtonColorMul(&pPopupContext->m_HideGameSkinButton)) :
+								   ColorRGBA(0.90f, 0.35f, 0.35f, 0.60f * pUi->ButtonColorMul(&pPopupContext->m_HideGameSkinButton));
+				if(pUi->DoButton_PopupMenu(&pPopupContext->m_HideGameSkinButton, pHideGsLabel, &HideGsBtn, FontSize - 2.5f, TEXTALIGN_MC, 0.0f, false, true, HideGsColor))
+				{
+					if(pRemoteGameSkin)
+					{
+						GameSkins.ToggleGameSkinBlacklist(pRemoteGameSkin);
+						char aBuf[192];
+						str_format(aBuf, sizeof(aBuf), "[AClient] Gameskin '%s': %s", pRemoteGameSkin, GameSkins.IsGameSkinBlacklisted(pRemoteGameSkin) ? TCLocalize("ocultado") : TCLocalize("visible"));
+						pScoreboard->GameClient()->Echo(aBuf);
+					}
+					else
+					{
+						g_Config.m_AcShowRemoteGameSkins ^= 1;
+						GameSkins.UpdateAllPlayerSkins();
+						pScoreboard->GameClient()->Echo(g_Config.m_AcShowRemoteGameSkins ? TCLocalize("[AClient] Gameskins remotos visibles") : TCLocalize("[AClient] Gameskins remotos ocultados"));
+					}
+					return CUi::POPUP_CLOSE_CURRENT;
+				}
+
+				// Row 2: Copiar Entities | Ocultar/Mostrar Entities
+				View.HSplitTop(ItemSpacing * 1.5f, nullptr, &View);
+				View.HSplitTop(ButtonSize, &Container, &View);
+				CUIRect CopyEntBtn, HideEntBtn;
+				Container.VSplitMid(&CopyEntBtn, &HideEntBtn, ItemSpacing);
+
+				ColorRGBA CopyEntColor = ColorRGBA(0.55f, 0.45f, 0.95f, (pRemoteEntities ? 0.65f : 0.30f) * pUi->ButtonColorMul(&pPopupContext->m_CopyEntitiesButton));
+				if(pUi->DoButton_PopupMenu(&pPopupContext->m_CopyEntitiesButton, TCLocalize("Copiar Entities"), &CopyEntBtn, FontSize - 2.5f, TEXTALIGN_MC, 0.0f, false, true, CopyEntColor))
+				{
+					GameSkins.CopyPlayerEntities(pPopupContext->m_ClientId);
+					return CUi::POPUP_CLOSE_CURRENT;
+				}
+
+				const bool EntHidden = pRemoteEntities ? GameSkins.IsEntitiesBlacklisted(pRemoteEntities) : (g_Config.m_AcShowRemoteEntitiesOnHook == 0);
+				const char *pHideEntLabel = EntHidden ? TCLocalize("Mostrar Ent") : TCLocalize("Ocultar Ent");
+				ColorRGBA HideEntColor = EntHidden ? ColorRGBA(0.35f, 0.85f, 0.45f, 0.65f * pUi->ButtonColorMul(&pPopupContext->m_HideEntitiesButton)) :
+								    ColorRGBA(0.90f, 0.35f, 0.35f, 0.60f * pUi->ButtonColorMul(&pPopupContext->m_HideEntitiesButton));
+				if(pUi->DoButton_PopupMenu(&pPopupContext->m_HideEntitiesButton, pHideEntLabel, &HideEntBtn, FontSize - 2.5f, TEXTALIGN_MC, 0.0f, false, true, HideEntColor))
+				{
+					if(pRemoteEntities)
+					{
+						GameSkins.ToggleEntitiesBlacklist(pRemoteEntities);
+						char aBuf[192];
+						str_format(aBuf, sizeof(aBuf), "[AClient] Entities '%s': %s", pRemoteEntities, GameSkins.IsEntitiesBlacklisted(pRemoteEntities) ? TCLocalize("ocultadas") : TCLocalize("visibles"));
+						pScoreboard->GameClient()->Echo(aBuf);
+					}
+					else
+					{
+						g_Config.m_AcShowRemoteEntitiesOnHook ^= 1;
+						pScoreboard->GameClient()->Echo(g_Config.m_AcShowRemoteEntitiesOnHook ? TCLocalize("[AClient] Entities remotas visibles") : TCLocalize("[AClient] Entities remotas ocultadas"));
+					}
+					return CUi::POPUP_CLOSE_CURRENT;
+				}
 			}
 		}
 

@@ -22,6 +22,7 @@ class CAClientGameSkins : public CComponent
 	std::set<std::string> m_sRemoteAClientPlayers;
 	std::set<std::string> m_sFailedSkins;
 	std::unordered_set<std::string> m_sBlacklistedGameSkins;
+	std::unordered_set<std::string> m_sBlacklistedEntities;
 	std::map<std::string, std::string> m_mActiveSkinUsers;
 	uint64_t m_SkinUsersRevision;
 
@@ -48,6 +49,7 @@ class CAClientGameSkins : public CComponent
 	bool m_InitialDownloadPhase;
 	bool m_WasFrozen;
 	bool m_BlacklistLoaded;
+	bool m_EntitiesBlacklistLoaded = false;
 
 	bool CanDownloadGameskins() const;
 	bool CanDownloadEntities() const;
@@ -61,6 +63,8 @@ class CAClientGameSkins : public CComponent
 	void LoadBlacklist();
 	void SaveBlacklist();
 	void EnsureBlacklistLoaded();
+	void EnsureEntitiesBlacklistLoaded();
+	void SaveEntitiesBlacklist();
 
 	static void ConReloadRemoteGameSkins(IConsole::IResult *pResult, void *pUserData);
 	static void ConReloadRemoteEntities(IConsole::IResult *pResult, void *pUserData);
@@ -94,6 +98,15 @@ public:
 	bool IsGameSkinBlacklisted(const char *pName) const;
 	void SetGameSkinBlacklisted(const char *pName, bool Blacklist);
 	void ToggleGameSkinBlacklist(const char *pName);
+
+	bool IsEntitiesBlacklisted(const char *pName) const;
+	void SetEntitiesBlacklisted(const char *pName, bool Blacklist);
+	void ToggleEntitiesBlacklist(const char *pName);
+
+	const char *GetPlayerGameSkinName(int ClientId) const;
+	const char *GetPlayerEntitiesName(int ClientId) const;
+	bool CopyPlayerGameSkin(int ClientId);
+	bool CopyPlayerEntities(int ClientId);
 
 	void UpdateActiveSkinUsers();
 	const std::map<std::string, std::string> &GetActiveSkinUsers() const { return m_mActiveSkinUsers; }

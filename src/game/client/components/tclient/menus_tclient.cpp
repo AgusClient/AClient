@@ -4526,82 +4526,8 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 
 	if(VisualTab)
 	{
-	// ***** Keystrokes HUD ***** //
-	Column.HSplitTop(Margin, nullptr, &Column);
-	s_SectionBoxesAc.push_back(Column);
-	Column.HSplitTop(HeadlineHeight, &Label, &Column);
-	{
-		CUIRect HeaderLabel = Label;
-		CUIRect BetaBadge;
-		HeaderLabel.VSplitRight(44.0f, &HeaderLabel, &BetaBadge);
-		Ui()->DoLabel(&HeaderLabel, TCLocalize("Keystrokes HUD"), HeadlineFontSize, TEXTALIGN_ML);
-
-		const float BadgeHeight = std::min(16.0f, BetaBadge.h);
-		BetaBadge.HMargin((BetaBadge.h - BadgeHeight) * 0.5f, &BetaBadge);
-		BetaBadge.Draw(ColorRGBA(0.95f, 0.55f, 0.15f, 0.75f), IGraphics::CORNER_ALL, 4.0f);
-		CUIRect BetaInner = BetaBadge;
-		BetaInner.Margin(1.0f, &BetaInner);
-		BetaInner.Draw(ColorRGBA(0.12f, 0.13f, 0.16f, 0.95f), IGraphics::CORNER_ALL, 3.0f);
-		TextRender()->TextColor(ColorRGBA(1.0f, 0.68f, 0.22f, 1.0f));
-		Ui()->DoLabel(&BetaInner, "BETA", 10.0f, TEXTALIGN_MC);
-		TextRender()->TextColor(ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f));
-	}
-	Column.HSplitTop(MarginSmall, nullptr, &Column);
-
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_AcHudKeystrokes, TCLocalize("Enable Keystrokes overlay"), &g_Config.m_AcHudKeystrokes, &Column, LineSize);
-
-	if(g_Config.m_AcHudKeystrokes)
-	{
-		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		Column.HSplitTop(LineSize, &Label, &Column);
-		Ui()->DoLabel(&Label, TCLocalize("Layout:"), Label.h * CUi::ms_FontmodHeight * 0.8f, TEXTALIGN_ML);
-
-		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		Column.HSplitTop(LineSize, &Button, &Column);
-		{
-			static CButtonContainer s_aLayoutButtons[2];
-			static const char *s_apLayoutNames[] = {"WASD + Mouse", "A/D + Hook/Fire/Jump"};
-			static const int s_aLayoutValues[] = {0, 1};
-
-			CUIRect ButtonsRect = Button;
-			const float Spacing = 2.0f;
-			const float LayoutWidth = (ButtonsRect.w - Spacing) / 2.0f;
-			for(int i = 0; i < 2; ++i)
-			{
-				CUIRect LayoutButton;
-				if(i == 0)
-				{
-					ButtonsRect.VSplitLeft(LayoutWidth, &LayoutButton, &ButtonsRect);
-					ButtonsRect.VSplitLeft(Spacing, nullptr, &ButtonsRect);
-				}
-				else
-					LayoutButton = ButtonsRect;
-
-				int Corners = (i == 0) ? IGraphics::CORNER_L : IGraphics::CORNER_R;
-				if(DoButton_Menu(&s_aLayoutButtons[i], TCLocalize(s_apLayoutNames[i]), g_Config.m_AcHudKeystrokesLayout == s_aLayoutValues[i], &LayoutButton, BUTTONFLAG_LEFT, nullptr, Corners))
-					g_Config.m_AcHudKeystrokesLayout = s_aLayoutValues[i];
-			}
-		}
-
-		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		Column.HSplitTop(LineSize, &Button, &Column);
-		Ui()->DoScrollbarOption(&g_Config.m_AcHudKeystrokesX, &g_Config.m_AcHudKeystrokesX, &Button, TCLocalize("Horizontal Position (X)"), 0, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
-
-		Column.HSplitTop(LineSize, &Button, &Column);
-		Ui()->DoScrollbarOption(&g_Config.m_AcHudKeystrokesY, &g_Config.m_AcHudKeystrokesY, &Button, TCLocalize("Vertical Position (Y)"), 0, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
-
-		Column.HSplitTop(LineSize, &Button, &Column);
-		Ui()->DoScrollbarOption(&g_Config.m_AcHudKeystrokesScale, &g_Config.m_AcHudKeystrokesScale, &Button, TCLocalize("HUD Scale (Size)"), 50, 200, &CUi::ms_LinearScrollbarScale, 0, "%");
-
-		Column.HSplitTop(LineSize, &Button, &Column);
-		Ui()->DoScrollbarOption(&g_Config.m_AcHudKeystrokesAlpha, &g_Config.m_AcHudKeystrokesAlpha, &Button, TCLocalize("HUD Opacity"), 20, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
-	}
-
-	Column.HSplitTop(MarginSmall, nullptr, &Column);
-	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
-
 	// ***** AClient Theme & UI ***** //
-	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	Column.HSplitTop(Margin, nullptr, &Column);
 	s_SectionBoxesAc.push_back(Column);
 	Column.HSplitTop(HeadlineHeight, &Label, &Column);
 	Ui()->DoLabel(&Label, TCLocalize("AClient Theme & UI"), HeadlineFontSize, TEXTALIGN_ML);
@@ -4620,77 +4546,6 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 
 	static CButtonContainer s_ColorDetailsReset;
 	DoLine_ColorPicker(&s_ColorDetailsReset, LineSize, 12.0f, MarginSmall, &Column, TCLocalize("Color detalles"), (unsigned int *)&g_Config.m_AcColorDetails, color_cast<ColorRGBA>(ColorHSLA(12050856)), false);
-
-	Column.HSplitTop(MarginSmall, nullptr, &Column);
-	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
-	}
-
-	if(!VisualTab)
-	{
-	// ***** FPS Booster / Optimizer ***** //
-	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
-	s_SectionBoxesAc.push_back(Column);
-	Column.HSplitTop(HeadlineHeight, &Label, &Column);
-	Ui()->DoLabel(&Label, TCLocalize("FPS Booster & Optimizer"), HeadlineFontSize, TEXTALIGN_ML);
-	Column.HSplitTop(MarginSmall, nullptr, &Column);
-
-	DoCheckboxWithHelp(&g_Config.m_AcOptimizer, TCLocalize("Enable FPS Booster / Optimizer"), TCLocalize("Master switch that boosts framerates and reduces stuttering by trimming decorative graphics and background overhead."), &g_Config.m_AcOptimizer, &Column, LineSize);
-
-	static CButtonContainer s_ReaderButtonOptimizer, s_ClearButtonOptimizer;
-	DoLine_KeyReader(Column, s_ReaderButtonOptimizer, s_ClearButtonOptimizer, TCLocalize("Toggle Optimizer key"), "ac_optimizer_toggle");
-
-	DoCheckboxWithHelp(&g_Config.m_AcOptimizerDisableParticles, TCLocalize("Disable particles"), TCLocalize("Stops updating and drawing all particles (smoke, explosions, weapon trails, freeze stars) to maximize GPU/CPU efficiency."), &g_Config.m_AcOptimizerDisableParticles, &Column, LineSize);
-	DoCheckboxWithHelp(&g_Config.m_AcOptimizerDisableQuads, TCLocalize("Disable map quads (clouds & decorations)"), TCLocalize("Skips heavy decorative map quads like animated background clouds, dynamic lights, and mapper visual effects."), &g_Config.m_AcOptimizerDisableQuads, &Column, LineSize);
-	DoCheckboxWithHelp(&g_Config.m_AcOptimizerDisableHighDetail, TCLocalize("Disable high detail layers"), TCLocalize("Automatically forces off high detail layers while optimizer is active, restoring your setting when disabled."), &g_Config.m_AcOptimizerDisableHighDetail, &Column, LineSize);
-
-	DoCheckboxWithHelp(&g_Config.m_AcOptimizerFpsFog, TCLocalize("Limit FOV rendering (FPS Fog)"), TCLocalize("Limits map tiles, player hooks, tees and nameplates to a focused radius around the camera, culling off-screen and distant elements."), &g_Config.m_AcOptimizerFpsFog, &Column, LineSize);
-
-	if(g_Config.m_AcOptimizerFpsFog)
-	{
-		Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
-		Column.HSplitTop(LineSize, &Button, &Column);
-		{
-			static CButtonContainer s_aFogModeButtons[2];
-			static const char *s_apFogModeNames[2] = {"Radio Fijo (Tiles)", "Dinamico (% Zoom)"};
-			CUIRect LeftBtn, RightBtn;
-			Button.VSplitMid(&LeftBtn, &RightBtn, 2.0f);
-			if(DoButton_Menu(&s_aFogModeButtons[0], TCLocalize(s_apFogModeNames[0]), g_Config.m_AcOptimizerFpsFogMode == 0, &LeftBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
-				g_Config.m_AcOptimizerFpsFogMode = 0;
-			if(DoButton_Menu(&s_aFogModeButtons[1], TCLocalize(s_apFogModeNames[1]), g_Config.m_AcOptimizerFpsFogMode == 1, &RightBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
-				g_Config.m_AcOptimizerFpsFogMode = 1;
-		}
-		Column.HSplitTop(MarginSmall, nullptr, &Column);
-
-		if(g_Config.m_AcOptimizerFpsFogMode == 1)
-		{
-			Column.HSplitTop(LineSize, &Button, &Column);
-			Ui()->DoScrollbarOption(&g_Config.m_AcOptimizerFpsFogZoomPercent, &g_Config.m_AcOptimizerFpsFogZoomPercent, &Button, TCLocalize("FPS Fog Zoom Area"), 20, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
-		}
-		else
-		{
-			Column.HSplitTop(LineSize, &Button, &Column);
-			Ui()->DoScrollbarOption(&g_Config.m_AcOptimizerFpsFogRadiusTiles, &g_Config.m_AcOptimizerFpsFogRadiusTiles, &Button, TCLocalize("FPS Fog Radius"), 10, 120, &CUi::ms_LinearScrollbarScale, 0, " tiles");
-		}
-
-		DoCheckboxWithHelp(&g_Config.m_AcOptimizerFpsFogCullMapTiles, TCLocalize("Cull map tiles outside radius"), TCLocalize("Drastically reduces tile vertices and draw operations outside the focused view area."), &g_Config.m_AcOptimizerFpsFogCullMapTiles, &Column, LineSize);
-
-		Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
-		Column.HSplitTop(LineSize, &Button, &Column);
-		{
-			CUIRect LabelRect, ToggleRect, OffBtn, OnBtn;
-			Button.VSplitRight(120.0f, &LabelRect, &ToggleRect);
-			Ui()->DoLabel(&LabelRect, TCLocalize("Mostrar bordes del FPS Fog"), FontSize, TEXTALIGN_ML);
-			ToggleRect.VSplitMid(&OffBtn, &OnBtn, 2.0f);
-			static CButtonContainer s_aFogBorderBtns[2];
-			if(DoButton_Menu(&s_aFogBorderBtns[0], "OFF", g_Config.m_AcOptimizerFpsFogRenderRect == 0, &OffBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
-				g_Config.m_AcOptimizerFpsFogRenderRect = 0;
-			if(DoButton_Menu(&s_aFogBorderBtns[1], "ON", g_Config.m_AcOptimizerFpsFogRenderRect == 1, &OnBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
-				g_Config.m_AcOptimizerFpsFogRenderRect = 1;
-		}
-	}
-
-	DoCheckboxWithHelp(&g_Config.m_AcOptimizerHighPriority, TCLocalize("High process priority (Windows)"), TCLocalize("Automatically assigns High priority to DDNet in Windows to reduce background process micro-stutters."), &g_Config.m_AcOptimizerHighPriority, &Column, LineSize);
-	DoCheckboxWithHelp(&g_Config.m_AcOptimizerDiscordNormalPriority, TCLocalize("Discord normal priority (Windows)"), TCLocalize("Keeps Discord processes at Normal priority in Windows so Discord does not compete with DDNet for CPU."), &g_Config.m_AcOptimizerDiscordNormalPriority, &Column, LineSize);
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
@@ -4829,6 +4684,7 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 
 	DoCheckboxWithHelp(&g_Config.m_AcShowRemoteEntitiesOnHook, TCLocalize("Mostrar entidades de otros al hookear (Supabase)"), TCLocalize("Cuando otro jugador hookea un bloque, ese bloque se renderiza temporalmente con el pack de entidades que dicho jugador tiene activo."), &g_Config.m_AcShowRemoteEntitiesOnHook, &Column, LineSize);
 	DoCheckboxWithHelp(&g_Config.m_ClDownloadEntities, TCLocalize("Descargar entidades remotas automaticamente"), TCLocalize("Descarga e instala de fondo el pack de entidades de otros jugadores desde GitHub para mostrarlas de inmediato."), &g_Config.m_ClDownloadEntities, &Column, LineSize);
+	DoCheckboxWithHelp(&g_Config.m_AcScoreboardGameSkinActions, TCLocalize("Opciones de Gameskin/Entities en Tab"), TCLocalize("Muestra botones en el menu contextual del Scoreboard (Tab) para copiar u ocultar gameskins y entities de otros jugadores."), &g_Config.m_AcScoreboardGameSkinActions, &Column, LineSize);
 
 	static CLineInput s_DummyEntitiesInput;
 	Column.HSplitTop(LineSize, &Button, &Column);
@@ -5090,40 +4946,7 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
 
-	// ***** Bloque: Motion Blur ***** //
-	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
-	s_SectionBoxesAc.push_back(Column);
-	Column.HSplitTop(HeadlineHeight, &Label, &Column);
-	{
-		CUIRect HeaderLabel = Label;
-		CUIRect BetaBadge;
-		HeaderLabel.VSplitRight(44.0f, &HeaderLabel, &BetaBadge);
-		Ui()->DoLabel(&HeaderLabel, TCLocalize("Motion Blur"), HeadlineFontSize, TEXTALIGN_ML);
-
-		const float BadgeHeight = std::min(16.0f, BetaBadge.h);
-		BetaBadge.HMargin((BetaBadge.h - BadgeHeight) * 0.5f, &BetaBadge);
-		BetaBadge.Draw(ColorRGBA(0.95f, 0.55f, 0.15f, 0.75f), IGraphics::CORNER_ALL, 4.0f);
-		CUIRect BetaInner = BetaBadge;
-		BetaInner.Margin(1.0f, &BetaInner);
-		BetaInner.Draw(ColorRGBA(0.12f, 0.13f, 0.16f, 0.95f), IGraphics::CORNER_ALL, 3.0f);
-		TextRender()->TextColor(ColorRGBA(1.0f, 0.68f, 0.22f, 1.0f));
-		Ui()->DoLabel(&BetaInner, "BETA", 10.0f, TEXTALIGN_MC);
-		TextRender()->TextColor(ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f));
-	}
-	Column.HSplitTop(MarginSmall, nullptr, &Column);
-
-	DoCheckboxWithHelp(&g_Config.m_AcMotionBlur, TCLocalize("Activar Motion Blur"), TCLocalize("Suaviza el movimiento mezclando el frame anterior con el actual (OpenGL 3.3 y Vulkan)."), &g_Config.m_AcMotionBlur, &Column, LineSize);
-	if(g_Config.m_AcMotionBlur)
-	{
-		CUIRect BlurRow;
-		Column.HSplitTop(LineSize, &BlurRow, &Column);
-		Ui()->DoScrollbarOption(&g_Config.m_AcMotionBlurStrength, &g_Config.m_AcMotionBlurStrength, &BlurRow, TCLocalize("Intensidad"), 0, 95, &CUi::ms_LinearScrollbarScale, 0u, "%");
-	}
-
-	Column.HSplitTop(MarginSmall, nullptr, &Column);
-	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
-
-	// ***** Bloque: Keystrokes Separado (Teclado + Mouse) ***** //
+	// ***** Bloque: Keystrokes (Teclado + Mouse) ***** //
 	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 	s_SectionBoxesAc.push_back(Column);
 	Column.HSplitTop(HeadlineHeight, &Label, &Column);
@@ -5169,31 +4992,43 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		g_Config.m_AcKeystrokesKeyboardPreset = std::clamp(g_Config.m_AcKeystrokesKeyboardPreset, 0, 2);
 		static CButtonContainer s_KbPresetMin, s_KbPresetFull, s_KbPresetMicro;
 		if(DoButton_Menu(&s_KbPresetMin, "Minimal", g_Config.m_AcKeystrokesKeyboardPreset == 0, &BtnMin, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+		{
 			g_Config.m_AcKeystrokesKeyboardPreset = 0;
+			HudLayout::ResetPosition(HudLayout::MODULE_KEYSTROKES_MOUSE);
+		}
 		if(DoButton_Menu(&s_KbPresetFull, "Full", g_Config.m_AcKeystrokesKeyboardPreset == 1, &BtnFull, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_NONE))
+		{
 			g_Config.m_AcKeystrokesKeyboardPreset = 1;
+			HudLayout::ResetPosition(HudLayout::MODULE_KEYSTROKES_MOUSE);
+		}
 		if(DoButton_Menu(&s_KbPresetMicro, "Micro", g_Config.m_AcKeystrokesKeyboardPreset == 2, &BtnMicro, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+		{
 			g_Config.m_AcKeystrokesKeyboardPreset = 2;
+			HudLayout::ResetPosition(HudLayout::MODULE_KEYSTROKES_MOUSE);
+		}
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 	}
 
-	if(DoCheckboxWithHelp(&g_Config.m_AcKeystrokesMouse, TCLocalize("Mostrar Mouse (HUD)"), TCLocalize("Muestra el modulo independiente de mouse, movible en el Editor de HUD."), &g_Config.m_AcKeystrokesMouse, &Column, LineSize))
-		HudLayout::SetEnabled(HudLayout::MODULE_KEYSTROKES_MOUSE, g_Config.m_AcKeystrokesMouse != 0);
-	if(g_Config.m_AcKeystrokesMouse)
+	if(g_Config.m_AcKeystrokesStyle == 0)
 	{
-		CUIRect MsRow, BtnArrow, BtnDot, BtnClean;
-		Column.HSplitTop(LineSize, &MsRow, &Column);
-		MsRow.VSplitLeft(MsRow.w / 3.0f, &BtnArrow, &MsRow);
-		MsRow.VSplitMid(&BtnDot, &BtnClean);
-		g_Config.m_AcKeystrokesMousePreset = std::clamp(g_Config.m_AcKeystrokesMousePreset, 1, 3);
-		static CButtonContainer s_MsPresetArrow, s_MsPresetDot, s_MsPresetClean;
-		if(DoButton_Menu(&s_MsPresetArrow, "Arrow", g_Config.m_AcKeystrokesMousePreset == 1, &BtnArrow, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
-			g_Config.m_AcKeystrokesMousePreset = 1;
-		if(DoButton_Menu(&s_MsPresetDot, "Dot", g_Config.m_AcKeystrokesMousePreset == 2, &BtnDot, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_NONE))
-			g_Config.m_AcKeystrokesMousePreset = 2;
-		if(DoButton_Menu(&s_MsPresetClean, "Simple", g_Config.m_AcKeystrokesMousePreset == 3, &BtnClean, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
-			g_Config.m_AcKeystrokesMousePreset = 3;
-		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		if(DoCheckboxWithHelp(&g_Config.m_AcKeystrokesMouse, TCLocalize("Mostrar Mouse (HUD)"), TCLocalize("Muestra el modulo independiente de mouse, movible en el Editor de HUD."), &g_Config.m_AcKeystrokesMouse, &Column, LineSize))
+			HudLayout::SetEnabled(HudLayout::MODULE_KEYSTROKES_MOUSE, g_Config.m_AcKeystrokesMouse != 0);
+		if(g_Config.m_AcKeystrokesMouse)
+		{
+			CUIRect MsRow, BtnArrow, BtnDot, BtnClean;
+			Column.HSplitTop(LineSize, &MsRow, &Column);
+			MsRow.VSplitLeft(MsRow.w / 3.0f, &BtnArrow, &MsRow);
+			MsRow.VSplitMid(&BtnDot, &BtnClean);
+			g_Config.m_AcKeystrokesMousePreset = std::clamp(g_Config.m_AcKeystrokesMousePreset, 1, 3);
+			static CButtonContainer s_MsPresetArrow, s_MsPresetDot, s_MsPresetClean;
+			if(DoButton_Menu(&s_MsPresetArrow, "Arrow", g_Config.m_AcKeystrokesMousePreset == 1, &BtnArrow, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+				g_Config.m_AcKeystrokesMousePreset = 1;
+			if(DoButton_Menu(&s_MsPresetDot, "Dot", g_Config.m_AcKeystrokesMousePreset == 2, &BtnDot, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_NONE))
+				g_Config.m_AcKeystrokesMousePreset = 2;
+			if(DoButton_Menu(&s_MsPresetClean, "Simple", g_Config.m_AcKeystrokesMousePreset == 3, &BtnClean, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+				g_Config.m_AcKeystrokesMousePreset = 3;
+			Column.HSplitTop(MarginSmall, nullptr, &Column);
+		}
 	}
 
 	if(g_Config.m_AcKeystrokesStyle == 1)
@@ -5670,6 +5505,74 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 
 	TextRender()->SetRenderFlags(0);
 	TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
+
+	// ***** FPS Booster / Optimizer ***** //
+	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	s_SectionBoxesAc.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("FPS Booster & Optimizer"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	DoCheckboxWithHelp(&g_Config.m_AcOptimizer, TCLocalize("Enable FPS Booster / Optimizer"), TCLocalize("Master switch that boosts framerates and reduces stuttering by trimming decorative graphics and background overhead."), &g_Config.m_AcOptimizer, &Column, LineSize);
+
+	static CButtonContainer s_ReaderButtonOptimizer, s_ClearButtonOptimizer;
+	DoLine_KeyReader(Column, s_ReaderButtonOptimizer, s_ClearButtonOptimizer, TCLocalize("Toggle Optimizer key"), "ac_optimizer_toggle");
+
+	DoCheckboxWithHelp(&g_Config.m_AcOptimizerDisableParticles, TCLocalize("Disable particles"), TCLocalize("Stops updating and drawing all particles (smoke, explosions, weapon trails, freeze stars) to maximize GPU/CPU efficiency."), &g_Config.m_AcOptimizerDisableParticles, &Column, LineSize);
+	DoCheckboxWithHelp(&g_Config.m_AcOptimizerDisableQuads, TCLocalize("Disable map quads (clouds & decorations)"), TCLocalize("Skips heavy decorative map quads like animated background clouds, dynamic lights, and mapper visual effects."), &g_Config.m_AcOptimizerDisableQuads, &Column, LineSize);
+	DoCheckboxWithHelp(&g_Config.m_AcOptimizerDisableHighDetail, TCLocalize("Disable high detail layers"), TCLocalize("Automatically forces off high detail layers while optimizer is active, restoring your setting when disabled."), &g_Config.m_AcOptimizerDisableHighDetail, &Column, LineSize);
+
+	DoCheckboxWithHelp(&g_Config.m_AcOptimizerFpsFog, TCLocalize("Limit FOV rendering (FPS Fog)"), TCLocalize("Limits map tiles, player hooks, tees and nameplates to a focused radius around the camera, culling off-screen and distant elements."), &g_Config.m_AcOptimizerFpsFog, &Column, LineSize);
+
+	if(g_Config.m_AcOptimizerFpsFog)
+	{
+		Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		{
+			static CButtonContainer s_aFogModeButtons[2];
+			static const char *s_apFogModeNames[2] = {"Radio Fijo (Tiles)", "Dinamico (% Zoom)"};
+			CUIRect LeftBtn, RightBtn;
+			Button.VSplitMid(&LeftBtn, &RightBtn, 2.0f);
+			if(DoButton_Menu(&s_aFogModeButtons[0], TCLocalize(s_apFogModeNames[0]), g_Config.m_AcOptimizerFpsFogMode == 0, &LeftBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+				g_Config.m_AcOptimizerFpsFogMode = 0;
+			if(DoButton_Menu(&s_aFogModeButtons[1], TCLocalize(s_apFogModeNames[1]), g_Config.m_AcOptimizerFpsFogMode == 1, &RightBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+				g_Config.m_AcOptimizerFpsFogMode = 1;
+		}
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+		if(g_Config.m_AcOptimizerFpsFogMode == 1)
+		{
+			Column.HSplitTop(LineSize, &Button, &Column);
+			Ui()->DoScrollbarOption(&g_Config.m_AcOptimizerFpsFogZoomPercent, &g_Config.m_AcOptimizerFpsFogZoomPercent, &Button, TCLocalize("FPS Fog Zoom Area"), 20, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
+		}
+		else
+		{
+			Column.HSplitTop(LineSize, &Button, &Column);
+			Ui()->DoScrollbarOption(&g_Config.m_AcOptimizerFpsFogRadiusTiles, &g_Config.m_AcOptimizerFpsFogRadiusTiles, &Button, TCLocalize("FPS Fog Radius"), 10, 120, &CUi::ms_LinearScrollbarScale, 0, " tiles");
+		}
+
+		DoCheckboxWithHelp(&g_Config.m_AcOptimizerFpsFogCullMapTiles, TCLocalize("Cull map tiles outside radius"), TCLocalize("Drastically reduces tile vertices and draw operations outside the focused view area."), &g_Config.m_AcOptimizerFpsFogCullMapTiles, &Column, LineSize);
+
+		Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		{
+			CUIRect LabelRect, ToggleRect, OffBtn, OnBtn;
+			Button.VSplitRight(120.0f, &LabelRect, &ToggleRect);
+			Ui()->DoLabel(&LabelRect, TCLocalize("Mostrar bordes del FPS Fog"), FontSize, TEXTALIGN_ML);
+			ToggleRect.VSplitMid(&OffBtn, &OnBtn, 2.0f);
+			static CButtonContainer s_aFogBorderBtns[2];
+			if(DoButton_Menu(&s_aFogBorderBtns[0], "OFF", g_Config.m_AcOptimizerFpsFogRenderRect == 0, &OffBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+				g_Config.m_AcOptimizerFpsFogRenderRect = 0;
+			if(DoButton_Menu(&s_aFogBorderBtns[1], "ON", g_Config.m_AcOptimizerFpsFogRenderRect == 1, &OnBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+				g_Config.m_AcOptimizerFpsFogRenderRect = 1;
+		}
+	}
+
+	DoCheckboxWithHelp(&g_Config.m_AcOptimizerHighPriority, TCLocalize("High process priority (Windows)"), TCLocalize("Automatically assigns High priority to DDNet in Windows to reduce background process micro-stutters."), &g_Config.m_AcOptimizerHighPriority, &Column, LineSize);
+	DoCheckboxWithHelp(&g_Config.m_AcOptimizerDiscordNormalPriority, TCLocalize("Discord normal priority (Windows)"), TCLocalize("Keeps Discord processes at Normal priority in Windows so Discord does not compete with DDNet for CPU."), &g_Config.m_AcOptimizerDiscordNormalPriority, &Column, LineSize);
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;

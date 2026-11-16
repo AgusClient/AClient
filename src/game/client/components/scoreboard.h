@@ -67,6 +67,10 @@ class CScoreboard : public CComponent
 
 		CButtonContainer m_SpectateButton;
 		CButtonContainer m_StealSkinButton;
+		CButtonContainer m_CopyGameSkinButton;
+		CButtonContainer m_HideGameSkinButton;
+		CButtonContainer m_CopyEntitiesButton;
+		CButtonContainer m_HideEntitiesButton;
 		CButtonContainer m_ProfileButton;
 		CButtonContainer m_ProfileWebDDNetButton;
 		CButtonContainer m_ProfileWebKoGButton;

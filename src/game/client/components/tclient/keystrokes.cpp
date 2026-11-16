@@ -1,5 +1,6 @@
-/* Copyright © 2026 BestProject Team */
+/* Copyright Â© 2026 BestProject Team */
 #include "keystrokes.h"
+#include "keystrokes_assets.inl"
 
 #include <base/log.h>
 #include <base/math.h>
@@ -619,25 +620,25 @@ namespace
 		return s_CachedLayout;
 	}
 
-	void DrawKeystrokesMcKey(IGraphics *pGraphics, ITextRender *pTextRender, float X, float Y, float W, float H, bool Active, const char *pLabel, float AlphaFactor)
+	void DrawKeystrokesMcKey(IGraphics *pGraphics, ITextRender *pTextRender, float X, float Y, float W, float H, bool Active, const char *pLabel)
 	{
-		if(W <= 0.0f || H <= 0.0f || AlphaFactor <= 0.0f)
+		if(W <= 0.0f || H <= 0.0f)
 			return;
 
 		const float PressedOpacity = std::clamp(g_Config.m_AcKeystrokesMcPressedOpacity * 0.01f, 0.0f, 1.0f);
-		const ColorRGBA Bg = Active ? ColorRGBA(1.0f, 1.0f, 1.0f, PressedOpacity * AlphaFactor) : ColorRGBA(0.0f, 0.0f, 0.0f, 0.55f * AlphaFactor);
+		const ColorRGBA Bg = Active ? ColorRGBA(1.0f, 1.0f, 1.0f, PressedOpacity) : ColorRGBA(0.0f, 0.0f, 0.0f, 0.55f);
 		pGraphics->DrawRect(X, Y, W, H, Bg, IGraphics::CORNER_NONE, 0.0f);
 
 		if(pLabel == nullptr)
 		{
-			const ColorRGBA LineColor = Active ? ColorRGBA(0.0f, 0.0f, 0.0f, 0.85f * AlphaFactor) : ColorRGBA(1.0f, 1.0f, 1.0f, 0.9f * AlphaFactor);
+			const ColorRGBA LineColor = Active ? ColorRGBA(0.0f, 0.0f, 0.0f, 0.85f) : ColorRGBA(1.0f, 1.0f, 1.0f, 0.9f);
 			const float LineW = W * 0.35f;
 			const float LineH = std::max(2.0f, H * 0.08f);
 			pGraphics->DrawRect(X + (W - LineW) * 0.5f, Y + (H - LineH) * 0.5f, LineW, LineH, LineColor, IGraphics::CORNER_NONE, 0.0f);
 			return;
 		}
 
-		const ColorRGBA TextColor = Active ? ColorRGBA(0.0f, 0.0f, 0.0f, AlphaFactor) : ColorRGBA(1.0f, 1.0f, 1.0f, AlphaFactor);
+		const ColorRGBA TextColor = Active ? ColorRGBA(0.0f, 0.0f, 0.0f, 1.0f) : ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
 		const float FontSize = H * (str_length(pLabel) > 1 ? 0.32f : 0.45f);
 		pTextRender->TextColor(TextColor);
 		const float TextW = pTextRender->TextWidth(FontSize, pLabel, -1, -1.0f);
@@ -673,51 +674,6 @@ namespace
 		IGraphics::CQuadItem Quad(X + W * 0.5f, Y + H * 0.5f, W, H);
 		pGraphics->QuadsDraw(&Quad, 1);
 	}
-
-	void DrawMouseProceduralFallback(IGraphics *pGraphics, ITextRender *pTextRender, const CUIRect &Rect, float Scale, bool LmbActive, bool RmbActive, bool MmbActive, vec2 AimOffset, float AlphaFactor)
-	{
-		if(Rect.w <= 0.0f || Rect.h <= 0.0f || AlphaFactor <= 0.0f)
-			return;
-
-		const float Rounding = std::max(2.0f, 6.0f * Scale * 10.0f);
-		const float Gap = std::max(1.0f, 6.0f * Scale);
-		const float TopH = Rect.h * 0.42f;
-		const float BodyH = Rect.h - TopH - Gap;
-		const float BtnW = (Rect.w - Gap) * 0.5f;
-
-		const ColorRGBA BodyBg(0.06f, 0.08f, 0.12f, 0.65f * AlphaFactor);
-		const ColorRGBA LmbBg = LmbActive ? ColorRGBA(1.0f, 1.0f, 1.0f, 0.90f * AlphaFactor) : BodyBg;
-		const ColorRGBA RmbBg = RmbActive ? ColorRGBA(1.0f, 1.0f, 1.0f, 0.90f * AlphaFactor) : BodyBg;
-		const ColorRGBA MmbBg = MmbActive ? ColorRGBA(1.0f, 1.0f, 1.0f, 0.95f * AlphaFactor) : ColorRGBA(0.35f, 0.38f, 0.45f, 0.85f * AlphaFactor);
-
-		pGraphics->DrawRect(Rect.x, Rect.y, BtnW, TopH, LmbBg, IGraphics::CORNER_TL, Rounding);
-		pGraphics->DrawRect(Rect.x + BtnW + Gap, Rect.y, BtnW, TopH, RmbBg, IGraphics::CORNER_TR, Rounding);
-		pGraphics->DrawRect(Rect.x, Rect.y + TopH + Gap, Rect.w, BodyH, BodyBg, IGraphics::CORNER_B, Rounding);
-
-		const float WheelW = std::max(2.0f, Rect.w * 0.14f);
-		const float WheelH = TopH * 0.48f;
-		pGraphics->DrawRect(Rect.x + (Rect.w - WheelW) * 0.5f, Rect.y + TopH * 0.24f, WheelW, WheelH, MmbBg, IGraphics::CORNER_ALL, WheelW * 0.4f);
-
-		const float LabelFontSize = std::max(4.5f, TopH * 0.34f);
-		const char *apBtnLabels[2] = {"LMB", "RMB"};
-		const bool aBtnActive[2] = {LmbActive, RmbActive};
-		for(int b = 0; b < 2; ++b)
-		{
-			const float Bx = b == 0 ? Rect.x : Rect.x + BtnW + Gap;
-			pTextRender->TextColor(aBtnActive[b] ? ColorRGBA(0.0f, 0.0f, 0.0f, AlphaFactor) : ColorRGBA(1.0f, 1.0f, 1.0f, 0.9f * AlphaFactor));
-			const float Tw = pTextRender->TextWidth(LabelFontSize, apBtnLabels[b], -1, -1.0f);
-			pTextRender->Text(Bx + (BtnW - Tw) * 0.5f, Rect.y + (TopH - LabelFontSize) * 0.5f, LabelFontSize, apBtnLabels[b]);
-		}
-		pTextRender->TextColor(pTextRender->DefaultTextColor());
-
-		const float BodyCenterX = Rect.x + Rect.w * 0.5f;
-		const float BodyCenterY = Rect.y + TopH + Gap + BodyH * 0.5f;
-		const float MoveRange = std::min(Rect.w, BodyH) * 0.30f;
-		const float DotSize = std::max(2.5f, std::min(Rect.w, BodyH) * 0.14f);
-		const float DotX = BodyCenterX + AimOffset.x * MoveRange - DotSize * 0.5f;
-		const float DotY = BodyCenterY + AimOffset.y * MoveRange - DotSize * 0.5f;
-		pGraphics->DrawRect(DotX, DotY, DotSize, DotSize, ColorRGBA(1.0f, 1.0f, 1.0f, 0.95f * AlphaFactor), IGraphics::CORNER_ALL, DotSize * 0.5f);
-	}
 } // namespace
 
 float GetKeystrokesKeyboardPresetWidthHudPx(int Preset)
@@ -730,12 +686,27 @@ float GetKeystrokesKeyboardPresetWidthHudPx(int Preset)
 void CKeystrokes::OnInit()
 {
 	OnReset();
+	auto LoadEmbeddedPng = [&](const uint8_t *pData, size_t DataSize, const char *pName) -> IGraphics::CTextureHandle {
+		CImageInfo Image;
+		if(Graphics()->LoadPng(Image, pData, DataSize, pName))
+		{
+			return Graphics()->LoadTextureRawMove(Image, 0, pName);
+		}
+		return IGraphics::CTextureHandle();
+	};
+
 	m_KeyboardTexture = Graphics()->LoadTexture("AClient/keystrokes/wasd.png", IStorage::TYPE_ALL);
 	if(m_KeyboardTexture.IsNullTexture())
-		m_KeyboardTexture = Graphics()->LoadTexture("../data/AClient/keystrokes/wasd.png", IStorage::TYPE_ALL);
+		m_KeyboardTexture = Graphics()->LoadTexture("BestClient/keystrokes/wasd.png", IStorage::TYPE_ALL);
+	if(m_KeyboardTexture.IsNullTexture())
+		m_KeyboardTexture = LoadEmbeddedPng(s_aDefaultWasdPng, sizeof(s_aDefaultWasdPng), "AClient/keystrokes/wasd.png");
+
 	m_MouseTexture = Graphics()->LoadTexture("AClient/keystrokes/mouse.png", IStorage::TYPE_ALL);
 	if(m_MouseTexture.IsNullTexture())
-		m_MouseTexture = Graphics()->LoadTexture("../data/AClient/keystrokes/mouse.png", IStorage::TYPE_ALL);
+		m_MouseTexture = Graphics()->LoadTexture("BestClient/keystrokes/mouse.png", IStorage::TYPE_ALL);
+	if(m_MouseTexture.IsNullTexture())
+		m_MouseTexture = LoadEmbeddedPng(s_aDefaultMousePng, sizeof(s_aDefaultMousePng), "AClient/keystrokes/mouse.png");
+
 	if(m_KeyboardTexture.IsNullTexture())
 		log_warn("keystrokes", "Failed to load keyboard keystrokes texture");
 	if(m_MouseTexture.IsNullTexture())
@@ -789,7 +760,7 @@ CUIRect CKeystrokes::GetKeyboardRectInternal(bool IgnoreModuleEnabled) const
 	float OverlayHeight;
 	if(IsKeystrokesMinecraftStyle())
 	{
-		const auto &McLayout = GetCachedKeystrokesMcLayout(GameClient() ? &GameClient()->m_Binds : nullptr);
+		const auto &McLayout = GetCachedKeystrokesMcLayout(&GameClient()->m_Binds);
 		OverlayWidth = McLayout.m_OverlayWidth;
 		OverlayHeight = McLayout.m_OverlayHeight;
 	}
@@ -806,6 +777,8 @@ CUIRect CKeystrokes::GetKeyboardRectInternal(bool IgnoreModuleEnabled) const
 
 CUIRect CKeystrokes::GetMouseRectInternal(bool IgnoreModuleEnabled) const
 {
+	if(IsKeystrokesMinecraftStyle())
+		return {};
 	if(!IgnoreModuleEnabled && (!HudLayout::IsEnabled(HudLayout::MODULE_KEYSTROKES_MOUSE) || g_Config.m_AcKeystrokesMouse == 0))
 		return {};
 
@@ -890,10 +863,6 @@ void CKeystrokes::RenderKeyboardInternal(bool ForcePreview, bool IgnoreModuleEna
 								 &GameClient()->m_Snap.m_aCharacters[TrackedClientId].m_Prev :
 								 nullptr;
 
-	const float Alpha = HudLayout::AlphaFactor(HudLayout::MODULE_KEYSTROKES_KEYBOARD);
-	if(Alpha <= 0.0f)
-		return;
-
 	if(IsKeystrokesMinecraftStyle())
 	{
 		const int64_t Now = time_get();
@@ -924,8 +893,7 @@ void CKeystrokes::RenderKeyboardInternal(bool ForcePreview, bool IgnoreModuleEna
 				Key.m_W * Scale,
 				Key.m_H * Scale,
 				Active,
-				Key.m_ShowLabel ? Key.m_aLabel : nullptr,
-				Alpha);
+				Key.m_ShowLabel ? Key.m_aLabel : nullptr);
 		}
 		return;
 	}
@@ -934,7 +902,6 @@ void CKeystrokes::RenderKeyboardInternal(bool ForcePreview, bool IgnoreModuleEna
 		return;
 
 	const auto &Preset = GetKeystrokesKeyboardPreset(g_Config.m_AcKeystrokesKeyboardPreset);
-	const ColorRGBA SpriteColor(1.0f, 1.0f, 1.0f, Alpha);
 	Graphics()->TextureSet(m_KeyboardTexture);
 	Graphics()->QuadsBegin();
 	for(int i = 0; i < Preset.m_NumElements; ++i)
@@ -964,8 +931,7 @@ void CKeystrokes::RenderKeyboardInternal(bool ForcePreview, bool IgnoreModuleEna
 			Rect.x + Element.m_PosX * Scale,
 			Rect.y + Element.m_PosY * Scale,
 			Element.m_MapW * Scale,
-			Element.m_MapH * Scale,
-			SpriteColor);
+			Element.m_MapH * Scale);
 	}
 	Graphics()->QuadsSetRotation(0.0f);
 	Graphics()->QuadsEnd();
@@ -973,12 +939,11 @@ void CKeystrokes::RenderKeyboardInternal(bool ForcePreview, bool IgnoreModuleEna
 
 void CKeystrokes::RenderMouseInternal(bool ForcePreview, bool IgnoreModuleEnabled)
 {
-	const CUIRect Rect = GetMouseRectInternal(IgnoreModuleEnabled);
-	if(Rect.w <= 0.0f || Rect.h <= 0.0f)
+	if(IsKeystrokesMinecraftStyle())
 		return;
 
-	const float Alpha = HudLayout::AlphaFactor(HudLayout::MODULE_KEYSTROKES_MOUSE);
-	if(Alpha <= 0.0f)
+	const CUIRect Rect = GetMouseRectInternal(IgnoreModuleEnabled);
+	if(Rect.w <= 0.0f || Rect.h <= 0.0f)
 		return;
 
 	const float HudHeight = HudLayout::CANVAS_HEIGHT;
@@ -1036,28 +1001,9 @@ void CKeystrokes::RenderMouseInternal(bool ForcePreview, bool IgnoreModuleEnable
 		}
 	}
 
-	auto IsMouseBtnActive = [&](int MouseButton) {
-		if(ForcePreview)
-			return false;
-		if(HasTrackedPlayer)
-		{
-			return pTrackedInput != nullptr ?
-				       IsKeystrokesMouseButtonPressed(pTrackedInput, MouseButton) :
-				       IsKeystrokesMouseButtonPressedFromCharacter(pPrevTrackedCharacter, pTrackedCharacter, MouseButton, Now, m_Mouse1EndTime);
-		}
-		return IsKeystrokesMouseButtonPressed(Input(), MouseButton);
-	};
-
 	if(!m_MouseTexture.IsValid() || m_MouseTexture.IsNullTexture())
-	{
-		const bool LmbActive = IsMouseBtnActive(1);
-		const bool RmbActive = IsMouseBtnActive(2);
-		const bool MmbActive = IsMouseBtnActive(3) || IsKeystrokesWheelActive(0, Now, m_WheelUpEndTime, m_WheelDownEndTime);
-		DrawMouseProceduralFallback(Graphics(), TextRender(), Rect, Scale, LmbActive, RmbActive, MmbActive, AimOffset, Alpha);
 		return;
-	}
 
-	const ColorRGBA SpriteColor(1.0f, 1.0f, 1.0f, Alpha);
 	Graphics()->TextureSet(m_MouseTexture);
 	Graphics()->QuadsBegin();
 	for(int i = 0; i < Preset.m_NumElements; ++i)
@@ -1077,7 +1023,11 @@ void CKeystrokes::RenderMouseInternal(bool ForcePreview, bool IgnoreModuleEnable
 								  IsKeystrokesPressed(Input(), Element.m_KeyPrimary, Element.m_KeySecondary));
 			break;
 		case EKeystrokesInputKind::MOUSE_BUTTON:
-			Active = IsMouseBtnActive(Element.m_MouseButton);
+			Active = !ForcePreview && (HasTrackedPlayer ?
+								  (pTrackedInput != nullptr ?
+										  IsKeystrokesMouseButtonPressed(pTrackedInput, Element.m_MouseButton) :
+										  IsKeystrokesMouseButtonPressedFromCharacter(pPrevTrackedCharacter, pTrackedCharacter, Element.m_MouseButton, Now, m_Mouse1EndTime)) :
+								  IsKeystrokesMouseButtonPressed(Input(), Element.m_MouseButton));
 			break;
 		case EKeystrokesInputKind::WHEEL:
 			Active = !ForcePreview && IsKeystrokesWheelActive(Element.m_WheelDir, Now, m_WheelUpEndTime, m_WheelDownEndTime);
@@ -1124,7 +1074,7 @@ void CKeystrokes::RenderMouseInternal(bool ForcePreview, bool IgnoreModuleEnable
 			Y + Offset.y,
 			Element.m_MapW * Scale,
 			Element.m_MapH * Scale,
-			SpriteColor,
+			ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f),
 			Rotation);
 	}
 	Graphics()->QuadsSetRotation(0.0f);

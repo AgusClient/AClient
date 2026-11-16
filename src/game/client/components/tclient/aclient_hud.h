@@ -12,9 +12,7 @@ public:
 	void OnRender() override;
 
 private:
-	void RenderKeystrokes();
 	void RenderSpeedometer();
-	void DrawKey(float X, float Y, float W, float H, float Rounding, bool Active, const char *pLabel, float Alpha);
 };
 
 #endif

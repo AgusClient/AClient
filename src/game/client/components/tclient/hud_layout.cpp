@@ -10,6 +10,8 @@
 #include <algorithm>
 #include <cstring>
 
+float GetKeystrokesKeyboardPresetWidthHudPx(int Preset);
+
 namespace HudLayout
 {
 
@@ -29,7 +31,6 @@ static const SModuleMeta gs_aModuleMeta[MODULE_COUNT] = {
 	{"chat", "Chat", true, true},
 	{"votes", "Votes", true, true},
 	{"mini_statboard", "RaceStats Overlay", true, true},
-	{"keystrokes", "Keystrokes", true, true},
 	{"speedometer", "Speedometer", true, true},
 	{"spectator_count", "Spectator Count", true, true},
 	{"dummy_actions", "Dummy Actions", true, true},
@@ -47,7 +48,6 @@ static const SModuleLayout gs_aDefaultLayouts[MODULE_COUNT] = {
 	{5.0f, 220.0f, 100, 0, true, false, 0x66000000U, 100},   // MODULE_CHAT
 	{0.0f, 60.0f, 100, 0, true, true, 0x66000000U, 100},     // MODULE_VOTES
 	{370.0f, 120.0f, 70, 0, true, true, 0x99000000U, 100},   // MODULE_MINI_STATBOARD
-	{15.0f, 210.0f, 100, 0, true, true, 0x88000000U, 85},    // MODULE_KEYSTROKES
 	{212.0f, 260.0f, 100, 0, true, true, 0x88000000U, 85},   // MODULE_SPEEDOMETER
 	{460.0f, 141.0f, 100, 0, true, true, 0x66000000U, 100},  // MODULE_SPECTATOR_COUNT
 	{484.0f, 172.0f, 100, 0, true, true, 0x66000000U, 100},  // MODULE_DUMMY_ACTIONS
@@ -74,11 +74,6 @@ void SyncModuleToConfig(EModule Module)
 		g_Config.m_AcMiniStatboard = Layout.m_Enabled ? 1 : 0;
 		g_Config.m_AcMiniStatboardScale = std::clamp(Layout.m_Scale, 20, 200);
 		g_Config.m_AcMiniStatboardOpacity = std::clamp(Layout.m_Alpha, 0, 100);
-		break;
-	case MODULE_KEYSTROKES:
-		g_Config.m_AcHudKeystrokes = Layout.m_Enabled ? 1 : 0;
-		g_Config.m_AcHudKeystrokesScale = std::clamp(Layout.m_Scale, 50, 200);
-		g_Config.m_AcHudKeystrokesAlpha = std::clamp(Layout.m_Alpha, 20, 100);
 		break;
 	case MODULE_SPEEDOMETER:
 		g_Config.m_AcHudSpeedometer = Layout.m_Enabled ? 1 : 0;
@@ -237,6 +232,14 @@ SModuleLayout Get(EModule Module, float HudWidth, float HudHeight)
 	{
 		Layout.m_X = (g_Config.m_TcNotifyWhenLastX / 100.0f) * HudWidth;
 		Layout.m_Y = (g_Config.m_TcNotifyWhenLastY / 100.0f) * HudHeight;
+		return Layout;
+	}
+	if(Module == MODULE_KEYSTROKES_MOUSE && !gs_aHasPositionOverride[MODULE_KEYSTROKES_MOUSE])
+	{
+		if(!gs_aHasRuntimeOverride[MODULE_KEYSTROKES_KEYBOARD])
+			Layout.m_X = GetKeystrokesKeyboardPresetWidthHudPx(g_Config.m_AcKeystrokesKeyboardPreset) + 5.0f;
+		else
+			Layout.m_X = CanvasXToHud(Layout.m_X, HudWidth);
 		return Layout;
 	}
 	// Si tiene posición específica calculada en lienzo, mapear X proporcionalmente al ancho de pantalla

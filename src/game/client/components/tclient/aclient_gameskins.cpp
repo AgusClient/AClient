@@ -183,6 +183,176 @@ void CAClientGameSkins::ToggleGameSkinBlacklist(const char *pName)
 	SetGameSkinBlacklisted(pName, !IsGameSkinBlacklisted(pName));
 }
 
+void CAClientGameSkins::EnsureEntitiesBlacklistLoaded()
+{
+	if(m_EntitiesBlacklistLoaded)
+		return;
+	m_EntitiesBlacklistLoaded = true;
+	m_sBlacklistedEntities.clear();
+	if(!Storage())
+		return;
+	IOHANDLE File = Storage()->OpenFile("entities_blacklist.txt", IOFLAG_READ, IStorage::TYPE_ALL);
+	if(!File)
+		return;
+	CLineReader LineReader;
+	if(LineReader.OpenFile(File))
+	{
+		while(const char *pLine = LineReader.Get())
+		{
+			if(!pLine || pLine[0] == '\0' || pLine[0] == '#')
+				continue;
+			char aName[128];
+			str_copy(aName, pLine);
+			str_clean_whitespaces(aName);
+			if(aName[0] != '\0')
+				m_sBlacklistedEntities.insert(aName);
+		}
+	}
+}
+
+void CAClientGameSkins::SaveEntitiesBlacklist()
+{
+	if(!Storage())
+		return;
+	IOHANDLE File = Storage()->OpenFile("entities_blacklist.txt", IOFLAG_WRITE, IStorage::TYPE_SAVE);
+	if(!File)
+		return;
+	for(const auto &Name : m_sBlacklistedEntities)
+	{
+		io_write(File, Name.c_str(), Name.length());
+		io_write_newline(File);
+	}
+	io_close(File);
+}
+
+bool CAClientGameSkins::IsEntitiesBlacklisted(const char *pName) const
+{
+	if(!pName || !pName[0])
+		return false;
+	const_cast<CAClientGameSkins *>(this)->EnsureEntitiesBlacklistLoaded();
+	return m_sBlacklistedEntities.find(pName) != m_sBlacklistedEntities.end();
+}
+
+void CAClientGameSkins::SetEntitiesBlacklisted(const char *pName, bool Blacklist)
+{
+	if(!pName || !pName[0] || str_comp(pName, "default") == 0)
+		return;
+
+	EnsureEntitiesBlacklistLoaded();
+
+	if(Blacklist)
+	{
+		m_sBlacklistedEntities.insert(pName);
+		auto it = m_mLoadedEntitiesTextures.find(pName);
+		if(it != m_mLoadedEntitiesTextures.end())
+		{
+			Graphics()->UnloadTexture(&it->second);
+			m_mLoadedEntitiesTextures.erase(it);
+		}
+	}
+	else
+	{
+		m_sBlacklistedEntities.erase(pName);
+	}
+
+	SaveEntitiesBlacklist();
+	UpdateAllPlayerSkins();
+
+	if(Blacklist && str_comp(g_Config.m_ClAssetsEntities, pName) == 0)
+	{
+		str_copy(g_Config.m_ClAssetsEntities, "default");
+		GameClient()->m_MapImages.ChangeEntitiesPath(g_Config.m_ClAssetsEntities);
+	}
+}
+
+void CAClientGameSkins::ToggleEntitiesBlacklist(const char *pName)
+{
+	EnsureEntitiesBlacklistLoaded();
+	SetEntitiesBlacklisted(pName, !IsEntitiesBlacklisted(pName));
+}
+
+const char *CAClientGameSkins::GetPlayerGameSkinName(int ClientId) const
+{
+	if(ClientId < 0 || ClientId >= MAX_CLIENTS)
+		return nullptr;
+	const auto &ClientData = GameClient()->m_aClients[ClientId];
+	if(ClientData.m_aCustomGameSkinName[0] != '\0' && str_comp(ClientData.m_aCustomGameSkinName, "default") != 0)
+		return ClientData.m_aCustomGameSkinName;
+	auto it = m_mRemotePlayerGameSkins.find(ClientData.m_aName);
+	if(it == m_mRemotePlayerGameSkins.end())
+	{
+		char aTrimmed[MAX_NAME_LENGTH];
+		TrimPlayerName(ClientData.m_aName, aTrimmed, sizeof(aTrimmed));
+		if(aTrimmed[0] != '\0')
+			it = m_mRemotePlayerGameSkins.find(aTrimmed);
+	}
+	if(it != m_mRemotePlayerGameSkins.end() && !it->second.empty() && str_comp(it->second.c_str(), "default") != 0)
+		return it->second.c_str();
+	return nullptr;
+}
+
+const char *CAClientGameSkins::GetPlayerEntitiesName(int ClientId) const
+{
+	if(ClientId < 0 || ClientId >= MAX_CLIENTS)
+		return nullptr;
+	const auto &ClientData = GameClient()->m_aClients[ClientId];
+	if(ClientData.m_aCustomEntitiesName[0] != '\0' && str_comp(ClientData.m_aCustomEntitiesName, "default") != 0)
+		return ClientData.m_aCustomEntitiesName;
+	auto it = m_mRemotePlayerEntities.find(ClientData.m_aName);
+	if(it == m_mRemotePlayerEntities.end())
+	{
+		char aTrimmed[MAX_NAME_LENGTH];
+		TrimPlayerName(ClientData.m_aName, aTrimmed, sizeof(aTrimmed));
+		if(aTrimmed[0] != '\0')
+			it = m_mRemotePlayerEntities.find(aTrimmed);
+	}
+	if(it != m_mRemotePlayerEntities.end() && !it->second.empty() && str_comp(it->second.c_str(), "default") != 0)
+		return it->second.c_str();
+	return nullptr;
+}
+
+bool CAClientGameSkins::CopyPlayerGameSkin(int ClientId)
+{
+	const char *pSkinName = GetPlayerGameSkinName(ClientId);
+	if(!pSkinName || !pSkinName[0])
+	{
+		GameClient()->Echo("[AClient] Este jugador no tiene un gameskin personalizado activo.");
+		return false;
+	}
+	if(IsGameSkinBlacklisted(pSkinName))
+		SetGameSkinBlacklisted(pSkinName, false);
+	GetOrLoadGameSkin(pSkinName);
+	str_copy(g_Config.m_ClAssetGame, pSkinName);
+	GameClient()->LoadGameSkin(g_Config.m_ClAssetGame);
+	UpdateAllPlayerSkins();
+	RefreshPresence(true);
+	char aBuf[192];
+	str_format(aBuf, sizeof(aBuf), "[AClient] Gameskin copiado: %s", pSkinName);
+	GameClient()->Echo(aBuf);
+	return true;
+}
+
+bool CAClientGameSkins::CopyPlayerEntities(int ClientId)
+{
+	const char *pEntitiesName = GetPlayerEntitiesName(ClientId);
+	if(!pEntitiesName || !pEntitiesName[0])
+	{
+		GameClient()->Echo("[AClient] Este jugador no tiene entities personalizadas activas.");
+		return false;
+	}
+	if(IsEntitiesBlacklisted(pEntitiesName))
+		SetEntitiesBlacklisted(pEntitiesName, false);
+	GetOrLoadEntitiesTexture(pEntitiesName);
+	str_copy(g_Config.m_ClAssetsEntities, pEntitiesName);
+	GameClient()->m_MapImages.ChangeEntitiesPath(g_Config.m_ClAssetsEntities);
+	UpdateAllPlayerSkins();
+	RefreshPresence(true);
+	char aBuf[192];
+	str_format(aBuf, sizeof(aBuf), "[AClient] Entities copiadas: %s", pEntitiesName);
+	GameClient()->Echo(aBuf);
+	return true;
+}
+
 void CAClientGameSkins::UpdateActiveSkinUsers()
 {
 	std::map<std::string, std::vector<std::string>> UsersPerSkin;
@@ -704,6 +874,9 @@ IGraphics::CTextureHandle CAClientGameSkins::GetOrLoadEntitiesTexture(const char
 	if(aCleanName[0] == '\0' || str_comp(aCleanName, "default") == 0)
 		return IGraphics::CTextureHandle();
 
+	if(IsEntitiesBlacklisted(aCleanName))
+		return IGraphics::CTextureHandle();
+
 	auto it = m_mLoadedEntitiesTextures.find(aCleanName);
 	if(it != m_mLoadedEntitiesTextures.end())
 		return it->second;
@@ -1172,7 +1345,7 @@ void CAClientGameSkins::UpdateAllPlayerSkins()
 		if(pEntitiesToLoad && pEntitiesToLoad[0] != '\0' && str_comp(pEntitiesToLoad, "default") != 0)
 		{
 			str_copy(GameClient()->m_aClients[i].m_aCustomEntitiesName, pEntitiesToLoad);
-			GameClient()->m_aClients[i].m_CustomEntitiesTexture = GetOrLoadEntitiesTexture(pEntitiesToLoad);
+			GameClient()->m_aClients[i].m_CustomEntitiesTexture = IsEntitiesBlacklisted(pEntitiesToLoad) ? IGraphics::CTextureHandle() : GetOrLoadEntitiesTexture(pEntitiesToLoad);
 		}
 		else
 		{

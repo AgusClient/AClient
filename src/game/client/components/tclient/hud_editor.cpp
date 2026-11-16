@@ -454,10 +454,6 @@ CHudEditor::SModuleVisual CHudEditor::GetModuleVisual(HudLayout::EModule Module)
 		Visual.m_Rect = CUIRect{Layout.m_X, Layout.m_Y, 130.0f * S, 55.0f * S};
 		Visual.m_Rounding = 5.0f;
 		break;
-	case HudLayout::MODULE_KEYSTROKES:
-		Visual.m_Rect = CUIRect{Layout.m_X, Layout.m_Y, 59.0f * S, 72.0f * S};
-		Visual.m_Rounding = 4.0f;
-		break;
 	case HudLayout::MODULE_KEYSTROKES_KEYBOARD:
 		Visual.m_Rect = GameClient()->m_Keystrokes.GetKeyboardHudEditorRect();
 		Visual.m_Rounding = 4.0f;
@@ -1071,6 +1067,10 @@ void CHudEditor::RenderOverlay(vec2 MousePos)
 	Graphics()->TextureClear();
 	Graphics()->DrawRect(0.0f, 0.0f, Width, Height, ColorRGBA(0.0f, 0.0f, 0.0f, 0.38f), IGraphics::CORNER_ALL, 0.0f);
 
+	GameClient()->m_Keystrokes.RenderKeyboardPreview();
+	GameClient()->m_Keystrokes.RenderMousePreview();
+	Graphics()->MapScreenToSize(Width, Height);
+
 	for(int Pass = 0; Pass < 2; ++Pass)
 	{
 		const bool RenderEditable = Pass == 1;
@@ -1135,8 +1135,6 @@ void CHudEditor::OnRender()
 
 	UpdateResetAnimation();
 	RebuildFrameVisuals();
-	GameClient()->m_Keystrokes.RenderKeyboardPreview();
-	GameClient()->m_Keystrokes.RenderMousePreview();
 
 	const vec2 WindowSize(std::max(1.0f, (float)Graphics()->WindowWidth()), std::max(1.0f, (float)Graphics()->WindowHeight()));
 	const vec2 UiMousePos = Ui()->UpdatedMousePos() * vec2(Ui()->Screen()->w, Ui()->Screen()->h) / WindowSize;

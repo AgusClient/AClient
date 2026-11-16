@@ -429,10 +429,25 @@ void CCamera::OnReset()
 	m_UserZoomTarget = CCamera::ZoomStepsToValue(g_Config.m_ClDefaultZoom - 10);
 }
 
+static bool AllowZoomStep(float Now, float &LastZoomTime)
+{
+	if(g_Config.m_AcZoomCooldownMs <= 0)
+		return true;
+	const float CooldownSeconds = g_Config.m_AcZoomCooldownMs * 0.001f;
+	if(LastZoomTime >= 0.0f && Now >= LastZoomTime && (Now - LastZoomTime) < CooldownSeconds)
+		return false;
+	LastZoomTime = Now;
+	return true;
+}
+
 void CCamera::ConZoomPlus(IConsole::IResult *pResult, void *pUserData)
 {
 	CCamera *pSelf = (CCamera *)pUserData;
 	if(!pSelf->ZoomAllowed())
+		return;
+
+	static float s_LastZoomPlusTime = -1.0f;
+	if(!AllowZoomStep(pSelf->Client()->LocalTime(), s_LastZoomPlusTime))
 		return;
 
 	float ZoomAmount = pResult->NumArguments() ? pResult->GetFloat(0) : 1.0f;
@@ -446,6 +461,10 @@ void CCamera::ConZoomMinus(IConsole::IResult *pResult, void *pUserData)
 {
 	CCamera *pSelf = (CCamera *)pUserData;
 	if(!pSelf->ZoomAllowed())
+		return;
+
+	static float s_LastZoomMinusTime = -1.0f;
+	if(!AllowZoomStep(pSelf->Client()->LocalTime(), s_LastZoomMinusTime))
 		return;
 
 	float ZoomAmount = pResult->NumArguments() ? pResult->GetFloat(0) : 1.0f;
