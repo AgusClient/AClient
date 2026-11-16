@@ -1,8 +1,8 @@
 # AClient
 
-[![Release](https://img.shields.io/github/v/release/agusx30/AClient-Dev?color=orange&logo=github)](https://github.com/agusx30/AClient-Dev/releases/latest)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20x64-blue?logo=windows)](https://github.com/agusx30/AClient-Dev/releases/latest)
-[![Authenticode](https://img.shields.io/badge/Authenticode-Signed-brightgreen?logo=windows)](https://github.com/agusx30/AClient-Dev/releases/latest)
+[![Release](https://img.shields.io/github/v/release/AgusClient/AClient?color=orange&logo=github)](https://github.com/AgusClient/AClient/releases/latest)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20x64-blue?logo=windows)](https://github.com/AgusClient/AClient/releases/latest)
+[![Authenticode](https://img.shields.io/badge/Authenticode-Signed-brightgreen?logo=windows)](https://github.com/AgusClient/AClient/releases/latest)
 [![Base DDNet](https://img.shields.io/badge/Base-DDNet%2018.x-red)](https://ddnet.org)
 [![License](https://img.shields.io/badge/License-Zlib%20%2F%20MIT-green)](license.txt)
 
@@ -235,8 +235,8 @@ Herramientas avanzadas para administradores y moderadores de servidores:
 
 ```powershell
 # 1. Clonar el repositorio
-git clone https://github.com/agusx30/AClient-Dev.git
-cd AClient-Dev
+git clone https://github.com/AgusClient/AClient.git
+cd AClient
 
 # 2. Generar el proyecto con CMake
 mkdir build
