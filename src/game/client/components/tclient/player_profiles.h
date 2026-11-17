@@ -161,6 +161,7 @@ private:
 	std::atomic<bool> m_KoGFetchRunning{false};
 	std::atomic<bool> m_KoGFetchDone{false};
 	bool m_KoGFetchSuccess = false;
+	bool m_KoGIsBackgroundFetch = false;
 	int m_KoGResultStatusCode = 0;
 	std::string m_KoGResultData;
 	std::string m_KoGFetchErrorMsg;
@@ -198,7 +199,7 @@ public:
 	const char *RequestedName() const { return m_aRequestedName; }
 
 	// KoG profile operations
-	void FetchKoGProfile(const char *pPlayerName, bool ForceRefresh = false);
+	void FetchKoGProfile(const char *pPlayerName, bool ForceRefresh = false, bool BackgroundTeam = false);
 	void AbortKoGFetch();
 	bool LoadKoGFromDisk(const char *pPlayerName, CKoGPlayerProfile &OutProfile);
 	void SaveKoGToDisk(const char *pPlayerName, const char *pJsonData);

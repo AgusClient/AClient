@@ -1147,7 +1147,7 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 	if(*pLine == 0)
 		return;
 
-	if(str_find(pLine, "[AC-CHESS]"))
+	if((Team >= 2 || ClientId == SERVER_MSG || pLine[0] == '[') && str_find(pLine, "[AC-CHESS]"))
 	{
 		if(GameClient()->m_Menus.OnChessNetworkMessage(ClientId, Team, pLine))
 			return;
@@ -1155,7 +1155,7 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 
 	// AClient: Detect incoming team invite before chat filters so binds/commands always work
 	bool EmitInviteHint = false;
-	if(ClientId != CLIENT_MSG && (str_find_nocase(pLine, "invit") || str_find_nocase(pLine, "convid")))
+	if((ClientId == SERVER_MSG || Team == TEAM_WHISPER_RECV) && (str_find_nocase(pLine, "invit") || str_find_nocase(pLine, "convid")))
 	{
 		static constexpr const char *s_apTeamPrefixes[] = {
 			"/team ",
@@ -1931,11 +1931,20 @@ void CChat::OnRender()
 
 	// send pending chat messages
 	// send pending chat messages
-	if(!m_vPendingInviteCommands.empty() && m_LastChatSend + (time_freq() * 5) / 2 < time())
+	if(!m_vPendingInviteCommands.empty())
 	{
-		std::string NextCmd = m_vPendingInviteCommands.front();
-		m_vPendingInviteCommands.erase(m_vPendingInviteCommands.begin());
-		SendChat(0, NextCmd.c_str());
+		const int LocalId = GameClient()->m_aLocalIds[g_Config.m_ClDummy];
+		const int LocalTeam = (LocalId >= 0 && LocalId < MAX_CLIENTS) ? GameClient()->m_Teams.Team(LocalId) : TEAM_FLOCK;
+		if(Client()->State() != IClient::STATE_ONLINE || LocalTeam <= TEAM_FLOCK || LocalTeam >= TEAM_SUPER)
+		{
+			m_vPendingInviteCommands.clear();
+		}
+		else if(m_LastChatSend + (time_freq() * 5) / 2 < time())
+		{
+			std::string NextCmd = m_vPendingInviteCommands.front();
+			m_vPendingInviteCommands.erase(m_vPendingInviteCommands.begin());
+			SendChat(0, NextCmd.c_str());
+		}
 	}
 	else if(m_PendingChatCounter > 0 && m_LastChatSend + time_freq() < time())
 	{
@@ -1966,8 +1975,14 @@ void CChat::OnRender()
 	const float NewHudScale = std::clamp(ChatLayout.m_Scale / 100.0f, 0.4f, 2.0f);
 	if(std::abs(NewHudScale - m_HudScale) > 0.001f)
 	{
-		m_HudScale = NewHudScale;
-		RebuildChat();
+		static int64_t s_LastScaleRebuildTime = 0;
+		const int64_t NowTick = time_get();
+		if(!HudEditorActive || !Input()->KeyIsPressed(KEY_MOUSE_1) || NowTick - s_LastScaleRebuildTime >= time_freq() / 20)
+		{
+			m_HudScale = NewHudScale;
+			s_LastScaleRebuildTime = NowTick;
+			RebuildChat();
+		}
 	}
 
 	float x = 5.0f;
@@ -2480,6 +2495,15 @@ void CChat::JoinLastInvite()
 	if(m_LastInviteTeam <= TEAM_FLOCK || m_LastInviteTeam >= TEAM_SUPER)
 	{
 		Echo(TCLocalize("[AClient] No tienes invitaciones recientes a ningun equipo."));
+		return;
+	}
+
+	const int LocalId = GameClient()->m_aLocalIds[g_Config.m_ClDummy];
+	if(LocalId >= 0 && LocalId < MAX_CLIENTS && GameClient()->m_Teams.Team(LocalId) == m_LastInviteTeam)
+	{
+		char aEcho[96];
+		str_format(aEcho, sizeof(aEcho), TCLocalize("[AClient] Ya estas en el equipo %d."), m_LastInviteTeam);
+		Echo(aEcho);
 		return;
 	}
 

@@ -276,19 +276,9 @@ const char *CAClientGameSkins::GetPlayerGameSkinName(int ClientId) const
 	if(ClientId < 0 || ClientId >= MAX_CLIENTS)
 		return nullptr;
 	const auto &ClientData = GameClient()->m_aClients[ClientId];
-	if(ClientData.m_aCustomGameSkinName[0] != '\0' && str_comp(ClientData.m_aCustomGameSkinName, "default") != 0)
-		return ClientData.m_aCustomGameSkinName;
-	auto it = m_mRemotePlayerGameSkins.find(ClientData.m_aName);
-	if(it == m_mRemotePlayerGameSkins.end())
-	{
-		char aTrimmed[MAX_NAME_LENGTH];
-		TrimPlayerName(ClientData.m_aName, aTrimmed, sizeof(aTrimmed));
-		if(aTrimmed[0] != '\0')
-			it = m_mRemotePlayerGameSkins.find(aTrimmed);
-	}
-	if(it != m_mRemotePlayerGameSkins.end() && !it->second.empty() && str_comp(it->second.c_str(), "default") != 0)
-		return it->second.c_str();
-	return nullptr;
+	if(!ClientData.m_Active || ClientData.m_aCustomGameSkinName[0] == '\0' || str_comp(ClientData.m_aCustomGameSkinName, "default") == 0)
+		return nullptr;
+	return ClientData.m_aCustomGameSkinName;
 }
 
 const char *CAClientGameSkins::GetPlayerEntitiesName(int ClientId) const
@@ -296,19 +286,9 @@ const char *CAClientGameSkins::GetPlayerEntitiesName(int ClientId) const
 	if(ClientId < 0 || ClientId >= MAX_CLIENTS)
 		return nullptr;
 	const auto &ClientData = GameClient()->m_aClients[ClientId];
-	if(ClientData.m_aCustomEntitiesName[0] != '\0' && str_comp(ClientData.m_aCustomEntitiesName, "default") != 0)
-		return ClientData.m_aCustomEntitiesName;
-	auto it = m_mRemotePlayerEntities.find(ClientData.m_aName);
-	if(it == m_mRemotePlayerEntities.end())
-	{
-		char aTrimmed[MAX_NAME_LENGTH];
-		TrimPlayerName(ClientData.m_aName, aTrimmed, sizeof(aTrimmed));
-		if(aTrimmed[0] != '\0')
-			it = m_mRemotePlayerEntities.find(aTrimmed);
-	}
-	if(it != m_mRemotePlayerEntities.end() && !it->second.empty() && str_comp(it->second.c_str(), "default") != 0)
-		return it->second.c_str();
-	return nullptr;
+	if(!ClientData.m_Active || ClientData.m_aCustomEntitiesName[0] == '\0' || str_comp(ClientData.m_aCustomEntitiesName, "default") == 0)
+		return nullptr;
+	return ClientData.m_aCustomEntitiesName;
 }
 
 bool CAClientGameSkins::CopyPlayerGameSkin(int ClientId)
@@ -520,7 +500,8 @@ void CAClientGameSkins::OnReset()
 		m_pDownloadEntitiesRequest = nullptr;
 	}
 	m_DownloadingEntitiesName.clear();
-	m_sFailedEntities.clear();
+	if(m_sFailedEntities.size() >= 256)
+		m_sFailedEntities.clear();
 	m_mRemotePlayerGameSkins.clear();
 	m_sRemoteAClientPlayers.clear();
 	m_mActiveSkinUsers.clear();
@@ -536,7 +517,8 @@ void CAClientGameSkins::OnReset()
 	}
 
 	FreeAllGameSkins();
-	m_sFailedSkins.clear();
+	if(m_sFailedSkins.size() >= 256)
+		m_sFailedSkins.clear();
 	m_mRemotePlayerEntities.clear();
 	m_mManualEntities.clear();
 	m_PendingAnnounce = false;
@@ -748,6 +730,8 @@ void CAClientGameSkins::StartDownload(const char *pSkinName)
 
 	m_pDownloadRequest = HttpGetFile(aUrl, Storage(), aDest, IStorage::TYPE_SAVE);
 	m_pDownloadRequest->Timeout(CTimeout{8000, 8000, 500, 8});
+	m_pDownloadRequest->SkipByFileTime(true);
+	m_pDownloadRequest->MaxResponseSize(4 * 1024 * 1024);
 	m_pDownloadRequest->IpResolve(IPRESOLVE::V4);
 	m_pDownloadRequest->LogProgress(HTTPLOG::NONE);
 	m_pDownloadRequest->Header("User-Agent: AClient");
@@ -844,6 +828,8 @@ void CAClientGameSkins::StartEntitiesDownload(const char *pEntitiesName)
 
 	m_pDownloadEntitiesRequest = HttpGetFile(aUrl, Storage(), aDest, IStorage::TYPE_SAVE);
 	m_pDownloadEntitiesRequest->Timeout(CTimeout{8000, 8000, 500, 8});
+	m_pDownloadEntitiesRequest->SkipByFileTime(true);
+	m_pDownloadEntitiesRequest->MaxResponseSize(4 * 1024 * 1024);
 	m_pDownloadEntitiesRequest->IpResolve(IPRESOLVE::V4);
 	m_pDownloadEntitiesRequest->LogProgress(HTTPLOG::NONE);
 	m_pDownloadEntitiesRequest->Header("User-Agent: AClient");
@@ -1053,16 +1039,7 @@ bool CAClientGameSkins::IsPlayerAClient(int ClientId) const
 		return true;
 	if(Client()->DummyConnected() && ClientId == GameClient()->m_aLocalIds[1])
 		return true;
-	if(GameClient()->m_aClients[ClientId].m_IsAClient)
-		return true;
-	const char *pName = GameClient()->m_aClients[ClientId].m_aName;
-	if(!pName || !pName[0])
-		return false;
-	if(m_sRemoteAClientPlayers.find(pName) != m_sRemoteAClientPlayers.end())
-		return true;
-	char aTrimmed[MAX_NAME_LENGTH];
-	TrimPlayerName(pName, aTrimmed, sizeof(aTrimmed));
-	return aTrimmed[0] != '\0' && m_sRemoteAClientPlayers.find(aTrimmed) != m_sRemoteAClientPlayers.end();
+	return GameClient()->m_aClients[ClientId].m_IsAClient;
 }
 
 void CAClientGameSkins::SendPresenceLeave(const char *pServer, const char *pPlayer)
@@ -1131,6 +1108,7 @@ void CAClientGameSkins::RefreshPresence(bool ForceAnnounce)
 	const char *pBaseUrl = (g_Config.m_AcPresenceUrl[0] != '\0' && str_find(g_Config.m_AcPresenceUrl, "workers.dev") == nullptr) ? g_Config.m_AcPresenceUrl : AClientBackend::SUPABASE_URL;
 
 	int64_t Now = time_get();
+	const bool ServerChanged = (m_aLastServerAddress[0] == '\0') || (str_comp(m_aLastServerAddress, aServerAddr) != 0);
 
 	if(ForceAnnounce)
 	{
@@ -1197,6 +1175,12 @@ void CAClientGameSkins::RefreshPresence(bool ForceAnnounce)
 		// 1b. Announce dummy if connected
 		if(aPrimaryDummy[0] != '\0' && str_comp(aPrimaryDummy, aPrimaryPlayer) != 0)
 			SendPresencePost(aPrimaryDummy, pAssetGame, pDummyAssetEntities);
+	}
+
+	// Avoid redundant GET when only announcing own skin/entities change on the same server
+	if(ForceAnnounce && !ServerChanged && m_LastPresenceRefreshTime > 0 && (Now - m_LastPresenceRefreshTime) < time_freq() * 15)
+	{
+		return;
 	}
 
 	// 2. Fetch remote gameskins and AClient presence via GET
@@ -1288,11 +1272,10 @@ void CAClientGameSkins::UpdateAllPlayerSkins()
 			if(aTrimmed[0] != '\0')
 				it = m_mRemotePlayerGameSkins.find(aTrimmed);
 		}
-		if(it != m_mRemotePlayerGameSkins.end() && !it->second.empty() && str_comp(it->second.c_str(), "default") != 0 && !IsGameSkinBlacklisted(it->second.c_str()))
+		if(it != m_mRemotePlayerGameSkins.end() && !it->second.empty() && str_comp(it->second.c_str(), "default") != 0)
 		{
-			const SClientGameSkin *pSkin = GetOrLoadGameSkin(it->second.c_str());
-			GameClient()->m_aClients[i].m_pCustomGameSkin = pSkin;
 			str_copy(GameClient()->m_aClients[i].m_aCustomGameSkinName, it->second.c_str());
+			GameClient()->m_aClients[i].m_pCustomGameSkin = IsGameSkinBlacklisted(it->second.c_str()) ? nullptr : GetOrLoadGameSkin(it->second.c_str());
 		}
 		else
 		{
@@ -1368,55 +1351,73 @@ void CAClientGameSkins::OnRender()
 	}
 	else if(Client()->State() == IClient::STATE_ONLINE)
 	{
-		const int LocalId = GameClient()->m_aLocalIds[0];
-		if(LocalId >= 0 && LocalId < MAX_CLIENTS && GameClient()->m_aClients[LocalId].m_Active && GameClient()->m_aClients[LocalId].m_aName[0] != '\0')
+		static int64_t s_LastPresenceCheckTime = 0;
+		static int s_LastActiveCount = 0;
+		const int64_t NowCheck = time_get();
+		if(m_LastPresenceRefreshTime == 0)
+			s_LastActiveCount = 0;
+		if(NowCheck - s_LastPresenceCheckTime >= time_freq() / 4)
 		{
-			int64_t Now = time_get();
-			char aCurrentPlayer[128];
-			TrimPlayerName(GameClient()->m_aClients[LocalId].m_aName, aCurrentPlayer, sizeof(aCurrentPlayer));
-
-			char aCurrentDummy[128] = {0};
-			if(Client()->DummyConnected())
+			s_LastPresenceCheckTime = NowCheck;
+			const int LocalId = GameClient()->m_aLocalIds[0];
+			if(LocalId >= 0 && LocalId < MAX_CLIENTS && GameClient()->m_aClients[LocalId].m_Active && GameClient()->m_aClients[LocalId].m_aName[0] != '\0')
 			{
-				const int DummyId = GameClient()->m_aLocalIds[1];
-				if(DummyId >= 0 && DummyId < MAX_CLIENTS && GameClient()->m_aClients[DummyId].m_Active && GameClient()->m_aClients[DummyId].m_aName[0] != '\0')
+				char aCurrentPlayer[128];
+				TrimPlayerName(GameClient()->m_aClients[LocalId].m_aName, aCurrentPlayer, sizeof(aCurrentPlayer));
+
+				char aCurrentDummy[128] = {0};
+				if(Client()->DummyConnected())
 				{
-					TrimPlayerName(GameClient()->m_aClients[DummyId].m_aName, aCurrentDummy, sizeof(aCurrentDummy));
+					const int DummyId = GameClient()->m_aLocalIds[1];
+					if(DummyId >= 0 && DummyId < MAX_CLIENTS && GameClient()->m_aClients[DummyId].m_Active && GameClient()->m_aClients[DummyId].m_aName[0] != '\0')
+					{
+						TrimPlayerName(GameClient()->m_aClients[DummyId].m_aName, aCurrentDummy, sizeof(aCurrentDummy));
+					}
 				}
-			}
 
-			const char *pEffectiveSkin = (!g_Config.m_AcShowRemoteGameSkins || g_Config.m_ClAssetGame[0] == '\0') ? "default" : g_Config.m_ClAssetGame;
-			const char *pEffectiveEntities = (g_Config.m_ClAssetsEntities[0] == '\0') ? "default" : g_Config.m_ClAssetsEntities;
-			const char *pEffectiveDummyEntities = (g_Config.m_ClDummyAssetEntities[0] != '\0') ? g_Config.m_ClDummyAssetEntities : pEffectiveEntities;
-			bool SkinChanged = str_comp(m_aLastAnnouncedSkin, pEffectiveSkin) != 0;
-			bool EntitiesChanged = str_comp(m_aLastAnnouncedEntities, pEffectiveEntities) != 0;
-			bool DummyEntitiesChanged = str_comp(m_aLastAnnouncedDummyEntities, pEffectiveDummyEntities) != 0;
-			bool NameChanged = aCurrentPlayer[0] != '\0' && str_comp(m_aLastAnnouncedPlayer, aCurrentPlayer) != 0;
-			bool DummyChanged = str_comp(m_aLastAnnouncedDummy, aCurrentDummy) != 0;
-			bool HeartbeatNeeded = (m_LastPresenceAnnounceTime > 0) && ((Now - m_LastPresenceAnnounceTime) > time_freq() * 2700);
+				const char *pEffectiveSkin = (!g_Config.m_AcShowRemoteGameSkins || g_Config.m_ClAssetGame[0] == '\0') ? "default" : g_Config.m_ClAssetGame;
+				const char *pEffectiveEntities = (g_Config.m_ClAssetsEntities[0] == '\0') ? "default" : g_Config.m_ClAssetsEntities;
+				const char *pEffectiveDummyEntities = (g_Config.m_ClDummyAssetEntities[0] != '\0') ? g_Config.m_ClDummyAssetEntities : pEffectiveEntities;
+				bool SkinChanged = str_comp(m_aLastAnnouncedSkin, pEffectiveSkin) != 0;
+				bool EntitiesChanged = str_comp(m_aLastAnnouncedEntities, pEffectiveEntities) != 0;
+				bool DummyEntitiesChanged = str_comp(m_aLastAnnouncedDummyEntities, pEffectiveDummyEntities) != 0;
+				bool NameChanged = aCurrentPlayer[0] != '\0' && str_comp(m_aLastAnnouncedPlayer, aCurrentPlayer) != 0;
+				bool DummyChanged = str_comp(m_aLastAnnouncedDummy, aCurrentDummy) != 0;
+				bool HeartbeatNeeded = (m_LastPresenceAnnounceTime > 0) && ((NowCheck - m_LastPresenceAnnounceTime) > time_freq() * 2700);
 
-			bool ForceAnnounce = SkinChanged || EntitiesChanged || DummyEntitiesChanged || NameChanged || DummyChanged || HeartbeatNeeded;
-			bool PeriodicRefresh = (m_LastPresenceRefreshTime == 0) || ((Now - m_LastPresenceRefreshTime) > time_freq() * 12);
+				bool ForceAnnounce = SkinChanged || EntitiesChanged || DummyEntitiesChanged || NameChanged || DummyChanged || HeartbeatNeeded;
+				bool PeriodicRefresh = (m_LastPresenceRefreshTime == 0) || ((NowCheck - m_LastPresenceRefreshTime) > time_freq() * 30);
 
-			int RosterSignature = 0;
-			for(int i = 0; i < MAX_CLIENTS; ++i)
-			{
-				if(GameClient()->m_aClients[i].m_Active && GameClient()->m_aClients[i].m_aName[0] != '\0')
+				bool RosterChanged = false;
+				if((NowCheck - m_LastPresenceRefreshTime) > time_freq() * 8)
 				{
-					RosterSignature = RosterSignature * 31 + (int)str_quickhash(GameClient()->m_aClients[i].m_aName);
+					int RosterSignature = 0;
+					int ActiveCount = 0;
+					for(int i = 0; i < MAX_CLIENTS; ++i)
+					{
+						if(GameClient()->m_aClients[i].m_Active && GameClient()->m_aClients[i].m_aName[0] != '\0')
+						{
+							RosterSignature = RosterSignature * 31 + (int)str_quickhash(GameClient()->m_aClients[i].m_aName);
+							++ActiveCount;
+						}
+					}
+					if(RosterSignature != m_LastActivePlayerCount)
+					{
+						m_LastActivePlayerCount = RosterSignature;
+						if(ActiveCount > s_LastActiveCount)
+							RosterChanged = true;
+					}
+					s_LastActiveCount = ActiveCount;
 				}
-			}
-			bool RosterChanged = (RosterSignature != m_LastActivePlayerCount) && ((Now - m_LastPresenceRefreshTime) > time_freq() * 2);
-			if(RosterChanged)
-				m_LastActivePlayerCount = RosterSignature;
 
-			if(ForceAnnounce)
-			{
-				RefreshPresence(true);
-			}
-			else if(PeriodicRefresh || RosterChanged)
-			{
-				RefreshPresence(false);
+				if(ForceAnnounce)
+				{
+					RefreshPresence(true);
+				}
+				else if(PeriodicRefresh || RosterChanged)
+				{
+					RefreshPresence(false);
+				}
 			}
 		}
 	}
@@ -1595,6 +1596,22 @@ void CAClientGameSkins::OnRender()
 			if(!GameClient()->m_aClients[i].m_Active || i == GameClient()->m_Snap.m_LocalClientId)
 				continue;
 
+			if(!GameClient()->m_aClients[i].m_IsAClient && !m_sRemoteAClientPlayers.empty())
+			{
+				const char *pPlName = GameClient()->m_aClients[i].m_aName;
+				if(m_sRemoteAClientPlayers.find(pPlName) != m_sRemoteAClientPlayers.end())
+				{
+					GameClient()->m_aClients[i].m_IsAClient = true;
+				}
+				else
+				{
+					char aTrimmedPl[MAX_NAME_LENGTH];
+					TrimPlayerName(pPlName, aTrimmedPl, sizeof(aTrimmedPl));
+					if(aTrimmedPl[0] != '\0' && m_sRemoteAClientPlayers.find(aTrimmedPl) != m_sRemoteAClientPlayers.end())
+						GameClient()->m_aClients[i].m_IsAClient = true;
+				}
+			}
+
 			if(g_Config.m_AcShowRemoteGameSkins && GameClient()->m_aClients[i].m_pCustomGameSkin == nullptr && GameClient()->m_aClients[i].m_aCustomGameSkinName[0] == '\0')
 			{
 				auto it = m_mRemotePlayerGameSkins.find(GameClient()->m_aClients[i].m_aName);
@@ -1639,6 +1656,8 @@ void CAClientGameSkins::OnRender()
 
 void CAClientGameSkins::TriggerManualReload()
 {
+	m_sFailedSkins.clear();
+	m_sFailedEntities.clear();
 	m_ServerJoinTime = time_get();
 	m_InitialDownloadPhase = true;
 	RefreshPresence();

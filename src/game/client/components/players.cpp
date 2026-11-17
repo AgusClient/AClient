@@ -623,14 +623,8 @@ void CPlayers::FlushQueuedHookedTiles()
 			const float TileOpacity = BaseOpacity * Tile.m_Alpha;
 
 			// Everything stays inside the tile bounds
-			if(GlowHalo)
-			{
-				Graphics()->SetColor(GlowColor.r, GlowColor.g, GlowColor.b, TileOpacity * 0.45f);
-				const IGraphics::CQuadItem HaloQuad(X0, Y0, 32.0f, 32.0f);
-				Graphics()->QuadsDrawTL(&HaloQuad, 1);
-			}
-
-			Graphics()->SetColor(GlowColor.r, GlowColor.g, GlowColor.b, TileOpacity * 0.40f);
+			const float FillAlpha = TileOpacity * (GlowHalo ? 0.67f : 0.40f);
+			Graphics()->SetColor(GlowColor.r, GlowColor.g, GlowColor.b, FillAlpha);
 			const IGraphics::CQuadItem HighlightQuad(X0, Y0, 32.0f, 32.0f);
 			Graphics()->QuadsDrawTL(&HighlightQuad, 1);
 

@@ -3980,7 +3980,38 @@ struct SChessOnlineContext
 	char m_aIncomingInviteName[MAX_NAME_LENGTH] = "";
 	bool m_IncomingLocalIsWhite = false;
 
-	std::vector<SChessMove> m_vPendingRemoteMoves;
+	static constexpr int MAX_PENDING_MOVES = 64;
+	SChessMove m_aPendingRemoteMoves[MAX_PENDING_MOVES] = {};
+	int m_PendingHead = 0;
+	int m_PendingTail = 0;
+	int m_PendingCount = 0;
+	int64_t m_LastInviteSentTime = 0;
+
+	void ClearPendingMoves()
+	{
+		m_PendingHead = 0;
+		m_PendingTail = 0;
+		m_PendingCount = 0;
+	}
+
+	void PushPendingMove(const SChessMove &Move)
+	{
+		if(m_PendingCount >= MAX_PENDING_MOVES)
+			return;
+		m_aPendingRemoteMoves[m_PendingTail] = Move;
+		m_PendingTail = (m_PendingTail + 1) % MAX_PENDING_MOVES;
+		++m_PendingCount;
+	}
+
+	bool PopPendingMove(SChessMove &Out)
+	{
+		if(m_PendingCount <= 0)
+			return false;
+		Out = m_aPendingRemoteMoves[m_PendingHead];
+		m_PendingHead = (m_PendingHead + 1) % MAX_PENDING_MOVES;
+		--m_PendingCount;
+		return true;
+	}
 };
 
 static SChessOnlineContext gs_ChessOnline;
@@ -4033,12 +4064,21 @@ bool CMenus::OnChessNetworkMessage(int ClientId, int Team, const char *pLine)
 		{
 			char aNameBuf[MAX_NAME_LENGTH];
 			str_truncate(aNameBuf, sizeof(aNameBuf), pArrow + 4, (int)(pBracket - (pArrow + 4)));
-			for(int i = 0; i < MAX_CLIENTS; ++i)
+			const int OppId = gs_ChessOnline.m_OpponentClientId;
+			if(gs_ChessOnline.m_InOnlineMatch && OppId >= 0 && OppId < MAX_CLIENTS &&
+				GameClient()->m_aClients[OppId].m_Active && str_comp(GameClient()->m_aClients[OppId].m_aName, aNameBuf) == 0)
 			{
-				if(GameClient()->m_aClients[i].m_Active && str_comp(GameClient()->m_aClients[i].m_aName, aNameBuf) == 0)
+				ClientId = OppId;
+			}
+			else
+			{
+				for(int i = 0; i < MAX_CLIENTS; ++i)
 				{
-					ClientId = i;
-					break;
+					if(GameClient()->m_aClients[i].m_Active && str_comp(GameClient()->m_aClients[i].m_aName, aNameBuf) == 0)
+					{
+						ClientId = i;
+						break;
+					}
 				}
 			}
 		}
@@ -4075,7 +4115,7 @@ bool CMenus::OnChessNetworkMessage(int ClientId, int Team, const char *pLine)
 			gs_ChessOnline.m_OpponentResigned = false;
 			gs_ChessOnline.m_WaitingInviteTargetId = -1;
 			gs_ChessOnline.m_IncomingInviteClientId = -1;
-			gs_ChessOnline.m_vPendingRemoteMoves.clear();
+			gs_ChessOnline.ClearPendingMoves();
 			char aEcho[256];
 			str_format(aEcho, sizeof(aEcho), "Ajedrez: '%s' acepto el reto! Ve a AClient -> Games.", pSenderName);
 			GameClient()->m_Chat.Echo(aEcho);
@@ -4102,7 +4142,7 @@ bool CMenus::OnChessNetworkMessage(int ClientId, int Team, const char *pLine)
 			const int TY = pMoveStr[3] - '0';
 			const char Promo = (pMoveStr[4] == 'Q' || pMoveStr[4] == 'R' || pMoveStr[4] == 'B' || pMoveStr[4] == 'N') ? pMoveStr[4] : 0;
 			if(FX >= 0 && FX < 8 && FY >= 0 && FY < 8 && TX >= 0 && TX < 8 && TY >= 0 && TY < 8)
-				gs_ChessOnline.m_vPendingRemoteMoves.push_back({FX, FY, TX, TY, Promo});
+				gs_ChessOnline.PushPendingMove({FX, FY, TX, TY, Promo});
 		}
 	}
 	else if(str_startswith(pCmd, "RES"))
@@ -4228,11 +4268,16 @@ void CMenus::RenderSettingsAClientGames(CUIRect MainView)
 		bool m_PendingPromotion = false;
 		SChessMove m_PromoMove;
 
-		std::unordered_map<std::string, int> m_RepetitionTable;
+		std::unordered_map<uint64_t, int> m_RepetitionTable;
 		std::vector<SChessSnapshot> m_vHistory;
 		std::vector<std::string> m_vMoveNotation;
 		std::vector<char> m_vCapturedByWhite; // lowercase black pieces captured by white
 		std::vector<char> m_vCapturedByBlack; // uppercase white pieces captured by black
+
+		int m_CachedCheckPly = -1;
+		bool m_CachedSideInCheck = false;
+		int m_CachedCheckKingX = -1;
+		int m_CachedCheckKingY = -1;
 
 		struct SChessArrow
 		{
@@ -4258,19 +4303,28 @@ void CMenus::RenderSettingsAClientGames(CUIRect MainView)
 	auto IsWhitePiece = [](char Piece) { return Piece >= 'A' && Piece <= 'Z'; };
 	auto IsBlackPiece = [](char Piece) { return Piece >= 'a' && Piece <= 'z'; };
 
-	auto MakeStateKey = [&](const SChessPosState &Pos) {
-		std::string Key;
-		Key.reserve(71);
+	auto MakeStateKey = [&](const SChessPosState &Pos) -> uint64_t {
+		uint64_t Hash = 14695981039346656037ULL;
+		auto MixByte = [&](uint8_t B) {
+			Hash ^= (uint64_t)B;
+			Hash *= 1099511628211ULL;
+		};
 		for(int y = 0; y < 8; ++y)
 			for(int x = 0; x < 8; ++x)
-				Key += Pos.m_Board[y][x];
-		Key += Pos.m_WhiteTurn ? 'w' : 'b';
-		Key += Pos.m_WhiteKingSideCastle ? 'K' : '-';
-		Key += Pos.m_WhiteQueenSideCastle ? 'Q' : '-';
-		Key += Pos.m_BlackKingSideCastle ? 'k' : '-';
-		Key += Pos.m_BlackQueenSideCastle ? 'q' : '-';
-		Key += (Pos.m_EnPassantColumn != -1) ? (char)('a' + Pos.m_EnPassantColumn) : '-';
-		return Key;
+				MixByte((uint8_t)Pos.m_Board[y][x]);
+		MixByte((uint8_t)(Pos.m_WhiteTurn ? 1 : 0));
+		uint8_t CastleMask = 0;
+		if(Pos.m_WhiteKingSideCastle)
+			CastleMask |= 1;
+		if(Pos.m_WhiteQueenSideCastle)
+			CastleMask |= 2;
+		if(Pos.m_BlackKingSideCastle)
+			CastleMask |= 4;
+		if(Pos.m_BlackQueenSideCastle)
+			CastleMask |= 8;
+		MixByte(CastleMask);
+		MixByte((uint8_t)(Pos.m_EnPassantColumn + 1));
+		return Hash;
 	};
 
 	auto ResetChess = [&]() {
@@ -4301,6 +4355,7 @@ void CMenus::RenderSettingsAClientGames(CUIRect MainView)
 		s_Chess.m_ManualFlip = false;
 		s_Chess.m_GameOver = false;
 		s_Chess.m_WhiteWon = false;
+		s_Chess.m_CachedCheckPly = -1;
 		s_Chess.m_Stalemate = false;
 		s_Chess.m_FiftyMove = false;
 		s_Chess.m_Threefold = false;
@@ -4323,6 +4378,10 @@ void CMenus::RenderSettingsAClientGames(CUIRect MainView)
 
 		s_Chess.m_RepetitionTable.clear();
 		s_Chess.m_RepetitionTable[MakeStateKey(s_Chess.m_Pos)] = 1;
+		s_Chess.m_CachedCheckPly = -1;
+		s_Chess.m_CachedSideInCheck = false;
+		s_Chess.m_CachedCheckKingX = -1;
+		s_Chess.m_CachedCheckKingY = -1;
 		s_Chess.m_vHistory.clear();
 		s_Chess.m_vMoveNotation.clear();
 		s_Chess.m_vCapturedByWhite.clear();
@@ -5024,7 +5083,7 @@ void CMenus::RenderSettingsAClientGames(CUIRect MainView)
 		if(CapturedPiece != '.' || Upper == 'P')
 			s_Chess.m_RepetitionTable.clear();
 
-		const std::string Key = MakeStateKey(s_Chess.m_Pos);
+		const uint64_t Key = MakeStateKey(s_Chess.m_Pos);
 		s_Chess.m_RepetitionTable[Key]++;
 		s_Chess.m_BotReadyTime = AnimTime + 0.18f;
 
@@ -5068,7 +5127,7 @@ void CMenus::RenderSettingsAClientGames(CUIRect MainView)
 		auto PopOne = [&]() {
 			if(s_Chess.m_vHistory.empty())
 				return;
-			const std::string CurKey = MakeStateKey(s_Chess.m_Pos);
+			const uint64_t CurKey = MakeStateKey(s_Chess.m_Pos);
 			auto It = s_Chess.m_RepetitionTable.find(CurKey);
 			if(It != s_Chess.m_RepetitionTable.end() && It->second > 0)
 				It->second--;
@@ -5093,6 +5152,7 @@ void CMenus::RenderSettingsAClientGames(CUIRect MainView)
 
 		s_Chess.m_GameOver = false;
 		s_Chess.m_WhiteWon = false;
+		s_Chess.m_CachedCheckPly = -1;
 		s_Chess.m_Stalemate = false;
 		s_Chess.m_FiftyMove = false;
 		s_Chess.m_Threefold = false;
@@ -5246,7 +5306,17 @@ void CMenus::RenderSettingsAClientGames(CUIRect MainView)
 	const SChessOpening &CurOpening = gs_aChessOpenings[std::clamp(s_Chess.m_OpeningIndex, 0, 9)];
 
 	// Status bar
-	const bool SideInCheck = !s_Chess.m_GameOver && IsCheckOnBoard(s_Chess.m_Pos.m_Board, s_Chess.m_Pos.m_WhiteTurn);
+	const int CurCheckPly = (int)s_Chess.m_vMoveNotation.size();
+	if(s_Chess.m_CachedCheckPly != CurCheckPly)
+	{
+		s_Chess.m_CachedCheckPly = CurCheckPly;
+		s_Chess.m_CachedCheckKingX = -1;
+		s_Chess.m_CachedCheckKingY = -1;
+		s_Chess.m_CachedSideInCheck = IsCheckOnBoard(s_Chess.m_Pos.m_Board, s_Chess.m_Pos.m_WhiteTurn);
+		if(s_Chess.m_CachedSideInCheck)
+			FindKingPos(s_Chess.m_Pos.m_Board, s_Chess.m_Pos.m_WhiteTurn, s_Chess.m_CachedCheckKingX, s_Chess.m_CachedCheckKingY);
+	}
+	const bool SideInCheck = !s_Chess.m_GameOver && s_Chess.m_CachedSideInCheck;
 	char aStatusBuf[128];
 	if(s_Chess.m_GameOver)
 	{
@@ -5354,7 +5424,7 @@ void CMenus::RenderSettingsAClientGames(CUIRect MainView)
 			gs_ChessOnline.m_OpponentResigned = false;
 			gs_ChessOnline.m_WaitingInviteTargetId = -1;
 			gs_ChessOnline.m_IncomingInviteClientId = -1;
-			gs_ChessOnline.m_vPendingRemoteMoves.clear();
+			gs_ChessOnline.ClearPendingMoves();
 		}
 		if(DoButton_Menu(&s_DeclineInvBtn, Localize("Rechazar"), 0, &DeclineBtn))
 		{
@@ -5556,8 +5626,10 @@ void CMenus::RenderSettingsAClientGames(CUIRect MainView)
 			const bool ValidTarget = (Client()->State() == IClient::STATE_ONLINE) &&
 				gs_ChessOnline.m_SelectedTargetId >= 0 && gs_ChessOnline.m_SelectedTargetId < MAX_CLIENTS &&
 				GameClient()->m_aClients[gs_ChessOnline.m_SelectedTargetId].m_Active;
-			if(DoButton_Menu(&s_ChallengeBtn, Localize("Retar a 1v1"), 0, &ActionBar) && ValidTarget)
+			const int64_t NowInv = time_get();
+			if(DoButton_Menu(&s_ChallengeBtn, Localize("Retar a 1v1"), 0, &ActionBar) && ValidTarget && (NowInv - gs_ChessOnline.m_LastInviteSentTime >= (time_freq() * 3) / 2))
 			{
+				gs_ChessOnline.m_LastInviteSentTime = NowInv;
 				const int Id = gs_ChessOnline.m_SelectedTargetId;
 				bool LocalW = true;
 				if(s_Chess.m_ColorChoice == 2)
@@ -5836,17 +5908,19 @@ void CMenus::RenderSettingsAClientGames(CUIRect MainView)
 				s_Chess.m_OpeningStep++;
 			}
 		}
-		else if(s_Chess.m_Difficulty == 5 && gs_ChessOnline.m_InOnlineMatch && OnlineOpponentTurn && !gs_ChessOnline.m_vPendingRemoteMoves.empty())
+		else if(s_Chess.m_Difficulty == 5 && gs_ChessOnline.m_InOnlineMatch && OnlineOpponentTurn && gs_ChessOnline.m_PendingCount > 0)
 		{
-			const SChessMove RemoteMove = gs_ChessOnline.m_vPendingRemoteMoves.front();
-			gs_ChessOnline.m_vPendingRemoteMoves.erase(gs_ChessOnline.m_vPendingRemoteMoves.begin());
-			const char RemotePiece = s_Chess.m_Pos.m_Board[RemoteMove.m_FromY][RemoteMove.m_FromX];
-			if(RemotePiece != '.' && IsWhitePiece(RemotePiece) == s_Chess.m_Pos.m_WhiteTurn &&
-				IsValidMove(RemoteMove.m_FromX, RemoteMove.m_FromY, RemoteMove.m_ToX, RemoteMove.m_ToY))
+			SChessMove RemoteMove;
+			if(gs_ChessOnline.PopPendingMove(RemoteMove))
 			{
-				ApplyChessMove(RemoteMove);
-				if(s_Chess.m_GameOver)
-					gs_ChessOnline.m_InOnlineMatch = false;
+				const char RemotePiece = s_Chess.m_Pos.m_Board[RemoteMove.m_FromY][RemoteMove.m_FromX];
+				if(RemotePiece != '.' && IsWhitePiece(RemotePiece) == s_Chess.m_Pos.m_WhiteTurn &&
+					IsValidMove(RemoteMove.m_FromX, RemoteMove.m_FromY, RemoteMove.m_ToX, RemoteMove.m_ToY))
+				{
+					ApplyChessMove(RemoteMove);
+					if(s_Chess.m_GameOver)
+						gs_ChessOnline.m_InOnlineMatch = false;
+				}
 			}
 		}
 		else if(BotTurn && !s_Chess.m_Dragging && !MoveAnimBusy && AnimTime >= s_Chess.m_BotReadyTime)
@@ -5959,9 +6033,8 @@ void CMenus::RenderSettingsAClientGames(CUIRect MainView)
 	const ColorRGBA LightSquareCol = s_aLightColors[std::clamp(s_Chess.m_BoardTheme, 0, 3)];
 	const ColorRGBA DarkSquareCol = s_aDarkColors[std::clamp(s_Chess.m_BoardTheme, 0, 3)];
 
-	int CheckKingX = -1, CheckKingY = -1;
-	if(SideInCheck)
-		FindKingPos(s_Chess.m_Pos.m_Board, s_Chess.m_Pos.m_WhiteTurn, CheckKingX, CheckKingY);
+	const int CheckKingX = SideInCheck ? s_Chess.m_CachedCheckKingX : -1;
+	const int CheckKingY = SideInCheck ? s_Chess.m_CachedCheckKingY : -1;
 
 	const bool MoveAnimActive = s_Chess.m_HasMoveAnim && AnimTime - s_Chess.m_AnimStart < s_Chess.m_AnimDuration;
 
@@ -5987,6 +6060,56 @@ void CMenus::RenderSettingsAClientGames(CUIRect MainView)
 		}
 	}
 
+	Graphics()->TextureClear();
+	Graphics()->QuadsBegin();
+	Graphics()->QuadsSetRotation(0.0f);
+	for(int dy = 0; dy < 8; ++dy)
+	{
+		for(int dx = 0; dx < 8; ++dx)
+		{
+			const int bx = DisplayToBoardX(dx);
+			const int by = DisplayToBoardY(dy);
+			const float CellX = Board.x + dx * CellSize;
+			const float CellY = Board.y + dy * CellSize;
+			const IGraphics::CQuadItem Quad(CellX, CellY, CellSize, CellSize);
+
+			const bool LightSquare = ((bx + by) % 2) == 0;
+			Graphics()->SetColor(LightSquare ? LightSquareCol : DarkSquareCol);
+			Graphics()->QuadsDrawTL(&Quad, 1);
+
+			if(s_Chess.m_HasLastMove && ((bx == s_Chess.m_LastFromX && by == s_Chess.m_LastFromY) || (bx == s_Chess.m_LastToX && by == s_Chess.m_LastToY)))
+			{
+				Graphics()->SetColor(0.96f, 0.92f, 0.28f, 0.38f);
+				Graphics()->QuadsDrawTL(&Quad, 1);
+			}
+
+			if(bx == CheckKingX && by == CheckKingY)
+			{
+				Graphics()->SetColor(0.95f, 0.18f, 0.15f, 0.55f);
+				Graphics()->QuadsDrawTL(&Quad, 1);
+			}
+
+			if(s_Chess.m_aMarkedSquares[by][bx])
+			{
+				Graphics()->SetColor(0.92f, 0.30f, 0.24f, 0.55f);
+				Graphics()->QuadsDrawTL(&Quad, 1);
+			}
+
+			if(bx == s_Chess.m_SelectedX && by == s_Chess.m_SelectedY)
+			{
+				Graphics()->SetColor(0.30f, 0.80f, 1.0f, 0.35f);
+				Graphics()->QuadsDrawTL(&Quad, 1);
+			}
+			else if(bx == HoverX && by == HoverY && !s_Chess.m_PendingPromotion)
+			{
+				Graphics()->SetColor(1.0f, 1.0f, 1.0f, 0.12f);
+				Graphics()->QuadsDrawTL(&Quad, 1);
+			}
+		}
+	}
+	Graphics()->QuadsEnd();
+	Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
+
 	for(int dy = 0; dy < 8; ++dy)
 	{
 		for(int dx = 0; dx < 8; ++dx)
@@ -5998,42 +6121,24 @@ void CMenus::RenderSettingsAClientGames(CUIRect MainView)
 			Cell.y = Board.y + dy * CellSize;
 			Cell.w = CellSize;
 			Cell.h = CellSize;
-
 			const bool LightSquare = ((bx + by) % 2) == 0;
-			Cell.Draw(LightSquare ? LightSquareCol : DarkSquareCol, IGraphics::CORNER_NONE, 0.0f);
-
-			if(s_Chess.m_HasLastMove && ((bx == s_Chess.m_LastFromX && by == s_Chess.m_LastFromY) || (bx == s_Chess.m_LastToX && by == s_Chess.m_LastToY)))
-				Cell.Draw(ColorRGBA(0.96f, 0.92f, 0.28f, 0.38f), IGraphics::CORNER_NONE, 0.0f);
-
-			if(bx == CheckKingX && by == CheckKingY)
-				Cell.Draw(ColorRGBA(0.95f, 0.18f, 0.15f, 0.55f), IGraphics::CORNER_NONE, 0.0f);
-
-			if(s_Chess.m_aMarkedSquares[by][bx])
-				Cell.Draw(ColorRGBA(0.92f, 0.30f, 0.24f, 0.55f), IGraphics::CORNER_NONE, 0.0f);
-
-			if(bx == s_Chess.m_SelectedX && by == s_Chess.m_SelectedY)
-				Cell.Draw(ColorRGBA(0.30f, 0.80f, 1.0f, 0.35f), IGraphics::CORNER_NONE, 0.0f);
-			else if(bx == HoverX && by == HoverY && !s_Chess.m_PendingPromotion)
-				Cell.Draw(ColorRGBA(1.0f, 1.0f, 1.0f, 0.12f), IGraphics::CORNER_NONE, 0.0f);
 
 			if(!s_Chess.m_PendingPromotion && s_Chess.m_SelectedX >= 0 && s_Chess.m_SelectedY >= 0 && s_Chess.m_aValidTargets[by][bx])
 			{
+				const bool IsOccupiedOrCastle = s_Chess.m_Pos.m_Board[by][bx] != '.';
+				if(IsOccupiedOrCastle)
 				{
-					const bool IsOccupiedOrCastle = s_Chess.m_Pos.m_Board[by][bx] != '.';
-					if(IsOccupiedOrCastle)
-					{
-						CUIRect Ring = Cell;
-						Ring.Margin(CellSize * 0.08f, &Ring);
-						Ring.DrawOutline(ColorRGBA(0.15f, 0.15f, 0.15f, 0.35f));
-						Ring.Margin(2.0f, &Ring);
-						Ring.DrawOutline(ColorRGBA(0.15f, 0.15f, 0.15f, 0.35f));
-					}
-					else
-					{
-						const float DotSz = CellSize * 0.28f;
-						CUIRect Dot = {Cell.x + (Cell.w - DotSz) * 0.5f, Cell.y + (Cell.h - DotSz) * 0.5f, DotSz, DotSz};
-						Dot.Draw(ColorRGBA(0.10f, 0.10f, 0.10f, 0.24f), IGraphics::CORNER_ALL, DotSz * 0.5f);
-					}
+					CUIRect Ring = Cell;
+					Ring.Margin(CellSize * 0.08f, &Ring);
+					Ring.DrawOutline(ColorRGBA(0.15f, 0.15f, 0.15f, 0.35f));
+					Ring.Margin(2.0f, &Ring);
+					Ring.DrawOutline(ColorRGBA(0.15f, 0.15f, 0.15f, 0.35f));
+				}
+				else
+				{
+					const float DotSz = CellSize * 0.28f;
+					CUIRect Dot = {Cell.x + (Cell.w - DotSz) * 0.5f, Cell.y + (Cell.h - DotSz) * 0.5f, DotSz, DotSz};
+					Dot.Draw(ColorRGBA(0.10f, 0.10f, 0.10f, 0.24f), IGraphics::CORNER_ALL, DotSz * 0.5f);
 				}
 			}
 
@@ -6050,9 +6155,9 @@ void CMenus::RenderSettingsAClientGames(CUIRect MainView)
 				TextRender()->TextColor(CoordCol);
 				TextRender()->Text(Cell.x + Cell.w - CellSize * 0.22f, Cell.y + Cell.h - CellSize * 0.26f, CellSize * 0.20f, aFile, -1.0f);
 			}
-			TextRender()->TextColor(TextRender()->DefaultTextColor());
 		}
 	}
+	TextRender()->TextColor(TextRender()->DefaultTextColor());
 
 	auto ShouldSkipBoardPiece = [&](int bx, int by) {
 		if(s_Chess.m_Dragging && bx == s_Chess.m_DragFromX && by == s_Chess.m_DragFromY)

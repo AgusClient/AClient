@@ -521,8 +521,111 @@ void CTranslate::Translate(const char *pName, bool ShowProgress)
 	Translate(*pLineBest, ShowProgress);
 }
 
+namespace
+{
+struct STranslateCacheEntry
+{
+	uint64_t m_Hash = 0;
+	char m_aTarget[16] = "";
+	char m_aSource[MAX_CHAT_LENGTH] = "";
+	char m_aTranslated[MAX_CHAT_LENGTH] = "";
+	char m_aLanguage[16] = "";
+	bool m_Valid = false;
+};
+
+constexpr int TRANSLATE_CACHE_SIZE = 32;
+STranslateCacheEntry gs_aTranslateCache[TRANSLATE_CACHE_SIZE];
+int gs_TranslateCacheWriteIdx = 0;
+
+uint64_t HashTranslateKey(const char *pTarget, const char *pSource)
+{
+	uint64_t Hash = 14695981039346656037ULL;
+	for(const char *p = pTarget; *p; ++p)
+	{
+		Hash ^= (uint8_t)tolower((unsigned char)*p);
+		Hash *= 1099511628211ULL;
+	}
+	Hash ^= 0xff;
+	Hash *= 1099511628211ULL;
+	for(const char *p = pSource; *p; ++p)
+	{
+		Hash ^= (uint8_t)*p;
+		Hash *= 1099511628211ULL;
+	}
+	return Hash;
+}
+
+bool LookupTranslateCache(const char *pTarget, const char *pSource, CTranslateResponse &Out)
+{
+	const uint64_t Hash = HashTranslateKey(pTarget, pSource);
+	for(const auto &Entry : gs_aTranslateCache)
+	{
+		if(Entry.m_Valid && Entry.m_Hash == Hash && str_comp_nocase(Entry.m_aTarget, pTarget) == 0 && str_comp(Entry.m_aSource, pSource) == 0)
+		{
+			str_copy(Out.m_Text, Entry.m_aTranslated);
+			str_copy(Out.m_Language, Entry.m_aLanguage);
+			Out.m_Error = false;
+			return true;
+		}
+	}
+	return false;
+}
+
+void StoreTranslateCache(const char *pTarget, const char *pSource, const CTranslateResponse &Res)
+{
+	if(!pSource || !pSource[0] || !pTarget || !pTarget[0] || Res.m_Error)
+		return;
+	const uint64_t Hash = HashTranslateKey(pTarget, pSource);
+	for(auto &Entry : gs_aTranslateCache)
+	{
+		if(Entry.m_Valid && Entry.m_Hash == Hash && str_comp_nocase(Entry.m_aTarget, pTarget) == 0 && str_comp(Entry.m_aSource, pSource) == 0)
+		{
+			str_copy(Entry.m_aTranslated, Res.m_Text);
+			str_copy(Entry.m_aLanguage, Res.m_Language);
+			return;
+		}
+	}
+	STranslateCacheEntry &Slot = gs_aTranslateCache[gs_TranslateCacheWriteIdx];
+	gs_TranslateCacheWriteIdx = (gs_TranslateCacheWriteIdx + 1) % TRANSLATE_CACHE_SIZE;
+	Slot.m_Valid = true;
+	Slot.m_Hash = Hash;
+	str_copy(Slot.m_aTarget, pTarget);
+	str_copy(Slot.m_aSource, pSource);
+	str_copy(Slot.m_aTranslated, Res.m_Text);
+	str_copy(Slot.m_aLanguage, Res.m_Language);
+}
+
+bool ShouldSkipAutoTranslate(const char *pText)
+{
+	if(!pText || pText[0] == '\0')
+		return true;
+	if(str_find(pText, "[AC-CHESS]"))
+		return true;
+	if(str_startswith_nocase(pText, "http://") || str_startswith_nocase(pText, "https://"))
+		return true;
+	int AlphaCount = 0;
+	for(const unsigned char *p = (const unsigned char *)pText; *p; ++p)
+	{
+		if((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || *p >= 0x80)
+		{
+			if(++AlphaCount >= 2)
+				return false;
+		}
+	}
+	return true;
+}
+} // namespace
+
 void CTranslate::Translate(CChat::CLine &Line, bool ShowProgress)
 {
+	auto CachedResp = std::make_shared<CTranslateResponse>();
+	if(LookupTranslateCache(g_Config.m_TcTranslateTarget, Line.m_aText, *CachedResp))
+	{
+		Line.m_pTranslateResponse = std::move(CachedResp);
+		GameClient()->m_Chat.RebuildChat();
+		return;
+	}
+
 	if(m_vJobs.size() > 15)
 	{
 		return;
@@ -530,7 +633,7 @@ void CTranslate::Translate(CChat::CLine &Line, bool ShowProgress)
 
 	CTranslateJob Job;
 	Job.m_pLine = &Line;
-	Job.m_pTranslateResponse = std::make_shared<CTranslateResponse>();
+	Job.m_pTranslateResponse = std::move(CachedResp);
 	Job.m_pLine->m_pTranslateResponse = Job.m_pTranslateResponse;
 
 	Job.m_pBackend = CreateTranslateBackend(*Http(), Job.m_pLine->m_aText, g_Config.m_TcTranslateTarget);
@@ -586,6 +689,7 @@ void CTranslate::OnRender()
 		{
 			if(str_comp_nocase(Job.m_pLine->m_aText, Job.m_pTranslateResponse->m_Text) == 0) // Check for no translation difference
 				Job.m_pTranslateResponse->m_Text[0] = '\0';
+			StoreTranslateCache(g_Config.m_TcTranslateTarget, Job.m_pLine->m_aText, *Job.m_pTranslateResponse);
 		}
 		else
 		{
@@ -612,6 +716,8 @@ void CTranslate::AutoTranslate(CChat::CLine &Line)
 		if(Id >= 0 && Id == Line.m_ClientId)
 			return;
 	}
+	if(ShouldSkipAutoTranslate(Line.m_aText))
+		return;
 	Translate(Line, false);
 }
 

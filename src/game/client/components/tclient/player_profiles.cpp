@@ -180,6 +180,22 @@ void CPlayerProfiles::FetchProfile(const char *pPlayerName, bool ForceRefresh)
 		return;
 	}
 
+	if(!ForceRefresh)
+	{
+		char aLowerDDNet[MAX_NAME_LENGTH];
+		str_copy(aLowerDDNet, pStart);
+		for(char *p = aLowerDDNet; *p; ++p)
+			*p = (char)tolower((unsigned char)*p);
+		auto ItFail = m_mFailedFetchesDDNet.find(aLowerDDNet);
+		if(ItFail != m_mFailedFetchesDDNet.end() && time_get() < ItFail->second)
+		{
+			m_State = EProfileState::NOT_FOUND;
+			str_format(m_aStatusMsg, sizeof(m_aStatusMsg), "Jugador '%s' no encontrado en DDNet", pStart);
+			m_CurrentProfile.m_Valid = false;
+			return;
+		}
+	}
+
 	AbortCurrentFetch();
 
 	char aEscaped[256];
@@ -240,7 +256,7 @@ void CPlayerProfiles::OnRender()
 		{
 			std::string Next = m_qTeamPendingKoG.front();
 			m_qTeamPendingKoG.pop_front();
-			FetchKoGProfile(Next.c_str(), false);
+			FetchKoGProfile(Next.c_str(), false, true);
 		}
 		else
 		{
@@ -286,6 +302,12 @@ void CPlayerProfiles::ProcessHttpResponse()
 	const json_value &Json = *pJson;
 	if(Json.type != json_object || Json["player"].type != json_string)
 	{
+		char aLowerReq[MAX_NAME_LENGTH];
+		str_copy(aLowerReq, m_aRequestedName);
+		for(char *p = aLowerReq; *p; ++p)
+			*p = (char)tolower((unsigned char)*p);
+		m_mFailedFetchesDDNet[aLowerReq] = time_get() + time_freq() * 120;
+
 		m_State = EProfileState::NOT_FOUND;
 		str_format(m_aStatusMsg, sizeof(m_aStatusMsg), "Jugador '%s' no encontrado en DDNet", m_aRequestedName);
 		m_CurrentProfile.m_Valid = false;
@@ -483,6 +505,7 @@ void CPlayerProfiles::KoGFetchWorker(void *pUser)
 	curl_easy_setopt(pCurl, CURLOPT_SSL_VERIFYPEER, 0L);
 	curl_easy_setopt(pCurl, CURLOPT_SSL_VERIFYHOST, 0L);
 	curl_easy_setopt(pCurl, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36");
+	curl_easy_setopt(pCurl, CURLOPT_ACCEPT_ENCODING, "");
 	curl_easy_setopt(pCurl, CURLOPT_WRITEFUNCTION, CurlStringWriteCallback);
 
 	SCurlSlistGuard ApiHeaders;
@@ -673,8 +696,8 @@ void CPlayerProfiles::KoGFetchWorker(void *pUser)
 
 	long Code = PostHttpCode;
 
-	// If player was not found, check alternative casing variants (e.g. "tae" -> "Tae", "Akisi" -> "akisi")
-	if(ResponseJson.find("\"data\":[]") != std::string::npos)
+	// If player was not found on manual lookup, check capitalized/lowercase variants (skip for background team scans to save bandwidth)
+	if(!pSelf->m_KoGIsBackgroundFetch && ResponseJson.find("\"data\":[]") != std::string::npos)
 	{
 		std::string BaseName = pSelf->m_aKoGFetchThreadPlayer;
 		std::vector<std::string> vVariants;
@@ -692,16 +715,9 @@ void CPlayerProfiles::KoGFetchWorker(void *pUser)
 			// Variant 2: All lowercase
 			std::string Low = BaseName;
 			for(size_t i = 0; i < Low.size(); ++i)
-				Low[i] = (char)tolower((unsigned char)Low[i]);
+				Low[i] = (char)tolower((unsigned char)*(&Low[i]));
 			if(Low != BaseName && std::find(vVariants.begin(), vVariants.end(), Low) == vVariants.end())
 				vVariants.push_back(Low);
-
-			// Variant 3: All uppercase
-			std::string Up = BaseName;
-			for(size_t i = 0; i < Up.size(); ++i)
-				Up[i] = (char)toupper((unsigned char)Up[i]);
-			if(Up != BaseName && std::find(vVariants.begin(), vVariants.end(), Up) == vVariants.end())
-				vVariants.push_back(Up);
 		}
 
 		for(const auto &Variant : vVariants)
@@ -1114,7 +1130,7 @@ void CPlayerProfiles::SetKoGCachedStatusMsg()
 		str_copy(m_aKoGStatusMsg, "");
 }
 
-void CPlayerProfiles::FetchKoGProfile(const char *pPlayerName, bool ForceRefresh)
+void CPlayerProfiles::FetchKoGProfile(const char *pPlayerName, bool ForceRefresh, bool BackgroundTeam)
 {
 	if(!pPlayerName || pPlayerName[0] == '\0')
 		return;
@@ -1184,6 +1200,7 @@ void CPlayerProfiles::FetchKoGProfile(const char *pPlayerName, bool ForceRefresh
 	str_copy(m_aKoGFetchThreadPlayer, pStart);
 	m_KoGFetchSuccess = false;
 	m_KoGFetchDone = false;
+	m_KoGIsBackgroundFetch = BackgroundTeam;
 	m_KoGFetchRunning = true;
 	m_KoGResultStatusCode = 0;
 	m_KoGResultData.clear();
@@ -1625,8 +1642,10 @@ void CPlayerProfiles::FetchKoGMapsMetaNetwork()
 	if(m_pKoGMapsHttpRequest)
 		return;
 
-	m_pKoGMapsHttpRequest = HttpGet("https://raw.githubusercontent.com/AgusClient/AClient/master/data/tclient/kog_maps.json");
+	Storage()->CreateFolder("kog_cache", IStorage::TYPE_SAVE);
+	m_pKoGMapsHttpRequest = HttpGetFile("https://raw.githubusercontent.com/AgusClient/AClient/master/data/tclient/kog_maps.json", Storage(), "kog_cache/maps.json", IStorage::TYPE_SAVE);
 	m_pKoGMapsHttpRequest->Timeout(CTimeout{4000, 10000, 500, 5});
+	m_pKoGMapsHttpRequest->SkipByFileTime(true);
 	m_pKoGMapsHttpRequest->IpResolve(IPRESOLVE::V4);
 	Http()->Run(m_pKoGMapsHttpRequest);
 }
@@ -1638,29 +1657,27 @@ void CPlayerProfiles::ProcessKoGMapsMetaResponse()
 
 	if(m_pKoGMapsHttpRequest->State() == EHttpState::DONE && m_pKoGMapsHttpRequest->StatusCode() == 200)
 	{
-		unsigned char *pData = nullptr;
-		size_t DataLength = 0;
-		m_pKoGMapsHttpRequest->Result(&pData, &DataLength);
-		if(pData && DataLength > 0)
+		IOHANDLE File = Storage()->OpenFile("kog_cache/maps.json", IOFLAG_READ, IStorage::TYPE_SAVE);
+		if(File)
 		{
-			Storage()->CreateFolder("kog_cache", IStorage::TYPE_SAVE);
-			IOHANDLE File = Storage()->OpenFile("kog_cache/maps.json", IOFLAG_WRITE, IStorage::TYPE_SAVE);
-			if(File)
+			const int64_t FileSize = io_length(File);
+			if(FileSize > 0 && FileSize <= 10 * 1024 * 1024)
 			{
-				io_write(File, pData, DataLength);
-				io_close(File);
-			}
-
-			if(ParseKoGMapsMetaJson((const char *)pData, DataLength))
-			{
-				m_KoGMapsMetaLoaded = true;
-				log_info("kog", "KoG maps metadata updated from network (%zu maps)", m_mKoGMapsMeta.size());
-
-				if(m_TeamComparisonReady && !m_vTeamPlayers.empty())
+				std::string Content;
+				Content.resize((size_t)FileSize);
+				io_read(File, &Content[0], (unsigned int)FileSize);
+				if(ParseKoGMapsMetaJson(Content.c_str(), Content.size()))
 				{
-					ComputeTeamCommonUnfinished();
+					m_KoGMapsMetaLoaded = true;
+					log_info("kog", "KoG maps metadata updated from network (%zu maps)", m_mKoGMapsMeta.size());
+
+					if(m_TeamComparisonReady && !m_vTeamPlayers.empty())
+					{
+						ComputeTeamCommonUnfinished();
+					}
 				}
 			}
+			io_close(File);
 		}
 	}
 	m_pKoGMapsHttpRequest = nullptr;

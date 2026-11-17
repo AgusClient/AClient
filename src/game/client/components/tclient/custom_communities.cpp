@@ -24,7 +24,7 @@ void CCustomCommunities::DownloadCustomCommunitiesDDNetInfo()
 		}
 		m_pCustomCommunitiesDDNetInfoTask = HttpGetFile(g_Config.m_TcCustomCommunitiesUrl, Storage(), CUSTOM_COMMUNITIES_DDNET_INFO_FILE, IStorage::TYPE_SAVE);
 		m_pCustomCommunitiesDDNetInfoTask->Timeout(CTimeout{10000, 0, 500, 10});
-		m_pCustomCommunitiesDDNetInfoTask->SkipByFileTime(false); // Always re-download.
+		m_pCustomCommunitiesDDNetInfoTask->SkipByFileTime(true); // Only re-download if remote file is newer (If-Modified-Since).
 		// Use ipv4 so we can know the ingame ip addresses of players before they join game servers
 		m_pCustomCommunitiesDDNetInfoTask->IpResolve(IPRESOLVE::V4);
 		Http()->Run(m_pCustomCommunitiesDDNetInfoTask);

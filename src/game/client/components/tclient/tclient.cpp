@@ -103,7 +103,7 @@ struct SBackgroundAlertState
 SBackgroundAlertState gs_BgAlerts;
 } // namespace
 
-static constexpr const char *ACLIENT_LATEST_RELEASE_URL = "https://api.github.com/repos/AgusClient/AClient/releases";
+static constexpr const char *ACLIENT_LATEST_RELEASE_URL = "https://api.github.com/repos/AgusClient/AClient/releases?per_page=15";
 
 CTClient::CTClient()
 {
@@ -391,6 +391,11 @@ void CTClient::OnMessage(int MsgType, void *pRawMsg)
 		int LocalId = GameClient()->m_Snap.m_LocalClientId;
 		if(ClientId == LocalId)
 			str_copy(m_PreviousOwnMessage, pMsg->m_pMessage);
+
+		if(!g_Config.m_TcAutoReplyMuted && !g_Config.m_TcAutoReplyMinimized)
+			return;
+		if(pMsg->m_pMessage && str_find(pMsg->m_pMessage, "[AC-CHESS]"))
+			return;
 
 		const bool DummyConnected = GameClient()->Client()->DummyConnected();
 		const bool IsOwnClient = (LocalId >= 0 && ClientId == LocalId) ||
@@ -764,9 +769,10 @@ void CTClient::DoFinishCheck()
 		const int Height = pCollision->GetHeight();
 		if(Width <= 0 || Height <= 0)
 			return false;
+		static constexpr float s_aFinishColH10[21] = {0.0f, 5.0f, 8.0f, 10.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f, 16.0f, 16.0f, 16.0f, 16.0f, 15.0f, 14.0f, 13.0f, 12.0f, 10.0f, 8.0f, 5.0f, 0.0f};
 		for(int i = 0; i <= RadiusInTiles * 2; ++i)
 		{
-			const float h = std::ceil(std::pow(std::sin((float)i * pi / 2.0f / (float)RadiusInTiles), 0.5f) * pi / 2.0f * (float)RadiusInTiles);
+			const float h = (RadiusInTiles == 10 && i <= 20) ? s_aFinishColH10[i] : std::ceil(std::pow(std::sin((float)i * pi / 2.0f / (float)RadiusInTiles), 0.5f) * pi / 2.0f * (float)RadiusInTiles);
 			const int Nx = std::clamp((int)(Pos.x + (float)(i - RadiusInTiles) * 32.0f) / 32, 0, Width - 1);
 			const int Ny0 = std::clamp((int)(Pos.y - h) / 32, 0, Height - 1);
 			const int Ny1 = std::clamp((int)(Pos.y + h) / 32, 0, Height - 1);
@@ -1083,6 +1089,12 @@ void CTClient::FetchTClientInfo(bool Force)
 	if(!Force && m_UpdateState != UPDATE_STATE_IDLE && m_UpdateState != UPDATE_STATE_FAIL)
 		return;
 
+	static int64_t s_LastReleaseFetchTime = 0;
+	const int64_t Now = time_get();
+	const int64_t MinCooldown = (m_FetchedTClientInfo && m_UpdateState != UPDATE_STATE_FAIL) ? (time_freq() * 30) : (time_freq() * 10);
+	if(s_LastReleaseFetchTime > 0 && (Now - s_LastReleaseFetchTime) < MinCooldown)
+		return;
+
 	if(m_pTClientInfoTask && !m_pTClientInfoTask->Done())
 	{
 		if(Force)
@@ -1091,6 +1103,7 @@ void CTClient::FetchTClientInfo(bool Force)
 			return;
 	}
 
+	s_LastReleaseFetchTime = Now;
 	char aUrl[256];
 	str_copy(aUrl, ACLIENT_LATEST_RELEASE_URL, sizeof(aUrl));
 	m_pTClientInfoTask = HttpGet(aUrl);

@@ -2563,16 +2563,6 @@ void CFastPractice::TickPracticeWorld()
 			TrackSafeRescuePosition(LocalClientId, pLocalChar);
 			if(pDummyChar)
 				TrackSafeRescuePosition(DummyClientId, pDummyChar);
-			if(IsSafeRescuePosition(pLocalChar->Core()->m_Pos, pLocalChar->GetProximityRadius()))
-			{
-				m_aSafePos[LocalClientId] = pLocalChar->Core()->m_Pos;
-				m_aSafePosValid[LocalClientId] = true;
-			}
-			if(pDummyChar && IsSafeRescuePosition(pDummyChar->Core()->m_Pos, pDummyChar->GetProximityRadius()))
-			{
-				m_aSafePos[DummyClientId] = pDummyChar->Core()->m_Pos;
-				m_aSafePosValid[DummyClientId] = true;
-			}
 
 			PlayCoreEvents(pLocalChar, Tick);
 			PlayCoreEvents(pDummyChar, Tick);
@@ -3247,6 +3237,12 @@ bool CFastPractice::IsSafeRescuePosition(const vec2 &Pos, float ProximityRadius)
 		return false;
 
 	const float HalfSize = std::max(6.0f, ProximityRadius * 0.5f);
+	const bool Grounded =
+		Collision()->CheckPoint(Pos.x + HalfSize, Pos.y + HalfSize + 5.0f) ||
+		Collision()->CheckPoint(Pos.x - HalfSize, Pos.y + HalfSize + 5.0f);
+	if(!Grounded)
+		return false;
+
 	if(Collision()->TestBox(Pos, vec2(HalfSize * 2.0f, HalfSize * 2.0f)))
 		return false;
 
@@ -3269,13 +3265,7 @@ bool CFastPractice::IsSafeRescuePosition(const vec2 &Pos, float ProximityRadius)
 		}
 	}
 
-	if(HasFreezePickupNear(Pos, ProximityRadius + CPickup::ms_CollisionExtraSize))
-		return false;
-
-	const bool Grounded =
-		Collision()->CheckPoint(Pos.x + HalfSize, Pos.y + HalfSize + 5.0f) ||
-		Collision()->CheckPoint(Pos.x - HalfSize, Pos.y + HalfSize + 5.0f);
-	return Grounded;
+	return !HasFreezePickupNear(Pos, ProximityRadius + CPickup::ms_CollisionExtraSize);
 }
 
 void CFastPractice::TrackSafeRescuePosition(int ClientId, CCharacter *pChar)
@@ -3288,6 +3278,9 @@ void CFastPractice::TrackSafeRescuePosition(int ClientId, CCharacter *pChar)
 	const vec2 Pos = pChar->Core()->m_Pos;
 	if(!IsSafeRescuePosition(Pos, pChar->GetProximityRadius()))
 		return;
+
+	m_aSafePos[ClientId] = Pos;
+	m_aSafePosValid[ClientId] = true;
 
 	auto &State = m_aPracticeCommandState[ClientId];
 	if(State.m_HasRescueAuto && distance(State.m_RescueAutoPos, Pos) < 48.0f)

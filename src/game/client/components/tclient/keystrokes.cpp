@@ -735,6 +735,20 @@ namespace
 		const ColorRGBA PrevTextColor = pTextRender->GetTextColor();
 		const ColorRGBA PrevOutlineColor = pTextRender->GetTextOutlineColor();
 
+		pGraphics->TextureClear();
+		pGraphics->QuadsBegin();
+		for(int i = 0; i < KEYSTROKES_DDNET_NUM_KEYS; ++i)
+		{
+			const auto &Def = gs_aKeystrokesDdnetKeys[i];
+			const float X = Rect.x + Def.m_X * Scale;
+			const float Y = Rect.y + Def.m_Y * Scale;
+			const float W = Def.m_W * Scale;
+			const float H = Def.m_H * Scale;
+			pGraphics->SetColor(aActive[i] ? BgActive : BgInactive);
+			pGraphics->DrawRectExt(X, Y, W, H, Rounding, IGraphics::CORNER_ALL);
+		}
+		pGraphics->QuadsEnd();
+
 		for(int i = 0; i < KEYSTROKES_DDNET_NUM_KEYS; ++i)
 		{
 			const auto &Def = gs_aKeystrokesDdnetKeys[i];
@@ -743,9 +757,6 @@ namespace
 			const float W = Def.m_W * Scale;
 			const float H = Def.m_H * Scale;
 			const bool Active = aActive[i];
-
-			pGraphics->DrawRect(X, Y, W, H, Active ? BgActive : BgInactive, IGraphics::CORNER_ALL, Rounding);
-
 			const float FontSize = Metrics.m_aFontSize[i];
 			const float TextW = Metrics.m_aTextW[i];
 			pTextRender->TextColor(Active ? TextActive : TextInactive);
