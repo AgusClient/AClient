@@ -1182,7 +1182,7 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 			}
 		}
 
-		if(InviteTeam > 0 && InviteTeam < 64)
+		if(InviteTeam > TEAM_FLOCK && InviteTeam < TEAM_SUPER)
 		{
 			m_LastInviteTeam = InviteTeam;
 			m_aLastInviteSender[0] = '\0';
@@ -1318,6 +1318,17 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 
 	CLine &PreviousLine = m_aLines[m_CurrentLine];
 
+	auto &&FEmitInviteHint = [&]() {
+		if(!EmitInviteHint)
+			return;
+		char aHint[160];
+		if(m_aLastInviteSender[0] != '\0')
+			str_format(aHint, sizeof(aHint), TCLocalize("[AClient] Invitacion guardada (Equipo %d de '%s'). Usa '/team last' o tu bind para unirte."), m_LastInviteTeam, m_aLastInviteSender);
+		else
+			str_format(aHint, sizeof(aHint), TCLocalize("[AClient] Invitacion guardada al Equipo %d. Usa '/team last' o tu bind para unirte."), m_LastInviteTeam);
+		Echo(aHint);
+	};
+
 	// Team Number:
 	// 0 = global; 1 = team; 2 = sending whisper; 3 = receiving whisper
 
@@ -1337,6 +1348,7 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 		PreviousLine.m_PreparedOffsetType = -1;
 
 		FChatMsgCheckAndPrint(PreviousLine);
+		FEmitInviteHint();
 		return;
 	}
 
@@ -1551,15 +1563,7 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 	// TClient
 	GameClient()->m_Translate.AutoTranslate(CurrentLine);
 
-	if(EmitInviteHint)
-	{
-		char aHint[160];
-		if(m_aLastInviteSender[0] != '\0')
-			str_format(aHint, sizeof(aHint), TCLocalize("[AClient] Invitacion guardada (Equipo %d de '%s'). Usa '/team last' o tu bind para unirte."), m_LastInviteTeam, m_aLastInviteSender);
-		else
-			str_format(aHint, sizeof(aHint), TCLocalize("[AClient] Invitacion guardada al Equipo %d. Usa '/team last' o tu bind para unirte."), m_LastInviteTeam);
-		Echo(aHint);
-	}
+	FEmitInviteHint();
 }
 
 void CChat::OnPrepareLines(float y)
@@ -2473,7 +2477,7 @@ void CChat::JoinLastInvite()
 		return;
 	}
 
-	if(m_LastInviteTeam <= 0 || m_LastInviteTeam >= 64)
+	if(m_LastInviteTeam <= TEAM_FLOCK || m_LastInviteTeam >= TEAM_SUPER)
 	{
 		Echo(TCLocalize("[AClient] No tienes invitaciones recientes a ningun equipo."));
 		return;
