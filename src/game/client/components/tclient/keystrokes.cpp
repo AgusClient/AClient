@@ -42,6 +42,14 @@ namespace
 	constexpr float KEYSTROKES_MC_GAP = 8.0f;
 	constexpr int KEYSTROKES_MC_MAX_KEYS = 8;
 	constexpr int KEYSTROKES_STYLE_MINECRAFT = 1;
+	constexpr int KEYSTROKES_STYLE_DDNET = 2;
+	constexpr float KEYSTROKES_DDNET_KEY_W = 175.0f;
+	constexpr float KEYSTROKES_DDNET_KEY_H = 115.0f;
+	constexpr float KEYSTROKES_DDNET_GAP = 16.0f;
+	constexpr float KEYSTROKES_DDNET_WIDTH = 2.0f * KEYSTROKES_DDNET_KEY_W + KEYSTROKES_DDNET_GAP;
+	constexpr float KEYSTROKES_DDNET_HEIGHT = 3.0f * KEYSTROKES_DDNET_KEY_H + 2.0f * KEYSTROKES_DDNET_GAP;
+	constexpr float KEYSTROKES_DDNET_ROUNDING = 20.0f;
+	constexpr int KEYSTROKES_DDNET_NUM_KEYS = 5;
 
 	enum class EKeystrokesInputKind
 	{
@@ -375,6 +383,16 @@ namespace
 		return g_Config.m_AcKeystrokesStyle == KEYSTROKES_STYLE_MINECRAFT;
 	}
 
+	bool IsKeystrokesDdnetStyle()
+	{
+		return g_Config.m_AcKeystrokesStyle == KEYSTROKES_STYLE_DDNET;
+	}
+
+	bool IsKeystrokesCombinedStyle()
+	{
+		return IsKeystrokesMinecraftStyle() || IsKeystrokesDdnetStyle();
+	}
+
 	struct SKeystrokesMcKey
 	{
 		enum class EKind
@@ -646,6 +664,99 @@ namespace
 		pTextRender->TextColor(pTextRender->DefaultTextColor());
 	}
 
+	struct SKeystrokesDdnetKeyDef
+	{
+		SKeystrokesMcKey::EAction m_Action;
+		const char *m_pLabel;
+		float m_X;
+		float m_Y;
+		float m_W;
+		float m_H;
+		bool m_MultiChar;
+	};
+
+	constexpr SKeystrokesDdnetKeyDef gs_aKeystrokesDdnetKeys[KEYSTROKES_DDNET_NUM_KEYS] = {
+		{SKeystrokesMcKey::EAction::LEFT, "A", 0.0f, 0.0f, KEYSTROKES_DDNET_KEY_W, KEYSTROKES_DDNET_KEY_H, false},
+		{SKeystrokesMcKey::EAction::RIGHT, "D", KEYSTROKES_DDNET_KEY_W + KEYSTROKES_DDNET_GAP, 0.0f, KEYSTROKES_DDNET_KEY_W, KEYSTROKES_DDNET_KEY_H, false},
+		{SKeystrokesMcKey::EAction::FIRE, "FIRE", 0.0f, KEYSTROKES_DDNET_KEY_H + KEYSTROKES_DDNET_GAP, KEYSTROKES_DDNET_KEY_W, KEYSTROKES_DDNET_KEY_H, true},
+		{SKeystrokesMcKey::EAction::HOOK, "HOOK", KEYSTROKES_DDNET_KEY_W + KEYSTROKES_DDNET_GAP, KEYSTROKES_DDNET_KEY_H + KEYSTROKES_DDNET_GAP, KEYSTROKES_DDNET_KEY_W, KEYSTROKES_DDNET_KEY_H, true},
+		{SKeystrokesMcKey::EAction::JUMP, "JUMP", 0.0f, 2.0f * (KEYSTROKES_DDNET_KEY_H + KEYSTROKES_DDNET_GAP), KEYSTROKES_DDNET_WIDTH, KEYSTROKES_DDNET_KEY_H, true},
+	};
+
+	struct SDdnetKeystrokesMetricsCache
+	{
+		float m_Scale = -1.0f;
+		float m_aFontSize[KEYSTROKES_DDNET_NUM_KEYS] = {};
+		float m_aTextW[KEYSTROKES_DDNET_NUM_KEYS] = {};
+	};
+
+	const SDdnetKeystrokesMetricsCache &GetCachedDdnetMetrics(ITextRender *pTextRender, float Scale)
+	{
+		static SDdnetKeystrokesMetricsCache s_Cache;
+		if(std::abs(s_Cache.m_Scale - Scale) > 0.0001f)
+		{
+			s_Cache.m_Scale = Scale;
+			const float KeyH = KEYSTROKES_DDNET_KEY_H * Scale;
+			for(int i = 0; i < KEYSTROKES_DDNET_NUM_KEYS; ++i)
+			{
+				const auto &Def = gs_aKeystrokesDdnetKeys[i];
+				const float MaxW = Def.m_W * Scale * 0.86f;
+				float FontSize = KeyH * (Def.m_MultiChar ? 0.42f : 0.56f);
+				float TextW = pTextRender->TextWidth(FontSize, Def.m_pLabel, -1, -1.0f);
+				if(TextW > MaxW && TextW > 0.001f)
+				{
+					FontSize *= MaxW / TextW;
+					TextW = MaxW;
+				}
+				s_Cache.m_aFontSize[i] = FontSize;
+				s_Cache.m_aTextW[i] = TextW;
+			}
+		}
+		return s_Cache;
+	}
+
+	void DrawKeystrokesDdnetOverlay(
+		IGraphics *pGraphics,
+		ITextRender *pTextRender,
+		const CUIRect &Rect,
+		float Scale,
+		const bool aActive[KEYSTROKES_DDNET_NUM_KEYS])
+	{
+		const float PressedOpacity = std::clamp(g_Config.m_AcKeystrokesMcPressedOpacity * 0.01f, 0.0f, 1.0f);
+		const float Rounding = KEYSTROKES_DDNET_ROUNDING * Scale;
+		const ColorRGBA BgInactive(0.11f, 0.12f, 0.15f, 0.74f);
+		const ColorRGBA BgActive(0.08f, 0.56f, 0.76f, PressedOpacity);
+		const ColorRGBA TextInactive(0.55f, 0.57f, 0.62f, 0.92f);
+		const ColorRGBA TextActive(1.0f, 1.0f, 1.0f, 1.0f);
+		const ColorRGBA OutlineInactive(0.0f, 0.0f, 0.0f, 0.25f);
+		const ColorRGBA OutlineActive(0.0f, 0.0f, 0.0f, 0.65f);
+
+		const auto &Metrics = GetCachedDdnetMetrics(pTextRender, Scale);
+		const ColorRGBA PrevTextColor = pTextRender->GetTextColor();
+		const ColorRGBA PrevOutlineColor = pTextRender->GetTextOutlineColor();
+
+		for(int i = 0; i < KEYSTROKES_DDNET_NUM_KEYS; ++i)
+		{
+			const auto &Def = gs_aKeystrokesDdnetKeys[i];
+			const float X = Rect.x + Def.m_X * Scale;
+			const float Y = Rect.y + Def.m_Y * Scale;
+			const float W = Def.m_W * Scale;
+			const float H = Def.m_H * Scale;
+			const bool Active = aActive[i];
+
+			pGraphics->DrawRect(X, Y, W, H, Active ? BgActive : BgInactive, IGraphics::CORNER_ALL, Rounding);
+
+			const float FontSize = Metrics.m_aFontSize[i];
+			const float TextW = Metrics.m_aTextW[i];
+			pTextRender->TextColor(Active ? TextActive : TextInactive);
+			pTextRender->TextOutlineColor(Active ? OutlineActive : OutlineInactive);
+			pTextRender->Text(X + (W - TextW) * 0.5f, Y + (H - FontSize) * 0.5f, FontSize, Def.m_pLabel);
+		}
+
+		pTextRender->TextColor(PrevTextColor);
+		pTextRender->TextOutlineColor(PrevOutlineColor);
+	}
+
 	void DrawKeystrokesSpriteQuad(
 		IGraphics *pGraphics,
 		int AtlasWidth,
@@ -678,7 +789,9 @@ namespace
 
 float GetKeystrokesKeyboardPresetWidthHudPx(int Preset)
 {
-	if(g_Config.m_AcKeystrokesStyle == 1)
+	if(g_Config.m_AcKeystrokesStyle == KEYSTROKES_STYLE_DDNET)
+		return KEYSTROKES_DDNET_WIDTH * KEYSTROKES_ATLAS_SCALE;
+	if(g_Config.m_AcKeystrokesStyle == KEYSTROKES_STYLE_MINECRAFT)
 		return GetCachedKeystrokesMcLayout(nullptr).m_OverlayWidth * KEYSTROKES_ATLAS_SCALE;
 	return GetKeystrokesKeyboardPreset(Preset).m_OverlayWidth * KEYSTROKES_ATLAS_SCALE;
 }
@@ -758,7 +871,12 @@ CUIRect CKeystrokes::GetKeyboardRectInternal(bool IgnoreModuleEnabled) const
 	const float Scale = GetKeystrokesScale(Layout);
 	float OverlayWidth;
 	float OverlayHeight;
-	if(IsKeystrokesMinecraftStyle())
+	if(IsKeystrokesDdnetStyle())
+	{
+		OverlayWidth = KEYSTROKES_DDNET_WIDTH;
+		OverlayHeight = KEYSTROKES_DDNET_HEIGHT;
+	}
+	else if(IsKeystrokesMinecraftStyle())
 	{
 		const auto &McLayout = GetCachedKeystrokesMcLayout(&GameClient()->m_Binds);
 		OverlayWidth = McLayout.m_OverlayWidth;
@@ -777,7 +895,7 @@ CUIRect CKeystrokes::GetKeyboardRectInternal(bool IgnoreModuleEnabled) const
 
 CUIRect CKeystrokes::GetMouseRectInternal(bool IgnoreModuleEnabled) const
 {
-	if(IsKeystrokesMinecraftStyle())
+	if(IsKeystrokesCombinedStyle())
 		return {};
 	if(!IgnoreModuleEnabled && (!HudLayout::IsEnabled(HudLayout::MODULE_KEYSTROKES_MOUSE) || g_Config.m_AcKeystrokesMouse == 0))
 		return {};
@@ -801,7 +919,7 @@ CUIRect CKeystrokes::GetKeyboardHudEditorRect() const
 	if(Rect.w <= 0.0f || Rect.h <= 0.0f)
 		return Rect;
 
-	if(!IsKeystrokesMinecraftStyle())
+	if(!IsKeystrokesCombinedStyle())
 	{
 		const auto &DefaultMousePreset = GetKeystrokesMousePreset(1);
 		Rect.h = std::max(Rect.h, DefaultMousePreset.m_OverlayHeight * KEYSTROKES_ATLAS_SCALE);
@@ -862,6 +980,37 @@ void CKeystrokes::RenderKeyboardInternal(bool ForcePreview, bool IgnoreModuleEna
 	const CNetObj_Character *pPrevTrackedCharacter = HasTrackedPlayer && GameClient()->m_Snap.m_aCharacters[TrackedClientId].m_Active ?
 								 &GameClient()->m_Snap.m_aCharacters[TrackedClientId].m_Prev :
 								 nullptr;
+
+	if(IsKeystrokesDdnetStyle())
+	{
+		const int64_t Now = time_get();
+		const int64_t HighlightDuration = time_freq() * KEYSTROKES_WHEEL_HIGHLIGHT_MS / 1000;
+		if(!ForcePreview && HasTrackedPlayer && pTrackedInput == nullptr && pTrackedCharacter != nullptr && pPrevTrackedCharacter != nullptr &&
+			pPrevTrackedCharacter->m_AttackTick != pTrackedCharacter->m_AttackTick)
+		{
+			m_Mouse1EndTime = Now + HighlightDuration;
+		}
+
+		bool aActive[KEYSTROKES_DDNET_NUM_KEYS] = {};
+		if(ForcePreview)
+		{
+			aActive[2] = true; // FIRE
+			aActive[3] = true; // HOOK
+		}
+		else
+		{
+			for(int i = 0; i < KEYSTROKES_DDNET_NUM_KEYS; ++i)
+			{
+				const auto Action = gs_aKeystrokesDdnetKeys[i].m_Action;
+				aActive[i] = HasTrackedPlayer ?
+						     IsKeystrokesMcActionActiveTracked(Action, pTrackedInput, pPrevTrackedCharacter, pTrackedCharacter, Now, m_Mouse1EndTime) :
+						     IsKeystrokesMcActionActiveLocal(GameClient(), Action);
+			}
+		}
+
+		DrawKeystrokesDdnetOverlay(Graphics(), TextRender(), Rect, Scale, aActive);
+		return;
+	}
 
 	if(IsKeystrokesMinecraftStyle())
 	{
@@ -939,7 +1088,7 @@ void CKeystrokes::RenderKeyboardInternal(bool ForcePreview, bool IgnoreModuleEna
 
 void CKeystrokes::RenderMouseInternal(bool ForcePreview, bool IgnoreModuleEnabled)
 {
-	if(IsKeystrokesMinecraftStyle())
+	if(IsKeystrokesCombinedStyle())
 		return;
 
 	const CUIRect Rect = GetMouseRectInternal(IgnoreModuleEnabled);

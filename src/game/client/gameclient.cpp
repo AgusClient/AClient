@@ -224,7 +224,7 @@ void CGameClient::OnConsoleInit()
 	}
 
 	// add basic console commands
-	Console()->Register("team", "i[team-id]", CFGFLAG_CLIENT, ConTeam, this, "Switch team");
+	Console()->Register("team", "s[team-id]", CFGFLAG_CLIENT, ConTeam, this, "Switch team (or 'last' to join last team invite)");
 	Console()->Register("kill", "", CFGFLAG_CLIENT, ConKill, this, "Kill yourself to restart");
 	Console()->Register("toggle_antiping", "", CFGFLAG_CLIENT, ConToggleAntiPing, this, "Toggle antiping with on-screen notification");
 	Console()->Register("tc_toggle_antiping", "", CFGFLAG_CLIENT, ConToggleAntiPing, this, "Toggle antiping with on-screen notification (alias)");
@@ -4055,7 +4055,18 @@ void CGameClient::SendReadyChange7() // NOLINT(readability-make-member-function-
 
 void CGameClient::ConTeam(IConsole::IResult *pResult, void *pUserData)
 {
-	((CGameClient *)pUserData)->SendSwitchTeam(pResult->GetInteger(0));
+	CGameClient *pSelf = (CGameClient *)pUserData;
+	const char *pArg = pResult->GetString(0);
+	if(str_comp_nocase(pArg, "last") == 0 || str_comp_nocase(pArg, "invite") == 0)
+	{
+		pSelf->m_Chat.JoinLastInvite();
+		return;
+	}
+	int TeamId = 0;
+	if(str_toint(pArg, &TeamId))
+		pSelf->SendSwitchTeam(TeamId);
+	else
+		pSelf->m_Chat.Echo(TCLocalize("[AClient] Uso: team <numero_equipo> o team last"));
 }
 
 void CGameClient::ConKill(IConsole::IResult *pResult, void *pUserData)

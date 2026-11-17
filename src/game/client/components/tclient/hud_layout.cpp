@@ -35,7 +35,7 @@ struct SModuleMeta
 
 static const SModuleMeta gs_aModuleMeta[MODULE_COUNT] = {
 	{"score", "Score", true, true, false, true, 100, 100, 0, 100},
-	{"chat", "Chat", true, true, false, true, 100, 100, 0, 100},
+	{"chat", "Chat", true, true, true, true, 40, 200, 0, 100},
 	{"votes", "Votes", true, true, true, true, 50, 200, 0, 100},
 	{"mini_statboard", "RaceStats Overlay", true, true, true, true, 20, 200, 0, 100},
 	{"speedometer", "Speedometer", true, true, true, true, 25, 300, 0, 100},
@@ -145,8 +145,8 @@ void EstimateModuleBounds(EModule Module, const SModuleLayout &Layout, float Hud
 		OutH = 46.0f;
 		break;
 	case MODULE_CHAT:
-		OutW = 180.0f;
-		OutH = 58.0f;
+		OutW = std::clamp((float)g_Config.m_ClChatWidth, 80.0f, HudWidth) * S;
+		OutH = 58.0f * S;
 		break;
 	case MODULE_VOTES:
 		OutW = 120.0f * S;
@@ -198,7 +198,11 @@ void EstimateModuleBounds(EModule Module, const SModuleLayout &Layout, float Hud
 	{
 		const float KbScale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
 		OutW = GetKeystrokesKeyboardPresetWidthHudPx(g_Config.m_AcKeystrokesKeyboardPreset) * KbScale;
-		if(g_Config.m_AcKeystrokesStyle == 1)
+		if(g_Config.m_AcKeystrokesStyle == 2)
+		{
+			OutH = 377.0f * 0.14f * KbScale;
+		}
+		else if(g_Config.m_AcKeystrokesStyle == 1)
 		{
 			const bool OnlyAd = g_Config.m_AcKeystrokesMcLayout == 1;
 			int Rows = OnlyAd ? 1 : 2;

@@ -358,7 +358,6 @@ void CChat::OnConsoleInit()
 	Console()->Register("team_invite", "", CFGFLAG_CLIENT, ConJoinInvite, this, "Unirse al ultimo equipo al que fuiste invitado");
 	Console()->Register("join_invite", "", CFGFLAG_CLIENT, ConJoinInvite, this, "Unirse al ultimo equipo al que fuiste invitado");
 	Console()->Register("team_last", "", CFGFLAG_CLIENT, ConJoinInvite, this, "Unirse al ultimo equipo al que fuiste invitado");
-	Console()->Register("team", "?s[arg]", CFGFLAG_CLIENT, ConTeam, this, "Unirse a un equipo (ej. team 3) o al ultimo invitado (team last)");
 	Console()->Register("greet_last", "?r[custom_message]", CFGFLAG_CLIENT, ConGreetLast, this, "Saludar a la ultima persona que te taggeo o susurro");
 	Console()->Register("say_greet", "?r[custom_message]", CFGFLAG_CLIENT, ConGreetLast, this, "Saludar a la ultima persona que te taggeo o susurro");
 	Console()->Register("greet", "?r[custom_message]", CFGFLAG_CLIENT, ConGreetLast, this, "Saludar a la ultima persona que te taggeo o susurro");
@@ -1154,45 +1153,31 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 			return;
 	}
 
-	if((ClientId == SERVER_MSG && !g_Config.m_ClShowChatSystem) ||
-		(ClientId >= 0 && (GameClient()->m_aClients[ClientId].m_aName[0] == '\0' || // unknown client
-					  GameClient()->m_aClients[ClientId].m_ChatIgnore ||
-					  (GameClient()->m_Snap.m_LocalClientId != ClientId && g_Config.m_ClShowChatFriends && !GameClient()->m_aClients[ClientId].m_Friend) ||
-					  (GameClient()->m_Snap.m_LocalClientId != ClientId && GameClient()->m_aClients[ClientId].m_Foe) ||
-					  (GameClient()->m_Snap.m_LocalClientId != ClientId && g_Config.m_ClShowChatTeamMembersOnly && GameClient()->IsOtherTeam(ClientId) && GameClient()->m_Teams.Team(GameClient()->m_Snap.m_LocalClientId) != TEAM_FLOCK))))
-		return;
-
-	// TClient
-	if(ClientId == CLIENT_MSG && !g_Config.m_AcShowChatClient)
-		return;
-
-	// AClient: Detect incoming team invite
+	// AClient: Detect incoming team invite before chat filters so binds/commands always work
 	bool EmitInviteHint = false;
-	if(ClientId != CLIENT_MSG &&
-		(str_find_nocase(pLine, "invited you") ||
-		 str_find_nocase(pLine, "te ha invitado") ||
-		 str_find_nocase(pLine, "te invito") ||
-		 str_find_nocase(pLine, "te invitó")))
+	if(ClientId != CLIENT_MSG && (str_find_nocase(pLine, "invit") || str_find_nocase(pLine, "convid")))
 	{
+		static constexpr const char *s_apTeamPrefixes[] = {
+			"/team ",
+			"to team ",
+			"join team ",
+			"team ",
+			"al equipo ",
+			"equipo ",
+			"time ",
+		};
 		int InviteTeam = -1;
-		const char *pTeamSearch = str_find_nocase(pLine, "/team ");
-		if(pTeamSearch)
-			InviteTeam = str_toint(pTeamSearch + 6);
-		else
+		for(const char *pPrefix : s_apTeamPrefixes)
 		{
-			const char *pToTeam = str_find_nocase(pLine, "to team ");
-			if(pToTeam)
-				InviteTeam = str_toint(pToTeam + 8);
-			else
+			if(const char *pMatch = str_find_nocase(pLine, pPrefix))
 			{
-				const char *pAlEquipo = str_find_nocase(pLine, "al equipo ");
-				if(pAlEquipo)
-					InviteTeam = str_toint(pAlEquipo + 10);
-				else
+				const char *pNum = pMatch + str_length(pPrefix);
+				while(*pNum == ' ' || *pNum == '#')
+					++pNum;
+				if(*pNum >= '0' && *pNum <= '9')
 				{
-					const char *pEquipo = str_find_nocase(pLine, "equipo ");
-					if(pEquipo)
-						InviteTeam = str_toint(pEquipo + 7);
+					InviteTeam = str_toint(pNum);
+					break;
 				}
 			}
 		}
@@ -1207,17 +1192,29 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 
 			if(pQuoteStart)
 			{
-				char QuoteChar = *pQuoteStart;
+				const char QuoteChar = *pQuoteStart;
 				const char *pQuoteEnd = str_find(pQuoteStart + 1, QuoteChar == '\'' ? "'" : "\"");
 				if(pQuoteEnd && pQuoteEnd > pQuoteStart + 1)
 				{
-					int NameLen = (int)(pQuoteEnd - (pQuoteStart + 1));
+					const int NameLen = (int)(pQuoteEnd - (pQuoteStart + 1));
 					str_truncate(m_aLastInviteSender, sizeof(m_aLastInviteSender), pQuoteStart + 1, NameLen);
 				}
 			}
 			EmitInviteHint = true;
 		}
 	}
+
+	if((ClientId == SERVER_MSG && !g_Config.m_ClShowChatSystem) ||
+		(ClientId >= 0 && (GameClient()->m_aClients[ClientId].m_aName[0] == '\0' || // unknown client
+					  GameClient()->m_aClients[ClientId].m_ChatIgnore ||
+					  (GameClient()->m_Snap.m_LocalClientId != ClientId && g_Config.m_ClShowChatFriends && !GameClient()->m_aClients[ClientId].m_Friend) ||
+					  (GameClient()->m_Snap.m_LocalClientId != ClientId && GameClient()->m_aClients[ClientId].m_Foe) ||
+					  (GameClient()->m_Snap.m_LocalClientId != ClientId && g_Config.m_ClShowChatTeamMembersOnly && GameClient()->IsOtherTeam(ClientId) && GameClient()->m_Teams.Team(GameClient()->m_Snap.m_LocalClientId) != TEAM_FLOCK))))
+		return;
+
+	// TClient
+	if(ClientId == CLIENT_MSG && !g_Config.m_AcShowChatClient)
+		return;
 
 	// AClient: Filter start line messages
 	if(g_Config.m_AcHideStartMessages && ClientId == SERVER_MSG)
@@ -1589,7 +1586,7 @@ void CChat::OnPrepareLines(float y)
 	}
 
 	int64_t Now = time();
-	float LineWidth = (IsScoreBoardOpen ? std::max(85.0f, FontSize * 85.0f / 6.0f) : g_Config.m_ClChatWidth) - (RealMsgPaddingX * 1.5f) - RealMsgPaddingTee;
+	float LineWidth = (IsScoreBoardOpen ? std::max(85.0f, FontSize * 85.0f / 6.0f) : g_Config.m_ClChatWidth * m_HudScale) - (RealMsgPaddingX * 1.5f) - RealMsgPaddingTee;
 
 	float HeightLimit = HudLayout::HasPositionOverride(HudLayout::MODULE_CHAT) ? 0.0f : (IsScoreBoardOpen ? 180.0f : (m_PrevShowChat ? 50.0f : 200.0f));
 	float Begin = x;
@@ -1962,30 +1959,37 @@ void CChat::OnRender()
 	const HudLayout::SModuleLayout ChatLayout = HudLayout::Get(HudLayout::MODULE_CHAT, Width, Height);
 	const bool PosOverride = HudLayout::HasPositionOverride(HudLayout::MODULE_CHAT);
 	const float AlphaMult = HudLayout::AlphaFactor(HudLayout::MODULE_CHAT);
+	const float NewHudScale = std::clamp(ChatLayout.m_Scale / 100.0f, 0.4f, 2.0f);
+	if(std::abs(NewHudScale - m_HudScale) > 0.001f)
+	{
+		m_HudScale = NewHudScale;
+		RebuildChat();
+	}
 
 	float x = 5.0f;
+	const float ChatBoxW = std::clamp((float)g_Config.m_ClChatWidth, 80.0f, Width) * m_HudScale;
+	const float ChatBoxH = 58.0f * m_HudScale;
 
 	// TClient
 	float y = 300.0f - (20.0f * FontSize() / 6.0f + (g_Config.m_TcStatusBar ? g_Config.m_TcStatusBarHeight : 0.0f));
 	// float y = 300.0f - 20.0f * FontSize() / 6.0f;
+	float ScaledFontSize = FontSize() * (8.0f / 6.0f);
 	if(PosOverride)
 	{
-		x = std::clamp(ChatLayout.m_X, 0.0f, std::max(0.0f, Width - 180.0f));
-		y = std::clamp(ChatLayout.m_Y, 0.0f, std::max(0.0f, Height - 58.0f)) + 58.0f;
+		x = std::clamp(ChatLayout.m_X, 0.0f, std::max(0.0f, Width - ChatBoxW));
+		const float BoxTop = std::clamp(ChatLayout.m_Y, 0.0f, std::max(0.0f, Height - ChatBoxH));
+		const float BoxBottom = BoxTop + ChatBoxH;
+		y = (m_Mode != MODE_NONE) ? (BoxBottom - ScaledFontSize * 1.15f) : BoxBottom;
 	}
 	const float PreviewBaseY = y;
 
-	float ScaledFontSize = FontSize() * (8.0f / 6.0f);
 	if(m_Mode != MODE_NONE)
 	{
 		// render chat input
 		CTextCursor InputCursor;
 		InputCursor.SetPosition(vec2(x, y));
 		InputCursor.m_FontSize = ScaledFontSize;
-		InputCursor.m_LineWidth = Width - 190.0f;
-
-		// TClient
-		InputCursor.m_LineWidth = std::max(Width - 190.0f, 190.0f);
+		InputCursor.m_LineWidth = PosOverride ? std::max(ChatBoxW - 10.0f, 80.0f) : std::max(Width - 190.0f, 190.0f);
 
 		if(m_Mode == MODE_ALL)
 			TextRender()->TextEx(&InputCursor, Localize("All"));
@@ -2069,10 +2073,13 @@ void CChat::OnRender()
 
 		const float TranslateButtonSize = std::max(18.0f, InputCursor.m_FontSize * 1.75f);
 		const float TranslateButtonGap = 4.0f;
-		const float ChatBoxRight = std::min(ClippingRect.x + ClippingRect.w, x + (float)g_Config.m_ClChatWidth);
+		const float ChatBoxRight = std::min(ClippingRect.x + ClippingRect.w, x + ChatBoxW);
+		const float TranslateButtonX = (ChatBoxRight + TranslateButtonGap + TranslateButtonSize > Width) ?
+						       std::max(0.0f, x - TranslateButtonGap - TranslateButtonSize) :
+						       (ChatBoxRight + TranslateButtonGap);
 		const float UiScale = Ui()->Screen()->h / Height;
 		m_TranslateButtonRect = {
-			ChatBoxRight + TranslateButtonGap,
+			TranslateButtonX,
 			y,
 			TranslateButtonSize,
 			InputCursor.m_FontSize};
@@ -2099,11 +2106,9 @@ void CChat::OnRender()
 	{
 		if(HudEditorActive)
 		{
-			const float BoxW = 180.0f;
-			const float BoxH = 58.0f;
-			const float BoxX = PosOverride ? std::clamp(ChatLayout.m_X, 0.0f, std::max(0.0f, Width - BoxW)) : 5.0f;
-			const float BoxY = PosOverride ? std::clamp(ChatLayout.m_Y, 0.0f, std::max(0.0f, Height - BoxH)) : std::max(0.0f, PreviewBaseY - BoxH);
-			Graphics()->DrawRect(BoxX, BoxY, BoxW, BoxH, ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f * AlphaMult), IGraphics::CORNER_ALL, 4.0f);
+			const float BoxX = PosOverride ? std::clamp(ChatLayout.m_X, 0.0f, std::max(0.0f, Width - ChatBoxW)) : 5.0f;
+			const float BoxY = PosOverride ? std::clamp(ChatLayout.m_Y, 0.0f, std::max(0.0f, Height - ChatBoxH)) : std::max(0.0f, PreviewBaseY - ChatBoxH);
+			Graphics()->DrawRect(BoxX, BoxY, ChatBoxW, ChatBoxH, ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f * AlphaMult), IGraphics::CORNER_ALL, 4.0f);
 			TextRender()->TextColor(TextRender()->DefaultTextColor().WithMultipliedAlpha(AlphaMult));
 			TextRender()->Text(BoxX + 6.0f, BoxY + 6.0f, 6.0f, "Chat", -1.0f);
 			TextRender()->TextColor(TextRender()->DefaultTextColor());
@@ -2111,7 +2116,10 @@ void CChat::OnRender()
 		return;
 	}
 
-	y -= ScaledFontSize;
+	if(!PosOverride)
+		y -= ScaledFontSize;
+	else if(m_Mode != MODE_NONE)
+		y -= 2.0f;
 
 	ClampChatHistoryScroll();
 	if(m_Mode != MODE_NONE && m_ChatHistoryScroll > 0)
@@ -2489,13 +2497,34 @@ bool CChat::TryHandleJoinInviteCommand(const char *pLine)
 		return false;
 
 	const char *pTrimmed = str_utf8_skip_whitespaces(pLine);
-	if(str_comp_nocase(pTrimmed, "/team last") == 0 ||
-		str_comp_nocase(pTrimmed, "/team invite") == 0 ||
-		str_comp_nocase(pTrimmed, "/join_invite") == 0 ||
-		str_comp_nocase(pTrimmed, "/joininvite") == 0)
+	int Len = str_length(pTrimmed);
+	while(Len > 0 && (pTrimmed[Len - 1] == ' ' || pTrimmed[Len - 1] == '\t'))
+		--Len;
+
+	auto EqualsTrimmed = [&](const char *pCmd) {
+		const int CmdLen = str_length(pCmd);
+		return Len == CmdLen && str_comp_nocase_num(pTrimmed, pCmd, CmdLen) == 0;
+	};
+
+	if(EqualsTrimmed("/team_last") ||
+		EqualsTrimmed("/teamlast") ||
+		EqualsTrimmed("/join_invite") ||
+		EqualsTrimmed("/joininvite"))
 	{
 		JoinLastInvite();
 		return true;
+	}
+
+	if(Len > 5 && str_comp_nocase_num(pTrimmed, "/team", 5) == 0 && (pTrimmed[5] == ' ' || pTrimmed[5] == '\t'))
+	{
+		const char *pArg = str_utf8_skip_whitespaces(pTrimmed + 5);
+		const int ArgLen = Len - (int)(pArg - pTrimmed);
+		if((ArgLen == 4 && str_comp_nocase_num(pArg, "last", 4) == 0) ||
+			(ArgLen == 6 && str_comp_nocase_num(pArg, "invite", 6) == 0))
+		{
+			JoinLastInvite();
+			return true;
+		}
 	}
 
 	return false;
@@ -2505,30 +2534,6 @@ void CChat::ConJoinInvite(IConsole::IResult *pResult, void *pUserData)
 {
 	CChat *pSelf = (CChat *)pUserData;
 	pSelf->JoinLastInvite();
-}
-
-void CChat::ConTeam(IConsole::IResult *pResult, void *pUserData)
-{
-	CChat *pSelf = (CChat *)pUserData;
-	const char *pArg = pResult->NumArguments() > 0 ? pResult->GetString(0) : nullptr;
-	if(!pArg || *pArg == '\0' || str_comp_nocase(pArg, "last") == 0 || str_comp_nocase(pArg, "invite") == 0)
-	{
-		pSelf->JoinLastInvite();
-	}
-	else
-	{
-		int TeamNum = str_toint(pArg);
-		if(TeamNum >= 0 && TeamNum < 64)
-		{
-			char aBuf[64];
-			str_format(aBuf, sizeof(aBuf), "/team %d", TeamNum);
-			pSelf->SendChat(0, aBuf);
-		}
-		else
-		{
-			pSelf->Echo(TCLocalize("[AClient] Uso: team <numero_equipo> o team last"));
-		}
-	}
 }
 
 

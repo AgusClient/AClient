@@ -7377,15 +7377,18 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
 	{
-		CUIRect StyleRow, BtnClassic, BtnMc;
+		CUIRect StyleRow, BtnClassic, BtnMc, BtnDdnet;
 		Column.HSplitTop(LineSize, &StyleRow, &Column);
-		StyleRow.VSplitMid(&BtnClassic, &BtnMc);
-		g_Config.m_AcKeystrokesStyle = std::clamp(g_Config.m_AcKeystrokesStyle, 0, 1);
-		static CButtonContainer s_KsStyleClassic, s_KsStyleMc;
-		if(DoButton_Menu(&s_KsStyleClassic, TCLocalize("Clasico (Texturas)"), g_Config.m_AcKeystrokesStyle == 0, &BtnClassic, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+		StyleRow.VSplitLeft(StyleRow.w / 3.0f, &BtnClassic, &StyleRow);
+		StyleRow.VSplitMid(&BtnMc, &BtnDdnet);
+		g_Config.m_AcKeystrokesStyle = std::clamp(g_Config.m_AcKeystrokesStyle, 0, 2);
+		static CButtonContainer s_KsStyleClassic, s_KsStyleMc, s_KsStyleDdnet;
+		if(DoButton_Menu(&s_KsStyleClassic, TCLocalize("Clasico"), g_Config.m_AcKeystrokesStyle == 0, &BtnClassic, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
 			g_Config.m_AcKeystrokesStyle = 0;
-		if(DoButton_Menu(&s_KsStyleMc, TCLocalize("Minecraft"), g_Config.m_AcKeystrokesStyle == 1, &BtnMc, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+		if(DoButton_Menu(&s_KsStyleMc, TCLocalize("Minecraft"), g_Config.m_AcKeystrokesStyle == 1, &BtnMc, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_NONE))
 			g_Config.m_AcKeystrokesStyle = 1;
+		if(DoButton_Menu(&s_KsStyleDdnet, "DDNet", g_Config.m_AcKeystrokesStyle == 2, &BtnDdnet, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+			g_Config.m_AcKeystrokesStyle = 2;
 	}
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
@@ -7459,6 +7462,10 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 			DoCheckboxWithHelp(&g_Config.m_AcKeystrokesMcShowSpace, TCLocalize("Mostrar Space"), TCLocalize("Muestra la barra Space en el layout A/D de Minecraft."), &g_Config.m_AcKeystrokesMcShowSpace, &Column, LineSize);
 		}
 
+	}
+
+	if(g_Config.m_AcKeystrokesStyle == 1 || g_Config.m_AcKeystrokesStyle == 2)
+	{
 		CUIRect OpacityRow;
 		Column.HSplitTop(LineSize, &OpacityRow, &Column);
 		Ui()->DoScrollbarOption(&g_Config.m_AcKeystrokesMcPressedOpacity, &g_Config.m_AcKeystrokesMcPressedOpacity, &OpacityRow, TCLocalize("Opacidad tecla presionada"), 0, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");

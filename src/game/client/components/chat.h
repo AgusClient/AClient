@@ -199,7 +199,6 @@ class CChat : public CComponent
 	bool TryHandleNotificationsCommand(const char *pLine);
 
 	static void ConJoinInvite(IConsole::IResult *pResult, void *pUserData);
-	static void ConTeam(IConsole::IResult *pResult, void *pUserData);
 	static void ConGreetLast(IConsole::IResult *pResult, void *pUserData);
 
 	static void ConSay(IConsole::IResult *pResult, void *pUserData);
@@ -263,7 +262,9 @@ public:
 	void EnsureCoherentFontSize() const;
 	void EnsureCoherentWidth() const;
 
-	float FontSize() const { return g_Config.m_ClChatFontSize / 10.0f; }
+	float m_HudScale = 1.0f;
+
+	float FontSize() const { return (g_Config.m_ClChatFontSize / 10.0f) * m_HudScale; }
 	float MessagePaddingX() const { return FontSize() * (5 / 6.f); }
 	float MessagePaddingY() const { return FontSize() * (1 / 6.f); }
 	float MessageTeeSize() const { return FontSize() * (7 / 6.f); }

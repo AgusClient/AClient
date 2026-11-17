@@ -650,7 +650,7 @@ CHudEditor::SModuleVisual CHudEditor::GetModuleVisual(HudLayout::EModule Module)
 		break;
 	}
 	case HudLayout::MODULE_CHAT:
-		Visual.m_Rect = CUIRect{Layout.m_X, Layout.m_Y, 180.0f, 58.0f};
+		Visual.m_Rect = CUIRect{Layout.m_X, Layout.m_Y, std::clamp((float)g_Config.m_ClChatWidth, 80.0f, Width) * S, 58.0f * S};
 		Visual.m_Rounding = 6.0f;
 		break;
 	case HudLayout::MODULE_VOTES:

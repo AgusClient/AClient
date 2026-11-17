@@ -256,7 +256,7 @@ MACRO_CONFIG_INT(AcMotionBlur, ac_motion_blur, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG
 MACRO_CONFIG_INT(AcMotionBlurStrength, ac_motion_blur_strength, 50, 0, 95, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Strength of motion blur frame blending (0-95%)")
 
 // Keystrokes (Separated Keyboard + Mouse)
-MACRO_CONFIG_INT(AcKeystrokesStyle, ac_keystrokes_style, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Keystrokes style (0 = Classic, 1 = Minecraft)")
+MACRO_CONFIG_INT(AcKeystrokesStyle, ac_keystrokes_style, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Keystrokes style (0 = Classic, 1 = Minecraft, 2 = DDNet)")
 MACRO_CONFIG_INT(AcKeystrokesKeyboard, ac_keystrokes_keyboard, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show keyboard keystrokes HUD")
 MACRO_CONFIG_INT(AcKeystrokesKeyboardPreset, ac_keystrokes_keyboard_preset, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Keyboard keystrokes preset (0 = wasd-minimal, 1 = wasd-full, 2 = micro)")
 MACRO_CONFIG_INT(AcKeystrokesMouse, ac_keystrokes_mouse, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show mouse keystrokes HUD")
