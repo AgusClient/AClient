@@ -231,9 +231,64 @@ bool CMenus::RenderHslaScrollbars(CUIRect *pRect, unsigned int *pColor, bool Alp
 	Preview.HSplitTop(OffY / 2.0f, nullptr, &Preview);
 	Preview.HSplitTop(PreviewHeight, &Preview, nullptr);
 
-	Preview.Draw(ColorRGBA(0.15f, 0.15f, 0.15f, 1.0f), IGraphics::CORNER_ALL, 4.0f + PreviewMargin);
-	Preview.Margin(PreviewMargin, &Preview);
-	Preview.Draw(color_cast<ColorRGBA>(Color.UnclampLighting(DarkestLight)), IGraphics::CORNER_ALL, 4.0f + PreviewMargin);
+	static const unsigned int *s_apPreviewKeys[32] = {};
+	static char s_aPreviewIds[32] = {};
+	const void *pPreviewId = &s_aPreviewIds[0];
+	for(size_t Slot = 0; Slot < std::size(s_apPreviewKeys); Slot++)
+	{
+		if(s_apPreviewKeys[Slot] == pColor || s_apPreviewKeys[Slot] == nullptr)
+		{
+			s_apPreviewKeys[Slot] = pColor;
+			pPreviewId = &s_aPreviewIds[Slot];
+			break;
+		}
+	}
+
+	static unsigned int *s_pActivePopupColor = nullptr;
+	static ColorHSVA s_LastPopupHsva;
+	const ColorRGBA UnclampedRgba = color_cast<ColorRGBA>(Color.UnclampLighting(DarkestLight));
+	const ColorRGBA BorderColor = ColorRGBA(0.15f, 0.15f, 0.15f, 1.0f).WithAlpha(1.0f);
+	const bool HoveredOrActive = Ui()->HotItem() == pPreviewId || (Ui()->IsPopupOpen(&m_ColorPickerPopupContext) && s_pActivePopupColor == pColor);
+	Preview.Draw(HoveredOrActive ? ColorRGBA(0.35f, 0.35f, 0.35f, 1.0f) : BorderColor, IGraphics::CORNER_ALL, 4.0f + PreviewMargin);
+	{
+		CUIRect InnerPreview;
+		Preview.Margin(PreviewMargin, &InnerPreview);
+		InnerPreview.Draw(UnclampedRgba, IGraphics::CORNER_ALL, 4.0f + PreviewMargin);
+	}
+
+	if(Ui()->DoButtonLogic(pPreviewId, 0, &Preview, BUTTONFLAG_LEFT))
+	{
+		const ColorHSLA UnclampedHsla = Color.UnclampLighting(DarkestLight);
+		s_pActivePopupColor = pColor;
+		m_ColorPickerPopupContext.m_pHslaColor = nullptr;
+		m_ColorPickerPopupContext.m_HslaColor = UnclampedHsla;
+		m_ColorPickerPopupContext.m_HsvaColor = color_cast<ColorHSVA>(UnclampedHsla);
+		m_ColorPickerPopupContext.m_RgbaColor = color_cast<ColorRGBA>(m_ColorPickerPopupContext.m_HsvaColor);
+		m_ColorPickerPopupContext.m_Alpha = Alpha;
+		s_LastPopupHsva = m_ColorPickerPopupContext.m_HsvaColor;
+		Ui()->ShowPopupColorPicker(Ui()->MouseX(), Ui()->MouseY(), &m_ColorPickerPopupContext);
+	}
+	else if(Ui()->IsPopupOpen(&m_ColorPickerPopupContext) && s_pActivePopupColor == pColor)
+	{
+		if(m_ColorPickerPopupContext.m_HsvaColor != s_LastPopupHsva)
+		{
+			s_LastPopupHsva = m_ColorPickerPopupContext.m_HsvaColor;
+			ColorHSLA Picked = color_cast<ColorHSLA>(m_ColorPickerPopupContext.m_HsvaColor);
+			if(DarkestLight < 1.0f)
+			{
+				Picked.l = std::clamp((Picked.l - DarkestLight) / (1.0f - DarkestLight), 0.0f, 1.0f);
+			}
+			if(!Alpha)
+			{
+				Picked.a = Color.a;
+			}
+			Color = Picked;
+		}
+	}
+	else if(!Ui()->IsPopupOpen(&m_ColorPickerPopupContext) && s_pActivePopupColor == pColor)
+	{
+		s_pActivePopupColor = nullptr;
+	}
 
 	auto &&RenderHueRect = [&](CUIRect *pColorRect) {
 		float CurXOff = pColorRect->x;

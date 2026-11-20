@@ -92,7 +92,7 @@ void CMenus::RenderSettingsTee(CUIRect MainView)
 	const float EyeButtonSize = 40.0f;
 	const bool RenderEyesBelow = MainView.w < 750.0f;
 	CUIRect YourSkin, Checkboxes, SkinPrefix, Eyes, Button, Label;
-	MainView.HSplitTop(232.0f, &YourSkin, &MainView);
+	MainView.HSplitTop(165.0f, &YourSkin, &MainView);
 	if(RenderEyesBelow)
 	{
 		YourSkin.VSplitLeft(MainView.w * 0.45f, &YourSkin, &Checkboxes);
@@ -110,69 +110,75 @@ void CMenus::RenderSettingsTee(CUIRect MainView)
 		SkinPrefix.VSplitRight(20.0f, &SkinPrefix, nullptr);
 	}
 	YourSkin.VSplitRight(20.0f, &YourSkin, nullptr);
-	Checkboxes.VSplitRight(20.0f, &Checkboxes, nullptr);
+	Checkboxes.VSplitRight(12.0f, &Checkboxes, nullptr);
 	CUIRect IdentityView;
 	YourSkin.HSplitTop(68.0f, &IdentityView, &YourSkin);
 	RenderSettingsTeeIdentity(IdentityView);
 	YourSkin.HSplitTop(5.0f, nullptr, &YourSkin);
 
-	// Checkboxes
+	// Checkboxes (scrollable region so the skin list below keeps full space)
 	bool ShouldRefresh = false;
-	Checkboxes.HSplitTop(20.0f, &Button, &Checkboxes);
-	if(DoButton_CheckBox(&g_Config.m_ClDownloadSkins, Localize("Download skins"), g_Config.m_ClDownloadSkins, &Button))
+	Checkboxes.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.15f), IGraphics::CORNER_ALL, 5.0f);
+	Checkboxes.Margin(3.0f, &Checkboxes);
+	static CScrollRegion s_CheckboxesScroll;
+	CScrollRegionParams ScrollParams;
+	ScrollParams.m_ScrollUnit = 20.0f * 2.0f;
+	ScrollParams.m_ForceShowScrollbar = true;
+	ScrollParams.m_ScrollbarMargin = 4.0f;
+	s_CheckboxesScroll.Begin(&Checkboxes, &ScrollParams);
+
+	auto AddCheckboxRow = [&](float Height, CUIRect &RowRect) -> bool {
+		Checkboxes.HSplitTop(Height, &RowRect, &Checkboxes);
+		s_CheckboxesScroll.AddRect(RowRect);
+		return !s_CheckboxesScroll.RectClipped(RowRect);
+	};
+
+	if(AddCheckboxRow(20.0f, Button) && DoButton_CheckBox(&g_Config.m_ClDownloadSkins, Localize("Download skins"), g_Config.m_ClDownloadSkins, &Button))
 	{
 		g_Config.m_ClDownloadSkins ^= 1;
 		ShouldRefresh = true;
 	}
 
-	Checkboxes.HSplitTop(20.0f, &Button, &Checkboxes);
-	if(DoButton_CheckBox(&g_Config.m_ClDownloadCommunitySkins, Localize("Download community skins"), g_Config.m_ClDownloadCommunitySkins, &Button))
+	if(AddCheckboxRow(20.0f, Button) && DoButton_CheckBox(&g_Config.m_ClDownloadCommunitySkins, Localize("Download community skins"), g_Config.m_ClDownloadCommunitySkins, &Button))
 	{
 		g_Config.m_ClDownloadCommunitySkins ^= 1;
 		ShouldRefresh = true;
 	}
 
-	Checkboxes.HSplitTop(20.0f, &Button, &Checkboxes);
-	if(DoButton_CheckBox(&g_Config.m_AcDownloadSkinsFrozen, Localize("Descargar skins solo freezeado"), g_Config.m_AcDownloadSkinsFrozen, &Button))
+	if(AddCheckboxRow(20.0f, Button) && DoButton_CheckBox(&g_Config.m_AcDownloadSkinsFrozen, Localize("Descargar skins solo freezeado"), g_Config.m_AcDownloadSkinsFrozen, &Button))
 	{
 		g_Config.m_AcDownloadSkinsFrozen ^= 1;
 		ShouldRefresh = true;
 	}
 
-	Checkboxes.HSplitTop(20.0f, &Button, &Checkboxes);
-	if(DoButton_CheckBox(&g_Config.m_AcShowInMenuIcon, Localize("Mostrar logo arriba del Tee en Escape / Opciones"), g_Config.m_AcShowInMenuIcon, &Button))
+	if(AddCheckboxRow(20.0f, Button) && DoButton_CheckBox(&g_Config.m_AcShowInMenuIcon, Localize("Mostrar logo arriba del Tee en Escape / Opciones"), g_Config.m_AcShowInMenuIcon, &Button))
 	{
 		g_Config.m_AcShowInMenuIcon ^= 1;
 	}
 
-	Checkboxes.HSplitTop(20.0f, &Button, &Checkboxes);
-	if(DoButton_CheckBox(&g_Config.m_ClVanillaSkinsOnly, Localize("Vanilla skins only"), g_Config.m_ClVanillaSkinsOnly, &Button))
+	if(AddCheckboxRow(20.0f, Button) && DoButton_CheckBox(&g_Config.m_ClVanillaSkinsOnly, Localize("Vanilla skins only"), g_Config.m_ClVanillaSkinsOnly, &Button))
 	{
 		g_Config.m_ClVanillaSkinsOnly ^= 1;
 		ShouldRefresh = true;
 	}
 
-	Checkboxes.HSplitTop(20.0f, &Button, &Checkboxes);
-	if(DoButton_CheckBox(&g_Config.m_ClFatSkins, Localize("Fat skins (DDFat)"), g_Config.m_ClFatSkins, &Button))
+	if(AddCheckboxRow(20.0f, Button) && DoButton_CheckBox(&g_Config.m_ClFatSkins, Localize("Fat skins (DDFat)"), g_Config.m_ClFatSkins, &Button))
 	{
 		g_Config.m_ClFatSkins ^= 1;
 	}
 
-	Checkboxes.HSplitTop(20.0f, &Button, &Checkboxes);
-	if(DoButton_CheckBox(&g_Config.m_AcShowRemoteGameSkins, Localize("Mostrar gameskins de otros"), g_Config.m_AcShowRemoteGameSkins, &Button))
+	if(AddCheckboxRow(20.0f, Button) && DoButton_CheckBox(&g_Config.m_AcShowRemoteGameSkins, Localize("Mostrar gameskins de otros"), g_Config.m_AcShowRemoteGameSkins, &Button))
 	{
 		g_Config.m_AcShowRemoteGameSkins ^= 1;
 		GameClient()->m_AClientGameSkins.RefreshPresence();
 	}
 
-	Checkboxes.HSplitTop(20.0f, &Button, &Checkboxes);
-	if(DoButton_CheckBox(&g_Config.m_ClDownloadGameskins, Localize("Descargar gameskins automaticamente"), g_Config.m_ClDownloadGameskins, &Button))
+	if(AddCheckboxRow(20.0f, Button) && DoButton_CheckBox(&g_Config.m_ClDownloadGameskins, Localize("Descargar gameskins automaticamente"), g_Config.m_ClDownloadGameskins, &Button))
 	{
 		g_Config.m_ClDownloadGameskins ^= 1;
 	}
 
-	Checkboxes.HSplitTop(20.0f, &Button, &Checkboxes);
-	if(DoButton_CheckBox(&g_Config.m_ClDownloadEntities, Localize("Descargar entities automaticamente"), g_Config.m_ClDownloadEntities, &Button))
+	if(AddCheckboxRow(20.0f, Button) && DoButton_CheckBox(&g_Config.m_ClDownloadEntities, Localize("Descargar entities automaticamente"), g_Config.m_ClDownloadEntities, &Button))
 	{
 		g_Config.m_ClDownloadEntities ^= 1;
 	}
@@ -180,35 +186,45 @@ void CMenus::RenderSettingsTee(CUIRect MainView)
 	if(g_Config.m_ClDownloadGameskins)
 	{
 		CUIRect SubButton;
-		Checkboxes.HSplitTop(18.0f, &Button, &Checkboxes);
-		Button.VSplitLeft(12.0f, nullptr, &SubButton);
-		if(DoButton_CheckBox(&g_Config.m_AcGameskinDownloadInitial, Localize("Al inicio del servidor"), g_Config.m_AcGameskinDownloadInitial, &SubButton))
+		if(AddCheckboxRow(18.0f, Button))
 		{
-			g_Config.m_AcGameskinDownloadInitial ^= 1;
+			Button.VSplitLeft(12.0f, nullptr, &SubButton);
+			if(DoButton_CheckBox(&g_Config.m_AcGameskinDownloadInitial, Localize("Al inicio del servidor"), g_Config.m_AcGameskinDownloadInitial, &SubButton))
+			{
+				g_Config.m_AcGameskinDownloadInitial ^= 1;
+			}
 		}
 
-		Checkboxes.HSplitTop(18.0f, &Button, &Checkboxes);
-		Button.VSplitLeft(12.0f, nullptr, &SubButton);
-		if(DoButton_CheckBox(&g_Config.m_AcGameskinDownloadFrozen, Localize("Cuando estoy freezeado"), g_Config.m_AcGameskinDownloadFrozen, &SubButton))
+		if(AddCheckboxRow(18.0f, Button))
 		{
-			g_Config.m_AcGameskinDownloadFrozen ^= 1;
+			Button.VSplitLeft(12.0f, nullptr, &SubButton);
+			if(DoButton_CheckBox(&g_Config.m_AcGameskinDownloadFrozen, Localize("Cuando estoy freezeado"), g_Config.m_AcGameskinDownloadFrozen, &SubButton))
+			{
+				g_Config.m_AcGameskinDownloadFrozen ^= 1;
+			}
 		}
 
-		Checkboxes.HSplitTop(18.0f, &Button, &Checkboxes);
-		Button.VSplitLeft(12.0f, nullptr, &SubButton);
-		if(DoButton_CheckBox(&g_Config.m_AcGameskinDownloadEcho, Localize("Aviso de descarga en chat"), g_Config.m_AcGameskinDownloadEcho, &SubButton))
+		if(AddCheckboxRow(18.0f, Button))
 		{
-			g_Config.m_AcGameskinDownloadEcho ^= 1;
+			Button.VSplitLeft(12.0f, nullptr, &SubButton);
+			if(DoButton_CheckBox(&g_Config.m_AcGameskinDownloadEcho, Localize("Aviso de descarga en chat"), g_Config.m_AcGameskinDownloadEcho, &SubButton))
+			{
+				g_Config.m_AcGameskinDownloadEcho ^= 1;
+			}
 		}
 	}
 
 	static CButtonContainer s_BtnReloadGameSkins;
-	Checkboxes.HSplitTop(20.0f, &Button, &Checkboxes);
-	Button.HMargin(1.0f, &Button);
-	if(DoButton_Menu(&s_BtnReloadGameSkins, Localize("Recargar gameskins"), 0, &Button))
+	if(AddCheckboxRow(20.0f, Button))
 	{
-		GameClient()->m_AClientGameSkins.TriggerManualReload();
+		Button.HMargin(1.0f, &Button);
+		if(DoButton_Menu(&s_BtnReloadGameSkins, Localize("Recargar gameskins"), 0, &Button))
+		{
+			GameClient()->m_AClientGameSkins.TriggerManualReload();
+		}
 	}
+
+	s_CheckboxesScroll.End();
 
 	// Skin prefix
 	{

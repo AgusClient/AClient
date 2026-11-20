@@ -168,7 +168,7 @@ MACRO_CONFIG_INT(AcProfileViewMode, ac_profile_view_mode, 0, 0, 1, CFGFLAG_CLIEN
 // Custom Gameskin Sharing & Downloads
 MACRO_CONFIG_INT(AcShowRemoteGameSkins, ac_show_remote_gameskins, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show other AClient players' custom gameskins")
 MACRO_CONFIG_INT(AcScoreboardGameSkinActions, ac_scoreboard_gameskin_actions, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show copy/hide gameskin and entities options in scoreboard (Tab) player popup")
-MACRO_CONFIG_INT(AcZoomCooldownMs, ac_zoom_cooldown_ms, 50, 0, 250, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Minimum cooldown in ms between zoom+/zoom- steps when holding a key (0 = unlimited)")
+MACRO_CONFIG_INT(AcZoomCooldownMs, ac_zoom_cooldown_ms, 0, 0, 250, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Minimum cooldown in ms between zoom+/zoom- steps when holding a key (0 = unlimited)")
 MACRO_CONFIG_INT(ClDownloadGameskins, cl_download_gameskins, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Download gameskins on-the-fly")
 MACRO_CONFIG_INT(AcGameskinDownloadInitial, ac_gameskin_download_initial, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Download remote gameskins upon joining the server")
 MACRO_CONFIG_INT(AcGameskinDownloadFrozen, ac_gameskin_download_frozen, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Download remote gameskins when player is frozen")
