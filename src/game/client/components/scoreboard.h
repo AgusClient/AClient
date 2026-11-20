@@ -143,6 +143,7 @@ class CScoreboard : public CComponent
 	CCachedText m_HeadlineName;
 	CCachedText m_HeadlineClan;
 	CCachedText m_HeadlinePing;
+	CCachedText m_FriendMark;
 
 public:
 	void ResetTexts();

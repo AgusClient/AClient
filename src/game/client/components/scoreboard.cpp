@@ -149,6 +149,7 @@ void CScoreboard::ResetTexts()
 	m_HeadlineName.Reset(TextRender());
 	m_HeadlineClan.Reset(TextRender());
 	m_HeadlinePing.Reset(TextRender());
+	m_FriendMark.Reset(TextRender());
 }
 
 void CScoreboard::OnShutdown()
@@ -864,6 +865,18 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 				{
 					Ui()->DoLabel(&IconRect, "x", FontSize, TEXTALIGN_MC);
 				}
+			}
+
+			// friend heart
+			if(ClientData.m_Friend)
+			{
+				const float HeartFontSize = std::min(FontSize, MARGIN - 1.5f);
+				TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+				m_FriendMark.Update(TextRender(), FontIcon::HEART, HeartFontSize);
+				TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+				const float HeartX = ScoreOffset + ScoreLength + (MARGIN - m_FriendMark.Width()) / 2.0f;
+				const float HeartY = Row.y + (Row.h - HeartFontSize) / 2.0f;
+				m_FriendMark.Render(TextRender(), vec2(HeartX, HeartY), ColorRGBA(0.94f, 0.4f, 0.4f, TextColor.a));
 			}
 
 			// CTF flag
