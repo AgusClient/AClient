@@ -8096,6 +8096,240 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
+
+	// ***** Voice Chat (Team) ***** //
+	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	s_SectionBoxesAc.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	{
+		CUIRect VoiceHeaderLabel = Label;
+		CUIRect VoiceBetaBadge;
+		VoiceHeaderLabel.VSplitRight(44.0f, &VoiceHeaderLabel, &VoiceBetaBadge);
+		Ui()->DoLabel(&VoiceHeaderLabel, TCLocalize("Voice Chat (Team)"), HeadlineFontSize, TEXTALIGN_ML);
+
+		const float BadgeHeight = std::min(16.0f, VoiceBetaBadge.h);
+		VoiceBetaBadge.HMargin((VoiceBetaBadge.h - BadgeHeight) * 0.5f, &VoiceBetaBadge);
+		VoiceBetaBadge.Draw(ColorRGBA(0.95f, 0.55f, 0.15f, 0.75f), IGraphics::CORNER_ALL, 4.0f);
+		CUIRect BetaInner = VoiceBetaBadge;
+		BetaInner.Margin(1.0f, &BetaInner);
+		BetaInner.Draw(ColorRGBA(0.12f, 0.13f, 0.16f, 0.95f), IGraphics::CORNER_ALL, 3.0f);
+		TextRender()->TextColor(ColorRGBA(1.0f, 0.68f, 0.22f, 1.0f));
+		Ui()->DoLabel(&BetaInner, "BETA", 10.0f, TEXTALIGN_MC);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
+	}
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	DoCheckboxWithHelp(&g_Config.m_AcVoiceEnabled, TCLocalize("Activar Voice Chat por Team"), TCLocalize("Permite hablar por voz usando Opus y UDP con tus companeros del mismo team sin usar apps externas."), &g_Config.m_AcVoiceEnabled, &Column, LineSize);
+	static CButtonContainer s_ReaderButtonVoiceToggle, s_ClearButtonVoiceToggle;
+	DoLine_KeyReader(Column, s_ReaderButtonVoiceToggle, s_ClearButtonVoiceToggle, TCLocalize("Toggle Voice Chat key"), "ac_voice_toggle");
+	DoCheckboxWithHelp(&g_Config.m_AcVoiceOnlyTeam, TCLocalize("Solo en Team privado (Team > 0)"), TCLocalize("Si esta activo, solo se conecta al chat de voz cuando entras a un team privado (> 0) y no en team 0."), &g_Config.m_AcVoiceOnlyTeam, &Column, LineSize);
+
+	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize, &Button, &Column);
+	{
+		static CButtonContainer s_aVoiceModeBtns[2];
+		CUIRect LeftBtn, RightBtn;
+		Button.VSplitMid(&LeftBtn, &RightBtn, 2.0f);
+		if(DoButton_Menu(&s_aVoiceModeBtns[0], TCLocalize("Push-to-Talk"), g_Config.m_AcVoiceMode == 0, &LeftBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+			g_Config.m_AcVoiceMode = 0;
+		if(DoButton_Menu(&s_aVoiceModeBtns[1], TCLocalize("Deteccion de Voz (VAD)"), g_Config.m_AcVoiceMode == 1, &RightBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+			g_Config.m_AcVoiceMode = 1;
+	}
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	if(g_Config.m_AcVoiceMode == 0)
+	{
+		static CButtonContainer s_ReaderButtonVoicePtt, s_ClearButtonVoicePtt;
+		DoLine_KeyReader(Column, s_ReaderButtonVoicePtt, s_ClearButtonVoicePtt, TCLocalize("Tecla Push-to-Talk"), "+ac_voice_ptt");
+	}
+	else
+	{
+		Column.HSplitTop(LineSize, &Button, &Column);
+		Ui()->DoScrollbarOption(&g_Config.m_AcVoiceVadThreshold, &g_Config.m_AcVoiceVadThreshold, &Button, TCLocalize("Sensibilidad VAD"), 1, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
+	}
+
+	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize, &Button, &Column);
+	Ui()->DoScrollbarOption(&g_Config.m_AcVoiceVolume, &g_Config.m_AcVoiceVolume, &Button, TCLocalize("Volumen de voz recibida"), 0, 200, &CUi::ms_LinearScrollbarScale, 0, "%");
+
+	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize, &Button, &Column);
+	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize, &Button, &Column);
+	{
+		const std::vector<std::string> &vMics = GameClient()->m_AClientVoice.GetMicDevices();
+		const int NumMics = (int)vMics.size();
+		int CurMicIdx = -1; // -1 = system default
+		if(g_Config.m_AcVoiceMicDevice[0] != '\0')
+		{
+			for(int i = 0; i < NumMics; ++i)
+			{
+				if(str_comp(vMics[i].c_str(), g_Config.m_AcVoiceMicDevice) == 0)
+				{
+					CurMicIdx = i;
+					break;
+				}
+			}
+		}
+
+		CUIRect LabelMic, ControlsMic, PrevMicBtn, CurMicBtn, NextMicBtn, RefreshMicBtn;
+		Button.VSplitLeft(95.0f, &LabelMic, &ControlsMic);
+		Ui()->DoLabel(&LabelMic, TCLocalize("Microfono:"), FontSize, TEXTALIGN_ML);
+
+		ControlsMic.VSplitRight(LineSize + 4.0f, &ControlsMic, &RefreshMicBtn);
+		ControlsMic.VSplitRight(4.0f, &ControlsMic, nullptr);
+		ControlsMic.VSplitLeft(22.0f, &PrevMicBtn, &ControlsMic);
+		ControlsMic.VSplitRight(22.0f, &ControlsMic, &NextMicBtn);
+		ControlsMic.VSplitLeft(2.0f, nullptr, &ControlsMic);
+		ControlsMic.VSplitRight(2.0f, &ControlsMic, nullptr);
+		CurMicBtn = ControlsMic;
+
+		static CButtonContainer s_PrevMicBtn, s_CurMicBtn, s_NextMicBtn, s_RefreshMicBtn;
+		auto CycleMic = [&](int Delta) {
+			if(NumMics <= 0)
+			{
+				GameClient()->m_AClientVoice.SelectMicDevice(-1);
+				return;
+			}
+			// Indices: -1 (Default), 0 .. NumMics-1
+			int Pos = CurMicIdx + 1 + Delta; // 0..NumMics
+			const int Total = NumMics + 1;
+			Pos = ((Pos % Total) + Total) % Total;
+			GameClient()->m_AClientVoice.SelectMicDevice(Pos - 1);
+		};
+
+		if(DoButton_Menu(&s_PrevMicBtn, "<", 0, &PrevMicBtn))
+			CycleMic(-1);
+
+		const char *pMicDisplay = (CurMicIdx >= 0) ? vMics[CurMicIdx].c_str() : (g_Config.m_AcVoiceMicDevice[0] ? g_Config.m_AcVoiceMicDevice : TCLocalize("Predeterminado"));
+		if(DoButton_Menu(&s_CurMicBtn, pMicDisplay, 0, &CurMicBtn))
+			CycleMic(1);
+
+		if(DoButton_Menu(&s_NextMicBtn, ">", 0, &NextMicBtn))
+			CycleMic(1);
+
+		TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+		TextRender()->SetRenderFlags(ETextRenderFlags::TEXT_RENDER_FLAG_ONLY_ADVANCE_WIDTH | ETextRenderFlags::TEXT_RENDER_FLAG_NO_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_Y_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT | ETextRenderFlags::TEXT_RENDER_FLAG_NO_OVERSIZE);
+		if(DoButton_Menu(&s_RefreshMicBtn, FontIcon::ARROW_ROTATE_RIGHT, 0, &RefreshMicBtn))
+			GameClient()->m_AClientVoice.RefreshMicDevices();
+		TextRender()->SetRenderFlags(0);
+		TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+		GameClient()->m_Tooltips.DoToolTip(&s_RefreshMicBtn, &RefreshMicBtn, TCLocalize("Actualizar lista de microfonos"));
+	}
+
+	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize, &Button, &Column);
+	Ui()->DoScrollbarOption(&g_Config.m_AcVoiceMicGain, &g_Config.m_AcVoiceMicGain, &Button, TCLocalize("Ganancia de microfono"), 20, 300, &CUi::ms_LinearScrollbarScale, 0, "%");
+
+	DoCheckboxWithHelp(&g_Config.m_AcVoiceHud, TCLocalize("Mostrar indicador de voz en HUD"), TCLocalize("Muestra en el HUD quienes estan hablando en tu team."), &g_Config.m_AcVoiceHud, &Column, LineSize);
+	DoCheckboxWithHelp(&g_Config.m_AcVoiceLoopback, TCLocalize("Probar microfono (Loopback)"), TCLocalize("Te permite escucharte a vos mismo localmente pasando por Opus para probar el mic sin otra persona."), &g_Config.m_AcVoiceLoopback, &Column, LineSize);
+
+	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize, &Button, &Column);
+	{
+		CUIRect MeterBg, MeterFill;
+		Button.VSplitLeft(120.0f, &Label, &MeterBg);
+		Ui()->DoLabel(&Label, TCLocalize("Nivel de mic:"), FontSize, TEXTALIGN_ML);
+		MeterBg.HMargin(4.0f, &MeterBg);
+		MeterBg.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.45f), IGraphics::CORNER_ALL, 3.0f);
+		const float Level = GameClient()->m_AClientVoice.GetLocalMicLevel();
+		if(Level > 0.01f)
+		{
+			MeterFill = MeterBg;
+			MeterFill.w = MeterBg.w * std::clamp(Level, 0.0f, 1.0f);
+			const bool ActiveTx = GameClient()->m_AClientVoice.IsTransmitting();
+			MeterFill.Draw(ActiveTx ? ColorRGBA(0.25f, 0.92f, 0.45f, 0.90f) : ColorRGBA(0.45f, 0.70f, 0.95f, 0.75f), IGraphics::CORNER_ALL, 3.0f);
+		}
+	}
+
+	Column.HSplitTop(LineSize, &Button, &Column);
+	{
+		char aVoiceStatus[128];
+		if(!g_Config.m_AcVoiceEnabled)
+		{
+			str_copy(aVoiceStatus, TCLocalize("Estado: Desactivado"));
+			TextRender()->TextColor(0.75f, 0.75f, 0.78f, 0.9f);
+		}
+		else if(!GameClient()->m_AClientVoice.HasValidRelayAddr())
+		{
+			str_copy(aVoiceStatus, TCLocalize("Estado: Direccion de Relay invalida"));
+			TextRender()->TextColor(1.0f, 0.45f, 0.45f, 0.95f);
+		}
+		else if(GameClient()->m_AClientVoice.IsRoomActive())
+		{
+			str_format(aVoiceStatus, sizeof(aVoiceStatus), "Estado: Conectado (Team %d)", GameClient()->m_AClientVoice.GetCurrentTeam());
+			TextRender()->TextColor(0.40f, 0.95f, 0.55f, 0.95f);
+		}
+		else
+		{
+			str_copy(aVoiceStatus, TCLocalize("Estado: En espera (entra a un servidor / team)"));
+			TextRender()->TextColor(0.95f, 0.85f, 0.45f, 0.95f);
+		}
+		Ui()->DoLabel(&Button, aVoiceStatus, FontSize * 0.9f, TEXTALIGN_ML);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
+	}
+
+	// Volumen individual por jugador
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("Volumen por jugador:"), FontSize, TEXTALIGN_ML);
+	if(Client()->State() != IClient::STATE_ONLINE)
+	{
+		Column.HSplitTop(LineSize, &Button, &Column);
+		TextRender()->TextColor(0.65f, 0.68f, 0.75f, 0.85f);
+		Ui()->DoLabel(&Button, TCLocalize("Entra a un servidor para ajustar volumenes individuales."), FontSize * 0.85f, TEXTALIGN_ML);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
+	}
+	else
+	{
+		const int ActiveDummy = std::clamp(g_Config.m_ClDummy, 0, NUM_DUMMIES - 1);
+		const int LocalId = GameClient()->m_aLocalIds[ActiveDummy];
+		const int LocalTeam = (LocalId >= 0 && LocalId < MAX_CLIENTS) ? GameClient()->m_Teams.Team(LocalId) : 0;
+		static CButtonContainer s_aPeerMuteBtns[MAX_CLIENTS];
+		int ShownPeers = 0;
+
+		for(int i = 0; i < MAX_CLIENTS; ++i)
+		{
+			if(i == LocalId || !GameClient()->m_aClients[i].m_Active)
+				continue;
+			if(g_Config.m_AcVoiceOnlyTeam && LocalTeam > 0 && GameClient()->m_Teams.Team(i) != LocalTeam)
+				continue;
+			if(g_Config.m_AcVoiceOnlyTeam && LocalTeam <= 0)
+				continue;
+
+			Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+			Column.HSplitTop(LineSize, &Button, &Column);
+			CUIRect SliderRect, MuteBtn;
+			Button.VSplitRight(48.0f, &SliderRect, &MuteBtn);
+			SliderRect.VSplitRight(4.0f, &SliderRect, nullptr);
+
+			int *pPeerVol = GameClient()->m_AClientVoice.GetClientVolumePtr(i);
+			if(pPeerVol)
+			{
+				const char *pPeerName = GameClient()->m_aClients[i].m_aName[0] ? GameClient()->m_aClients[i].m_aName : "Jugador";
+				Ui()->DoScrollbarOption(pPeerVol, pPeerVol, &SliderRect, pPeerName, 0, 200, &CUi::ms_LinearScrollbarScale, 0, "%");
+			}
+
+			const bool Muted = GameClient()->m_AClientVoice.IsClientMuted(i);
+			const ColorRGBA MuteColor = Muted ? ColorRGBA(0.85f, 0.25f, 0.25f, 0.85f) : ColorRGBA(0.25f, 0.28f, 0.35f, 0.65f);
+			if(DoButton_Menu(&s_aPeerMuteBtns[i], Muted ? "Muted" : "Mute", 0, &MuteBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, MuteColor))
+			{
+				GameClient()->m_AClientVoice.ToggleClientMute(i);
+			}
+			++ShownPeers;
+		}
+
+		if(ShownPeers == 0)
+		{
+			Column.HSplitTop(LineSize, &Button, &Column);
+			TextRender()->TextColor(0.65f, 0.68f, 0.75f, 0.85f);
+			Ui()->DoLabel(&Button, (g_Config.m_AcVoiceOnlyTeam && LocalTeam <= 0) ? TCLocalize("Entra a un /team (> 0) para ver a tus companeros.") : TCLocalize("No hay otros jugadores en tu team."), FontSize * 0.85f, TEXTALIGN_ML);
+			TextRender()->TextColor(TextRender()->DefaultTextColor());
+		}
+	}
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
 	}
 
 	RightView = Column;

@@ -39,10 +39,12 @@ static void EnforceDiscordNormalPriority(int64_t Now)
 {
 	static std::vector<DWORD> s_vDiscordPids;
 	static int64_t s_LastFullScan = 0;
+	static bool s_InitialScanDone = false;
 
-	const int64_t RescanInterval = 30 * time_freq();
-	if(s_vDiscordPids.empty() || Now - s_LastFullScan >= RescanInterval)
+	const int64_t RescanInterval = 60 * time_freq();
+	if(!s_InitialScanDone || Now - s_LastFullScan >= RescanInterval)
 	{
+		s_InitialScanDone = true;
 		s_LastFullScan = Now;
 		s_vDiscordPids.clear();
 

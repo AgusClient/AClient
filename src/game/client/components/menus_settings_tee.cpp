@@ -214,6 +214,11 @@ void CMenus::RenderSettingsTee(CUIRect MainView)
 		}
 	}
 
+	if(AddCheckboxRow(20.0f, Button))
+	{
+		Ui()->DoScrollbarOption(&g_Config.m_AcDownloadSpeedLimitKbps, &g_Config.m_AcDownloadSpeedLimitKbps, &Button, Localize("Vel. descarga (KB/s)"), 0, 2048, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, " KB/s");
+	}
+
 	static CButtonContainer s_BtnReloadGameSkins;
 	if(AddCheckboxRow(20.0f, Button))
 	{

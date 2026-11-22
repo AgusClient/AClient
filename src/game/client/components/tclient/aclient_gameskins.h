@@ -2,12 +2,14 @@
 #define GAME_CLIENT_COMPONENTS_TCLIENT_ACLIENT_GAMESKINS_H
 
 #include <engine/console.h>
+#include <engine/graphics.h>
 #include <engine/http.h>
 #include <game/client/component.h>
 #include <game/client/gameskin.h>
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <unordered_set>
@@ -33,6 +35,11 @@ class CAClientGameSkins : public CComponent
 	std::shared_ptr<IHttpRequest> m_pDownloadEntitiesRequest;
 	std::string m_DownloadingEntitiesName;
 	std::set<std::string> m_sFailedEntities;
+	std::set<std::string> m_sMissingOnDiskSkins;
+	std::set<std::string> m_sMissingOnDiskEntities;
+	std::optional<CImageInfo> m_FallbackGameImage;
+	int64_t m_LastDownloadFinishTime = 0;
+	int64_t m_LastGpuLoadTime = 0;
 
 	bool m_PendingAnnounce;
 	char m_aLastServerAddress[128];

@@ -593,6 +593,8 @@ void CSkins::UpdateUnloadSkins(CSkinLoadingStats &Stats)
 
 void CSkins::UpdateStartLoading(CSkinLoadingStats &Stats)
 {
+	const bool Online = Client()->State() == IClient::STATE_ONLINE;
+	bool StartedDownloadThisTick = false;
 	for(auto &[_, pSkinContainer] : m_Skins)
 	{
 		if(Stats.m_NumPending == 0 || Stats.m_NumLoading + Stats.m_NumLoaded >= (size_t)g_Config.m_ClSkinsLoadedMax)
@@ -610,7 +612,14 @@ void CSkins::UpdateStartLoading(CSkinLoadingStats &Stats)
 			break;
 		case CSkinContainer::EType::DOWNLOAD:
 		{
-			if(g_Config.m_AcDownloadSkinsFrozen && Client()->State() == IClient::STATE_ONLINE)
+			if(Online)
+			{
+				if(Stats.m_NumLoading >= 2 || StartedDownloadThisTick)
+				{
+					continue;
+				}
+			}
+			if(g_Config.m_AcDownloadSkinsFrozen && Online)
 			{
 				bool IsFrozen = false;
 				if(GameClient())
@@ -626,6 +635,7 @@ void CSkins::UpdateStartLoading(CSkinLoadingStats &Stats)
 				}
 			}
 			pSkinContainer->m_pLoadJob = std::make_shared<CSkinDownloadJob>(this, pSkinContainer->Name());
+			StartedDownloadThisTick = true;
 			break;
 		}
 		default:
@@ -1030,6 +1040,8 @@ void CSkins::CSkinDownloadJob::Run()
 	std::shared_ptr<IHttpRequest> pGet = HttpGetBoth(aUrl, m_pSkins->Storage(), aPathReal, IStorage::TYPE_SAVE);
 	pGet->Timeout(Timeout);
 	pGet->MaxResponseSize(MaxResponseSize);
+	if(g_Config.m_AcDownloadSpeedLimitKbps > 0)
+		pGet->MaxDownloadSpeed((int64_t)g_Config.m_AcDownloadSpeedLimitKbps * 1024);
 	pGet->ValidateBeforeOverwrite(true);
 	pGet->LogProgress(HTTPLOG::NONE);
 	pGet->FailOnErrorStatus(false);
@@ -1070,6 +1082,8 @@ void CSkins::CSkinDownloadJob::Run()
 		pGet = HttpGetBoth(aUrl, m_pSkins->Storage(), aPathReal, IStorage::TYPE_SAVE);
 		pGet->Timeout(Timeout);
 		pGet->MaxResponseSize(MaxResponseSize);
+		if(g_Config.m_AcDownloadSpeedLimitKbps > 0)
+			pGet->MaxDownloadSpeed((int64_t)g_Config.m_AcDownloadSpeedLimitKbps * 1024);
 		pGet->ValidateBeforeOverwrite(true);
 		pGet->LogProgress(HTTPLOG::NONE);
 		pGet->FailOnErrorStatus(false);
@@ -1103,6 +1117,8 @@ void CSkins::CSkinDownloadJob::Run()
 		pGet = HttpGetBoth(aUrl, m_pSkins->Storage(), aPathReal, IStorage::TYPE_SAVE);
 		pGet->Timeout(Timeout);
 		pGet->MaxResponseSize(MaxResponseSize);
+		if(g_Config.m_AcDownloadSpeedLimitKbps > 0)
+			pGet->MaxDownloadSpeed((int64_t)g_Config.m_AcDownloadSpeedLimitKbps * 1024);
 		pGet->ValidateBeforeOverwrite(true);
 		pGet->SkipByFileTime(false);
 		pGet->LogProgress(HTTPLOG::NONE);

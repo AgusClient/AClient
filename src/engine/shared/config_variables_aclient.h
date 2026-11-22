@@ -267,3 +267,18 @@ MACRO_CONFIG_INT(AcKeystrokesMcShowRmb, ac_keystrokes_mc_show_rmb, 1, 0, 1, CFGF
 MACRO_CONFIG_INT(AcKeystrokesMcShowSpace, ac_keystrokes_mc_show_space, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show Space in Minecraft keystrokes")
 MACRO_CONFIG_INT(AcKeystrokesMcPressedOpacity, ac_keystrokes_mc_pressed_opacity, 92, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Pressed key opacity in Minecraft keystrokes")
 
+// Team Voice Chat (UDP Relay + Opus)
+MACRO_CONFIG_INT(AcVoiceEnabled, ac_voice_enabled, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable AClient Team Voice Chat")
+MACRO_CONFIG_STR(AcVoiceRelayAddr, ac_voice_relay_addr, 128, "137.131.163.81:9987", CFGFLAG_CLIENT | CFGFLAG_SAVE, "UDP Voice Relay address (IP:Port)")
+MACRO_CONFIG_INT(AcVoiceMode, ac_voice_mode, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice activation mode (0 = Push-to-Talk, 1 = Voice Activity / VAD)")
+MACRO_CONFIG_INT(AcVoiceVadThreshold, ac_voice_vad_threshold, 15, 1, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice Activity Detection threshold percent (1-100)")
+MACRO_CONFIG_INT(AcVoiceOnlyTeam, ac_voice_only_team, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Only connect voice chat when in a team > 0 (ignore team 0)")
+MACRO_CONFIG_INT(AcVoiceVolume, ac_voice_volume, 100, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Incoming voice chat volume percent (0-200%)")
+MACRO_CONFIG_INT(AcVoiceMicGain, ac_voice_mic_gain, 100, 20, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Microphone input gain percent (20-300%)")
+MACRO_CONFIG_INT(AcVoiceHud, ac_voice_hud, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show speaking teammates indicator on HUD")
+MACRO_CONFIG_INT(AcVoiceLoopback, ac_voice_loopback, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Local microphone loopback test mode")
+MACRO_CONFIG_STR(AcVoiceMicDevice, ac_voice_mic_device, 128, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Microphone capture device name (empty = system default)")
+
+// Download Speed Limiter (Skins, GameSkins, Entities)
+MACRO_CONFIG_INT(AcDownloadSpeedLimitKbps, ac_download_speed_limit_kbps, 256, 0, 4096, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Max download speed in KB/s for skins, gameskins and entities (0 = unlimited)")
+

@@ -66,6 +66,11 @@ CAClientGameSkins::~CAClientGameSkins()
 	if(m_pDownloadEntitiesRequest)
 		m_pDownloadEntitiesRequest->Abort();
 	FreeAllGameSkins();
+	if(m_FallbackGameImage.has_value())
+	{
+		m_FallbackGameImage->Free();
+		m_FallbackGameImage.reset();
+	}
 }
 
 void CAClientGameSkins::OnInit()
@@ -519,6 +524,10 @@ void CAClientGameSkins::OnReset()
 	FreeAllGameSkins();
 	if(m_sFailedSkins.size() >= 256)
 		m_sFailedSkins.clear();
+	m_sMissingOnDiskSkins.clear();
+	m_sMissingOnDiskEntities.clear();
+	m_LastDownloadFinishTime = 0;
+	m_LastGpuLoadTime = 0;
 	m_mRemotePlayerEntities.clear();
 	m_mManualEntities.clear();
 	m_PendingAnnounce = false;
@@ -708,7 +717,10 @@ void CAClientGameSkins::StartDownload(const char *pSkinName)
 {
 	if(!CanDownloadGameskins())
 		return;
-	if(m_pDownloadRequest)
+	if(m_pDownloadRequest || m_pDownloadEntitiesRequest)
+		return;
+	const int64_t Now = time_get();
+	if(m_LastDownloadFinishTime > 0 && (Now - m_LastDownloadFinishTime) < time_freq() / 2)
 		return;
 	if(!pSkinName || !pSkinName[0] || str_comp(pSkinName, "default") == 0)
 		return;
@@ -732,6 +744,8 @@ void CAClientGameSkins::StartDownload(const char *pSkinName)
 	m_pDownloadRequest->Timeout(CTimeout{8000, 8000, 500, 8});
 	m_pDownloadRequest->SkipByFileTime(true);
 	m_pDownloadRequest->MaxResponseSize(4 * 1024 * 1024);
+	if(g_Config.m_AcDownloadSpeedLimitKbps > 0)
+		m_pDownloadRequest->MaxDownloadSpeed((int64_t)g_Config.m_AcDownloadSpeedLimitKbps * 1024);
 	m_pDownloadRequest->IpResolve(IPRESOLVE::V4);
 	m_pDownloadRequest->LogProgress(HTTPLOG::NONE);
 	m_pDownloadRequest->Header("User-Agent: AClient");
@@ -788,7 +802,10 @@ void CAClientGameSkins::StartEntitiesDownload(const char *pEntitiesName)
 {
 	if(!CanDownloadEntities())
 		return;
-	if(m_pDownloadEntitiesRequest)
+	if(m_pDownloadRequest || m_pDownloadEntitiesRequest)
+		return;
+	const int64_t Now = time_get();
+	if(m_LastDownloadFinishTime > 0 && (Now - m_LastDownloadFinishTime) < time_freq() / 2)
 		return;
 	if(!pEntitiesName || !pEntitiesName[0] || str_comp(pEntitiesName, "default") == 0)
 		return;
@@ -830,6 +847,8 @@ void CAClientGameSkins::StartEntitiesDownload(const char *pEntitiesName)
 	m_pDownloadEntitiesRequest->Timeout(CTimeout{8000, 8000, 500, 8});
 	m_pDownloadEntitiesRequest->SkipByFileTime(true);
 	m_pDownloadEntitiesRequest->MaxResponseSize(4 * 1024 * 1024);
+	if(g_Config.m_AcDownloadSpeedLimitKbps > 0)
+		m_pDownloadEntitiesRequest->MaxDownloadSpeed((int64_t)g_Config.m_AcDownloadSpeedLimitKbps * 1024);
 	m_pDownloadEntitiesRequest->IpResolve(IPRESOLVE::V4);
 	m_pDownloadEntitiesRequest->LogProgress(HTTPLOG::NONE);
 	m_pDownloadEntitiesRequest->Header("User-Agent: AClient");
@@ -869,6 +888,13 @@ IGraphics::CTextureHandle CAClientGameSkins::GetOrLoadEntitiesTexture(const char
 
 	if(m_sFailedEntities.find(aCleanName) != m_sFailedEntities.end())
 		return IGraphics::CTextureHandle();
+
+	if(m_sMissingOnDiskEntities.find(aCleanName) != m_sMissingOnDiskEntities.end())
+	{
+		if(g_Config.m_ClDownloadEntities)
+			StartEntitiesDownload(aCleanName);
+		return IGraphics::CTextureHandle();
+	}
 
 	char aPath[IO_MAX_PATH_LENGTH];
 	bool Found = false;
@@ -912,6 +938,7 @@ IGraphics::CTextureHandle CAClientGameSkins::GetOrLoadEntitiesTexture(const char
 
 	if(Found)
 	{
+		m_LastGpuLoadTime = time_get();
 		IGraphics::CTextureHandle Tex = Graphics()->LoadTexture(aPath, IStorage::TYPE_ALL);
 		if(Tex.IsValid() && !Tex.IsNullTexture())
 		{
@@ -925,6 +952,7 @@ IGraphics::CTextureHandle CAClientGameSkins::GetOrLoadEntitiesTexture(const char
 	}
 	else
 	{
+		m_sMissingOnDiskEntities.insert(aCleanName);
 		if(g_Config.m_ClDownloadEntities)
 			StartEntitiesDownload(aCleanName);
 	}
@@ -946,9 +974,17 @@ const SClientGameSkin *CAClientGameSkins::GetOrLoadGameSkin(const char *pName)
 	if(m_sFailedSkins.find(pName) != m_sFailedSkins.end())
 		return nullptr;
 
+	if(m_sMissingOnDiskSkins.find(pName) != m_sMissingOnDiskSkins.end())
+	{
+		if(g_Config.m_ClDownloadGameskins)
+			StartDownload(pName);
+		return nullptr;
+	}
+
 	char aPath[IO_MAX_PATH_LENGTH];
 	if(!FindGameSkinFile(pName, aPath, sizeof(aPath)))
 	{
+		m_sMissingOnDiskSkins.insert(pName);
 		if(g_Config.m_ClDownloadGameskins)
 			StartDownload(pName);
 		return nullptr;
@@ -957,6 +993,8 @@ const SClientGameSkin *CAClientGameSkins::GetOrLoadGameSkin(const char *pName)
 	if(m_mLoadedGameSkins.size() >= 16)
 		return nullptr;
 
+	m_LastGpuLoadTime = time_get();
+
 	CImageInfo ImgInfo;
 	if(!Graphics()->LoadPng(ImgInfo, aPath, IStorage::TYPE_ALL))
 	{
@@ -964,16 +1002,17 @@ const SClientGameSkin *CAClientGameSkins::GetOrLoadGameSkin(const char *pName)
 		return nullptr;
 	}
 
-	CImageInfo DefaultInfo;
-	std::optional<CImageInfo> FallbackInfo;
-	if(Graphics()->LoadPng(DefaultInfo, g_pData->m_aImages[IMAGE_GAME].m_pFilename, IStorage::TYPE_ALL))
-		FallbackInfo = std::move(DefaultInfo);
+	if(!m_FallbackGameImage.has_value())
+	{
+		CImageInfo DefaultInfo;
+		if(Graphics()->LoadPng(DefaultInfo, g_pData->m_aImages[IMAGE_GAME].m_pFilename, IStorage::TYPE_ALL))
+			m_FallbackGameImage = std::move(DefaultInfo);
+	}
+	const std::optional<CImageInfo> &FallbackInfo = m_FallbackGameImage;
 
 	if(!Graphics()->CheckImageDivisibility(aPath, ImgInfo, g_pData->m_aSprites[SPRITE_HOOK_HEAD].m_pSet->m_Gridx, g_pData->m_aSprites[SPRITE_HOOK_HEAD].m_pSet->m_Gridy, true) || !Graphics()->IsImageFormatRgba(aPath, ImgInfo))
 	{
 		ImgInfo.Free();
-		if(FallbackInfo.has_value())
-			FallbackInfo->Free();
 		m_sFailedSkins.insert(pName);
 		return nullptr;
 	}
@@ -1023,8 +1062,6 @@ const SClientGameSkin *CAClientGameSkins::GetOrLoadGameSkin(const char *pName)
 	Skin.m_aSpriteWeaponCursors[5] = Skin.m_SpriteWeaponNinjaCursor;
 
 	ImgInfo.Free();
-	if(FallbackInfo.has_value())
-		FallbackInfo->Free();
 
 	return &Skin;
 }
@@ -1275,7 +1312,15 @@ void CAClientGameSkins::UpdateAllPlayerSkins()
 		if(it != m_mRemotePlayerGameSkins.end() && !it->second.empty() && str_comp(it->second.c_str(), "default") != 0)
 		{
 			str_copy(GameClient()->m_aClients[i].m_aCustomGameSkinName, it->second.c_str());
-			GameClient()->m_aClients[i].m_pCustomGameSkin = IsGameSkinBlacklisted(it->second.c_str()) ? nullptr : GetOrLoadGameSkin(it->second.c_str());
+			if(IsGameSkinBlacklisted(it->second.c_str()))
+			{
+				GameClient()->m_aClients[i].m_pCustomGameSkin = nullptr;
+			}
+			else
+			{
+				auto itLoaded = m_mLoadedGameSkins.find(it->second);
+				GameClient()->m_aClients[i].m_pCustomGameSkin = (itLoaded != m_mLoadedGameSkins.end()) ? &itLoaded->second : nullptr;
+			}
 		}
 		else
 		{
@@ -1311,7 +1356,20 @@ void CAClientGameSkins::UpdateAllPlayerSkins()
 		if(pEntitiesToLoad && pEntitiesToLoad[0] != '\0' && str_comp(pEntitiesToLoad, "default") != 0)
 		{
 			str_copy(GameClient()->m_aClients[i].m_aCustomEntitiesName, pEntitiesToLoad);
-			GameClient()->m_aClients[i].m_CustomEntitiesTexture = (g_Config.m_AcShowRemoteEntitiesOnHook && !IsEntitiesBlacklisted(pEntitiesToLoad)) ? GetOrLoadEntitiesTexture(pEntitiesToLoad) : IGraphics::CTextureHandle();
+			if(g_Config.m_AcShowRemoteEntitiesOnHook && !IsEntitiesBlacklisted(pEntitiesToLoad))
+			{
+				char aCleanEnt[128];
+				str_copy(aCleanEnt, pEntitiesToLoad);
+				int EntLen = str_length(aCleanEnt);
+				if(EntLen > 4 && str_comp_nocase(aCleanEnt + EntLen - 4, ".png") == 0)
+					aCleanEnt[EntLen - 4] = '\0';
+				auto itLoadedEnt = m_mLoadedEntitiesTextures.find(aCleanEnt);
+				GameClient()->m_aClients[i].m_CustomEntitiesTexture = (itLoadedEnt != m_mLoadedEntitiesTextures.end()) ? itLoadedEnt->second : IGraphics::CTextureHandle();
+			}
+			else
+			{
+				GameClient()->m_aClients[i].m_CustomEntitiesTexture = IGraphics::CTextureHandle();
+			}
 		}
 		else
 		{
@@ -1386,10 +1444,11 @@ void CAClientGameSkins::OnRender()
 				bool HeartbeatNeeded = (m_LastPresenceAnnounceTime > 0) && ((NowCheck - m_LastPresenceAnnounceTime) > time_freq() * 2700);
 
 				bool ForceAnnounce = SkinChanged || EntitiesChanged || DummyEntitiesChanged || NameChanged || DummyChanged || HeartbeatNeeded;
-				bool PeriodicRefresh = (m_LastPresenceRefreshTime == 0) || ((NowCheck - m_LastPresenceRefreshTime) > time_freq() * 30);
+				const bool WantRemoteAssets = (g_Config.m_AcShowRemoteGameSkins != 0) || (g_Config.m_AcShowRemoteEntitiesOnHook != 0);
+				bool PeriodicRefresh = WantRemoteAssets && ((m_LastPresenceRefreshTime == 0) || ((NowCheck - m_LastPresenceRefreshTime) > time_freq() * 45));
 
 				bool RosterChanged = false;
-				if((NowCheck - m_LastPresenceRefreshTime) > time_freq() * 8)
+				if(WantRemoteAssets && (NowCheck - m_LastPresenceRefreshTime) > time_freq() * 20)
 				{
 					int RosterSignature = 0;
 					int ActiveCount = 0;
@@ -1519,14 +1578,14 @@ void CAClientGameSkins::OnRender()
 		{
 			if(!m_DownloadingSkinName.empty())
 			{
+				m_sMissingOnDiskSkins.erase(m_DownloadingSkinName);
 				if(g_Config.m_AcGameskinDownloadEcho && GameClient())
 				{
 					char aBuf[256];
 					str_format(aBuf, sizeof(aBuf), "[AClient] Gameskin '%s' descargado.", m_DownloadingSkinName.c_str());
 					GameClient()->m_Chat.Echo(aBuf);
 				}
-				GetOrLoadGameSkin(m_DownloadingSkinName.c_str());
-				UpdateAllPlayerSkins();
+				m_LastRenderCheckTime = 0;
 			}
 		}
 		else
@@ -1542,6 +1601,7 @@ void CAClientGameSkins::OnRender()
 				m_sFailedSkins.insert(m_DownloadingSkinName);
 			}
 		}
+		m_LastDownloadFinishTime = time_get();
 		m_pDownloadRequest = nullptr;
 		m_DownloadingSkinName.clear();
 	}
@@ -1552,14 +1612,14 @@ void CAClientGameSkins::OnRender()
 		{
 			if(!m_DownloadingEntitiesName.empty())
 			{
+				m_sMissingOnDiskEntities.erase(m_DownloadingEntitiesName);
 				if(g_Config.m_AcGameskinDownloadEcho && GameClient())
 				{
 					char aBuf[256];
 					str_format(aBuf, sizeof(aBuf), "[AClient] Entities '%s' descargadas.", m_DownloadingEntitiesName.c_str());
 					GameClient()->m_Chat.Echo(aBuf);
 				}
-				GetOrLoadEntitiesTexture(m_DownloadingEntitiesName.c_str());
-				UpdateAllPlayerSkins();
+				m_LastRenderCheckTime = 0;
 			}
 		}
 		else
@@ -1575,6 +1635,7 @@ void CAClientGameSkins::OnRender()
 				m_sFailedEntities.insert(m_DownloadingEntitiesName);
 			}
 		}
+		m_LastDownloadFinishTime = time_get();
 		m_pDownloadEntitiesRequest = nullptr;
 		m_DownloadingEntitiesName.clear();
 	}
@@ -1591,6 +1652,9 @@ void CAClientGameSkins::OnRender()
 	if(Client()->State() == IClient::STATE_ONLINE && (Now - m_LastRenderCheckTime) > time_freq() / 2)
 	{
 		m_LastRenderCheckTime = Now;
+		bool PerformedHeavyLoad = false;
+		const bool CanLoadHeavyGpu = (m_LastGpuLoadTime == 0) || ((Now - m_LastGpuLoadTime) >= time_freq() / 4);
+
 		for(int i = 0; i < MAX_CLIENTS; ++i)
 		{
 			if(!GameClient()->m_aClients[i].m_Active || i == GameClient()->m_Snap.m_LocalClientId)
@@ -1612,42 +1676,71 @@ void CAClientGameSkins::OnRender()
 				}
 			}
 
-			if(g_Config.m_AcShowRemoteGameSkins && GameClient()->m_aClients[i].m_pCustomGameSkin == nullptr && GameClient()->m_aClients[i].m_aCustomGameSkinName[0] == '\0')
+			if(g_Config.m_AcShowRemoteGameSkins && GameClient()->m_aClients[i].m_pCustomGameSkin == nullptr)
 			{
-				auto it = m_mRemotePlayerGameSkins.find(GameClient()->m_aClients[i].m_aName);
-				if(it == m_mRemotePlayerGameSkins.end())
+				const char *pWantedSkin = GameClient()->m_aClients[i].m_aCustomGameSkinName;
+				std::string FallbackSkin;
+				if(pWantedSkin[0] == '\0')
 				{
-					char aTrimmed[MAX_NAME_LENGTH];
-					TrimPlayerName(GameClient()->m_aClients[i].m_aName, aTrimmed, sizeof(aTrimmed));
-					if(aTrimmed[0] != '\0')
-						it = m_mRemotePlayerGameSkins.find(aTrimmed);
+					auto it = m_mRemotePlayerGameSkins.find(GameClient()->m_aClients[i].m_aName);
+					if(it == m_mRemotePlayerGameSkins.end())
+					{
+						char aTrimmed[MAX_NAME_LENGTH];
+						TrimPlayerName(GameClient()->m_aClients[i].m_aName, aTrimmed, sizeof(aTrimmed));
+						if(aTrimmed[0] != '\0')
+							it = m_mRemotePlayerGameSkins.find(aTrimmed);
+					}
+					if(it != m_mRemotePlayerGameSkins.end() && !it->second.empty() && str_comp(it->second.c_str(), "default") != 0)
+					{
+						FallbackSkin = it->second;
+						pWantedSkin = FallbackSkin.c_str();
+						str_copy(GameClient()->m_aClients[i].m_aCustomGameSkinName, pWantedSkin);
+					}
 				}
-				if(it != m_mRemotePlayerGameSkins.end() && !it->second.empty() && str_comp(it->second.c_str(), "default") != 0)
+
+				if(pWantedSkin[0] != '\0' && str_comp(pWantedSkin, "default") != 0 &&
+					!IsGameSkinBlacklisted(pWantedSkin) &&
+					m_sFailedSkins.find(pWantedSkin) == m_sFailedSkins.end())
 				{
-					if(IsGameSkinBlacklisted(it->second.c_str()))
+					auto itLoaded = m_mLoadedGameSkins.find(pWantedSkin);
+					if(itLoaded != m_mLoadedGameSkins.end())
 					{
-						str_copy(GameClient()->m_aClients[i].m_aCustomGameSkinName, it->second.c_str());
-						continue;
+						GameClient()->m_aClients[i].m_pCustomGameSkin = &itLoaded->second;
 					}
-					const SClientGameSkin *pSkin = GetOrLoadGameSkin(it->second.c_str());
-					if(pSkin)
+					else if(m_sMissingOnDiskSkins.find(pWantedSkin) != m_sMissingOnDiskSkins.end())
 					{
-						GameClient()->m_aClients[i].m_pCustomGameSkin = pSkin;
-						str_copy(GameClient()->m_aClients[i].m_aCustomGameSkinName, it->second.c_str());
+						if(g_Config.m_ClDownloadGameskins)
+							StartDownload(pWantedSkin);
 					}
-					else if(m_sFailedSkins.find(it->second) != m_sFailedSkins.end())
+					else if(!PerformedHeavyLoad && CanLoadHeavyGpu)
 					{
-						str_copy(GameClient()->m_aClients[i].m_aCustomGameSkinName, it->second.c_str());
+						PerformedHeavyLoad = true;
+						GameClient()->m_aClients[i].m_pCustomGameSkin = GetOrLoadGameSkin(pWantedSkin);
 					}
 				}
 			}
 
-			if(g_Config.m_AcShowRemoteEntitiesOnHook && g_Config.m_ClDownloadEntities && GameClient()->m_aClients[i].m_aCustomEntitiesName[0] != '\0' && !GameClient()->m_aClients[i].m_CustomEntitiesTexture.IsValid())
+			if(g_Config.m_AcShowRemoteEntitiesOnHook && GameClient()->m_aClients[i].m_aCustomEntitiesName[0] != '\0' && !GameClient()->m_aClients[i].m_CustomEntitiesTexture.IsValid())
 			{
-				if(!IsEntitiesBlacklisted(GameClient()->m_aClients[i].m_aCustomEntitiesName) &&
-					m_sFailedEntities.find(GameClient()->m_aClients[i].m_aCustomEntitiesName) == m_sFailedEntities.end())
+				const char *pWantedEnt = GameClient()->m_aClients[i].m_aCustomEntitiesName;
+				if(!IsEntitiesBlacklisted(pWantedEnt) &&
+					m_sFailedEntities.find(pWantedEnt) == m_sFailedEntities.end())
 				{
-					GameClient()->m_aClients[i].m_CustomEntitiesTexture = GetOrLoadEntitiesTexture(GameClient()->m_aClients[i].m_aCustomEntitiesName);
+					auto itLoadedEnt = m_mLoadedEntitiesTextures.find(pWantedEnt);
+					if(itLoadedEnt != m_mLoadedEntitiesTextures.end())
+					{
+						GameClient()->m_aClients[i].m_CustomEntitiesTexture = itLoadedEnt->second;
+					}
+					else if(m_sMissingOnDiskEntities.find(pWantedEnt) != m_sMissingOnDiskEntities.end())
+					{
+						if(g_Config.m_ClDownloadEntities)
+							StartEntitiesDownload(pWantedEnt);
+					}
+					else if(!PerformedHeavyLoad && CanLoadHeavyGpu)
+					{
+						PerformedHeavyLoad = true;
+						GameClient()->m_aClients[i].m_CustomEntitiesTexture = GetOrLoadEntitiesTexture(pWantedEnt);
+					}
 				}
 			}
 		}
@@ -1658,6 +1751,8 @@ void CAClientGameSkins::TriggerManualReload()
 {
 	m_sFailedSkins.clear();
 	m_sFailedEntities.clear();
+	m_sMissingOnDiskSkins.clear();
+	m_sMissingOnDiskEntities.clear();
 	m_ServerJoinTime = time_get();
 	m_InitialDownloadPhase = true;
 	RefreshPresence();

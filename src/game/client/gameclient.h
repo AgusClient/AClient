@@ -85,6 +85,7 @@
 #include "components/tclient/aclient_optimizer.h"
 #include "components/tclient/aclient_auth.h"
 #include "components/tclient/aclient_gameskins.h"
+#include "components/tclient/aclient_voice.h"
 #include "components/tclient/hud_layout.h"
 #include "components/tclient/hud_editor.h"
 #include "components/tclient/gradient.h"
@@ -246,6 +247,7 @@ public:
 	CAClientHud m_AClientHud;
 	CAClientAuth m_AClientAuth;
 	CAClientGameSkins m_AClientGameSkins;
+	CAClientVoice m_AClientVoice;
 	CHudEditor m_HudEditor;
 	CAcGradient m_AcGradient;
 	CKeystrokes m_Keystrokes;

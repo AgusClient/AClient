@@ -179,6 +179,7 @@ void CGameClient::OnConsoleInit()
 					      &m_Keystrokes, // AClient
 					      &m_AClientAuth, // AClient
 					      &m_AClientGameSkins,
+					      &m_AClientVoice, // AClient
 					      &m_PlayerProfiles, // TClient
 					      &m_FastPractice, // TClient
 					      &m_InfoMessages,

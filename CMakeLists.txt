@@ -2920,6 +2920,8 @@ if(CLIENT)
     components/tclient/aclient_tab_logo.h
     components/tclient/aclient_optimizer.cpp
     components/tclient/aclient_optimizer.h
+    components/tclient/aclient_voice.cpp
+    components/tclient/aclient_voice.h
     components/tclient/hud_layout.cpp
     components/tclient/hud_layout.h
     components/tclient/hud_editor.cpp

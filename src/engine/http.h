@@ -60,6 +60,7 @@ public:
 	void Timeout(CTimeout Timeout) { m_Timeout = Timeout; }
 	// Skip the download if the local file is newer or as new as the remote file.
 	void MaxResponseSize(int64_t MaxResponseSize) { m_MaxResponseSize = MaxResponseSize; }
+	void MaxDownloadSpeed(int64_t MaxDownloadSpeed) { m_MaxDownloadSpeed = MaxDownloadSpeed; }
 	void LogProgress(HTTPLOG LogProgress) { m_LogProgress = LogProgress; }
 	void SkipByFileTime(bool SkipByFileTime) { m_SkipByFileTime = SkipByFileTime; }
 	void IpResolve(IPRESOLVE IpResolve) { m_IpResolve = IpResolve; }
@@ -148,6 +149,7 @@ protected:
 	// Settings
 	CTimeout m_Timeout = CTimeout{0, 0, 0, 0};
 	int64_t m_MaxResponseSize = -1;
+	int64_t m_MaxDownloadSpeed = 0;
 	HTTPLOG m_LogProgress = HTTPLOG::ALL;
 	bool m_SkipByFileTime = true;
 	IPRESOLVE m_IpResolve = IPRESOLVE::WHATEVER;
