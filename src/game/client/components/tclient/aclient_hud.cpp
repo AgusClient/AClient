@@ -24,6 +24,8 @@ void CAClientHud::OnRender()
 #endif
 
 	const bool HudEditorActive = GameClient()->m_HudEditor.IsActive();
+	if(!HudEditorActive && g_Config.m_ClFocusMode && (g_Config.m_ClFocusModeHideHud || g_Config.m_ClFocusModeHideUI))
+		return;
 	if((g_Config.m_AcHudSpeedometer && HudLayout::IsEnabled(HudLayout::MODULE_SPEEDOMETER)) || HudEditorActive)
 		RenderSpeedometer();
 }

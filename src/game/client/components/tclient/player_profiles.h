@@ -6,10 +6,8 @@
 #include <engine/shared/protocol.h>
 #include <game/client/component.h>
 
-#include <atomic>
 #include <deque>
 #include <map>
-#include <mutex>
 #include <string>
 #include <vector>
 
@@ -142,40 +140,40 @@ private:
 	static const int CACHE_TTL_SECONDS = 180; // 3 minutes
 
 	// King of Gores (KoG) state
+	enum class EKoGFetchStage
+	{
+		NONE = 0,
+		SESSION,
+		CSRF,
+		PLAYER,
+	};
+
+	std::shared_ptr<IHttpRequest> m_pKoGHttpRequest = nullptr;
+	EKoGFetchStage m_KoGFetchStage = EKoGFetchStage::NONE;
+	std::string m_KoGNonce;
+	char m_aKoGCookieFile[IO_MAX_PATH_LENGTH] = "";
 	char m_aKoGRequestedName[MAX_NAME_LENGTH] = "";
 	EProfileState m_KoGState = EProfileState::IDLE;
 	char m_aKoGStatusMsg[128] = "";
 	CKoGPlayerProfile m_CurrentKoGProfile;
 
-	// In-memory cache for KoG
+	// In-memory cache for KoG (used by team unfinished maps comparison)
 	std::map<std::string, CKoGPlayerProfile> m_mKoGProfilesCache;
 	std::deque<std::string> m_dKoGCacheOrder;
-	int64_t m_KoGCloudflareCooldown = 0;
-	int64_t m_KoGLastBlockTime = 0; // time_get() of the last Cloudflare/rate-limit block
-	int m_KoGBlockStrikes = 0; // consecutive blocks, drives the escalating cooldown
 	std::map<std::string, int64_t> m_mFailedFetchesKoG;
 	std::map<std::string, int64_t> m_mFailedFetchesDDNet;
-
-	// Thread management for background KoG fetch
-	void *m_pKoGThread = nullptr;
-	std::atomic<bool> m_KoGFetchRunning{false};
-	std::atomic<bool> m_KoGFetchDone{false};
-	bool m_KoGFetchSuccess = false;
-	bool m_KoGIsBackgroundFetch = false;
-	int m_KoGResultStatusCode = 0;
-	std::string m_KoGResultData;
-	std::string m_KoGFetchErrorMsg;
-	char m_aKoGFetchThreadPlayer[MAX_NAME_LENGTH] = "";
 
 	void ProcessHttpResponse();
 	void AddToCache(const CDDNetPlayerProfile &Profile);
 	bool GetFromCache(const char *pName, CDDNetPlayerProfile &OutProfile);
 
-	static void KoGFetchWorker(void *pUser);
-	void ProcessKoGFetchCompletion();
+	void ConfigureKoGRequest(const std::shared_ptr<IHttpRequest> &pRequest, bool WithOrigin);
+	void StartKoGCsrfRequest();
+	void StartKoGPlayerRequest();
+	void AdvanceKoGFetch();
+	bool ProcessKoGPlayerResponse();
 	void AddToKoGCache(const CKoGPlayerProfile &Profile);
 	bool GetFromKoGCache(const char *pName, CKoGPlayerProfile &OutProfile);
-	void SetKoGCachedStatusMsg();
 
 	static void ConProfile(IConsole::IResult *pResult, void *pUserData);
 	static void ConProfileWebDDNet(IConsole::IResult *pResult, void *pUserData);
@@ -186,6 +184,7 @@ public:
 	~CPlayerProfiles() override;
 
 	int Sizeof() const override { return sizeof(*this); }
+	void OnInit() override;
 	void OnConsoleInit() override;
 	void OnRender() override;
 	void OnReset() override;
@@ -201,10 +200,9 @@ public:
 	// KoG profile operations
 	void FetchKoGProfile(const char *pPlayerName, bool ForceRefresh = false, bool BackgroundTeam = false);
 	void AbortKoGFetch();
-	bool LoadKoGFromDisk(const char *pPlayerName, CKoGPlayerProfile &OutProfile);
-	void SaveKoGToDisk(const char *pPlayerName, const char *pJsonData);
 	bool ParseKoGProfileJson(const char *pJsonStr, CKoGPlayerProfile &OutProfile);
 
+	bool IsFetchingKoG() const { return m_KoGState == EProfileState::FETCHING || m_pKoGHttpRequest != nullptr; }
 	EProfileState KoGState() const { return m_KoGState; }
 	const char *KoGStatusMsg() const { return m_aKoGStatusMsg; }
 	const CKoGPlayerProfile &CurrentKoGProfile() const { return m_CurrentKoGProfile; }

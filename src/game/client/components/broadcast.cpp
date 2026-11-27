@@ -43,7 +43,8 @@ void CBroadcast::RenderServerBroadcast()
 	if(GameClient()->m_Scoreboard.IsActive() ||
 		GameClient()->m_Motd.IsActive() ||
 		GameClient()->m_ImportantAlert.IsActive() ||
-		!g_Config.m_ClShowBroadcasts)
+		!g_Config.m_ClShowBroadcasts ||
+		(g_Config.m_ClFocusMode && (g_Config.m_ClFocusModeHideHud || g_Config.m_ClFocusModeHideUI)))
 	{
 		return;
 	}

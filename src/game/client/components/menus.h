@@ -107,6 +107,7 @@ public:
 		bool m_LoadFailed = false;
 		CButtonContainer m_DeleteButtonId;
 		CButtonContainer m_BlacklistButtonId;
+		CButtonContainer m_LikeButtonId;
 		char m_aInUseTooltip[256] = {0};
 
 		bool operator<(const SCustomItem &Other) const { return str_comp(m_aName, Other.m_aName) < 0; }
@@ -598,6 +599,11 @@ protected:
 
 	// found in menus_settings_assets.cpp
 	void RenderSettingsAssets(CUIRect MainView);
+	void RenderSingleAssetsView(CUIRect View, int SingleCat, const char *pFilter);
+	IGraphics::CTextureHandle FindSingleAssetPackTexture(int SingleCat, const char *pPackName) const;
+	std::vector<const SCustomItem *> CollectSingleAssetPacks(int SingleCat) const;
+	static CUi::EPopupMenuFunctionResult PopupSingleAssetSpritePicker(void *pContext, CUIRect View, bool Active);
+	static CUi::EPopupMenuFunctionResult PopupSingleAssetBasePackPicker(void *pContext, CUIRect View, bool Active);
 
 	// found in menus_settings_appearance.cpp
 	void RenderSettingsAppearance(CUIRect MainView);
@@ -702,6 +708,7 @@ public:
 	bool IsInit() const { return m_IsInit; }
 
 	bool IsActive() const { return m_MenuActive; }
+	bool IsIngameGamePage() const { return m_MenuActive && m_Popup == POPUP_NONE && Client()->State() == IClient::STATE_ONLINE && m_GamePage == PAGE_GAME; }
 	void SetActive(bool Active);
 
 	int m_CurAClientTab = ACLIENT_TAB_SETTINGS;
@@ -900,6 +907,7 @@ public:
 	void SetShowStart(bool ShowStart);
 	void ShowQuitPopup();
 	void JoinTutorial();
+	float RenderPlayerConfigsPanel(CUIRect Area, bool IsModal = false, bool *pCloseRequested = nullptr);
 
 private:
 	CCommunityIcons m_CommunityIcons;

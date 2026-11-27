@@ -3028,6 +3028,7 @@ void CClient::Update()
 					(g_Config.m_AcInputs == AC_INPUTS_ACLIENT && g_Config.m_AcAClientInputAmount > 0) ||
 					(g_Config.m_AcInputs == AC_INPUTS_AX30 && g_Config.m_AcAX30InputAmount > 0) ||
 					(g_Config.m_AcInputs == AC_INPUTS_AXV2 && g_Config.m_AcAXv2InputAmount > 0) ||
+					(g_Config.m_AcInputSplitHookMove && g_Config.m_AcInputs != AC_INPUTS_OFF && (g_Config.m_AcTickInputHookAmount > 0 || g_Config.m_AcFastInputHookAmount > 0)) ||
 					(g_Config.m_TcFastInput && g_Config.m_TcFastInputAmount > 0);
 				if(HasFastInput && GameClient()->CheckNewInput())
 				{

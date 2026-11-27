@@ -1,10 +1,10 @@
 #include <set>
+#include "aclient_backend.h"
 #include "player_profiles.h"
 #include "kog_maps_data.h"
 #include <base/io.h>
 #include <base/log.h>
 #include <base/str.h>
-#include <base/thread.h>
 #include <base/time.h>
 #include <engine/client.h>
 #include <engine/http.h>
@@ -15,40 +15,19 @@
 #include <game/client/gameclient.h>
 #include <game/localization.h>
 
-#include <curl/curl.h>
-
 #include <algorithm>
 #include <cctype>
-
-static size_t CurlStringWriteCallback(void *pContents, size_t Size, size_t Nmemb, void *pUser)
-{
-	size_t TotalSize = Size * Nmemb;
-	std::string *pStr = static_cast<std::string *>(pUser);
-	pStr->append(static_cast<char *>(pContents), TotalSize);
-	return TotalSize;
-}
-
-static std::string EscapeForJson(const char *pStr)
-{
-	std::string Out;
-	if(!pStr)
-		return Out;
-	for(const char *p = pStr; *p; ++p)
-	{
-		if(*p == '"') Out += "\\\"";
-		else if(*p == '\\') Out += "\\\\";
-		else if(*p == '\n') Out += "\\n";
-		else if(*p == '\r') Out += "\\r";
-		else if(*p == '\t') Out += "\\t";
-		else Out += *p;
-	}
-	return Out;
-}
 
 CPlayerProfiles::CPlayerProfiles()
 {
 	m_CurrentProfile.m_Valid = false;
 	m_CurrentKoGProfile.m_Valid = false;
+}
+
+void CPlayerProfiles::OnInit()
+{
+	Storage()->GetCompletePath(IStorage::TYPE_SAVE, "aclient/kog_cookies.txt", m_aKoGCookieFile, sizeof(m_aKoGCookieFile));
+	Storage()->CreateFolder("aclient", IStorage::TYPE_SAVE);
 }
 
 CPlayerProfiles::~CPlayerProfiles()
@@ -89,16 +68,13 @@ void CPlayerProfiles::AbortCurrentFetch()
 
 void CPlayerProfiles::AbortKoGFetch()
 {
-	if(m_KoGFetchRunning)
+	if(m_pKoGHttpRequest)
 	{
-		if(m_pKoGThread)
-		{
-			thread_wait(m_pKoGThread);
-			m_pKoGThread = nullptr;
-		}
-		m_KoGFetchRunning = false;
-		m_KoGFetchDone = false;
+		m_pKoGHttpRequest->Abort();
+		m_pKoGHttpRequest = nullptr;
 	}
+	m_KoGFetchStage = EKoGFetchStage::NONE;
+	m_KoGNonce.clear();
 	if(m_KoGState == EProfileState::FETCHING)
 	{
 		m_KoGState = EProfileState::IDLE;
@@ -206,6 +182,7 @@ void CPlayerProfiles::FetchProfile(const char *pPlayerName, bool ForceRefresh)
 	m_pHttpRequest = HttpGet(aUrl);
 	m_pHttpRequest->Timeout(CTimeout{5000, 5000, 500, 5});
 	m_pHttpRequest->IpResolve(IPRESOLVE::V4);
+	AClientBackend::ApplyDownloadSpeedLimit(m_pHttpRequest, 4 * 1024 * 1024);
 	Http()->Run(m_pHttpRequest);
 
 	m_State = EProfileState::FETCHING;
@@ -233,13 +210,10 @@ void CPlayerProfiles::OnRender()
 			ComputeTeamCommonUnfinished();
 	}
 
-	// 2. Check KoG background fetch thread completion
-	if(m_KoGFetchRunning && m_KoGFetchDone)
+	// 2. Check KoG HTTP request completion
+	if(m_pKoGHttpRequest && m_pKoGHttpRequest->Done())
 	{
-		ProcessKoGFetchCompletion();
-
-		if(!m_vTeamPlayers.empty())
-			ComputeTeamCommonUnfinished();
+		AdvanceKoGFetch();
 	}
 
 	// 3. Process queued team background fetches
@@ -250,18 +224,11 @@ void CPlayerProfiles::OnRender()
 		FetchProfile(Next.c_str(), false);
 	}
 
-	if(!m_KoGFetchRunning && !m_qTeamPendingKoG.empty())
+	if(!m_pKoGHttpRequest && !m_qTeamPendingKoG.empty())
 	{
-		if(time_get() >= m_KoGCloudflareCooldown)
-		{
-			std::string Next = m_qTeamPendingKoG.front();
-			m_qTeamPendingKoG.pop_front();
-			FetchKoGProfile(Next.c_str(), false, true);
-		}
-		else
-		{
-			m_qTeamPendingKoG.clear();
-		}
+		std::string Next = m_qTeamPendingKoG.front();
+		m_qTeamPendingKoG.pop_front();
+		FetchKoGProfile(Next.c_str(), false, true);
 	}
 
 	// 4. Check KoG maps metadata background download
@@ -426,466 +393,183 @@ void CPlayerProfiles::ProcessHttpResponse()
 // King of Gores (KoG) Profile Operations
 // ==========================================
 
-namespace
+void CPlayerProfiles::ConfigureKoGRequest(const std::shared_ptr<IHttpRequest> &pRequest, bool WithOrigin)
 {
-	struct SCurlSlistGuard
+	if(m_aKoGCookieFile[0] == '\0' && Storage())
 	{
-		struct curl_slist *m_pList = nullptr;
-		~SCurlSlistGuard()
-		{
-			if(m_pList)
-				curl_slist_free_all(m_pList);
-		}
-		void Reset()
-		{
-			if(m_pList)
-			{
-				curl_slist_free_all(m_pList);
-				m_pList = nullptr;
-			}
-		}
-	};
-
-	// Formats a wait time as "45s" or "12 min"
-	std::string FormatKoGWait(int Secs)
-	{
-		char aBuf[32];
-		if(Secs >= 90)
-			str_format(aBuf, sizeof(aBuf), "%d min", (Secs + 30) / 60);
-		else
-			str_format(aBuf, sizeof(aBuf), "%ds", Secs);
-		return aBuf;
+		Storage()->GetCompletePath(IStorage::TYPE_SAVE, "aclient/kog_cookies.txt", m_aKoGCookieFile, sizeof(m_aKoGCookieFile));
+		Storage()->CreateFolder("aclient", IStorage::TYPE_SAVE);
 	}
-
-	// True when the response is an anti-bot interstitial instead of real content
-	bool LooksLikeCloudflareChallenge(long HttpCode, const std::string &Body)
+	if(m_aKoGCookieFile[0] != '\0')
 	{
-		if(Body.find("Just a moment") != std::string::npos ||
-			Body.find("cf-mitigated") != std::string::npos ||
-			Body.find("challenges.cloudflare.com") != std::string::npos ||
-			Body.find("cf-chl") != std::string::npos)
-			return true;
-		const bool IsHtml = Body.find("<!DOCTYPE") != std::string::npos || Body.find("<html") != std::string::npos;
-		return (HttpCode == 403 || HttpCode == 503) && IsHtml;
+		pRequest->CookieFile(m_aKoGCookieFile);
 	}
-
-	struct curl_slist *BuildKoGApiHeaders(bool WithJsonContentType)
+	pRequest->Header("User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36");
+	pRequest->Header("Accept: */*");
+	pRequest->Header("Accept-Language: ru-RU,ru;q=0.9");
+	pRequest->Header("Referer: https://kog.tw/");
+	if(WithOrigin)
 	{
-		struct curl_slist *pHeaders = nullptr;
-		pHeaders = curl_slist_append(pHeaders, "Referer: https://kog.tw/");
-		pHeaders = curl_slist_append(pHeaders, "Origin: https://kog.tw");
-		pHeaders = curl_slist_append(pHeaders, "Accept: application/json, text/plain, */*");
-		pHeaders = curl_slist_append(pHeaders, "X-Requested-With: XMLHttpRequest");
-		pHeaders = curl_slist_append(pHeaders, "Accept-Language: en-US,en;q=0.9");
-		if(WithJsonContentType)
-			pHeaders = curl_slist_append(pHeaders, "Content-Type: application/json;charset=UTF-8");
-		return pHeaders;
+		pRequest->Header("Origin: https://kog.tw");
 	}
-} // namespace
-
-void CPlayerProfiles::KoGFetchWorker(void *pUser)
-{
-	CPlayerProfiles *pSelf = static_cast<CPlayerProfiles *>(pUser);
-	CURL *pCurl = curl_easy_init();
-	if(!pCurl)
-	{
-		pSelf->m_KoGFetchSuccess = false;
-		pSelf->m_KoGFetchErrorMsg = "Error al inicializar cliente de red (libcurl)";
-		pSelf->m_KoGFetchDone = true;
-		return;
-	}
-
-	// In-memory cookie handling keeps PHPSESSID across requests
-	curl_easy_setopt(pCurl, CURLOPT_COOKIEFILE, "");
-	curl_easy_setopt(pCurl, CURLOPT_TIMEOUT, 20L);
-	curl_easy_setopt(pCurl, CURLOPT_CONNECTTIMEOUT, 10L);
-	curl_easy_setopt(pCurl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
-	curl_easy_setopt(pCurl, CURLOPT_FOLLOWLOCATION, 1L);
-	curl_easy_setopt(pCurl, CURLOPT_MAXREDIRS, 5L);
-	curl_easy_setopt(pCurl, CURLOPT_SSL_VERIFYPEER, 0L);
-	curl_easy_setopt(pCurl, CURLOPT_SSL_VERIFYHOST, 0L);
-	curl_easy_setopt(pCurl, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36");
-	curl_easy_setopt(pCurl, CURLOPT_ACCEPT_ENCODING, "");
-	curl_easy_setopt(pCurl, CURLOPT_WRITEFUNCTION, CurlStringWriteCallback);
-
-	SCurlSlistGuard ApiHeaders;
-	SCurlSlistGuard PostHeaders;
-
-	// 1. Visit root to establish PHP session with standard browser navigation headers
-	SCurlSlistGuard NavHeaders;
-	NavHeaders.m_pList = curl_slist_append(NavHeaders.m_pList, "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
-	NavHeaders.m_pList = curl_slist_append(NavHeaders.m_pList, "Accept-Language: en-US,en;q=0.9");
-	curl_easy_setopt(pCurl, CURLOPT_HTTPHEADER, NavHeaders.m_pList);
-
-	std::string InitSink;
-	curl_easy_setopt(pCurl, CURLOPT_URL, "https://kog.tw/");
-	curl_easy_setopt(pCurl, CURLOPT_WRITEDATA, &InitSink);
-	CURLcode Res = curl_easy_perform(pCurl);
-	long RootHttpCode = 0;
-	curl_easy_getinfo(pCurl, CURLINFO_RESPONSE_CODE, &RootHttpCode);
-	curl_easy_setopt(pCurl, CURLOPT_HTTPHEADER, nullptr);
-	NavHeaders.Reset();
-
-	if(Res != CURLE_OK)
-	{
-		pSelf->m_KoGFetchSuccess = false;
-		char aBuf[128];
-		str_format(aBuf, sizeof(aBuf), "Error de conexion con kog.tw (%s)", curl_easy_strerror(Res));
-		pSelf->m_KoGFetchErrorMsg = aBuf;
-		log_warn("kog", "Fallo curl en raiz kog.tw: %s (HTTP %ld)", curl_easy_strerror(Res), RootHttpCode);
-		curl_easy_cleanup(pCurl);
-		pSelf->m_KoGFetchDone = true;
-		return;
-	}
-
-	// If the very first request is already blocked, stop here instead of sending more requests
-	if(LooksLikeCloudflareChallenge(RootHttpCode, InitSink) || RootHttpCode == 429)
-	{
-		pSelf->m_KoGFetchSuccess = false;
-		pSelf->m_KoGResultStatusCode = (int)RootHttpCode;
-		char aBuf[128];
-		if(RootHttpCode == 429)
-			str_copy(aBuf, "kog.tw: Limite de peticiones excedido (HTTP 429 Rate Limit)");
-		else
-			str_format(aBuf, sizeof(aBuf), "Proteccion Cloudflare activa en kog.tw (HTTP %ld)", RootHttpCode);
-		pSelf->m_KoGFetchErrorMsg = aBuf;
-		log_warn("kog", "kog.tw bloqueo en la raiz (HTTP %ld), se cancelan las demas peticiones", RootHttpCode);
-		curl_easy_cleanup(pCurl);
-		pSelf->m_KoGFetchDone = true;
-		return;
-	}
-
-	// 2. Fetch CSRF nonce with session cookie, Referer and AJAX headers
-	ApiHeaders.m_pList = BuildKoGApiHeaders(false);
-	curl_easy_setopt(pCurl, CURLOPT_HTTPHEADER, ApiHeaders.m_pList);
-
-	std::string CsrfJson;
-	curl_easy_setopt(pCurl, CURLOPT_URL, "https://kog.tw/api.php?type=csrf-token");
-	curl_easy_setopt(pCurl, CURLOPT_WRITEDATA, &CsrfJson);
-	Res = curl_easy_perform(pCurl);
-	long CsrfHttpCode = 0;
-	curl_easy_getinfo(pCurl, CURLINFO_RESPONSE_CODE, &CsrfHttpCode);
-
-	if(Res != CURLE_OK)
-	{
-		pSelf->m_KoGFetchSuccess = false;
-		char aBuf[128];
-		str_format(aBuf, sizeof(aBuf), "Error al pedir token CSRF (%s, HTTP %ld)", curl_easy_strerror(Res), CsrfHttpCode);
-		pSelf->m_KoGFetchErrorMsg = aBuf;
-		log_warn("kog", "Fallo curl en csrf-token: %s (HTTP %ld)", curl_easy_strerror(Res), CsrfHttpCode);
-		curl_easy_cleanup(pCurl);
-		pSelf->m_KoGFetchDone = true;
-		return;
-	}
-
-	std::string Nonce;
-	json_value *pCsrfJson = JsonParse(CsrfJson.c_str(), CsrfJson.size());
-	if(pCsrfJson)
-	{
-		if(pCsrfJson->type == json_object && (*pCsrfJson)["nonce"].type == json_string)
-		{
-			Nonce = (const char *)(*pCsrfJson)["nonce"];
-		}
-		json_value_free(pCsrfJson);
-	}
-	if(Nonce.empty())
-	{
-		size_t Pos = CsrfJson.find("\"nonce\":\"");
-		if(Pos != std::string::npos)
-		{
-			Pos += 9;
-			size_t EndPos = CsrfJson.find("\"", Pos);
-			if(EndPos != std::string::npos)
-			{
-				Nonce = CsrfJson.substr(Pos, EndPos - Pos);
-			}
-		}
-	}
-
-	if(Nonce.empty())
-	{
-		pSelf->m_KoGFetchSuccess = false;
-		pSelf->m_KoGResultStatusCode = (int)CsrfHttpCode;
-
-		const bool HasCfChallenge = LooksLikeCloudflareChallenge(CsrfHttpCode, CsrfJson);
-		const bool IsHtml = (CsrfJson.find("<!DOCTYPE") != std::string::npos ||
-				    CsrfJson.find("<html") != std::string::npos);
-
-		char aErr[128];
-		if(HasCfChallenge)
-		{
-			if(CsrfHttpCode > 0)
-				str_format(aErr, sizeof(aErr), "Proteccion Cloudflare activa en kog.tw (HTTP %ld)", CsrfHttpCode);
-			else
-				str_copy(aErr, "Proteccion Cloudflare activa en kog.tw");
-			log_warn("kog", "Cloudflare WAF activo en csrf-token (HTTP %ld)", CsrfHttpCode);
-		}
-		else if(CsrfHttpCode == 429)
-		{
-			str_copy(aErr, "kog.tw: Limite de peticiones excedido (HTTP 429 Rate Limit)");
-			log_warn("kog", "HTTP 429 Too Many Requests en csrf-token");
-		}
-		else if(CsrfHttpCode >= 500)
-		{
-			str_format(aErr, sizeof(aErr), "Servidor kog.tw no disponible (HTTP %ld)", CsrfHttpCode);
-			log_warn("kog", "Error de servidor kog.tw en csrf-token: HTTP %ld", CsrfHttpCode);
-		}
-		else if(IsHtml)
-		{
-			if(CsrfHttpCode > 0)
-				str_format(aErr, sizeof(aErr), "kog.tw respondio HTML en vez de JSON (HTTP %ld)", CsrfHttpCode);
-			else
-				str_copy(aErr, "kog.tw respondio HTML en vez de JSON");
-			log_warn("kog", "Respuesta inesperada HTML en csrf-token (HTTP %ld)", CsrfHttpCode);
-		}
-		else
-		{
-			if(CsrfHttpCode > 0)
-				str_format(aErr, sizeof(aErr), "Token de sesion invalido de kog.tw (HTTP %ld)", CsrfHttpCode);
-			else
-				str_copy(aErr, "Token de sesion invalido de kog.tw");
-			log_warn("kog", "Token CSRF no encontrado en respuesta (HTTP %ld)", CsrfHttpCode);
-		}
-
-		// Log sample of response for console troubleshooting without heap allocation
-		char aSample[161];
-		const size_t SampleLen = (std::min)(CsrfJson.size(), sizeof(aSample) - 1);
-		for(size_t i = 0; i < SampleLen; ++i)
-		{
-			const char Ch = CsrfJson[i];
-			aSample[i] = (Ch == '\r' || Ch == '\n') ? ' ' : Ch;
-		}
-		aSample[SampleLen] = '\0';
-		log_warn("kog", "Cuerpo recibido en csrf-token: %s", aSample);
-
-		pSelf->m_KoGFetchErrorMsg = aErr;
-		curl_easy_cleanup(pCurl);
-		pSelf->m_KoGFetchDone = true;
-		return;
-	}
-
-	// 3. Post to api.php requesting player profile data
-	PostHeaders.m_pList = BuildKoGApiHeaders(true);
-	curl_easy_setopt(pCurl, CURLOPT_HTTPHEADER, PostHeaders.m_pList);
-
-	std::string PostData = "{\"nonce\":\"" + Nonce + "\",\"type\":\"players\",\"player\":\"" + EscapeForJson(pSelf->m_aKoGFetchThreadPlayer) + "\",\"tz\":\"UTC\"}";
-	std::string ResponseJson;
-
-	curl_easy_setopt(pCurl, CURLOPT_URL, "https://kog.tw/api.php");
-	curl_easy_setopt(pCurl, CURLOPT_POST, 1L);
-	curl_easy_setopt(pCurl, CURLOPT_POSTFIELDS, PostData.c_str());
-	curl_easy_setopt(pCurl, CURLOPT_POSTFIELDSIZE, (long)PostData.size());
-	curl_easy_setopt(pCurl, CURLOPT_WRITEDATA, &ResponseJson);
-
-	Res = curl_easy_perform(pCurl);
-	long PostHttpCode = 0;
-	curl_easy_getinfo(pCurl, CURLINFO_RESPONSE_CODE, &PostHttpCode);
-	pSelf->m_KoGResultStatusCode = (int)PostHttpCode;
-
-	if(Res != CURLE_OK)
-	{
-		pSelf->m_KoGFetchSuccess = false;
-		char aBuf[128];
-		str_format(aBuf, sizeof(aBuf), "Error al consultar perfil en kog.tw (%s, HTTP %ld)", curl_easy_strerror(Res), PostHttpCode);
-		pSelf->m_KoGFetchErrorMsg = aBuf;
-		log_warn("kog", "Fallo curl en api.php: %s (HTTP %ld)", curl_easy_strerror(Res), PostHttpCode);
-		curl_easy_cleanup(pCurl);
-		pSelf->m_KoGFetchDone = true;
-		return;
-	}
-
-	long Code = PostHttpCode;
-
-	// If player was not found on manual lookup, check capitalized/lowercase variants (skip for background team scans to save bandwidth)
-	if(!pSelf->m_KoGIsBackgroundFetch && ResponseJson.find("\"data\":[]") != std::string::npos)
-	{
-		std::string BaseName = pSelf->m_aKoGFetchThreadPlayer;
-		std::vector<std::string> vVariants;
-
-		if(!BaseName.empty())
-		{
-			// Variant 1: Capitalized (first upper, rest lower)
-			std::string Cap = BaseName;
-			Cap[0] = (char)toupper((unsigned char)Cap[0]);
-			for(size_t i = 1; i < Cap.size(); ++i)
-				Cap[i] = (char)tolower((unsigned char)Cap[i]);
-			if(Cap != BaseName)
-				vVariants.push_back(Cap);
-
-			// Variant 2: All lowercase
-			std::string Low = BaseName;
-			for(size_t i = 0; i < Low.size(); ++i)
-				Low[i] = (char)tolower((unsigned char)*(&Low[i]));
-			if(Low != BaseName && std::find(vVariants.begin(), vVariants.end(), Low) == vVariants.end())
-				vVariants.push_back(Low);
-		}
-
-		for(const auto &Variant : vVariants)
-		{
-			// Fetch fresh nonce reusing API header list
-			curl_easy_setopt(pCurl, CURLOPT_HTTPHEADER, ApiHeaders.m_pList);
-			curl_easy_setopt(pCurl, CURLOPT_HTTPGET, 1L);
-			curl_easy_setopt(pCurl, CURLOPT_URL, "https://kog.tw/api.php?type=csrf-token");
-
-			std::string FreshCsrf;
-			curl_easy_setopt(pCurl, CURLOPT_WRITEDATA, &FreshCsrf);
-			CURLcode NonceRes = curl_easy_perform(pCurl);
-			if(NonceRes != CURLE_OK || FreshCsrf.empty())
-				continue;
-
-			std::string FreshNonce;
-			json_value *pCsrf = JsonParse(FreshCsrf.c_str(), FreshCsrf.size());
-			if(pCsrf)
-			{
-				if(pCsrf->type == json_object && (*pCsrf)["nonce"].type == json_string)
-					FreshNonce = (const char *)(*pCsrf)["nonce"];
-				json_value_free(pCsrf);
-			}
-			if(FreshNonce.empty())
-			{
-				size_t Pos = FreshCsrf.find("\"nonce\":\"");
-				if(Pos != std::string::npos)
-				{
-					Pos += 9;
-					size_t EndPos = FreshCsrf.find('\"', Pos);
-					if(EndPos != std::string::npos)
-						FreshNonce = FreshCsrf.substr(Pos, EndPos - Pos);
-				}
-			}
-			if(FreshNonce.empty())
-				continue;
-
-			curl_easy_setopt(pCurl, CURLOPT_HTTPHEADER, PostHeaders.m_pList);
-
-			std::string VarPostData = "{\"nonce\":\"" + FreshNonce + "\",\"type\":\"players\",\"player\":\"" + EscapeForJson(Variant.c_str()) + "\",\"tz\":\"UTC\"}";
-			std::string VarResponseJson;
-			curl_easy_setopt(pCurl, CURLOPT_URL, "https://kog.tw/api.php");
-			curl_easy_setopt(pCurl, CURLOPT_POST, 1L);
-			curl_easy_setopt(pCurl, CURLOPT_POSTFIELDS, VarPostData.c_str());
-			curl_easy_setopt(pCurl, CURLOPT_POSTFIELDSIZE, (long)VarPostData.size());
-			curl_easy_setopt(pCurl, CURLOPT_WRITEDATA, &VarResponseJson);
-
-			CURLcode PostRes = curl_easy_perform(pCurl);
-
-			if(PostRes == CURLE_OK && !VarResponseJson.empty())
-			{
-				if(VarResponseJson.find("\"data\":[]") == std::string::npos && VarResponseJson.find("\"status\":200") != std::string::npos)
-				{
-					ResponseJson = VarResponseJson;
-					str_copy(pSelf->m_aKoGFetchThreadPlayer, Variant.c_str());
-					str_copy(pSelf->m_aKoGRequestedName, Variant.c_str());
-					break;
-				}
-			}
-		}
-	}
-
-	curl_easy_cleanup(pCurl);
-
-	pSelf->m_KoGResultData = ResponseJson;
-	pSelf->m_KoGFetchSuccess = true;
-	pSelf->m_KoGFetchDone = true;
+	pRequest->Timeout(CTimeout{8000, 30000, 0, 0});
+	pRequest->LogProgress(HTTPLOG::FAILURE);
+	AClientBackend::ApplyDownloadSpeedLimit(pRequest, 4 * 1024 * 1024);
 }
 
-void CPlayerProfiles::ProcessKoGFetchCompletion()
+void CPlayerProfiles::StartKoGCsrfRequest()
 {
-	if(!m_KoGFetchRunning || !m_KoGFetchDone)
-		return;
+	m_pKoGHttpRequest = HttpGet("https://kog.tw/api.php?type=csrf-token");
+	ConfigureKoGRequest(m_pKoGHttpRequest, false);
+	m_KoGFetchStage = EKoGFetchStage::CSRF;
+	Http()->Run(m_pKoGHttpRequest);
+}
 
-	if(m_pKoGThread)
+void CPlayerProfiles::StartKoGPlayerRequest()
+{
+	if(!str_utf8_check(m_aKoGRequestedName) || !str_utf8_check(m_KoGNonce.c_str()))
 	{
-		thread_wait(m_pKoGThread);
-		m_pKoGThread = nullptr;
+		m_KoGState = EProfileState::ERROR_NETWORK;
+		str_copy(m_aKoGStatusMsg, "Error: caracteres invalidos en la consulta a KoG.tw");
+		m_CurrentKoGProfile.m_Valid = false;
+		m_KoGFetchStage = EKoGFetchStage::NONE;
+		m_KoGNonce.clear();
+		return;
 	}
 
-	m_KoGFetchRunning = false;
-	m_KoGFetchDone = false;
+	char aEscapedPlayer[256];
+	char aEscapedNonce[256];
+	EscapeJson(aEscapedPlayer, sizeof(aEscapedPlayer), m_aKoGRequestedName);
+	EscapeJson(aEscapedNonce, sizeof(aEscapedNonce), m_KoGNonce.c_str());
 
-	char aLowerKey[MAX_NAME_LENGTH];
-	str_copy(aLowerKey, m_aKoGRequestedName);
-	for(char *p = aLowerKey; *p; ++p)
-		*p = (char)tolower((unsigned char)*p);
-	std::string Key(aLowerKey);
+	char aBody[768];
+	str_format(aBody, sizeof(aBody), "{\"nonce\":\"%s\",\"type\":\"players\",\"player\":\"%s\",\"tz\":\"Europe/Moscow\"}", aEscapedNonce, aEscapedPlayer);
 
-	if(!m_KoGFetchSuccess)
+	m_pKoGHttpRequest = HttpPostJson("https://kog.tw/api.php", aBody);
+	ConfigureKoGRequest(m_pKoGHttpRequest, true);
+	m_KoGFetchStage = EKoGFetchStage::PLAYER;
+	Http()->Run(m_pKoGHttpRequest);
+}
+
+void CPlayerProfiles::AdvanceKoGFetch()
+{
+	if(!m_pKoGHttpRequest || !m_pKoGHttpRequest->Done())
+		return;
+
+	auto MarkFailed = [this]() {
+		char aLowerKey[MAX_NAME_LENGTH];
+		str_copy(aLowerKey, m_aKoGRequestedName);
+		for(char *p = aLowerKey; *p; ++p)
+			*p = (char)tolower((unsigned char)*p);
+		m_mFailedFetchesKoG[aLowerKey] = time_get() + time_freq() * 60;
+	};
+
+	if(m_pKoGHttpRequest->State() != EHttpState::DONE)
 	{
-		m_mFailedFetchesKoG[Key] = time_get() + time_freq() * 60;
-		if(m_KoGFetchErrorMsg.find("Cloudflare") != std::string::npos || m_KoGResultStatusCode == 429)
-		{
-			// Escalating cooldown: 5 min, 15 min, 45 min, then 60 min. Insisting on an active block only prolongs it.
-			m_KoGBlockStrikes = (std::min)(m_KoGBlockStrikes + 1, 4);
-			int CooldownSecs = 300;
-			for(int i = 1; i < m_KoGBlockStrikes; ++i)
-				CooldownSecs *= 3;
-			CooldownSecs = (std::min)(CooldownSecs, 3600);
-			m_KoGLastBlockTime = time_get();
-			m_KoGCloudflareCooldown = m_KoGLastBlockTime + time_freq() * CooldownSecs;
-			m_qTeamPendingKoG.clear();
-		}
+		log_warn("kog", "Fallo HTTP en etapa %d para '%s' (estado %d)", (int)m_KoGFetchStage, m_aKoGRequestedName, (int)m_pKoGHttpRequest->State());
+		m_pKoGHttpRequest = nullptr;
+		m_KoGFetchStage = EKoGFetchStage::NONE;
+		m_KoGNonce.clear();
+		m_KoGState = EProfileState::ERROR_NETWORK;
+		str_copy(m_aKoGStatusMsg, "Error al conectar con KoG.tw");
+		m_CurrentKoGProfile.m_Valid = false;
+		MarkFailed();
+		return;
+	}
 
-		CKoGPlayerProfile CachedProf{};
-		if(LoadKoGFromDisk(m_aKoGRequestedName, CachedProf))
+	if(m_KoGFetchStage == EKoGFetchStage::SESSION)
+	{
+		m_pKoGHttpRequest = nullptr;
+		StartKoGCsrfRequest();
+		return;
+	}
+
+	if(m_KoGFetchStage == EKoGFetchStage::CSRF)
+	{
+		m_KoGNonce.clear();
+		json_value *pCsrfJson = m_pKoGHttpRequest->ResultJson();
+		if(pCsrfJson)
 		{
-			m_CurrentKoGProfile = CachedProf;
-			m_KoGState = EProfileState::READY;
-			str_format(m_aKoGStatusMsg, sizeof(m_aKoGStatusMsg), "Cache local (red: %s)", m_KoGFetchErrorMsg.c_str());
+			const json_value *pNonce = json_object_get(pCsrfJson, "nonce");
+			if(pNonce->type == json_string && pNonce->u.string.ptr && pNonce->u.string.ptr[0] != '\0')
+			{
+				m_KoGNonce = pNonce->u.string.ptr;
+			}
+			json_value_free(pCsrfJson);
 		}
-		else
+		m_pKoGHttpRequest = nullptr;
+
+		if(m_KoGNonce.empty())
 		{
+			m_KoGFetchStage = EKoGFetchStage::NONE;
 			m_KoGState = EProfileState::ERROR_NETWORK;
-			str_copy(m_aKoGStatusMsg, m_KoGFetchErrorMsg.c_str());
+			str_copy(m_aKoGStatusMsg, "Error: no se pudo obtener el token CSRF de KoG.tw");
 			m_CurrentKoGProfile.m_Valid = false;
+			MarkFailed();
+			return;
 		}
+
+		StartKoGPlayerRequest();
 		return;
 	}
 
-	json_value *pOuter = JsonParse(m_KoGResultData.c_str(), m_KoGResultData.size());
+	if(m_KoGFetchStage == EKoGFetchStage::PLAYER)
+	{
+		if(!ProcessKoGPlayerResponse())
+		{
+			MarkFailed();
+		}
+		m_pKoGHttpRequest = nullptr;
+		m_KoGFetchStage = EKoGFetchStage::NONE;
+		m_KoGNonce.clear();
+
+		if(!m_vTeamPlayers.empty())
+			ComputeTeamCommonUnfinished();
+	}
+}
+
+bool CPlayerProfiles::ProcessKoGPlayerResponse()
+{
+	if(!m_pKoGHttpRequest)
+		return false;
+
+	if(m_pKoGHttpRequest->StatusCode() != 200)
+	{
+		m_KoGState = EProfileState::ERROR_NETWORK;
+		str_format(m_aKoGStatusMsg, sizeof(m_aKoGStatusMsg), "Error de KoG.tw (HTTP %d)", m_pKoGHttpRequest->StatusCode());
+		m_CurrentKoGProfile.m_Valid = false;
+		return false;
+	}
+
+	json_value *pOuter = m_pKoGHttpRequest->ResultJson();
 	if(!pOuter)
 	{
 		m_KoGState = EProfileState::ERROR_NETWORK;
 		str_copy(m_aKoGStatusMsg, "Error: respuesta JSON invalida de KoG");
 		m_CurrentKoGProfile.m_Valid = false;
-		return;
+		return false;
 	}
 
-	const json_value &OuterJson = *pOuter;
-	bool StatusOk = false;
-	if(OuterJson.type == json_object)
-	{
-		if(OuterJson["status"].type == json_string && str_comp((const char *)OuterJson["status"], "200") == 0)
-			StatusOk = true;
-		else if(OuterJson["status"].type == json_integer && OuterJson["status"].u.integer == 200)
-			StatusOk = true;
-	}
-
-	if(!StatusOk || OuterJson["data"].type != json_string)
+	const json_value *pData = (pOuter->type == json_object) ? json_object_get(pOuter, "data") : &json_value_none;
+	if(pData->type != json_string || !pData->u.string.ptr || pData->u.string.length == 0 || pData->u.string.ptr[0] == '\0')
 	{
 		m_KoGState = EProfileState::NOT_FOUND;
 		str_format(m_aKoGStatusMsg, sizeof(m_aKoGStatusMsg), "Jugador '%s' no encontrado en KoG.tw", m_aKoGRequestedName);
 		m_CurrentKoGProfile.m_Valid = false;
 		json_value_free(pOuter);
-		return;
+		return false;
 	}
 
-	const char *pInnerStr = (const char *)OuterJson["data"];
-
 	CKoGPlayerProfile NewProfile{};
-	if(!ParseKoGProfileJson(pInnerStr, NewProfile))
+	if(!ParseKoGProfileJson(pData->u.string.ptr, NewProfile))
 	{
 		m_KoGState = EProfileState::ERROR_NETWORK;
 		str_format(m_aKoGStatusMsg, sizeof(m_aKoGStatusMsg), "Error al procesar datos de '%s' en KoG", m_aKoGRequestedName);
 		log_error("kog", "ParseKoGProfileJson fallo para '%s'", m_aKoGRequestedName);
 		m_CurrentKoGProfile.m_Valid = false;
 		json_value_free(pOuter);
-		return;
+		return false;
 	}
-
-	// Persist raw inner JSON to disk cache
-	SaveKoGToDisk(m_aKoGRequestedName, pInnerStr);
-
-	// A successful response means the block is gone
-	m_KoGBlockStrikes = 0;
-	m_KoGCloudflareCooldown = 0;
 
 	NewProfile.m_FromDiskCache = false;
 	m_CurrentKoGProfile = NewProfile;
@@ -894,6 +578,7 @@ void CPlayerProfiles::ProcessKoGFetchCompletion()
 	m_KoGState = EProfileState::READY;
 	str_copy(m_aKoGStatusMsg, "");
 	json_value_free(pOuter);
+	return true;
 }
 
 bool CPlayerProfiles::ParseKoGProfileJson(const char *pJsonStr, CKoGPlayerProfile &OutProfile)
@@ -1022,62 +707,6 @@ bool CPlayerProfiles::ParseKoGProfileJson(const char *pJsonStr, CKoGPlayerProfil
 	return true;
 }
 
-void CPlayerProfiles::SaveKoGToDisk(const char *pPlayerName, const char *pJsonData)
-{
-	if(!pPlayerName || !pPlayerName[0] || !pJsonData || !pJsonData[0])
-		return;
-
-	Storage()->CreateFolder("kog_cache", IStorage::TYPE_SAVE);
-	Storage()->CreateFolder("kog_cache/players", IStorage::TYPE_SAVE);
-
-	char aSafeName[MAX_NAME_LENGTH];
-	str_copy(aSafeName, pPlayerName);
-	for(char *p = aSafeName; *p; ++p)
-	{
-		if(*p == '/' || *p == '\\' || *p == ':' || *p == '*' || *p == '?' || *p == '"' || *p == '<' || *p == '>' || *p == '|')
-			*p = '_';
-	}
-
-	char aPath[256];
-	str_format(aPath, sizeof(aPath), "kog_cache/players/%s.json", aSafeName);
-
-	IOHANDLE File = Storage()->OpenFile(aPath, IOFLAG_WRITE, IStorage::TYPE_SAVE);
-	if(File)
-	{
-		io_write(File, pJsonData, str_length(pJsonData));
-		io_close(File);
-	}
-}
-
-bool CPlayerProfiles::LoadKoGFromDisk(const char *pPlayerName, CKoGPlayerProfile &OutProfile)
-{
-	if(!pPlayerName || !pPlayerName[0])
-		return false;
-
-	char aSafeName[MAX_NAME_LENGTH];
-	str_copy(aSafeName, pPlayerName);
-	for(char *p = aSafeName; *p; ++p)
-	{
-		if(*p == '/' || *p == '\\' || *p == ':' || *p == '*' || *p == '?' || *p == '"' || *p == '<' || *p == '>' || *p == '|')
-			*p = '_';
-	}
-
-	char aPath[256];
-	str_format(aPath, sizeof(aPath), "kog_cache/players/%s.json", aSafeName);
-
-	char *pData = Storage()->ReadFileStr(aPath, IStorage::TYPE_SAVE);
-	if(!pData)
-		return false;
-
-	bool Success = ParseKoGProfileJson(pData, OutProfile);
-	free(pData);
-	if(Success)
-	{
-		OutProfile.m_FromDiskCache = true;
-	}
-	return Success;
-}
-
 void CPlayerProfiles::AddToKoGCache(const CKoGPlayerProfile &Profile)
 {
 	char aLower[MAX_NAME_LENGTH];
@@ -1117,21 +746,11 @@ bool CPlayerProfiles::GetFromKoGCache(const char *pName, CKoGPlayerProfile &OutP
 	return false;
 }
 
-void CPlayerProfiles::SetKoGCachedStatusMsg()
-{
-	// Cached data is served first; tell the user when it may be outdated because kog.tw is blocking us
-	if(time_get() < m_KoGCloudflareCooldown)
-	{
-		int Secs = (int)((m_KoGCloudflareCooldown - time_get()) / time_freq());
-		if(Secs < 1) Secs = 1;
-		str_format(m_aKoGStatusMsg, sizeof(m_aKoGStatusMsg), "Datos en cache (pueden estar desactualizados). KoG.tw requiere verificacion, reintento en %s", FormatKoGWait(Secs).c_str());
-	}
-	else
-		str_copy(m_aKoGStatusMsg, "");
-}
-
 void CPlayerProfiles::FetchKoGProfile(const char *pPlayerName, bool ForceRefresh, bool BackgroundTeam)
 {
+	(void)ForceRefresh;
+	(void)BackgroundTeam;
+
 	if(!pPlayerName || pPlayerName[0] == '\0')
 		return;
 
@@ -1150,66 +769,15 @@ void CPlayerProfiles::FetchKoGProfile(const char *pPlayerName, bool ForceRefresh
 
 	str_copy(m_aKoGRequestedName, pStart);
 
-	// Check RAM cache first
-	if(!ForceRefresh && GetFromKoGCache(pStart, m_CurrentKoGProfile))
-	{
-		m_KoGState = EProfileState::READY;
-		SetKoGCachedStatusMsg();
-		return;
-	}
-
-	// Check disk cache
-	if(!ForceRefresh && LoadKoGFromDisk(pStart, m_CurrentKoGProfile))
-	{
-		AddToKoGCache(m_CurrentKoGProfile);
-		m_KoGState = EProfileState::READY;
-		SetKoGCachedStatusMsg();
-		return;
-	}
-
-	// While blocked, don't query. A manual refresh may bypass the cooldown, but never more than once every 30s.
-	const int64_t Now = time_get();
-	const int64_t BlockedUntil = ForceRefresh ? m_KoGLastBlockTime + time_freq() * 30 : m_KoGCloudflareCooldown;
-	if(Now < BlockedUntil && Now < m_KoGCloudflareCooldown)
-	{
-		int Secs = (int)((BlockedUntil - Now) / time_freq());
-		if(Secs < 1) Secs = 1;
-		m_KoGState = EProfileState::ERROR_NETWORK;
-		str_format(m_aKoGStatusMsg, sizeof(m_aKoGStatusMsg), "KoG.tw en espera por Cloudflare (%s para reintentar). Usa 'Abrir KoG.tw'", FormatKoGWait(Secs).c_str());
-		return;
-	}
-
-	// Check if this player fetch recently failed
-	char aLowerPlayer[MAX_NAME_LENGTH];
-	str_copy(aLowerPlayer, pStart);
-	for(char *p = aLowerPlayer; *p; ++p)
-		*p = (char)tolower((unsigned char)*p);
-	auto itFail = m_mFailedFetchesKoG.find(aLowerPlayer);
-	if(!ForceRefresh && itFail != m_mFailedFetchesKoG.end() && time_get() < itFail->second)
-	{
-		int Secs = (int)((itFail->second - time_get()) / time_freq());
-		if(Secs < 1) Secs = 1;
-		m_KoGState = EProfileState::ERROR_NETWORK;
-		str_format(m_aKoGStatusMsg, sizeof(m_aKoGStatusMsg), "KoG.tw: reintento en espera (%ds)", Secs);
-		return;
-	}
-
-	// Network fetch in background thread
 	AbortKoGFetch();
-
-	str_copy(m_aKoGFetchThreadPlayer, pStart);
-	m_KoGFetchSuccess = false;
-	m_KoGFetchDone = false;
-	m_KoGIsBackgroundFetch = BackgroundTeam;
-	m_KoGFetchRunning = true;
-	m_KoGResultStatusCode = 0;
-	m_KoGResultData.clear();
-	m_KoGFetchErrorMsg.clear();
 
 	m_KoGState = EProfileState::FETCHING;
 	str_format(m_aKoGStatusMsg, sizeof(m_aKoGStatusMsg), "Consultando datos en KoG.tw para '%s'...", pStart);
 
-	m_pKoGThread = thread_init(KoGFetchWorker, this, "KoGFetch");
+	m_pKoGHttpRequest = HttpGet("https://kog.tw");
+	ConfigureKoGRequest(m_pKoGHttpRequest, false);
+	m_KoGFetchStage = EKoGFetchStage::SESSION;
+	Http()->Run(m_pKoGHttpRequest);
 }
 
 void CPlayerProfiles::OpenDDNetWeb(const char *pPlayerName)
@@ -1294,15 +862,7 @@ bool CPlayerProfiles::IsPlayerProfileLoaded(const char *pName, bool IsKoG) const
 
 	if(IsKoG)
 	{
-		if(m_mKoGProfilesCache.find(Key) != m_mKoGProfilesCache.end())
-			return true;
-		CKoGPlayerProfile DiskProf{};
-		if(const_cast<CPlayerProfiles *>(this)->LoadKoGFromDisk(pName, DiskProf))
-		{
-			const_cast<CPlayerProfiles *>(this)->AddToKoGCache(DiskProf);
-			return true;
-		}
-		return false;
+		return m_mKoGProfilesCache.find(Key) != m_mKoGProfilesCache.end();
 	}
 	else
 	{
@@ -1327,12 +887,10 @@ void CPlayerProfiles::QueueTeamProfileFetch(const char *pName, bool IsKoG)
 	std::string NameStr(pName);
 	if(IsKoG)
 	{
-		if(time_get() < m_KoGCloudflareCooldown)
-			return;
 		auto it = m_mFailedFetchesKoG.find(Key);
 		if(it != m_mFailedFetchesKoG.end() && time_get() < it->second)
 			return;
-		if(str_comp(m_aKoGFetchThreadPlayer, pName) == 0 && m_KoGFetchRunning)
+		if(str_comp(m_aKoGRequestedName, pName) == 0 && m_pKoGHttpRequest != nullptr)
 			return;
 		for(const auto &Pending : m_qTeamPendingKoG)
 		{
@@ -1460,14 +1018,7 @@ void CPlayerProfiles::ComputeTeamCommonUnfinished()
 
 	if(!AllLoaded)
 	{
-		if(IsKoG && time_get() < m_KoGCloudflareCooldown)
-		{
-			str_copy(m_aTeamStatusMsg, "KoG.tw bloqueado por Cloudflare (en espera)");
-		}
-		else
-		{
-			str_format(m_aTeamStatusMsg, sizeof(m_aTeamStatusMsg), "Cargando perfil de '%s'...", PendingName.c_str());
-		}
+		str_format(m_aTeamStatusMsg, sizeof(m_aTeamStatusMsg), "Cargando perfil de '%s'...", PendingName.c_str());
 		return;
 	}
 
@@ -1479,7 +1030,7 @@ void CPlayerProfiles::ComputeTeamCommonUnfinished()
 		if(IsKoG)
 		{
 			CKoGPlayerProfile Prof{};
-			if(GetFromKoGCache(Name.c_str(), Prof) || LoadKoGFromDisk(Name.c_str(), Prof))
+			if(GetFromKoGCache(Name.c_str(), Prof))
 			{
 				UnfinList = Prof.m_vUnfinishedMaps;
 			}
@@ -1647,6 +1198,7 @@ void CPlayerProfiles::FetchKoGMapsMetaNetwork()
 	m_pKoGMapsHttpRequest->Timeout(CTimeout{4000, 10000, 500, 5});
 	m_pKoGMapsHttpRequest->SkipByFileTime(true);
 	m_pKoGMapsHttpRequest->IpResolve(IPRESOLVE::V4);
+	AClientBackend::ApplyDownloadSpeedLimit(m_pKoGMapsHttpRequest, 2 * 1024 * 1024);
 	Http()->Run(m_pKoGMapsHttpRequest);
 }
 

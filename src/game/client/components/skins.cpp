@@ -123,7 +123,7 @@ CSkins::CSkinContainer::EState CSkins::CSkinContainer::DetermineInitialState() c
 		return EState::PENDING;
 	}
 	else if((g_Config.m_ClVanillaSkinsOnly && !m_Vanilla) ||
-		(m_Type == EType::DOWNLOAD && !g_Config.m_ClDownloadSkins && !g_Config.m_AcDownloadSkinsFrozen))
+		(m_Type == EType::DOWNLOAD && !g_Config.m_ClDownloadSkins))
 	{
 		// Fail immediately if it shouldn't be loaded
 		return EState::NOT_FOUND;
@@ -1022,7 +1022,7 @@ bool CSkins::CSkinDownloadJob::Abort()
 
 void CSkins::CSkinDownloadJob::Run()
 {
-	const char *pBaseUrl = (g_Config.m_ClDownloadCommunitySkins != 0 || g_Config.m_AcDownloadSkinsFrozen != 0) ? g_Config.m_ClSkinCommunityDownloadUrl : g_Config.m_ClSkinDownloadUrl;
+	const char *pBaseUrl = (g_Config.m_ClDownloadCommunitySkins != 0) ? g_Config.m_ClSkinCommunityDownloadUrl : g_Config.m_ClSkinDownloadUrl;
 	const char *pAltUrl = (pBaseUrl == g_Config.m_ClSkinCommunityDownloadUrl) ? g_Config.m_ClSkinDownloadUrl : g_Config.m_ClSkinCommunityDownloadUrl;
 
 	char aEscapedName[256];

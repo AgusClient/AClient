@@ -1,6 +1,8 @@
 /* Copyright (C) 2026 AClient / BestProject Team */
 #include "hud_layout.h"
 
+#include <game/client/components/tclient/music_player.h>
+
 #include <base/math.h>
 #include <base/str.h>
 #include <engine/config.h>
@@ -48,6 +50,7 @@ static const SModuleMeta gs_aModuleMeta[MODULE_COUNT] = {
 	{"notify_last", "Notify Last", true, true, true, true, 25, 300, 0, 100},
 	{"keystrokes_keyboard", "Keystrokes Keyboard", true, true, true, false, 25, 300, 100, 100},
 	{"keystrokes_mouse", "Keystrokes Mouse", true, true, true, false, 25, 300, 100, 100},
+	{"music_player", "Music Player", true, true, true, true, 25, 300, 0, 100},
 };
 
 static const SModuleLayout gs_aDefaultLayouts[MODULE_COUNT] = {
@@ -65,12 +68,15 @@ static const SModuleLayout gs_aDefaultLayouts[MODULE_COUNT] = {
 	{100.0f, 3.0f, 100, 0, true, false, 0x66000000U, 100},   // MODULE_NOTIFY_LAST
 	{2.0f, 152.0f, 100, 0, true, false, 0x66000000U, 100},   // MODULE_KEYSTROKES_KEYBOARD
 	{80.0f, 152.0f, 100, 0, true, false, 0x66000000U, 100},  // MODULE_KEYSTROKES_MOUSE
+	{198.0f, 0.0f, 100, 0, true, false, 0x1E59A36BU, 100},   // MODULE_MUSIC_PLAYER
 };
 
 static SModuleLayout gs_aRuntimeLayouts[MODULE_COUNT];
 static bool gs_aHasRuntimeOverride[MODULE_COUNT] = {false};
 static bool gs_aHasPositionOverride[MODULE_COUNT] = {false};
 static bool gs_Initialized = false;
+static float gs_MusicPlayerResolvedDefaultX = 0.0f;
+static float gs_MusicPlayerResolvedHudWidth = -1.0f;
 
 void SanitizeHudDims(float &HudWidth, float &HudHeight)
 {
@@ -116,6 +122,9 @@ void SyncModuleToConfig(EModule Module)
 		break;
 	case MODULE_KEYSTROKES_MOUSE:
 		g_Config.m_AcKeystrokesMouse = Layout.m_Enabled ? 1 : 0;
+		break;
+	case MODULE_MUSIC_PLAYER:
+		g_Config.m_BcMusicPlayer = Layout.m_Enabled ? 1 : 0;
 		break;
 	default:
 		break;
@@ -224,6 +233,20 @@ void EstimateModuleBounds(EModule Module, const SModuleLayout &Layout, float Hud
 		const float MsScale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f) * 0.14f;
 		OutW = 285.0f * MsScale;
 		OutH = 421.0f * MsScale;
+		break;
+	}
+	case MODULE_MUSIC_PLAYER:
+	{
+		const float WidthScale = HudWidth / std::max(CANVAS_WIDTH, 0.001f);
+		const float TextScale = std::clamp(g_Config.m_BcMusicPlayerTextScale / 100.0f, 0.7f, 1.5f);
+		const float TitleFont = 6.0f * S * TextScale;
+		const float CompactH = std::max(9.0f * S, TitleFont + 3.0f * S);
+		const float TextSlot = TitleFont * 4.8f + 3.6f * S * WidthScale;
+		const int NumBars = std::clamp(g_Config.m_BcMusicPlayerVisualizerColumns, 5, 10);
+		const float VisualW = (0.82f * 2.0f + NumBars * 1.65f + std::max(0, NumBars - 1) * 0.88f) * S * WidthScale;
+		const float ArtSize = std::max(0.0f, CompactH - 1.7f * S);
+		OutW = std::min(HudWidth, std::max(18.0f * S * WidthScale, (2.35f * 2.0f + 1.25f + 1.35f) * S * WidthScale + TextSlot + VisualW + ArtSize));
+		OutH = CompactH;
 		break;
 	}
 	default:
@@ -461,6 +484,10 @@ SModuleLayout Get(EModule Module, float HudWidth, float HudHeight)
 	{
 		Layout.m_Enabled = Layout.m_Enabled && (g_Config.m_AcKeystrokesMouse != 0);
 	}
+	else if(Module == MODULE_MUSIC_PLAYER)
+	{
+		Layout.m_Enabled = Layout.m_Enabled && (g_Config.m_BcMusicPlayer != 0);
+	}
 
 	Layout.m_Scale = Meta.m_ScaleSupported ? std::clamp(Layout.m_Scale, Meta.m_MinScale, Meta.m_MaxScale) : 100;
 	Layout.m_Alpha = Meta.m_AlphaSupported ? std::clamp(Layout.m_Alpha, Meta.m_MinAlpha, Meta.m_MaxAlpha) : 100;
@@ -569,6 +596,16 @@ SModuleLayout Get(EModule Module, float HudWidth, float HudHeight)
 			break;
 		default:
 			Layout.m_X = CanvasXToHud(Layout.m_X, HudWidth);
+			break;
+		case MODULE_MUSIC_PLAYER:
+			if(gs_MusicPlayerResolvedHudWidth > 0.0f && std::abs(gs_MusicPlayerResolvedHudWidth - HudWidth) < 0.51f)
+				Layout.m_X = gs_MusicPlayerResolvedDefaultX;
+			else
+			{
+				const float WindowW = std::max(1.0f, (float)g_Config.m_GfxScreenWidth);
+				Layout.m_X = HudWidth * 0.5f - EstW * 0.5f + HudWidth / WindowW * 2.5f;
+			}
+			Layout.m_Y = 0.0f;
 			break;
 		}
 	}
@@ -682,6 +719,8 @@ bool IsEnabled(EModule Module)
 		return gs_aRuntimeLayouts[Module].m_Enabled && (g_Config.m_AcKeystrokesKeyboard != 0);
 	case MODULE_KEYSTROKES_MOUSE:
 		return gs_aRuntimeLayouts[Module].m_Enabled && (g_Config.m_AcKeystrokesMouse != 0);
+	case MODULE_MUSIC_PLAYER:
+		return gs_aRuntimeLayouts[Module].m_Enabled && (g_Config.m_BcMusicPlayer != 0);
 	default:
 		return gs_aRuntimeLayouts[Module].m_Enabled;
 	}
@@ -781,6 +820,48 @@ int BackgroundCorners(int DefaultCorners, float RectX, float RectY, float RectW,
 	if(RectY + RectH >= CanvasHeight - Eps)
 		Corners &= ~IGraphics::CORNER_B;
 	return Corners;
+}
+
+void SetMusicPlayerResolvedDefaultX(float HudX, float HudWidth)
+{
+	gs_MusicPlayerResolvedDefaultX = HudX;
+	gs_MusicPlayerResolvedHudWidth = HudWidth;
+}
+
+void TryApplyMusicPlayerLegacyPositionFix(float HudWidth, float HudHeight, ITextRender *pTextRender)
+{
+	EnsureInitialized();
+	if(g_Config.m_BcHudMusicPlayerLayoutMigrated >= 5 || gs_aHasPositionOverride[MODULE_MUSIC_PLAYER] || !pTextRender)
+	{
+		if(g_Config.m_BcHudMusicPlayerLayoutMigrated < 5)
+			g_Config.m_BcHudMusicPlayerLayoutMigrated = 5;
+		return;
+	}
+
+	const bool HasLegacy =
+		g_Config.m_BcHudMusicPlayerX != (int)gs_aDefaultLayouts[MODULE_MUSIC_PLAYER].m_X ||
+		g_Config.m_BcHudMusicPlayerY != (int)gs_aDefaultLayouts[MODULE_MUSIC_PLAYER].m_Y ||
+		g_Config.m_BcHudMusicPlayerScale != gs_aDefaultLayouts[MODULE_MUSIC_PLAYER].m_Scale;
+	if(!HasLegacy)
+	{
+		g_Config.m_BcHudMusicPlayerLayoutMigrated = 5;
+		return;
+	}
+
+	const float Aspect = HudWidth / std::max(HudHeight, 0.001f);
+	if(Aspect < 1.25f || Aspect > 3.6f)
+		return;
+
+	bool OffsetReady = false;
+	const int Scale = std::clamp(g_Config.m_BcHudMusicPlayerScale, 25, 300);
+	const float TextScale = std::clamp(g_Config.m_BcMusicPlayerTextScale / 100.0f, 0.7f, 1.5f);
+	const float Offset = MusicPlayerLegacyHudAnchorOffsetCanvasX(pTextRender, Scale, HudWidth, TextScale, &OffsetReady);
+	if(!OffsetReady)
+		return;
+
+	SetScale(MODULE_MUSIC_PLAYER, Scale);
+	SetPosition(MODULE_MUSIC_PLAYER, (float)g_Config.m_BcHudMusicPlayerX + Offset, (float)g_Config.m_BcHudMusicPlayerY);
+	g_Config.m_BcHudMusicPlayerLayoutMigrated = 5;
 }
 
 void OnConsoleInit(IConsole *pConsole, IConfigManager *pConfigManager)

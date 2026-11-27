@@ -56,6 +56,51 @@ void CMenus::RenderGame(CUIRect MainView)
 		ButtonBars.HSplitTop(25.0f, &ButtonBar2, &ButtonBars);
 	}
 
+	// AClient Voice Chat: Pending room invite notification banner in the Esc pause menu
+	if(GameClient()->m_AClientVoice.HasPendingInvite())
+	{
+		CAClientVoice &Voice = GameClient()->m_AClientVoice;
+		CUIRect VoiceInviteBar;
+		MainView.HSplitTop(8.0f, nullptr, &MainView);
+		MainView.HSplitTop(34.0f, &VoiceInviteBar, &MainView);
+		VoiceInviteBar.Draw(ColorRGBA(0.10f, 0.24f, 0.44f, 0.90f), IGraphics::CORNER_ALL, 6.0f);
+		VoiceInviteBar.Margin(5.0f, &VoiceInviteBar);
+
+		CUIRect DeclineBtn, AcceptBtn;
+		VoiceInviteBar.VSplitRight(84.0f, &VoiceInviteBar, &DeclineBtn);
+		VoiceInviteBar.VSplitRight(6.0f, &VoiceInviteBar, nullptr);
+		VoiceInviteBar.VSplitRight(84.0f, &VoiceInviteBar, &AcceptBtn);
+		VoiceInviteBar.VSplitRight(10.0f, &VoiceInviteBar, nullptr);
+
+		char aInvText[160];
+		str_format(aInvText, sizeof(aInvText), "Voice Chat: '%s' te invito a la sala '%s'%s",
+			Voice.GetPendingInviteFrom(), Voice.GetPendingInviteRoom(),
+			Voice.HasPendingInvitePassword() ? " (con clave)" : "");
+		TextRender()->TextColor(0.95f, 0.98f, 1.0f, 1.0f);
+		Ui()->DoLabel(&VoiceInviteBar, aInvText, 13.0f, TEXTALIGN_ML);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
+
+		auto DrawInvBtn = [&](CButtonContainer *pId, const char *pText, const CUIRect &Rect, ColorRGBA Bg) -> bool {
+			const bool Hovered = Ui()->MouseInside(&Rect);
+			Rect.Draw(Hovered ? ColorRGBA(std::min(Bg.r + 0.12f, 1.0f), std::min(Bg.g + 0.12f, 1.0f), std::min(Bg.b + 0.12f, 1.0f), 0.95f) : Bg, IGraphics::CORNER_ALL, 4.0f);
+			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+			Ui()->DoLabel(&Rect, pText, 12.0f, TEXTALIGN_MC);
+			TextRender()->TextColor(TextRender()->DefaultTextColor());
+			return Ui()->DoButtonLogic(pId, 0, &Rect, BUTTONFLAG_LEFT) != 0;
+		};
+
+		static CButtonContainer s_IngameVoiceAcceptBtn, s_IngameVoiceDeclineBtn;
+		if(DrawInvBtn(&s_IngameVoiceAcceptBtn, Localize("Aceptar"), AcceptBtn, ColorRGBA(0.20f, 0.72f, 0.36f, 0.92f)))
+		{
+			Voice.AcceptPendingInvite();
+			SetActive(false);
+		}
+		if(DrawInvBtn(&s_IngameVoiceDeclineBtn, Localize("Rechazar"), DeclineBtn, ColorRGBA(0.80f, 0.24f, 0.24f, 0.90f)))
+		{
+			Voice.DeclinePendingInvite();
+		}
+	}
+
 	ButtonBar.VSplitRight(120.0f, &ButtonBar, &Button);
 	static CButtonContainer s_DisconnectButton;
 	if(DoButton_Menu(&s_DisconnectButton, Localize("Disconnect"), 0, &Button))

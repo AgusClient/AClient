@@ -28,6 +28,20 @@
 
 #include <cmath>
 
+namespace
+{
+	CUIRect PushHudRectFromMusicPlayer(CGameClient *pGameClient, CUIRect Rect, float HudWidth, float HudHeight, bool ForcePreview = false)
+	{
+		if(ForcePreview || pGameClient == nullptr || Rect.w <= 0.0f || Rect.h <= 0.0f)
+			return Rect;
+
+		const vec2 Offset = pGameClient->m_MusicPlayer.GetHudPushOffsetForRect(Rect, HudWidth, HudHeight, 2.0f);
+		Rect.x += Offset.x;
+		Rect.y += Offset.y;
+		return Rect;
+	}
+}
+
 CHud::CHud()
 {
 	m_FPSTextContainerIndex.Reset();
@@ -123,6 +137,8 @@ void CHud::OnInit()
 
 void CHud::RenderGameTimer()
 {
+	if(g_Config.m_BcMusicPlayer != 0 && HudLayout::IsEnabled(HudLayout::MODULE_MUSIC_PLAYER) && !(g_Config.m_ClFocusMode && g_Config.m_ClFocusModeHideSongPlayer))
+		return;
 	if(!HudLayout::IsEnabled(HudLayout::MODULE_GAME_TIMER) && !GameClient()->m_HudEditor.IsActive())
 		return;
 
@@ -747,7 +763,11 @@ void CHud::RenderTextInfo()
 		else if(g_Config.m_TcShowFrozenText == 2)
 			str_format(aBuf, sizeof(aBuf), "%d / %d", NumFrozen, NumInTeam);
 		if(g_Config.m_TcShowFrozenText > 0 && GameClient()->m_GameInfo.m_EntitiesDDRace)
-			TextRender()->Text(m_Width / 2.0f - TextRender()->TextWidth(10.0f, aBuf) / 2.0f, 12.0f, 10.0f, aBuf);
+		{
+			const float TextW = TextRender()->TextWidth(10.0f, aBuf);
+			const CUIRect TextRect = PushHudRectFromMusicPlayer(GameClient(), {m_Width / 2.0f - TextW / 2.0f, 12.0f, TextW, 10.0f}, m_Width, m_Height, HudEditorActiveFrozen);
+			TextRender()->Text(TextRect.x, TextRect.y, 10.0f, aBuf);
+		}
 
 		// str_format(aBuf, sizeof(aBuf), "%d", GameClient()->m_aClients[GameClient()->m_Snap.m_LocalClientId].m_PrevPredicted.m_FreezeEnd);
 		// str_format(aBuf, sizeof(aBuf), "%d", g_Config.m_ClWhatsMyPing);
@@ -783,6 +803,14 @@ void CHud::RenderTextInfo()
 
 			const int DisplayCount = (HudEditorActiveFrozen && NumInTeam <= 0) ? 3 : NumInTeam;
 			int TotalRows = std::max(1, std::min(MaxRows, (DisplayCount + MaxTees - 1) / MaxTees));
+			const CUIRect FrozenBoxRect = PushHudRectFromMusicPlayer(
+				GameClient(),
+				{StartPos - TeeSize / 2.0f, StartY, TeeSize * std::min(DisplayCount, MaxTees), TeeSize + 3.0f + (TotalRows - 1) * TeeSize},
+				m_Width,
+				m_Height,
+				HudEditorActiveFrozen);
+			StartPos = FrozenBoxRect.x + TeeSize / 2.0f;
+			StartY = FrozenBoxRect.y;
 			Graphics()->TextureClear();
 			Graphics()->QuadsBegin();
 			Graphics()->SetColor(0.0f, 0.0f, 0.0f, 0.4f * FrozenAlpha);
@@ -2122,6 +2150,9 @@ void CHud::RenderLocalTime(float x)
 		BoxX = std::clamp(Layout.m_X, 0.0f, std::max(0.0f, m_Width - BoxWidth));
 		BoxY = std::clamp(Layout.m_Y, 0.0f, std::max(0.0f, m_Height - BoxHeight));
 	}
+	const CUIRect TimeBoxRect = PushHudRectFromMusicPlayer(GameClient(), {BoxX, BoxY, BoxWidth, BoxHeight}, m_Width, m_Height, HudEditorActive);
+	BoxX = TimeBoxRect.x;
+	BoxY = TimeBoxRect.y;
 
 	Graphics()->DrawRect(BoxX, BoxY, BoxWidth, BoxHeight, ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f * AlphaFactor), IGraphics::CORNER_B, 3.75f * Scale);
 	TextRender()->TextColor(TextRender()->DefaultTextColor().WithMultipliedAlpha(AlphaFactor));
@@ -2194,12 +2225,22 @@ void CHud::OnRender()
 	m_Height = 300.0f;
 	Graphics()->MapScreenToSize(m_Width, m_Height);
 
+	const bool HudEditorActive = GameClient()->m_HudEditor.IsActive();
+	const bool FocusModeActive = !HudEditorActive && g_Config.m_ClFocusMode != 0;
+	const bool HideHudInFocusMode = FocusModeActive && g_Config.m_ClFocusModeHideHud != 0;
+	const bool HideUiInFocusMode = FocusModeActive && g_Config.m_ClFocusModeHideUI != 0;
+
 #if defined(CONF_VIDEORECORDER)
 	if((IVideo::Current() && g_Config.m_ClVideoShowhud) || (!IVideo::Current() && g_Config.m_ClShowhud))
 #else
 	if(g_Config.m_ClShowhud)
 #endif
 	{
+		if(HideHudInFocusMode)
+		{
+			RenderCursor();
+			return;
+		}
 		if(GameClient()->m_Snap.m_pLocalCharacter && !GameClient()->m_Snap.m_SpecInfo.m_Active && !(GameClient()->m_Snap.m_pGameInfoObj->m_GameStateFlags & GAMESTATEFLAG_GAMEOVER))
 		{
 			if(g_Config.m_ClShowhudHealthAmmo)
@@ -2210,7 +2251,8 @@ void CHud::OnRender()
 			{
 				RenderPlayerState(GameClient()->m_Snap.m_LocalClientId);
 			}
-			RenderSpectatorCount();
+			if(!HideUiInFocusMode)
+				RenderSpectatorCount();
 			RenderMovementInformation();
 			RenderDDRaceEffects();
 			if(GameClient()->m_FastPractice.Enabled() && g_Config.m_AcFastPracticeShowText)
@@ -2236,7 +2278,7 @@ void CHud::OnRender()
 			{
 				RenderPlayerState(SpectatorId);
 			}
-			if(GameClient()->m_HudEditor.IsActive())
+			if(HudEditorActive)
 				RenderSpectatorCount();
 			RenderMovementInformation();
 			RenderSpectatorHud();
@@ -2248,19 +2290,22 @@ void CHud::OnRender()
 		RenderSuddenDeath();
 		if(g_Config.m_ClShowhudScore)
 			RenderScoreHud();
-		RenderDummyActions();
+		if(!HideUiInFocusMode)
+			RenderDummyActions();
 		RenderWarmupTimer();
 		RenderTextInfo();
 		GameClient()->m_TClient.RenderCenterLines();
-		RenderLocalTime((m_Width / 7) * 3);
+		if(!HideUiInFocusMode)
+			RenderLocalTime((m_Width / 7) * 3);
 		if(Client()->State() != IClient::STATE_DEMOPLAYBACK)
 			RenderConnectionWarning();
 		RenderTeambalanceWarning();
-		GameClient()->m_Voting.Render();
+		if(!HideUiInFocusMode)
+			GameClient()->m_Voting.Render();
 		if(g_Config.m_ClShowRecord)
 			RenderRecord();
 	}
-	if(!GameClient()->m_HudEditor.IsActive())
+	if(!HudEditorActive)
 		RenderCursor();
 }
 

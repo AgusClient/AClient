@@ -1,30 +1,46 @@
 #ifndef GAME_CLIENT_COMPONENTS_TCLIENT_ACLIENT_GAMESKINS_H
 #define GAME_CLIENT_COMPONENTS_TCLIENT_ACLIENT_GAMESKINS_H
 
+#include <base/types.h>
 #include <engine/console.h>
 #include <engine/graphics.h>
 #include <engine/http.h>
+#include <engine/shared/protocol.h>
 #include <game/client/component.h>
 #include <game/client/gameskin.h>
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
-#include <set>
 #include <string>
+#include <string_view>
+#include <unordered_map>
 #include <unordered_set>
 
 class CAClientGameSkins : public CComponent
 {
-	std::map<std::string, SClientGameSkin> m_mLoadedGameSkins;
-	std::map<std::string, std::string> m_mRemotePlayerGameSkins;
-	std::map<std::string, std::string> m_mRemotePlayerEntities;
-	std::map<std::string, std::string> m_mManualEntities;
-	std::map<std::string, IGraphics::CTextureHandle> m_mLoadedEntitiesTextures;
-	std::set<std::string> m_sRemoteAClientPlayers;
-	std::set<std::string> m_sFailedSkins;
-	std::unordered_set<std::string> m_sBlacklistedGameSkins;
-	std::unordered_set<std::string> m_sBlacklistedEntities;
+	struct SStringHash
+	{
+		using is_transparent = void;
+		size_t operator()(std::string_view Sv) const noexcept { return std::hash<std::string_view>{}(Sv); }
+		size_t operator()(const std::string &S) const noexcept { return std::hash<std::string_view>{}(S); }
+		size_t operator()(const char *pS) const noexcept { return std::hash<std::string_view>{}(pS ? std::string_view(pS) : std::string_view()); }
+	};
+
+	template<typename V>
+	using TStringMap = std::unordered_map<std::string, V, SStringHash, std::equal_to<>>;
+	using TStringSet = std::unordered_set<std::string, SStringHash, std::equal_to<>>;
+
+	TStringMap<SClientGameSkin> m_mLoadedGameSkins;
+	TStringMap<std::string> m_mRemotePlayerGameSkins;
+	TStringMap<std::string> m_mRemotePlayerEntities;
+	TStringMap<std::string> m_mManualEntities;
+	TStringMap<IGraphics::CTextureHandle> m_mLoadedEntitiesTextures;
+	TStringSet m_sRemoteAClientPlayers;
+	TStringSet m_sFailedSkins;
+	TStringSet m_sBlacklistedGameSkins;
+	TStringSet m_sBlacklistedEntities;
 	std::map<std::string, std::string> m_mActiveSkinUsers;
 	uint64_t m_SkinUsersRevision;
 
@@ -34,10 +50,26 @@ class CAClientGameSkins : public CComponent
 
 	std::shared_ptr<IHttpRequest> m_pDownloadEntitiesRequest;
 	std::string m_DownloadingEntitiesName;
-	std::set<std::string> m_sFailedEntities;
-	std::set<std::string> m_sMissingOnDiskSkins;
-	std::set<std::string> m_sMissingOnDiskEntities;
+	TStringSet m_sFailedEntities;
+	TStringSet m_sMissingOnDiskSkins;
+	TStringSet m_sMissingOnDiskEntities;
+	uint64_t m_AssetsScanVersion = 1;
+	uint64_t m_aSlotScanVersion[MAX_CLIENTS] = {};
+	unsigned m_aSlotScanNameHash[MAX_CLIENTS] = {};
+	int m_LastShowRemoteGameSkins = -1;
+	int m_LastDownloadGameskinsCfg = -1;
+	int m_LastDownloadEntitiesCfg = -1;
 	std::optional<CImageInfo> m_FallbackGameImage;
+	struct SPendingGameSkinLoad
+	{
+		bool m_Active = false;
+		std::string m_Name;
+		char m_aPath[IO_MAX_PATH_LENGTH] = {};
+		CImageInfo m_ImgInfo;
+		SClientGameSkin m_Skin = {};
+		int m_Step = -1;
+	};
+	SPendingGameSkinLoad m_PendingSkinLoad;
 	int64_t m_LastDownloadFinishTime = 0;
 	int64_t m_LastGpuLoadTime = 0;
 
@@ -51,6 +83,11 @@ class CAClientGameSkins : public CComponent
 	int m_LastActivePlayerCount;
 	int64_t m_LastPresenceRefreshTime;
 	int64_t m_LastPresenceAnnounceTime;
+	int64_t m_LastPresencePostTime = 0;
+	int64_t m_LastLeaveTime = 0;
+	char m_aLastLeaveServer[128] = {};
+	char m_aLastLeavePlayer[128] = {};
+	std::string m_LastPresencePayload;
 	int64_t m_LastRenderCheckTime;
 	int64_t m_ServerJoinTime;
 	bool m_InitialDownloadPhase;
@@ -64,6 +101,10 @@ class CAClientGameSkins : public CComponent
 
 	bool FindGameSkinFile(const char *pName, char *pOutPath, int OutPathSize);
 	void UnloadSkin(SClientGameSkin &Skin);
+	void EnsureFallbackGameImage();
+	void QueueGameSkinLoad(const char *pName);
+	bool StepPendingGameSkinLoad();
+	void ResetPendingGameSkinLoad(bool UnloadTextures);
 	void StartDownload(const char *pSkinName);
 	void StartEntitiesDownload(const char *pEntitiesName);
 

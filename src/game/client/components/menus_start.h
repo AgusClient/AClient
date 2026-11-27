@@ -13,6 +13,7 @@ public:
 
 private:
 	bool CheckHotKey(int Key) const;
+	bool m_ShowPlayerConfigsModal = false;
 };
 
 #endif

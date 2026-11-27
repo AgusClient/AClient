@@ -8,6 +8,13 @@
 
 #include <game/client/component.h>
 
+#include <cstdint>
+#include <functional>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
+
 enum
 {
 	MAX_WARLIST_TYPE_LENGTH = 16,
@@ -151,10 +158,37 @@ public:
 
 	// Duplicate war entries ARE allowed
 	std::vector<CWarEntry> m_vWarEntries;
-	// TODO: create an unordered map for war clans and war names, to speed up updating the WarPlayers cache
-	// It should be updated when m_WarList changes
 
 	CWarDataCache m_WarPlayers[MAX_CLIENTS];
+
+private:
+	struct SWarStringHash
+	{
+		using is_transparent = void;
+		size_t operator()(std::string_view Sv) const noexcept { return std::hash<std::string_view>{}(Sv); }
+		size_t operator()(const std::string &S) const noexcept { return std::hash<std::string_view>{}(S); }
+		size_t operator()(const char *pS) const noexcept { return std::hash<std::string_view>{}(pS ? std::string_view(pS) : std::string_view()); }
+	};
+
+	struct SSlotCache
+	{
+		uint64_t m_Version = 0;
+		bool m_Active = false;
+		char m_aName[MAX_NAME_LENGTH] = "";
+		char m_aClan[MAX_CLAN_LENGTH] = "";
+	};
+
+	uint64_t m_WarListVersion = 1;
+	uint64_t m_IndexVersion = 0;
+	uint64_t m_ClearedEmptyVersion = 0;
+	std::unordered_map<std::string, std::vector<size_t>, SWarStringHash, std::equal_to<>> m_NameEntryIndex;
+	std::unordered_map<std::string, std::vector<size_t>, SWarStringHash, std::equal_to<>> m_ClanEntryIndex;
+	SSlotCache m_aSlotCache[MAX_CLIENTS];
+
+	void RebuildIndices();
+
+public:
+	void MarkDirty() { ++m_WarListVersion; }
 
 	int Sizeof() const override { return sizeof(*this); }
 	void OnNewSnapshot() override;

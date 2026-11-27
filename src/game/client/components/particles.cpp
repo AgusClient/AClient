@@ -43,7 +43,7 @@ void CParticles::OnReset()
 
 void CParticles::Add(int Group, CParticle *pPart, float TimePassed)
 {
-	if(g_Config.m_AcOptimizer && g_Config.m_AcOptimizerDisableParticles)
+	if((g_Config.m_AcOptimizer && g_Config.m_AcOptimizerDisableParticles) || (g_Config.m_ClFocusMode && g_Config.m_ClFocusModeHideEffects))
 	{
 		return;
 	}
@@ -149,7 +149,7 @@ void CParticles::OnRender()
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
 
-	if(g_Config.m_AcOptimizer && g_Config.m_AcOptimizerDisableParticles)
+	if((g_Config.m_AcOptimizer && g_Config.m_AcOptimizerDisableParticles) || (g_Config.m_ClFocusMode && g_Config.m_ClFocusModeHideEffects))
 	{
 		for(int FirstPart : m_aFirstPart)
 		{
@@ -209,7 +209,7 @@ bool CParticles::ParticleIsVisibleOnScreen(const vec2 &CurPos, float CurSize) co
 
 void CParticles::RenderGroup(int Group)
 {
-	if(g_Config.m_AcOptimizer && g_Config.m_AcOptimizerDisableParticles)
+	if((g_Config.m_AcOptimizer && g_Config.m_AcOptimizerDisableParticles) || (g_Config.m_ClFocusMode && g_Config.m_ClFocusModeHideEffects))
 		return;
 
 	IGraphics::CTextureHandle *aParticles = GameClient()->m_ParticlesSkin.m_aSpriteParticles;

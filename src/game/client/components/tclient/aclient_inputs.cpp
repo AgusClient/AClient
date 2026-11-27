@@ -246,6 +246,8 @@ void AcInputs::ApplyOffset(float OffsetTicks, int &Tick, float &Intra)
 	if(OffsetTicks <= 0.0f || std::isnan(OffsetTicks) || std::isinf(OffsetTicks) || std::isnan(Intra) || std::isinf(Intra))
 		return;
 
+	Intra = std::clamp(Intra, 0.0f, 0.9999f);
+
 	const int WholeTicks = (int)OffsetTicks;
 	const float OffsetIntra = OffsetTicks - WholeTicks;
 

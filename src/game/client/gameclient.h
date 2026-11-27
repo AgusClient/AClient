@@ -68,6 +68,8 @@
 #include "components/sounds.h"
 #include "components/spectator.h"
 #include "components/statboard.h"
+#include "components/tclient/aclient_single_assets.h"
+#include "components/tclient/aclient_single_assets.h"
 #include "components/tclient/bg_draw.h"
 #include "components/tclient/bindchat.h"
 #include "components/tclient/bindwheel.h"
@@ -84,13 +86,16 @@
 #include "components/tclient/aclient_hud.h"
 #include "components/tclient/aclient_optimizer.h"
 #include "components/tclient/aclient_auth.h"
+#include "components/tclient/aclient_config_sync.h"
 #include "components/tclient/aclient_gameskins.h"
+#include "components/tclient/aclient_music_share.h"
 #include "components/tclient/aclient_voice.h"
 #include "components/tclient/hud_layout.h"
 #include "components/tclient/hud_editor.h"
 #include "components/tclient/gradient.h"
 #include "components/tclient/keystrokes.h"
 #include "components/tclient/menu_media_background.h"
+#include "components/tclient/music_player.h"
 #include "components/tclient/fast_practice.h"
 #include "components/tclient/scripting.h"
 #include "components/tclient/skinprofiles.h"
@@ -246,12 +251,15 @@ public:
 	CAcOptimizer m_AcOptimizer;
 	CAClientHud m_AClientHud;
 	CAClientAuth m_AClientAuth;
+	CAClientConfigSync m_AClientConfigSync;
 	CAClientGameSkins m_AClientGameSkins;
 	CAClientVoice m_AClientVoice;
+	CAClientMusicShare m_AClientMusicShare;
 	CHudEditor m_HudEditor;
 	CAcGradient m_AcGradient;
 	CKeystrokes m_Keystrokes;
 	CMenuMediaBackground m_MenuMediaBackground;
+	CMusicPlayer m_MusicPlayer;
 	CPlayerProfiles m_PlayerProfiles;
 	CFastPractice m_FastPractice;
 	CBindChat m_BindChat;
@@ -868,6 +876,8 @@ public:
 	void LoadParticlesSkin(const char *pPath, bool AsDir = false);
 	void LoadHudSkin(const char *pPath, bool AsDir = false);
 	void LoadExtrasSkin(const char *pPath, bool AsDir = false);
+	void ReloadSingleAssetCategory(int Category);
+	CAClientSingleAssets m_SingleAssets;
 
 	using SClientGameSkin = ::SClientGameSkin;
 
@@ -953,7 +963,7 @@ public:
 	vec2 GetSmoothPos(int ClientId);
 	vec2 GetFreezePos(int ClientId);
 	vec2 GetFastInputPos(int ClientId);
-	bool GetFastInputHookPos(int ClientId, vec2 &OutHookPos, bool &OutHookActive, bool &OutHookGrabbed, vec2 &OutGrabbedHookPos);
+	bool GetFastInputHookPos(int ClientId, vec2 &OutHookPos, bool &OutHookActive, bool &OutHookGrabbed, vec2 &OutGrabbedHookPos, int &OutHookedPlayer);
 	bool IsPlayerFrozen(int ClientId) const;
 
 	int m_MultiViewTeam;
@@ -991,6 +1001,7 @@ private:
 	};
 
 	CImageAsset LoadAssetFromPath(const char *pPath, bool AsDir, int AssetId, const char *pDirectory) const;
+	class CSingleAssetSpriteLoader;
 
 	std::vector<std::shared_ptr<CManagedTeeRenderInfo>> m_vpManagedTeeRenderInfos;
 	void UpdateManagedTeeRenderInfos();

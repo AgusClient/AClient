@@ -215,6 +215,7 @@ void CWarList::UpdateWarEntry(int Index, const char *pName, const char *pClan, c
 		str_copy(m_vWarEntries[Index].m_aClan, pClan);
 		str_copy(m_vWarEntries[Index].m_aReason, pReason);
 		m_vWarEntries[Index].m_pWarType = pType;
+		MarkDirty();
 	}
 }
 
@@ -227,6 +228,7 @@ void CWarList::UpsertWarType(int Index, const char *pType, ColorRGBA Color)
 	{
 		str_copy(m_WarTypes[Index]->m_aWarName, pType);
 		m_WarTypes[Index]->m_Color = Color;
+		MarkDirty();
 	}
 	else
 	{
@@ -257,6 +259,7 @@ void CWarList::AddWarEntry(const char *pName, const char *pClan, const char *pRe
 	if(!g_Config.m_TcWarListAllowDuplicates)
 		RemoveWarEntryDuplicates(pName, pClan);
 	m_vWarEntries.push_back(Entry);
+	MarkDirty();
 }
 
 void CWarList::RemoveWarEntryDuplicates(const char *pName, const char *pClan)
@@ -264,6 +267,7 @@ void CWarList::RemoveWarEntryDuplicates(const char *pName, const char *pClan)
 	if(str_comp(pName, "") == 0 && str_comp(pClan, "") == 0)
 		return;
 
+	bool Removed = false;
 	for(auto It = m_vWarEntries.begin(); It != m_vWarEntries.end();)
 	{
 		bool IsDuplicate =
@@ -271,10 +275,15 @@ void CWarList::RemoveWarEntryDuplicates(const char *pName, const char *pClan)
 			(str_comp(It->m_aClan, pClan) == 0);
 
 		if(IsDuplicate)
+		{
 			It = m_vWarEntries.erase(It);
+			Removed = true;
+		}
 		else
 			++It;
 	}
+	if(Removed)
+		MarkDirty();
 }
 
 void CWarList::AddWarType(const char *pType, ColorRGBA Color)
@@ -292,6 +301,7 @@ void CWarList::AddWarType(const char *pType, ColorRGBA Color)
 	{
 		Type->m_Color = Color;
 	}
+	MarkDirty();
 }
 
 void CWarList::RemoveWarEntry(const char *pName, const char *pClan, const char *pType)
@@ -300,7 +310,10 @@ void CWarList::RemoveWarEntry(const char *pName, const char *pClan, const char *
 	CWarEntry Entry(pWarType, pName, pClan, "");
 	auto It = std::find(m_vWarEntries.begin(), m_vWarEntries.end(), Entry);
 	if(It != m_vWarEntries.end())
+	{
 		m_vWarEntries.erase(It);
+		MarkDirty();
+	}
 }
 
 void CWarList::RemoveWarEntry(CWarEntry *Entry)
@@ -308,7 +321,10 @@ void CWarList::RemoveWarEntry(CWarEntry *Entry)
 	auto It = std::find_if(m_vWarEntries.begin(), m_vWarEntries.end(),
 		[Entry](const CWarEntry &WarEntry) { return &WarEntry == Entry; });
 	if(It != m_vWarEntries.end())
+	{
 		m_vWarEntries.erase(It);
+		MarkDirty();
+	}
 }
 
 void CWarList::RemoveWarType(const char *pType)
@@ -332,6 +348,7 @@ void CWarList::RemoveWarType(const char *pType)
 			}
 		}
 		m_WarTypes.erase(It);
+		MarkDirty();
 	}
 }
 
@@ -411,42 +428,152 @@ void CWarList::SortWarEntries()
 	// TODO
 }
 
-void CWarList::UpdateWarPlayers()
+void CWarList::RebuildIndices()
 {
 	for(int i = 0; i < (int)m_WarTypes.size(); ++i)
 		m_WarTypes[i]->m_Index = i;
 
+	m_NameEntryIndex.clear();
+	m_ClanEntryIndex.clear();
+	m_NameEntryIndex.reserve(m_vWarEntries.size());
+	m_ClanEntryIndex.reserve(m_vWarEntries.size());
+
+	for(size_t Idx = 0; Idx < m_vWarEntries.size(); ++Idx)
+	{
+		const CWarEntry &Entry = m_vWarEntries[Idx];
+		if(Entry.m_aName[0] != '\0')
+			m_NameEntryIndex[Entry.m_aName].push_back(Idx);
+		if(Entry.m_aClan[0] != '\0')
+			m_ClanEntryIndex[Entry.m_aClan].push_back(Idx);
+	}
+
+	m_IndexVersion = m_WarListVersion;
+}
+
+void CWarList::UpdateWarPlayers()
+{
+	const size_t NumTypes = m_WarTypes.size();
+
+	// Fast O(1) path when warlist is empty and players have already been cleared for this version
+	if(m_vWarEntries.empty())
+	{
+		if(m_ClearedEmptyVersion == m_WarListVersion)
+			return;
+
+		for(int i = 0; i < (int)NumTypes; ++i)
+			m_WarTypes[i]->m_Index = i;
+
+		for(int i = 0; i < MAX_CLIENTS; ++i)
+		{
+			m_WarPlayers[i].m_WarName = false;
+			m_WarPlayers[i].m_WarClan = false;
+			m_WarPlayers[i].m_aReason[0] = '\0';
+			m_WarPlayers[i].m_NameColor = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
+			m_WarPlayers[i].m_ClanColor = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
+			m_WarPlayers[i].m_WarGroupMatches.assign(NumTypes, 0);
+			m_aSlotCache[i].m_Version = m_WarListVersion;
+			m_aSlotCache[i].m_Active = GameClient()->m_aClients[i].m_Active;
+			if(m_aSlotCache[i].m_Active)
+			{
+				str_copy(m_aSlotCache[i].m_aName, GameClient()->m_aClients[i].m_aName);
+				str_copy(m_aSlotCache[i].m_aClan, GameClient()->m_aClients[i].m_aClan);
+			}
+			else
+			{
+				m_aSlotCache[i].m_aName[0] = '\0';
+				m_aSlotCache[i].m_aClan[0] = '\0';
+			}
+		}
+		m_NameEntryIndex.clear();
+		m_ClanEntryIndex.clear();
+		m_IndexVersion = m_WarListVersion;
+		m_ClearedEmptyVersion = m_WarListVersion;
+		return;
+	}
+
+	m_ClearedEmptyVersion = 0;
+	if(m_IndexVersion != m_WarListVersion)
+		RebuildIndices();
+
 	for(int i = 0; i < MAX_CLIENTS; ++i)
 	{
-		if(!GameClient()->m_aClients[i].m_Active)
+		const auto &Client = GameClient()->m_aClients[i];
+		SSlotCache &Cache = m_aSlotCache[i];
+		if(!Client.m_Active)
+		{
+			Cache.m_Active = false;
+			continue;
+		}
+
+		if(Cache.m_Active && Cache.m_Version == m_WarListVersion &&
+			str_comp(Cache.m_aName, Client.m_aName) == 0 &&
+			str_comp(Cache.m_aClan, Client.m_aClan) == 0)
+		{
+			continue;
+		}
+
+		Cache.m_Active = true;
+		Cache.m_Version = m_WarListVersion;
+		str_copy(Cache.m_aName, Client.m_aName);
+		str_copy(Cache.m_aClan, Client.m_aClan);
+
+		CWarDataCache &Player = m_WarPlayers[i];
+		Player.m_WarName = false;
+		Player.m_WarClan = false;
+		Player.m_aReason[0] = '\0';
+		Player.m_NameColor = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
+		Player.m_ClanColor = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
+		Player.m_WarGroupMatches.assign(NumTypes, 0);
+
+		const std::vector<size_t> *pNameMatches = nullptr;
+		if(Client.m_aName[0] != '\0')
+		{
+			auto It = m_NameEntryIndex.find(std::string_view(Client.m_aName));
+			if(It != m_NameEntryIndex.end())
+				pNameMatches = &It->second;
+		}
+		const std::vector<size_t> *pClanMatches = nullptr;
+		if(Client.m_aClan[0] != '\0')
+		{
+			auto It = m_ClanEntryIndex.find(std::string_view(Client.m_aClan));
+			if(It != m_ClanEntryIndex.end())
+				pClanMatches = &It->second;
+		}
+
+		if(!pNameMatches && !pClanMatches)
 			continue;
 
-		m_WarPlayers[i].m_WarName = false;
-		m_WarPlayers[i].m_WarClan = false;
-		memset(m_WarPlayers[i].m_aReason, 0, sizeof(m_WarPlayers[i].m_aReason));
-		m_WarPlayers[i].m_NameColor = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
-		m_WarPlayers[i].m_ClanColor = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
-		m_WarPlayers[i].m_WarGroupMatches.clear();
-		m_WarPlayers[i].m_WarGroupMatches.resize((int)m_WarTypes.size(), false);
-
-		for(CWarEntry &Entry : m_vWarEntries)
+		// Merge sorted index lists in original entry order so priority semantics stay identical
+		size_t Ni = 0;
+		size_t Ci = 0;
+		const size_t NLen = pNameMatches ? pNameMatches->size() : 0;
+		const size_t CLen = pClanMatches ? pClanMatches->size() : 0;
+		while(Ni < NLen || Ci < CLen)
 		{
-			if(str_comp(GameClient()->m_aClients[i].m_aName, Entry.m_aName) == 0 && str_comp(Entry.m_aName, "") != 0)
+			const bool TakeName = (Ni < NLen) && (Ci >= CLen || (*pNameMatches)[Ni] <= (*pClanMatches)[Ci]);
+			if(TakeName)
 			{
-				str_copy(m_WarPlayers[i].m_aReason, Entry.m_aReason);
-				m_WarPlayers[i].m_WarName = true;
-				m_WarPlayers[i].m_NameColor = Entry.m_pWarType->m_Color;
-				m_WarPlayers[i].m_WarGroupMatches[Entry.m_pWarType->m_Index] = true;
+				const size_t EntryIdx = (*pNameMatches)[Ni++];
+				if(Ci < CLen && (*pClanMatches)[Ci] == EntryIdx)
+					++Ci;
+				const CWarEntry &Entry = m_vWarEntries[EntryIdx];
+				str_copy(Player.m_aReason, Entry.m_aReason);
+				Player.m_WarName = true;
+				Player.m_NameColor = Entry.m_pWarType->m_Color;
+				if(Entry.m_pWarType->m_Index >= 0 && Entry.m_pWarType->m_Index < (int)NumTypes)
+					Player.m_WarGroupMatches[Entry.m_pWarType->m_Index] = 1;
 			}
-			else if(str_comp(GameClient()->m_aClients[i].m_aClan, Entry.m_aClan) == 0 && str_comp(Entry.m_aClan, "") != 0)
+			else
 			{
+				const size_t EntryIdx = (*pClanMatches)[Ci++];
+				const CWarEntry &Entry = m_vWarEntries[EntryIdx];
 				// Name war reason has priority over clan war reason
-				if(!m_WarPlayers[i].m_WarName)
-					str_copy(m_WarPlayers[i].m_aReason, Entry.m_aReason);
-
-				m_WarPlayers[i].m_WarClan = true;
-				m_WarPlayers[i].m_ClanColor = Entry.m_pWarType->m_Color;
-				m_WarPlayers[i].m_WarGroupMatches[Entry.m_pWarType->m_Index] = true;
+				if(!Player.m_WarName)
+					str_copy(Player.m_aReason, Entry.m_aReason);
+				Player.m_WarClan = true;
+				Player.m_ClanColor = Entry.m_pWarType->m_Color;
+				if(Entry.m_pWarType->m_Index >= 0 && Entry.m_pWarType->m_Index < (int)NumTypes)
+					Player.m_WarGroupMatches[Entry.m_pWarType->m_Index] = 1;
 			}
 		}
 	}

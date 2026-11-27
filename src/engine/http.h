@@ -4,6 +4,7 @@
 #include "kernel.h"
 
 #include <base/hash_ctxt.h>
+#include <base/str.h>
 #include <base/types.h>
 
 #include <atomic>
@@ -62,6 +63,7 @@ public:
 	void MaxResponseSize(int64_t MaxResponseSize) { m_MaxResponseSize = MaxResponseSize; }
 	void MaxDownloadSpeed(int64_t MaxDownloadSpeed) { m_MaxDownloadSpeed = MaxDownloadSpeed; }
 	void LogProgress(HTTPLOG LogProgress) { m_LogProgress = LogProgress; }
+	void CookieFile(const char *pCookieFile) { str_copy(m_aCookieFile, pCookieFile); }
 	void SkipByFileTime(bool SkipByFileTime) { m_SkipByFileTime = SkipByFileTime; }
 	void IpResolve(IPRESOLVE IpResolve) { m_IpResolve = IpResolve; }
 	void FailOnErrorStatus(bool FailOnErrorStatus) { m_FailOnErrorStatus = FailOnErrorStatus; }
@@ -151,6 +153,7 @@ protected:
 	int64_t m_MaxResponseSize = -1;
 	int64_t m_MaxDownloadSpeed = 0;
 	HTTPLOG m_LogProgress = HTTPLOG::ALL;
+	char m_aCookieFile[IO_MAX_PATH_LENGTH] = "";
 	bool m_SkipByFileTime = true;
 	IPRESOLVE m_IpResolve = IPRESOLVE::WHATEVER;
 	bool m_FailOnErrorStatus = true;

@@ -119,6 +119,11 @@ bool CHttpRequestCurl::ConfigureHandle(CURL *pHandle)
 	curl_easy_setopt(pHandle, CURLOPT_NOSIGNAL, 1L);
 	curl_easy_setopt(pHandle, CURLOPT_USERAGENT, USER_AGENT_STRING);
 	curl_easy_setopt(pHandle, CURLOPT_ACCEPT_ENCODING, ""); // Use any compression algorithm supported by libcurl.
+	if(m_aCookieFile[0] != '\0')
+	{
+		curl_easy_setopt(pHandle, CURLOPT_COOKIEFILE, m_aCookieFile);
+		curl_easy_setopt(pHandle, CURLOPT_COOKIEJAR, m_aCookieFile);
+	}
 
 	curl_easy_setopt(pHandle, CURLOPT_HEADERDATA, this);
 	curl_easy_setopt(pHandle, CURLOPT_HEADERFUNCTION, HeaderCallback);

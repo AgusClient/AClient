@@ -20,6 +20,11 @@
 #include <game/localization.h>
 #include <game/mapitems.h>
 
+#include <algorithm>
+#include <cmath>
+#include <map>
+#include <string>
+
 CMapImages::CMapImages()
 {
 	m_Count = 0;
@@ -298,6 +303,109 @@ IGraphics::CTextureHandle CMapImages::GetEntities(EMapImageEntityLayerType Entit
 
 		if(ImgInfo.m_pData != nullptr)
 		{
+			// AClient Single Assets: apply individual entity tile overrides before building tile layers
+			if(GameClient()->m_SingleAssets.IsEnabled(SINGLE_ASSET_ENTITIES) &&
+				GameClient()->m_SingleAssets.CountOverrides(SINGLE_ASSET_ENTITIES) > 0 &&
+				ImgInfo.m_Format == CImageInfo::FORMAT_RGBA && ImgInfo.m_Width >= 16 && ImgInfo.m_Height >= 16)
+			{
+				const size_t DstTileW = ImgInfo.m_Width / 16;
+				const size_t DstTileH = ImgInfo.m_Height / 16;
+				std::map<std::string, CImageInfo> OverridePacks;
+
+				auto LoadOverrideEntityPack = [&](const char *pPackName) -> const CImageInfo * {
+					const std::string Key(pPackName);
+					auto It = OverridePacks.find(Key);
+					if(It != OverridePacks.end())
+						return It->second.m_pData ? &It->second : nullptr;
+
+					CImageInfo SrcImg;
+					char aSrcPath[IO_MAX_PATH_LENGTH];
+					if(str_comp(pPackName, "default") == 0)
+					{
+						str_format(aSrcPath, sizeof(aSrcPath), "editor/entities_clear/%s.png", gs_apModEntitiesNames[EntitiesModType]);
+						Graphics()->LoadPng(SrcImg, aSrcPath, IStorage::TYPE_ALL);
+					}
+					else
+					{
+						str_format(aSrcPath, sizeof(aSrcPath), "assets/entities/%s/%s.png", pPackName, gs_apModEntitiesNames[EntitiesModType]);
+						Graphics()->LoadPng(SrcImg, aSrcPath, IStorage::TYPE_ALL);
+						if(SrcImg.m_pData == nullptr && EntitiesModType == MAP_IMAGE_MOD_TYPE_DDNET)
+						{
+							str_format(aSrcPath, sizeof(aSrcPath), "assets/entities/%s.png", pPackName);
+							Graphics()->LoadPng(SrcImg, aSrcPath, IStorage::TYPE_ALL);
+						}
+						if(SrcImg.m_pData == nullptr)
+						{
+							str_format(aSrcPath, sizeof(aSrcPath), "downloaded_entities/%s.png", pPackName);
+							Graphics()->LoadPng(SrcImg, aSrcPath, IStorage::TYPE_ALL);
+						}
+					}
+
+					if(SrcImg.m_pData != nullptr && (SrcImg.m_Format != CImageInfo::FORMAT_RGBA || SrcImg.m_Width < 16 || SrcImg.m_Height < 16))
+						SrcImg.Free();
+
+					auto Res = OverridePacks.emplace(Key, std::move(SrcImg));
+					return Res.first->second.m_pData ? &Res.first->second : nullptr;
+				};
+
+				auto BlitEntityTile = [&](const CImageInfo &Src, int TileIdx) {
+					const size_t SrcTileW = Src.m_Width / 16;
+					const size_t SrcTileH = Src.m_Height / 16;
+					const size_t SrcX = static_cast<size_t>(TileIdx % 16) * SrcTileW;
+					const size_t SrcY = static_cast<size_t>(TileIdx / 16) * SrcTileH;
+					const size_t DstX = static_cast<size_t>(TileIdx % 16) * DstTileW;
+					const size_t DstY = static_cast<size_t>(TileIdx / 16) * DstTileH;
+
+					if(SrcTileW == DstTileW && SrcTileH == DstTileH)
+					{
+						ImgInfo.CopyRectFrom(Src, SrcX, SrcY, DstTileW, DstTileH, DstX, DstY);
+						return;
+					}
+
+					// Bilinear resample when source and base entity packs have different resolutions
+					for(size_t dy = 0; dy < DstTileH; ++dy)
+					{
+						const float fy = ((float)dy + 0.5f) * (float)SrcTileH / (float)DstTileH - 0.5f;
+						const int y0 = std::clamp((int)std::floor(fy), 0, (int)SrcTileH - 1);
+						const int y1 = std::clamp(y0 + 1, 0, (int)SrcTileH - 1);
+						const float wy = std::clamp(fy - (float)y0, 0.0f, 1.0f);
+
+						for(size_t dx = 0; dx < DstTileW; ++dx)
+						{
+							const float fx = ((float)dx + 0.5f) * (float)SrcTileW / (float)DstTileW - 0.5f;
+							const int x0 = std::clamp((int)std::floor(fx), 0, (int)SrcTileW - 1);
+							const int x1 = std::clamp(x0 + 1, 0, (int)SrcTileW - 1);
+							const float wx = std::clamp(fx - (float)x0, 0.0f, 1.0f);
+
+							const uint8_t *p00 = Src.m_pData + ((SrcY + y0) * Src.m_Width + (SrcX + x0)) * 4;
+							const uint8_t *p10 = Src.m_pData + ((SrcY + y0) * Src.m_Width + (SrcX + x1)) * 4;
+							const uint8_t *p01 = Src.m_pData + ((SrcY + y1) * Src.m_Width + (SrcX + x0)) * 4;
+							const uint8_t *p11 = Src.m_pData + ((SrcY + y1) * Src.m_Width + (SrcX + x1)) * 4;
+							uint8_t *pDst = ImgInfo.m_pData + ((DstY + dy) * ImgInfo.m_Width + (DstX + dx)) * 4;
+
+							for(int c = 0; c < 4; ++c)
+							{
+								const float Top = (float)p00[c] * (1.0f - wx) + (float)p10[c] * wx;
+								const float Bot = (float)p01[c] * (1.0f - wx) + (float)p11[c] * wx;
+								pDst[c] = (uint8_t)std::clamp((int)std::lround(Top * (1.0f - wy) + Bot * wy), 0, 255);
+							}
+						}
+					}
+				};
+
+				for(int TileIdx = 1; TileIdx < 256; ++TileIdx)
+				{
+					const char *pOverridePack = GameClient()->m_SingleAssets.GetEntityTileOverride(TileIdx);
+					if(!pOverridePack || pOverridePack[0] == '\0' || str_comp(pOverridePack, g_Config.m_ClAssetsEntities) == 0)
+						continue;
+					if(const CImageInfo *pSrc = LoadOverrideEntityPack(pOverridePack))
+						BlitEntityTile(*pSrc, TileIdx);
+				}
+
+				for(auto &[Key, SrcImg] : OverridePacks)
+					SrcImg.Free();
+			}
+
 			CImageInfo BuildImageInfo;
 			BuildImageInfo.m_Width = ImgInfo.m_Width;
 			BuildImageInfo.m_Height = ImgInfo.m_Height;
@@ -432,6 +540,11 @@ void CMapImages::ChangeEntitiesPath(const char *pPath)
 			}
 			m_aEntitiesIsLoaded[ModType] = false;
 		}
+	}
+	if(m_TuneColorsIsLoaded)
+	{
+		Graphics()->UnloadTexture(&m_TuneColorMapTexture);
+		m_TuneColorsIsLoaded = false;
 	}
 }
 

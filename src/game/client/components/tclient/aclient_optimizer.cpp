@@ -1,5 +1,6 @@
 #include "aclient_optimizer.h"
 
+#include <base/thread.h>
 #include <base/time.h>
 
 #include <engine/shared/config.h>
@@ -7,6 +8,7 @@
 #include <game/client/gameclient.h>
 
 #include <algorithm>
+#include <atomic>
 #include <vector>
 
 #if defined(CONF_FAMILY_WINDOWS)
@@ -16,6 +18,8 @@
 #include <windows.h>
 #include <tlhelp32.h>
 #include <wchar.h>
+
+static std::atomic<bool> gs_DiscordScanRunning{false};
 
 static void NormalizeProcessPriority(DWORD Pid, bool &Alive)
 {
@@ -86,6 +90,12 @@ static void EnforceDiscordNormalPriority(int64_t Now)
 	}
 	s_vDiscordPids.resize(WriteIdx);
 }
+
+static void DiscordPriorityWorker(void *pUser)
+{
+	EnforceDiscordNormalPriority(time_get());
+	gs_DiscordScanRunning.store(false, std::memory_order_release);
+}
 #endif
 
 void CAcOptimizer::OnInit()
@@ -121,8 +131,11 @@ void CAcOptimizer::OnRender()
 		const int64_t Now = time_get();
 		if(!m_LastDiscordNormalPriority || Now - m_LastDiscordPriorityCheck >= 5 * time_freq())
 		{
-			m_LastDiscordPriorityCheck = Now;
-			EnforceDiscordNormalPriority(Now);
+			if(!gs_DiscordScanRunning.exchange(true, std::memory_order_acq_rel))
+			{
+				m_LastDiscordPriorityCheck = Now;
+				thread_init_and_detach(DiscordPriorityWorker, nullptr, "discord_prio");
+			}
 		}
 	}
 	m_LastDiscordNormalPriority = DiscordNormalPrio;

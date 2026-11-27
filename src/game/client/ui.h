@@ -320,6 +320,7 @@ class CCachedText
 	STextBoundingBox m_BoundingBox = {0.0f, 0.0f, 0.0f, 0.0f};
 	float m_MaxCharacterHeight = 0.0f;
 	bool m_Colored = false;
+	std::vector<STextColorSplit> m_vColorSplits;
 
 public:
 	CCachedText() = default;

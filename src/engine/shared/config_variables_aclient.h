@@ -109,7 +109,7 @@ MACRO_CONFIG_INT(AcFastInputOthersAmount, ac_fast_input_others_amount, 10, 1, 40
 // Split Hook and Move input prediction
 MACRO_CONFIG_INT(AcInputSplitHookMove, ac_input_split_hook_move, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Decouple hook prediction offset from A/D movement offset")
 MACRO_CONFIG_INT(AcFastInputHookAmount, ac_fast_input_hook_amount, 20, 1, 40, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Fast input hook prediction offset in ms")
-MACRO_CONFIG_INT(AcTickInputHookAmount, ac_tick_input_hook_amount, 100, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hook prediction offset for advanced tick modes in 0.01 ticks")
+MACRO_CONFIG_INT(AcTickInputHookAmount, ac_tick_input_hook_amount, 100, 0, 3000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hook prediction offset for advanced tick modes in 0.01 ticks")
 
 // Best Mode
 MACRO_CONFIG_INT(AcBestInputAmount, ac_best_input_amount, 100, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Best input prediction amount in 0.01 ticks")
@@ -171,7 +171,7 @@ MACRO_CONFIG_INT(AcScoreboardGameSkinActions, ac_scoreboard_gameskin_actions, 1,
 MACRO_CONFIG_INT(AcZoomCooldownMs, ac_zoom_cooldown_ms, 0, 0, 250, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Minimum cooldown in ms between zoom+/zoom- steps when holding a key (0 = unlimited)")
 MACRO_CONFIG_INT(ClDownloadGameskins, cl_download_gameskins, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Download gameskins on-the-fly")
 MACRO_CONFIG_INT(AcGameskinDownloadInitial, ac_gameskin_download_initial, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Download remote gameskins upon joining the server")
-MACRO_CONFIG_INT(AcGameskinDownloadFrozen, ac_gameskin_download_frozen, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Download remote gameskins when player is frozen")
+MACRO_CONFIG_INT(AcGameskinDownloadFrozen, ac_gameskin_download_frozen, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Download remote gameskins when player is frozen")
 MACRO_CONFIG_INT(AcGameskinDownloadEcho, ac_gameskin_download_echo, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show chat echo notification when downloading gameskins")
 MACRO_CONFIG_STR(ClGameskinDownloadUrl, cl_gameskin_download_url, 128, "https://raw.githubusercontent.com/AgusClient/gameskins/main/", CFGFLAG_CLIENT | CFGFLAG_SAVE, "URL used to download gameskins")
 MACRO_CONFIG_INT(ClDownloadEntities, cl_download_entities, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Download custom entities on-the-fly")
@@ -206,7 +206,7 @@ MACRO_CONFIG_COL(AcColorBorder, ac_color_border, 12050856, CFGFLAG_CLIENT | CFGF
 MACRO_CONFIG_COL(AcColorBg, ac_color_bg, 3215086858, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color del fondo del bloque/tarjeta")
 MACRO_CONFIG_COL(AcColorDetails, ac_color_details, 12050856, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Color de detalles y subrayado de pestañas")
 // Tee Skin Downloads
-MACRO_CONFIG_INT(AcDownloadSkinsFrozen, ac_download_skins_frozen, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Descargar skins del tee solo cuando estoy freezeado")
+MACRO_CONFIG_INT(AcDownloadSkinsFrozen, ac_download_skins_frozen, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Descargar skins del tee solo cuando estoy freezeado")
 MACRO_CONFIG_INT(AcShowInMenuIcon, ac_show_in_menu_icon, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mostrar logo/icono de opciones arriba del tee al presionar escape o abrir el menu")
 
 // Custom Aspect Ratio & Black Bars
@@ -278,7 +278,39 @@ MACRO_CONFIG_INT(AcVoiceMicGain, ac_voice_mic_gain, 100, 20, 300, CFGFLAG_CLIENT
 MACRO_CONFIG_INT(AcVoiceHud, ac_voice_hud, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show speaking teammates indicator on HUD")
 MACRO_CONFIG_INT(AcVoiceLoopback, ac_voice_loopback, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Local microphone loopback test mode")
 MACRO_CONFIG_STR(AcVoiceMicDevice, ac_voice_mic_device, 128, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Microphone capture device name (empty = system default)")
+MACRO_CONFIG_STR(AcVoiceOutputDevice, ac_voice_output_device, 128, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice chat playback output device name (empty = system default)")
+MACRO_CONFIG_STR(AcVoiceSavedVolumes, ac_voice_saved_volumes, 2048, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Saved per-player voice chat volumes and mutes (name=vol:mute;...)")
+MACRO_CONFIG_STR(AcVoiceModKey, ac_voice_mod_key, 128, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Saved Voice Chat moderator key")
+MACRO_CONFIG_INT(AcVoiceModMuteMinutes, ac_voice_mod_mute_minutes, 0, 0, 525600, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice Chat global moderator mute duration in minutes (0 = permanent)")
 
-// Download Speed Limiter (Skins, GameSkins, Entities)
-MACRO_CONFIG_INT(AcDownloadSpeedLimitKbps, ac_download_speed_limit_kbps, 256, 0, 4096, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Max download speed in KB/s for skins, gameskins and entities (0 = unlimited)")
+// Download Speed Limiter (Skins, GameSkins, Entities, DB/HTTP)
+MACRO_CONFIG_INT(AcDownloadSpeedLimitKbps, ac_download_speed_limit_kbps, 256, 0, 4096, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Max download speed in KB/s for skins, gameskins, entities and DB/HTTP queries (0 = unlimited)")
+
+// Music Player (Top-center Dynamic Island HUD + ESC controls)
+MACRO_CONFIG_INT(BcMusicPlayer, bc_music_player, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the top-center music player HUD")
+MACRO_CONFIG_INT(BcMusicPlayerVisualizerMode, bc_music_player_visualizer_mode, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Music player visualizer mode (0 = bottom, 1 = center, 2 = up)")
+MACRO_CONFIG_INT(BcMusicPlayerVisualizerRounding, bc_music_player_visualizer_rounding, 100, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Music player visualizer rounding (0 = cube, >=100 = soft)")
+MACRO_CONFIG_INT(BcMusicPlayerVisualizerColumns, bc_music_player_visualizer_columns, 5, 5, 10, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Music player visualizer columns")
+MACRO_CONFIG_INT(BcMusicPlayerColorMode, bc_music_player_color_mode, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Music player accent color mode (0 = static, 1 = dynamic cover)")
+MACRO_CONFIG_COL(BcMusicPlayerStaticColor, bc_music_player_static_color, 6864819, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Music player static accent color")
+MACRO_CONFIG_INT(BcMusicPlayerTextScale, bc_music_player_text_scale, 90, 70, 150, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Music player text scale percent")
+MACRO_CONFIG_INT(BcMusicPlayerShowLyrics, bc_music_player_show_lyrics, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show synchronized lyrics in music player")
+MACRO_CONFIG_INT(BcMusicPlayerShowCurrentTime, bc_music_player_show_current_time, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show game timer / current time tab below lyrics music player")
+MACRO_CONFIG_INT(AcMusicShareVolume, ac_music_share_volume, 60, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Shared music playback volume percent (0-200%)")
+MACRO_CONFIG_INT(BcHudMusicPlayerX, bc_hud_music_player_x, 198, 0, 500, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Legacy Music player HUD X")
+MACRO_CONFIG_INT(BcHudMusicPlayerY, bc_hud_music_player_y, 0, 0, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Legacy Music player HUD Y")
+MACRO_CONFIG_INT(BcHudMusicPlayerScale, bc_hud_music_player_scale, 100, 25, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Legacy Music player HUD scale")
+MACRO_CONFIG_INT(BcHudMusicPlayerLayoutMigrated, bc_hud_music_player_layout_migrated, 5, 0, 10, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Music player HUD layout migration state")
+
+// Focus Mode (Distraction-free HUD / Chat / Overlays toggle)
+MACRO_CONFIG_INT(ClFocusMode, cl_focus_mode, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable focus mode to hide HUD, chat, and visual distractions")
+MACRO_CONFIG_INT(ClFocusModeHideHud, cl_focus_mode_hide_hud, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hide HUD in focus mode")
+MACRO_CONFIG_INT(ClFocusModeHideChat, cl_focus_mode_hide_chat, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hide chat in focus mode")
+MACRO_CONFIG_INT(ClFocusModeHideSongPlayer, cl_focus_mode_hide_song_player, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hide music player in focus mode")
+MACRO_CONFIG_INT(ClFocusModeHideUI, cl_focus_mode_hide_ui, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hide secondary UI and overlays in focus mode")
+MACRO_CONFIG_INT(ClFocusModeHideNames, cl_focus_mode_hide_names, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hide player nameplates in focus mode")
+MACRO_CONFIG_INT(ClFocusModeHideEffects, cl_focus_mode_hide_effects, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hide particles and trails in focus mode")
+MACRO_CONFIG_INT(ClFocusModeHideScoreboard, cl_focus_mode_hide_scoreboard, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hide scoreboard in focus mode")
+MACRO_CONFIG_INT(ClFocusModeAutoReply, cl_focus_mode_auto_reply, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Auto reply to mentions/whispers when focus mode hides chat")
+MACRO_CONFIG_STR(ClFocusModeAutoReplyMessage, cl_focus_mode_auto_reply_message, 128, "my chat is hidden", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Auto-reply message when focus mode hides chat")
 

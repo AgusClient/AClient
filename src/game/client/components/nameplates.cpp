@@ -942,6 +942,9 @@ public:
 
 void CNamePlates::RenderNamePlateGame(vec2 Position, const CNetObj_PlayerInfo *pPlayerInfo, float Alpha)
 {
+	if(g_Config.m_ClFocusMode && g_Config.m_ClFocusModeHideNames)
+		return;
+
 	// Get screen edges to avoid rendering offscreen
 	CScreenRect ScreenRect = Graphics()->GetScreen();
 

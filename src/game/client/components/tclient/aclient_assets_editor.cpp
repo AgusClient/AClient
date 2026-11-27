@@ -271,10 +271,22 @@ void AssetsEditorDrawSlot(const CUIRect &Rect, IGraphics::CTextureHandle Texture
 		return;
 	GridX = std::max(1, GridX);
 	GridY = std::max(1, GridY);
-	const float U0 = (float)SrcX / GridX;
-	const float V0 = (float)SrcY / GridY;
-	const float U1 = (float)(SrcX + SrcW) / GridX;
-	const float V1 = (float)(SrcY + SrcH) / GridY;
+
+	const CScreenRect Screen = pGraphics->GetScreen();
+	const float PixelsPerUiX = (float)pGraphics->ScreenWidth() / std::max(1.0f, Screen.m_BottomRight.x - Screen.m_TopLeft.x);
+	const float PixelsPerUiY = (float)pGraphics->ScreenHeight() / std::max(1.0f, Screen.m_BottomRight.y - Screen.m_TopLeft.y);
+	const float DrawPxW = std::max(4.0f, Rect.w * PixelsPerUiX);
+	const float DrawPxH = std::max(4.0f, Rect.h * PixelsPerUiY);
+
+	const float SpanU = (float)SrcW / (float)GridX;
+	const float SpanV = (float)SrcH / (float)GridY;
+	const float InsetU = SpanU * std::min(0.06f, std::max(1.15f / DrawPxW, 0.5f / 64.0f));
+	const float InsetV = SpanV * std::min(0.06f, std::max(1.15f / DrawPxH, 0.5f / 64.0f));
+
+	const float U0 = ((float)SrcX / (float)GridX) + InsetU;
+	const float V0 = ((float)SrcY / (float)GridY) + InsetV;
+	const float U1 = ((float)(SrcX + SrcW) / (float)GridX) - InsetU;
+	const float V1 = ((float)(SrcY + SrcH) / (float)GridY) - InsetV;
 	pGraphics->WrapClamp();
 	pGraphics->TextureSet(Texture);
 	pGraphics->QuadsBegin();

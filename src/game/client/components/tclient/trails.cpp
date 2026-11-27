@@ -38,7 +38,7 @@ void CTrails::OnReset()
 
 void CTrails::OnRender()
 {
-	if(!g_Config.m_TcTeeTrail)
+	if(!g_Config.m_TcTeeTrail || (g_Config.m_ClFocusMode && g_Config.m_ClFocusModeHideEffects))
 		return;
 
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
@@ -50,18 +50,27 @@ void CTrails::OnRender()
 	Graphics()->TextureClear();
 
 	const CScreenRect TrailCullRect = ComputeAcFogScreenRect(Graphics()->GetScreen(), IsAcFpsFogActive() ? 64.0f : 256.0f);
+	const int LocalClientId = GameClient()->m_Snap.m_LocalClientId;
 	const int SpecId = GameClient()->m_Snap.m_SpecInfo.m_Active ? GameClient()->m_Snap.m_SpecInfo.m_SpectatorId : -1;
 	const ColorRGBA SolidColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcTeeTrailColor));
+	const bool ZoomAllowed = GameClient()->m_Camera.ZoomAllowed();
+	const int GameTick = Client()->GameTick(g_Config.m_ClDummy);
+	const int PredTick = Client()->PredGameTick(g_Config.m_ClDummy);
+	const float PredIntraTick = Client()->PredIntraGameTick(g_Config.m_ClDummy);
+	const float GameIntraTick = Client()->IntraGameTick(g_Config.m_ClDummy);
 
-	for(int ClientId = 0; ClientId < MAX_CLIENTS; ClientId++)
+	// Fast O(1) range when only rendering local player's trail
+	const bool OthersEnabled = g_Config.m_TcTeeTrailOthers && ZoomAllowed;
+	const int StartClient = OthersEnabled ? 0 : LocalClientId;
+	const int EndClient = OthersEnabled ? MAX_CLIENTS : (LocalClientId + 1);
+	if(StartClient < 0 || StartClient >= MAX_CLIENTS)
+		return;
+
+	for(int ClientId = StartClient; ClientId < EndClient; ClientId++)
 	{
-		const bool Local = GameClient()->m_Snap.m_LocalClientId == ClientId;
+		const bool Local = LocalClientId == ClientId;
 
-		const bool ZoomAllowed = GameClient()->m_Camera.ZoomAllowed();
-		if(!g_Config.m_TcTeeTrailOthers && !Local)
-			continue;
-
-		if(!Local && !ZoomAllowed)
+		if(!OthersEnabled && !Local)
 			continue;
 
 		if(!GameClient()->m_Snap.m_aCharacters[ClientId].m_Active)
@@ -75,13 +84,11 @@ void CTrails::OnRender()
 
 		const bool PredictPlayer = ShouldPredictPlayer(ClientId);
 		int StartTick;
-		const int GameTick = Client()->GameTick(g_Config.m_ClDummy);
-		const int PredTick = Client()->PredGameTick(g_Config.m_ClDummy);
 		float IntraTick;
 		if(PredictPlayer)
 		{
 			StartTick = PredTick;
-			IntraTick = Client()->PredIntraGameTick(g_Config.m_ClDummy);
+			IntraTick = PredIntraTick;
 			if(g_Config.m_TcRemoveAnti)
 			{
 				StartTick = GameClient()->m_SmoothTick;
@@ -95,7 +102,7 @@ void CTrails::OnRender()
 		else
 		{
 			StartTick = GameTick;
-			IntraTick = Client()->IntraGameTick(g_Config.m_ClDummy);
+			IntraTick = GameIntraTick;
 		}
 
 		const vec2 CurServerPos = vec2(GameClient()->m_Snap.m_aCharacters[ClientId].m_Cur.m_X, GameClient()->m_Snap.m_aCharacters[ClientId].m_Cur.m_Y);

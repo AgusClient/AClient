@@ -219,6 +219,7 @@ public:
 	int m_LastCacheLocalClientId = -1;
 	bool m_CacheValid = false;
 	bool m_WasCalculating = false;
+	int m_SoleSurvivorCID = -1;
 
 	bool ShouldCalculate() const;
 	void UpdateMiniStatboardCache();

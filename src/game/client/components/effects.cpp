@@ -437,6 +437,6 @@ void CEffects::OnRender()
 	UpdateClock(m_Add50hz, m_LastUpdate50hz, 50);
 	UpdateClock(m_Add100hz, m_LastUpdate100hz, 100);
 
-	if(m_Add50hz && !(g_Config.m_AcOptimizer && g_Config.m_AcOptimizerDisableParticles))
+	if(m_Add50hz && !(g_Config.m_AcOptimizer && g_Config.m_AcOptimizerDisableParticles) && !(g_Config.m_ClFocusMode && g_Config.m_ClFocusModeHideEffects))
 		GameClient()->m_Flow.Update();
 }

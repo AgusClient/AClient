@@ -824,7 +824,7 @@ endif()
 
 if(TARGET_OS STREQUAL "windows")
   set(PLATFORM_CLIENT)
-  set(PLATFORM_CLIENT_LIBS opengl32.lib winmm.lib imm32.lib)
+  set(PLATFORM_CLIENT_LIBS opengl32.lib winmm.lib imm32.lib mmdevapi.lib)
   set(PLATFORM_LIBS)
   list(APPEND PLATFORM_LIBS shlwapi.lib) # PathIsRelativeW
   list(APPEND PLATFORM_LIBS version.lib) # GetFileVersionInfoSizeW
@@ -832,6 +832,7 @@ if(TARGET_OS STREQUAL "windows")
   list(APPEND PLATFORM_LIBS advapi32.lib) # Reg* and Crypt* functions
   list(APPEND PLATFORM_LIBS bcrypt.lib userenv.lib) # for Rust (https://github.com/rust-lang/rust/issues/91974)
   list(APPEND PLATFORM_LIBS ole32.lib) # CoInitialize(Ex)
+  list(APPEND PLATFORM_LIBS runtimeobject.lib) # RoGetActivationFactory / WinRT music player
   list(APPEND PLATFORM_LIBS shell32.lib)
   list(APPEND PLATFORM_LIBS ntdll.lib) # https://github.com/ddnet/ddnet/issues/6725
   list(APPEND PLATFORM_LIBS uuid.lib) # FOLDERID_RoamingAppData
@@ -2876,6 +2877,8 @@ if(CLIENT)
     components/tclient/aclient_auth.cpp
     components/tclient/aclient_auth.h
     components/tclient/aclient_backend.h
+    components/tclient/aclient_config_sync.cpp
+    components/tclient/aclient_config_sync.h
     components/tclient/aclient_hud.cpp
     components/tclient/aclient_hud.h
     components/tclient/aclient_inputs.cpp
@@ -2922,6 +2925,9 @@ if(CLIENT)
     components/tclient/aclient_optimizer.h
     components/tclient/aclient_voice.cpp
     components/tclient/aclient_voice.h
+    components/tclient/aclient_music_share.cpp
+    components/tclient/aclient_music_share.h
+    components/tclient/aclient_single_assets.h
     components/tclient/hud_layout.cpp
     components/tclient/hud_layout.h
     components/tclient/hud_editor.cpp
@@ -2931,6 +2937,22 @@ if(CLIENT)
     components/tclient/media_decoder.h
     components/tclient/menu_media_background.cpp
     components/tclient/menu_media_background.h
+    components/tclient/music_player.cpp
+    components/tclient/music_player.h
+    components/tclient/music_player_lyrics.cpp
+    components/tclient/music_player_lyrics.h
+    components/tclient/visualizer/analyzer.cpp
+    components/tclient/visualizer/analyzer.h
+    components/tclient/visualizer/service.cpp
+    components/tclient/visualizer/service.h
+    components/tclient/visualizer/smoother.cpp
+    components/tclient/visualizer/smoother.h
+    components/tclient/visualizer/source.h
+    components/tclient/visualizer/source_passive.cpp
+    components/tclient/visualizer/source_priority.h
+    components/tclient/visualizer/source_pulse.cpp
+    components/tclient/visualizer/source_wasapi.cpp
+    components/tclient/visualizer/types.h
     components/tclient/gradient.cpp
     components/tclient/gradient.h
     components/tclient/keystrokes.cpp

@@ -1666,6 +1666,7 @@ void CCachedText::Update(ITextRender *pTextRender, const char *pText, float Font
 	m_LineWidth = LineWidth;
 	m_CursorFlags = CursorFlags;
 	m_Colored = false;
+	m_vColorSplits.clear();
 
 	CTextCursor Cursor;
 	Cursor.m_FontSize = FontSize;
@@ -1687,6 +1688,23 @@ void CCachedText::Update(ITextRender *pTextRender, const char *pText, float Font
 
 void CCachedText::UpdateColored(ITextRender *pTextRender, const char *pText, float FontSize, const std::vector<STextColorSplit> &vColorSplits, float LineWidth, int CursorFlags)
 {
+	if(m_Colored && m_FontSize == FontSize && m_LineWidth == LineWidth && m_CursorFlags == CursorFlags && m_Text == pText && m_vColorSplits.size() == vColorSplits.size())
+	{
+		bool SameSplits = true;
+		for(size_t i = 0; i < vColorSplits.size(); ++i)
+		{
+			if(m_vColorSplits[i].m_CharIndex != vColorSplits[i].m_CharIndex ||
+				m_vColorSplits[i].m_Length != vColorSplits[i].m_Length ||
+				m_vColorSplits[i].m_Color != vColorSplits[i].m_Color)
+			{
+				SameSplits = false;
+				break;
+			}
+		}
+		if(SameSplits)
+			return;
+	}
+
 	const bool ReuseContainer = m_TextContainerIndex.Valid() && m_LineWidth == LineWidth && m_CursorFlags == CursorFlags;
 
 	m_Text = pText;
@@ -1694,6 +1712,7 @@ void CCachedText::UpdateColored(ITextRender *pTextRender, const char *pText, flo
 	m_LineWidth = LineWidth;
 	m_CursorFlags = CursorFlags;
 	m_Colored = true;
+	m_vColorSplits = vColorSplits;
 
 	CTextCursor Cursor;
 	Cursor.m_FontSize = FontSize;
@@ -1731,6 +1750,8 @@ void CCachedText::Reset(ITextRender *pTextRender)
 	m_CursorFlags = 0;
 	m_BoundingBox = {0.0f, 0.0f, 0.0f, 0.0f};
 	m_MaxCharacterHeight = 0.0f;
+	m_Colored = false;
+	m_vColorSplits.clear();
 }
 
 void CUi::RenderTime(CUIRect TimeRect, float FontSize, int Seconds, bool NotFinished, int Millis, bool TrueMilliseconds, CCachedText &SecondsText, CCachedText &MillisText, ColorRGBA Color) const

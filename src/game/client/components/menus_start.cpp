@@ -33,6 +33,52 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 	Graphics()->QuadsDrawTL(&QuadItem, 1);
 	Graphics()->QuadsEnd();
 
+	if(m_ShowPlayerConfigsModal)
+	{
+		if(Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE))
+		{
+			m_ShowPlayerConfigsModal = false;
+			return;
+		}
+
+		MainView.Draw(ColorRGBA(0.03f, 0.04f, 0.08f, 0.82f), IGraphics::CORNER_NONE, 0.0f);
+
+		auto &ConfigSync = GameClient()->m_AClientConfigSync;
+		const bool HasDiscStatus = ConfigSync.GetDiscordStatusMessage()[0] != '\0' && ConfigSync.DiscordState() != CAClientConfigSync::DISCORD_READY;
+		const bool HasUploadStatus = ConfigSync.State() != CAClientConfigSync::UPLOAD_IDLE && ConfigSync.GetStatusMessage()[0] != '\0';
+
+		float ContentH = 20.0f + 5.0f + 20.0f + 19.0f; // header + margin + preview + hint
+		if(HasDiscStatus)
+			ContentH += 19.0f + 2.5f;
+		if(ConfigSync.HasDiscordSession())
+			ContentH += 2.5f + 25.0f;
+		if(HasUploadStatus)
+			ContentH += 2.5f + 20.0f;
+		ContentH += 10.0f + 24.0f; // modal footer
+
+		const float ModalW = std::min(720.0f, MainView.w - 30.0f);
+		const float ModalH = ContentH + 36.0f;
+		CUIRect Box;
+		Box.x = MainView.x + (MainView.w - ModalW) * 0.5f;
+		Box.y = MainView.y + (MainView.h - ModalH) * 0.5f;
+		Box.w = ModalW;
+		Box.h = ModalH;
+
+		Box.Draw(ColorRGBA(0.48f, 0.30f, 0.95f, 0.55f), IGraphics::CORNER_ALL, 11.0f);
+		CUIRect InnerBox;
+		Box.Margin(1.5f, &InnerBox);
+		InnerBox.Draw(ColorRGBA(0.08f, 0.09f, 0.14f, 0.98f), IGraphics::CORNER_ALL, 10.0f);
+		InnerBox.Margin(16.5f, &InnerBox);
+
+		bool CloseRequested = false;
+		GameClient()->m_Menus.RenderPlayerConfigsPanel(InnerBox, true, &CloseRequested);
+		if(CloseRequested)
+		{
+			m_ShowPlayerConfigsModal = false;
+		}
+		return;
+	}
+
 	const float Rounding = 10.0f;
 	const float VMargin = MainView.w / 2 - 190.0f;
 
@@ -107,7 +153,25 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 		}
 	}
 
-	Menu.HSplitBottom(100.0f, &Menu, nullptr);
+	Menu.HSplitBottom(16.0f, &Menu, nullptr);
+	Menu.HSplitBottom(32.0f, &Menu, &Button);
+	static CButtonContainer s_AClientWebButton;
+	if(GameClient()->m_Menus.DoButton_Menu(&s_AClientWebButton, TCLocalize("Web de AClient"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, Rounding, 0.5f, ColorRGBA(0.16f, 0.42f, 0.78f, 0.48f)))
+	{
+		Client()->ViewLink("https://agusclient.github.io/");
+	}
+	GameClient()->m_Tooltips.DoToolTip(&s_AClientWebButton, &Button, "https://agusclient.github.io/");
+
+	Menu.HSplitBottom(6.0f, &Menu, nullptr);
+	Menu.HSplitBottom(34.0f, &Menu, &Button);
+	static CButtonContainer s_PlayerConfigsButton;
+	if(GameClient()->m_Menus.DoButton_Menu(&s_PlayerConfigsButton, TCLocalize("Configs Players"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, Rounding, 0.5f, ColorRGBA(0.35f, 0.20f, 0.72f, 0.55f)))
+	{
+		m_ShowPlayerConfigsModal = true;
+	}
+	GameClient()->m_Tooltips.DoToolTip(&s_PlayerConfigsButton, &Button, TCLocalize("Subi tu configuracion o mira las de otros jugadores"));
+
+	Menu.HSplitBottom(12.0f, &Menu, nullptr);
 	Menu.HSplitBottom(40.0f, &Menu, &Button);
 	static CButtonContainer s_SettingsButton;
 	if(GameClient()->m_Menus.DoButton_Menu(&s_SettingsButton, Localize("Settings"), 0, &Button, BUTTONFLAG_LEFT, g_Config.m_ClShowStartMenuImages ? "settings" : nullptr, IGraphics::CORNER_ALL, Rounding, 0.5f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)) || CheckHotKey(KEY_S))

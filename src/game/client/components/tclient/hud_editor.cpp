@@ -812,6 +812,14 @@ CHudEditor::SModuleVisual CHudEditor::GetModuleVisual(HudLayout::EModule Module)
 		Visual.m_Rounding = 3.0f;
 		break;
 	}
+	case HudLayout::MODULE_MUSIC_PLAYER:
+	{
+		Visual.m_Rect = GameClient()->m_MusicPlayer.GetHudEditorRect(false);
+		if(Visual.m_Rect.w <= 0.0f || Visual.m_Rect.h <= 0.0f)
+			Visual.m_Rect = GameClient()->m_MusicPlayer.GetHudEditorRect(true);
+		Visual.m_Rounding = std::min(5.0f * S, Visual.m_Rect.h * 0.24f);
+		break;
+	}
 	default:
 		Visual.m_Rect = CUIRect{Layout.m_X, Layout.m_Y, 40.0f * S, 20.0f * S};
 		Visual.m_Rounding = 4.0f;
@@ -1483,6 +1491,10 @@ void CHudEditor::RenderOverlay(vec2 MousePos)
 
 	GameClient()->m_Keystrokes.RenderKeyboardPreview();
 	GameClient()->m_Keystrokes.RenderMousePreview();
+	{
+		const bool MusicPlayerHasLiveRect = g_Config.m_BcMusicPlayer != 0 && GameClient()->m_MusicPlayer.HudReservation().m_Visible;
+		GameClient()->m_MusicPlayer.RenderHudEditor(!MusicPlayerHasLiveRect);
+	}
 	Graphics()->MapScreenToSize(Width, Height);
 
 	bool HasNonEditable = false;

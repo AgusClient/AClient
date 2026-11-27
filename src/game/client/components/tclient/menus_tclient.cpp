@@ -1883,6 +1883,7 @@ void CMenus::RenderSettingsTClientWarList(CUIRect MainView)
 			str_copy(s_pSelectedEntry->m_aClan, s_aEntryClan);
 			str_copy(s_pSelectedEntry->m_aReason, s_aEntryReason);
 			s_pSelectedEntry->m_pWarType = s_pSelectedType;
+			GameClient()->m_WarList.MarkDirty();
 		}
 	}
 	if(DoButtonLineSize_Menu(&s_AddButton, TCLocalize("Add Entry"), 0, &ButtonR, LineSize))
@@ -2008,6 +2009,7 @@ void CMenus::RenderSettingsTClientWarList(CUIRect MainView)
 		{
 			str_copy(s_pSelectedType->m_aWarName, s_aTypeName);
 			s_pSelectedType->m_Color = s_GroupColor;
+			GameClient()->m_WarList.MarkDirty();
 		}
 	}
 	bool AddDisabled = str_comp(GameClient()->m_WarList.FindWarType(s_aTypeName)->m_aWarName, "none") != 0 || str_comp(s_aTypeName, "none") == 0;
@@ -3709,6 +3711,92 @@ void CMenus::RenderSettingsAClient(CUIRect MainView)
 	}
 
 	MainView.HSplitTop(Margin, nullptr, &MainView);
+
+	// Banner global de invitacion a sala de Voice Chat (visible desde cualquier pestaña de AClient)
+	{
+		CAClientVoice &Voice = GameClient()->m_AClientVoice;
+		if(Voice.HasPendingInvite())
+		{
+			CUIRect InvBanner;
+			MainView.HSplitTop(LineSize + 8.0f, &InvBanner, &MainView);
+			MainView.HSplitTop(MarginSmall, nullptr, &MainView);
+			InvBanner.Draw(ColorRGBA(0.12f, 0.28f, 0.48f, 0.90f), IGraphics::CORNER_ALL, 5.0f);
+			InvBanner.Margin(4.0f, &InvBanner);
+
+			CUIRect AcceptBtn, DeclineBtn;
+			InvBanner.VSplitRight(72.0f, &InvBanner, &DeclineBtn);
+			InvBanner.VSplitRight(5.0f, &InvBanner, nullptr);
+			InvBanner.VSplitRight(72.0f, &InvBanner, &AcceptBtn);
+			InvBanner.VSplitRight(8.0f, &InvBanner, nullptr);
+
+			char aInvMsg[160];
+			str_format(aInvMsg, sizeof(aInvMsg), "Voice Chat: '%s' te invito a la sala '%s'%s",
+				Voice.GetPendingInviteFrom(), Voice.GetPendingInviteRoom(),
+				Voice.HasPendingInvitePassword() ? " (con clave)" : "");
+			TextRender()->TextColor(0.95f, 0.98f, 1.0f, 1.0f);
+			Ui()->DoLabel(&InvBanner, aInvMsg, FontSize * 0.95f, TEXTALIGN_ML);
+			TextRender()->TextColor(TextRender()->DefaultTextColor());
+
+			auto DrawInvBtn = [&](CButtonContainer *pId, const char *pText, const CUIRect &Rect, ColorRGBA Bg) -> bool {
+				const bool Hovered = Ui()->MouseInside(&Rect);
+				Rect.Draw(Hovered ? ColorRGBA(std::min(Bg.r + 0.12f, 1.0f), std::min(Bg.g + 0.12f, 1.0f), std::min(Bg.b + 0.12f, 1.0f), 0.95f) : Bg, IGraphics::CORNER_ALL, 4.0f);
+				TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+				Ui()->DoLabel(&Rect, pText, FontSize * 0.85f, TEXTALIGN_MC);
+				TextRender()->TextColor(TextRender()->DefaultTextColor());
+				return Ui()->DoButtonLogic(pId, 0, &Rect, BUTTONFLAG_LEFT) != 0;
+			};
+
+			static CButtonContainer s_TopVoiceAcceptBtn, s_TopVoiceDeclineBtn;
+			if(DrawInvBtn(&s_TopVoiceAcceptBtn, TCLocalize("Aceptar"), AcceptBtn, ColorRGBA(0.20f, 0.72f, 0.36f, 0.92f)))
+				Voice.AcceptPendingInvite();
+			if(DrawInvBtn(&s_TopVoiceDeclineBtn, TCLocalize("Rechazar"), DeclineBtn, ColorRGBA(0.80f, 0.24f, 0.24f, 0.90f)))
+				Voice.DeclinePendingInvite();
+		}
+	}
+
+	// Banner global de invitacion a Compartir Musica (visible desde cualquier pestaña de AClient)
+	{
+		CAClientMusicShare &MusicShare = GameClient()->m_AClientMusicShare;
+		if(MusicShare.HasPendingInvite())
+		{
+			CUIRect InvBanner;
+			MainView.HSplitTop(LineSize + 8.0f, &InvBanner, &MainView);
+			MainView.HSplitTop(MarginSmall, nullptr, &MainView);
+			InvBanner.Draw(ColorRGBA(0.14f, 0.22f, 0.44f, 0.92f), IGraphics::CORNER_ALL, 5.0f);
+			InvBanner.Margin(4.0f, &InvBanner);
+
+			CUIRect AcceptBtn, DeclineBtn;
+			InvBanner.VSplitRight(72.0f, &InvBanner, &DeclineBtn);
+			InvBanner.VSplitRight(5.0f, &InvBanner, nullptr);
+			InvBanner.VSplitRight(72.0f, &InvBanner, &AcceptBtn);
+			InvBanner.VSplitRight(8.0f, &InvBanner, nullptr);
+
+			char aInvMsg[180];
+			str_format(aInvMsg, sizeof(aInvMsg), "Musica: '%s' quiere compartirte '%s'",
+				MusicShare.GetPendingInviteFrom(), MusicShare.GetPendingInviteTrack());
+			TextRender()->TextColor(0.95f, 0.98f, 1.0f, 1.0f);
+			SLabelProperties InvProps;
+			InvProps.m_MaxWidth = InvBanner.w;
+			InvProps.m_EllipsisAtEnd = true;
+			Ui()->DoLabel(&InvBanner, aInvMsg, FontSize * 0.92f, TEXTALIGN_ML, InvProps);
+			TextRender()->TextColor(TextRender()->DefaultTextColor());
+
+			auto DrawInvBtn = [&](CButtonContainer *pId, const char *pText, const CUIRect &Rect, ColorRGBA Bg) -> bool {
+				const bool Hovered = Ui()->MouseInside(&Rect);
+				Rect.Draw(Hovered ? ColorRGBA(std::min(Bg.r + 0.12f, 1.0f), std::min(Bg.g + 0.12f, 1.0f), std::min(Bg.b + 0.12f, 1.0f), 0.95f) : Bg, IGraphics::CORNER_ALL, 4.0f);
+				TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+				Ui()->DoLabel(&Rect, pText, FontSize * 0.85f, TEXTALIGN_MC);
+				TextRender()->TextColor(TextRender()->DefaultTextColor());
+				return Ui()->DoButtonLogic(pId, 0, &Rect, BUTTONFLAG_LEFT) != 0;
+			};
+
+			static CButtonContainer s_TopMusicAcceptBtn, s_TopMusicDeclineBtn;
+			if(DrawInvBtn(&s_TopMusicAcceptBtn, TCLocalize("Aceptar"), AcceptBtn, ColorRGBA(0.20f, 0.72f, 0.36f, 0.92f)))
+				MusicShare.AcceptPendingInvite();
+			if(DrawInvBtn(&s_TopMusicDeclineBtn, TCLocalize("Rechazar"), DeclineBtn, ColorRGBA(0.80f, 0.24f, 0.24f, 0.90f)))
+				MusicShare.DeclinePendingInvite();
+		}
+	}
 
 	if(m_CurAClientTab == ACLIENT_TAB_SETTINGS)
 		RenderSettingsAClientSettings(MainView);
@@ -6513,7 +6601,7 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 			if(MsMode)
 				DoSliderWithScaledValue(&g_Config.m_AcFastInputHookAmount, &g_Config.m_AcFastInputHookAmount, &Button, TCLocalize("Hook offset"), 1, 40, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "ms");
 			else
-				DoTickAmountSlider(&g_Config.m_AcTickInputHookAmount, &Button, TCLocalize("Hook offset"), 0, 1000);
+				DoTickAmountSlider(&g_Config.m_AcTickInputHookAmount, &Button, TCLocalize("Hook offset"), 0, 3000);
 		}
 	};
 
@@ -7886,6 +7974,307 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 
 	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
 	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
+
+	// ***** Music Player (HUD + ESC Controls) ***** //
+	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	s_SectionBoxesAc.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	{
+		CUIRect MusicHeaderLabel, MusicResetBtn;
+		Label.VSplitRight(90.0f, &MusicHeaderLabel, &MusicResetBtn);
+		Ui()->DoLabel(&MusicHeaderLabel, TCLocalize("Music Player (HUD)"), HeadlineFontSize, TEXTALIGN_ML);
+		static CButtonContainer s_MusicResetAc;
+		if(DoButton_Menu(&s_MusicResetAc, TCLocalize("Reset"), 0, &MusicResetBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, ColorRGBA(0.35f, 0.38f, 0.45f, 0.55f)))
+		{
+			g_Config.m_BcMusicPlayerColorMode = DefaultConfig::BcMusicPlayerColorMode;
+			g_Config.m_BcMusicPlayerStaticColor = DefaultConfig::BcMusicPlayerStaticColor;
+			g_Config.m_BcMusicPlayerTextScale = DefaultConfig::BcMusicPlayerTextScale;
+			g_Config.m_BcMusicPlayerVisualizerMode = DefaultConfig::BcMusicPlayerVisualizerMode;
+			g_Config.m_BcMusicPlayerVisualizerRounding = DefaultConfig::BcMusicPlayerVisualizerRounding;
+			g_Config.m_BcMusicPlayerVisualizerColumns = DefaultConfig::BcMusicPlayerVisualizerColumns;
+			g_Config.m_BcMusicPlayerShowLyrics = DefaultConfig::BcMusicPlayerShowLyrics;
+			g_Config.m_BcMusicPlayerShowCurrentTime = DefaultConfig::BcMusicPlayerShowCurrentTime;
+			HudLayout::ResetSettings(HudLayout::MODULE_MUSIC_PLAYER);
+		}
+	}
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	if(DoCheckboxWithHelp(&g_Config.m_BcMusicPlayer, TCLocalize("Activar Music Player (HUD)"), TCLocalize("Muestra la isla dinamica de musica arriba del todo en el centro y permite cambiar canciones al tocar ESC."), &g_Config.m_BcMusicPlayer, &Column, LineSize))
+		HudLayout::SetEnabled(HudLayout::MODULE_MUSIC_PLAYER, g_Config.m_BcMusicPlayer != 0);
+
+	if(g_Config.m_BcMusicPlayer)
+	{
+		DoCheckboxWithHelp(&g_Config.m_BcMusicPlayerShowLyrics, TCLocalize("Mostrar letras sincronizadas (Lyrics)"), TCLocalize("Descarga y muestra letras sincronizadas en vivo desde lrclib.net usando cache O(1) y limite de velocidad."), &g_Config.m_BcMusicPlayerShowLyrics, &Column, LineSize);
+		if(g_Config.m_BcMusicPlayerShowLyrics)
+			DoCheckboxWithHelp(&g_Config.m_BcMusicPlayerShowCurrentTime, TCLocalize("Mostrar tiempo debajo de letras"), TCLocalize("Muestra una pestana con el tiempo de partida/cancion debajo de las letras."), &g_Config.m_BcMusicPlayerShowCurrentTime, &Column, LineSize);
+
+		Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		Ui()->DoScrollbarOption(&g_Config.m_BcMusicPlayerTextScale, &g_Config.m_BcMusicPlayerTextScale, &Button, TCLocalize("Tamano de texto"), 70, 150, &CUi::ms_LinearScrollbarScale, 0u, "%");
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		{
+			CUIRect Row, ColorLabel, BtnStatic, BtnCover;
+			Column.HSplitTop(LineSize, &Row, &Column);
+			Row.VSplitLeft(120.0f, &ColorLabel, &Row);
+			Ui()->DoLabel(&ColorLabel, TCLocalize("Color acento:"), FontSize, TEXTALIGN_ML);
+			Row.VSplitMid(&BtnStatic, &BtnCover, 2.0f);
+			g_Config.m_BcMusicPlayerColorMode = std::clamp(g_Config.m_BcMusicPlayerColorMode, 0, 1);
+			static CButtonContainer s_MpColStatic, s_MpColCover;
+			if(DoButton_Menu(&s_MpColStatic, TCLocalize("Estatico"), g_Config.m_BcMusicPlayerColorMode == 0, &BtnStatic, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+				g_Config.m_BcMusicPlayerColorMode = 0;
+			if(DoButton_Menu(&s_MpColCover, TCLocalize("Portada"), g_Config.m_BcMusicPlayerColorMode == 1, &BtnCover, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+				g_Config.m_BcMusicPlayerColorMode = 1;
+		}
+		if(g_Config.m_BcMusicPlayerColorMode == 0)
+		{
+			Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+			static CButtonContainer s_MpStaticColor;
+			DoLine_ColorPicker(&s_MpStaticColor, ColorPickerLineSize, ColorPickerLabelSize, ColorPickerLineSpacing, &Column, TCLocalize("Color estatico"), &g_Config.m_BcMusicPlayerStaticColor, color_cast<ColorRGBA>(ColorHSLA(DefaultConfig::BcMusicPlayerStaticColor)), false);
+		}
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		{
+			CUIRect Row, VisLabel, BtnBot, BtnMid, BtnTop;
+			Column.HSplitTop(LineSize, &Row, &Column);
+			Row.VSplitLeft(120.0f, &VisLabel, &Row);
+			Ui()->DoLabel(&VisLabel, TCLocalize("Visualizador:"), FontSize, TEXTALIGN_ML);
+			Row.VSplitLeft(Row.w / 3.0f, &BtnBot, &Row);
+			Row.VSplitMid(&BtnMid, &BtnTop);
+			g_Config.m_BcMusicPlayerVisualizerMode = std::clamp(g_Config.m_BcMusicPlayerVisualizerMode, 0, 2);
+			static CButtonContainer s_MpVisBot, s_MpVisMid, s_MpVisTop;
+			if(DoButton_Menu(&s_MpVisBot, TCLocalize("Abajo"), g_Config.m_BcMusicPlayerVisualizerMode == 0, &BtnBot, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+				g_Config.m_BcMusicPlayerVisualizerMode = 0;
+			if(DoButton_Menu(&s_MpVisMid, TCLocalize("Centro"), g_Config.m_BcMusicPlayerVisualizerMode == 1, &BtnMid, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_NONE))
+				g_Config.m_BcMusicPlayerVisualizerMode = 1;
+			if(DoButton_Menu(&s_MpVisTop, TCLocalize("Arriba"), g_Config.m_BcMusicPlayerVisualizerMode == 2, &BtnTop, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+				g_Config.m_BcMusicPlayerVisualizerMode = 2;
+		}
+
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		{
+			CUIRect Row, RoundLabel, BtnCube, BtnSoft;
+			Column.HSplitTop(LineSize, &Row, &Column);
+			Row.VSplitLeft(120.0f, &RoundLabel, &Row);
+			Ui()->DoLabel(&RoundLabel, TCLocalize("Forma barras:"), FontSize, TEXTALIGN_ML);
+			Row.VSplitMid(&BtnCube, &BtnSoft, 2.0f);
+			const int RoundPreset = g_Config.m_BcMusicPlayerVisualizerRounding < 100 ? 0 : 1;
+			static CButtonContainer s_MpCube, s_MpSoft;
+			if(DoButton_Menu(&s_MpCube, TCLocalize("Cuadrado"), RoundPreset == 0, &BtnCube, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+				g_Config.m_BcMusicPlayerVisualizerRounding = 0;
+			if(DoButton_Menu(&s_MpSoft, TCLocalize("Suave"), RoundPreset == 1, &BtnSoft, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+				g_Config.m_BcMusicPlayerVisualizerRounding = 200;
+		}
+
+		Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		Ui()->DoScrollbarOption(&g_Config.m_BcMusicPlayerVisualizerColumns, &g_Config.m_BcMusicPlayerVisualizerColumns, &Button, TCLocalize("Columnas visualizador"), 5, 10);
+	}
+
+	// Teclas bindeables de control multimedia (siempre visibles, incluso con el HUD desactivado)
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("Atajos de musica (sin tocar ESC):"), FontSize, TEXTALIGN_ML);
+	{
+		static CButtonContainer s_MusicPrevReader, s_MusicPrevClear;
+		static CButtonContainer s_MusicPlayReader, s_MusicPlayClear;
+		static CButtonContainer s_MusicNextReader, s_MusicNextClear;
+		DoLine_KeyReader(Column, s_MusicPrevReader, s_MusicPrevClear, TCLocalize("Cancion anterior"), "ac_music_prev");
+		DoLine_KeyReader(Column, s_MusicPlayReader, s_MusicPlayClear, TCLocalize("Pausar / Reanudar musica"), "ac_music_playpause");
+		DoLine_KeyReader(Column, s_MusicNextReader, s_MusicNextClear, TCLocalize("Siguiente cancion"), "ac_music_next");
+	}
+
+	// Compartir Musica en vivo (1 a 1 entre usuarios con AClient)
+	{
+		CAClientMusicShare &MusicShare = GameClient()->m_AClientMusicShare;
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Label, &Column);
+		Ui()->DoLabel(&Label, TCLocalize("Compartir Musica (1 a 1 con AClient):"), FontSize, TEXTALIGN_ML);
+
+		// Volumen musica compartida + Mute
+		Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		CUIRect VolSlider, MuteBtn;
+		Button.VSplitRight(52.0f, &VolSlider, &MuteBtn);
+		VolSlider.VSplitRight(4.0f, &VolSlider, nullptr);
+		Ui()->DoScrollbarOption(&g_Config.m_AcMusicShareVolume, &g_Config.m_AcMusicShareVolume, &VolSlider, TCLocalize("Volumen musica compartida"), 0, 200, &CUi::ms_LinearScrollbarScale, 0u, "%");
+		static CButtonContainer s_BtnMusicShareMute;
+		const bool Muted = MusicShare.IsMuted();
+		if(DoButton_Menu(&s_BtnMusicShareMute, Muted ? "Muted" : "Mute", 0, &MuteBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, Muted ? ColorRGBA(0.82f, 0.25f, 0.25f, 0.85f) : ColorRGBA(0.24f, 0.28f, 0.35f, 0.65f)))
+			MusicShare.ToggleMute();
+
+		// Estado actual
+		Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		char aShareStatus[144];
+		if(MusicShare.IsListening())
+		{
+			str_format(aShareStatus, sizeof(aShareStatus), "Estado: Escuchando con %s (%s)", MusicShare.GetPeerName(), MusicShare.GetRemoteTrack().m_aTitle[0] ? MusicShare.GetRemoteTrack().m_aTitle : "En vivo");
+			TextRender()->TextColor(0.40f, 0.95f, 0.65f, 0.98f);
+		}
+		else if(MusicShare.IsHosting())
+		{
+			if(MusicShare.GetCaptureStatus() == CAClientMusicShare::CAPTURE_SEARCHING)
+			{
+				str_format(aShareStatus, sizeof(aShareStatus), "Estado: Conectado con %s (abre Spotify/YouTube)", MusicShare.GetPeerName());
+				TextRender()->TextColor(0.95f, 0.85f, 0.45f, 0.98f);
+			}
+			else
+			{
+				str_format(aShareStatus, sizeof(aShareStatus), "Estado: Compartiendo musica en estereo a %s", MusicShare.GetPeerName());
+				TextRender()->TextColor(0.40f, 0.95f, 0.55f, 0.98f);
+			}
+		}
+		else if(MusicShare.IsWaitingAccept())
+		{
+			str_format(aShareStatus, sizeof(aShareStatus), "Estado: Esperando que %s acepte...", MusicShare.GetPeerName());
+			TextRender()->TextColor(0.95f, 0.85f, 0.45f, 0.98f);
+		}
+		else
+		{
+			str_copy(aShareStatus, TCLocalize("Estado: Inactivo (audio aislado solo de tu app de musica)"));
+			TextRender()->TextColor(0.68f, 0.72f, 0.78f, 0.90f);
+		}
+		SLabelProperties StProps;
+		StProps.m_MaxWidth = Button.w;
+		StProps.m_EllipsisAtEnd = true;
+		Ui()->DoLabel(&Button, aShareStatus, FontSize * 0.86f, TEXTALIGN_ML, StProps);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
+
+		// Banner de invitacion pendiente dentro del panel
+		if(MusicShare.HasPendingInvite())
+		{
+			Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+			Column.HSplitTop(LineSize + 4.0f, &Button, &Column);
+			Button.Draw(ColorRGBA(0.14f, 0.24f, 0.46f, 0.88f), IGraphics::CORNER_ALL, 4.0f);
+			CUIRect Row = Button;
+			Row.Margin(2.0f, &Row);
+			CUIRect AccBtn, DecBtn;
+			Row.VSplitRight(58.0f, &Row, &DecBtn);
+			Row.VSplitRight(4.0f, &Row, nullptr);
+			Row.VSplitRight(58.0f, &Row, &AccBtn);
+			Row.VSplitRight(6.0f, &Row, nullptr);
+
+			char aInvTxt[128];
+			str_format(aInvTxt, sizeof(aInvTxt), "%s: %s", MusicShare.GetPendingInviteFrom(), MusicShare.GetPendingInviteTrack());
+			TextRender()->TextColor(0.95f, 0.98f, 1.0f, 1.0f);
+			SLabelProperties InvP;
+			InvP.m_MaxWidth = Row.w;
+			InvP.m_EllipsisAtEnd = true;
+			Ui()->DoLabel(&Row, aInvTxt, FontSize * 0.84f, TEXTALIGN_ML, InvP);
+			TextRender()->TextColor(TextRender()->DefaultTextColor());
+
+			static CButtonContainer s_PanelMusicAcc, s_PanelMusicDec;
+			if(DoButton_Menu(&s_PanelMusicAcc, TCLocalize("Aceptar"), 0, &AccBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.22f, 0.75f, 0.38f, 0.90f)))
+				MusicShare.AcceptPendingInvite();
+			if(DoButton_Menu(&s_PanelMusicDec, TCLocalize("Rechazar"), 0, &DecBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.80f, 0.25f, 0.25f, 0.85f)))
+				MusicShare.DeclinePendingInvite();
+		}
+
+		// Boton principal: Compartir musica (desplegable con usuarios de AClient) o Detener / Salir
+		static bool s_MenuShareDropdownOpen = false;
+		if(!MusicShare.IsIdle())
+		{
+			s_MenuShareDropdownOpen = false;
+			Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+			Column.HSplitTop(LineSize, &Button, &Column);
+			static CButtonContainer s_BtnStopMusicShare;
+			const char *pStopLbl = MusicShare.IsListening()
+				? TCLocalize("Dejar de escuchar")
+				: (MusicShare.IsWaitingAccept() ? TCLocalize("Cancelar invitacion") : TCLocalize("Dejar de compartir"));
+			if(DoButton_Menu(&s_BtnStopMusicShare, pStopLbl, 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, ColorRGBA(0.80f, 0.26f, 0.26f, 0.85f)))
+				MusicShare.StopSession(true);
+		}
+		else
+		{
+			Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+			Column.HSplitTop(LineSize, &Button, &Column);
+			static CButtonContainer s_BtnToggleAClientList;
+			if(DoButton_Menu(&s_BtnToggleAClientList, s_MenuShareDropdownOpen ? TCLocalize("Ocultar usuarios con AClient") : TCLocalize("Compartir musica (elegir usuario AClient)"), s_MenuShareDropdownOpen ? 1 : 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, ColorRGBA(0.20f, 0.48f, 0.78f, 0.85f)))
+				s_MenuShareDropdownOpen = !s_MenuShareDropdownOpen;
+
+			if(s_MenuShareDropdownOpen)
+			{
+				if(Client()->State() != IClient::STATE_ONLINE)
+				{
+					Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+					Column.HSplitTop(LineSize, &Button, &Column);
+					TextRender()->TextColor(0.70f, 0.72f, 0.78f, 0.88f);
+					Ui()->DoLabel(&Button, TCLocalize("Entra a un servidor para ver usuarios con AClient."), FontSize * 0.84f, TEXTALIGN_ML);
+					TextRender()->TextColor(TextRender()->DefaultTextColor());
+				}
+				else
+				{
+					static CButtonContainer s_aMusicShareUserBtns[MAX_CLIENTS];
+					const int Local0 = GameClient()->m_aLocalIds[0];
+					const int Local1 = GameClient()->m_aLocalIds[1];
+					int Found = 0;
+					for(int i = 0; i < MAX_CLIENTS; ++i)
+					{
+						if(i == Local0 || i == Local1)
+							continue;
+						if(!GameClient()->m_aClients[i].m_Active || !GameClient()->m_aClients[i].m_IsAClient || GameClient()->m_aClients[i].m_aName[0] == '\0')
+							continue;
+						Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+						Column.HSplitTop(LineSize, &Button, &Column);
+						CUIRect NameR, ShareBtn;
+						Button.VSplitRight(76.0f, &NameR, &ShareBtn);
+						NameR.VSplitRight(4.0f, &NameR, nullptr);
+						Ui()->DoLabel(&NameR, GameClient()->m_aClients[i].m_aName, FontSize * 0.86f, TEXTALIGN_ML);
+						if(DoButton_Menu(&s_aMusicShareUserBtns[i], TCLocalize("Compartir"), 0, &ShareBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, ColorRGBA(0.24f, 0.65f, 0.42f, 0.85f)))
+						{
+							MusicShare.InviteFriend(GameClient()->m_aClients[i].m_aName);
+							s_MenuShareDropdownOpen = false;
+						}
+						++Found;
+					}
+					if(Found == 0)
+					{
+						Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+						Column.HSplitTop(LineSize, &Button, &Column);
+						TextRender()->TextColor(0.70f, 0.72f, 0.78f, 0.88f);
+						Ui()->DoLabel(&Button, TCLocalize("No se detectaron otros usuarios con AClient en este servidor."), FontSize * 0.84f, TEXTALIGN_ML);
+						TextRender()->TextColor(TextRender()->DefaultTextColor());
+					}
+				}
+			}
+		}
+	}
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
+
+	// ***** Modo Foco (Focus Mode) ***** //
+	Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+	s_SectionBoxesAc.push_back(Column);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, TCLocalize("Modo Foco (Focus Mode)"), HeadlineFontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+	DoCheckboxWithHelp(&g_Config.m_ClFocusMode, TCLocalize("Activar Modo Foco"), TCLocalize("Oculta elementos de distraccion (HUD, Chat, etc.) segun las opciones tildadas abajo."), &g_Config.m_ClFocusMode, &Column, LineSize);
+
+	static CButtonContainer s_FocusModeBindReaderAc, s_FocusModeBindClearAc;
+	DoLine_KeyReader(Column, s_FocusModeBindReaderAc, s_FocusModeBindClearAc, TCLocalize("Tecla Modo Foco"), "toggle cl_focus_mode 0 1");
+
+	DoCheckboxWithHelp(&g_Config.m_ClFocusModeHideHud, TCLocalize("Ocultar HUD completo"), TCLocalize("Oculta barra de vida, municion, timer, score, velocidad, frozen HUD y keystrokes."), &g_Config.m_ClFocusModeHideHud, &Column, LineSize);
+	DoCheckboxWithHelp(&g_Config.m_ClFocusModeHideChat, TCLocalize("Ocultar Chat"), TCLocalize("Oculta mensajes y caja del chat mientras el Modo Foco esta activo."), &g_Config.m_ClFocusModeHideChat, &Column, LineSize);
+	DoCheckboxWithHelp(&g_Config.m_ClFocusModeHideSongPlayer, TCLocalize("Ocultar Reproductor de Musica"), TCLocalize("Oculta tambien la isla del reproductor de musica superior cuando Modo Foco esta activo."), &g_Config.m_ClFocusModeHideSongPlayer, &Column, LineSize);
+	DoCheckboxWithHelp(&g_Config.m_ClFocusModeHideUI, TCLocalize("Ocultar UI secundaria (Killfeed, Broadcasts, Overlays)"), TCLocalize("Oculta killfeed, broadcasts, votos, hora local, racestats, statusbar, voice HUD y keystrokes."), &g_Config.m_ClFocusModeHideUI, &Column, LineSize);
+	DoCheckboxWithHelp(&g_Config.m_ClFocusModeHideNames, TCLocalize("Ocultar Nombres (Nameplates)"), TCLocalize("Oculta los nombres y clanes sobre los tees en pantalla."), &g_Config.m_ClFocusModeHideNames, &Column, LineSize);
+	DoCheckboxWithHelp(&g_Config.m_ClFocusModeHideEffects, TCLocalize("Ocultar Efectos visuales (Particulas y Trails)"), TCLocalize("Oculta particulas y estelas (trails) mientras Modo Foco esta activo."), &g_Config.m_ClFocusModeHideEffects, &Column, LineSize);
+	DoCheckboxWithHelp(&g_Config.m_ClFocusModeHideScoreboard, TCLocalize("Ocultar Scoreboard (Tab)"), TCLocalize("Evita mostrar la tabla de puntuacion al mantener Tab mientras Modo Foco esta activo."), &g_Config.m_ClFocusModeHideScoreboard, &Column, LineSize);
+	DoCheckboxWithHelp(&g_Config.m_ClFocusModeAutoReply, TCLocalize("Auto-responder si te mencionan con chat oculto"), TCLocalize("Responde automaticamente cuando alguien te nombra o susurra y tenes el chat oculto."), &g_Config.m_ClFocusModeAutoReply, &Column, LineSize);
+
+	if(g_Config.m_ClFocusModeAutoReply)
+	{
+		Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Button, &Column);
+		static CLineInput s_FocusModeAutoReplyInputAc(g_Config.m_ClFocusModeAutoReplyMessage, sizeof(g_Config.m_ClFocusModeAutoReplyMessage));
+		DoEditBoxWithLabel(&s_FocusModeAutoReplyInputAc, &Button, TCLocalize("Mensaje auto-respuesta"), "my chat is hidden", g_Config.m_ClFocusModeAutoReplyMessage, sizeof(g_Config.m_ClFocusModeAutoReplyMessage));
+	}
+
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	s_SectionBoxesAc.back().h = Column.y - s_SectionBoxesAc.back().y;
 	}
 
 	if(!VisualTab)
@@ -8152,69 +8541,90 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 	Column.HSplitTop(LineSize, &Button, &Column);
 	Ui()->DoScrollbarOption(&g_Config.m_AcVoiceVolume, &g_Config.m_AcVoiceVolume, &Button, TCLocalize("Volumen de voz recibida"), 0, 200, &CUi::ms_LinearScrollbarScale, 0, "%");
 
-	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
-	Column.HSplitTop(LineSize, &Button, &Column);
-	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
-	Column.HSplitTop(LineSize, &Button, &Column);
 	{
-		const std::vector<std::string> &vMics = GameClient()->m_AClientVoice.GetMicDevices();
-		const int NumMics = (int)vMics.size();
-		int CurMicIdx = -1; // -1 = system default
-		if(g_Config.m_AcVoiceMicDevice[0] != '\0')
+		struct SAudioSelectorBtns
 		{
-			for(int i = 0; i < NumMics; ++i)
+			CButtonContainer m_Prev, m_Cur, m_Next, m_Refresh;
+		};
+		auto RenderAudioDeviceRow = [&](const char *pLabelText, const char *pRefreshTooltip, const std::vector<std::string> &vDevices, const char *pCurDeviceName, SAudioSelectorBtns &Btns, auto &&SelectFn, auto &&RefreshFn) {
+			Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+			Column.HSplitTop(LineSize, &Button, &Column);
+
+			const int NumDevs = (int)vDevices.size();
+			int CurIdx = -1; // -1 = system default
+			if(pCurDeviceName[0] != '\0')
 			{
-				if(str_comp(vMics[i].c_str(), g_Config.m_AcVoiceMicDevice) == 0)
+				for(int i = 0; i < NumDevs; ++i)
 				{
-					CurMicIdx = i;
-					break;
+					if(str_comp(vDevices[i].c_str(), pCurDeviceName) == 0)
+					{
+						CurIdx = i;
+						break;
+					}
 				}
 			}
-		}
 
-		CUIRect LabelMic, ControlsMic, PrevMicBtn, CurMicBtn, NextMicBtn, RefreshMicBtn;
-		Button.VSplitLeft(95.0f, &LabelMic, &ControlsMic);
-		Ui()->DoLabel(&LabelMic, TCLocalize("Microfono:"), FontSize, TEXTALIGN_ML);
+			CUIRect LabelDev, ControlsDev, PrevBtn, CurBtn, NextBtn, RefreshBtn;
+			Button.VSplitLeft(95.0f, &LabelDev, &ControlsDev);
+			Ui()->DoLabel(&LabelDev, pLabelText, FontSize, TEXTALIGN_ML);
 
-		ControlsMic.VSplitRight(LineSize + 4.0f, &ControlsMic, &RefreshMicBtn);
-		ControlsMic.VSplitRight(4.0f, &ControlsMic, nullptr);
-		ControlsMic.VSplitLeft(22.0f, &PrevMicBtn, &ControlsMic);
-		ControlsMic.VSplitRight(22.0f, &ControlsMic, &NextMicBtn);
-		ControlsMic.VSplitLeft(2.0f, nullptr, &ControlsMic);
-		ControlsMic.VSplitRight(2.0f, &ControlsMic, nullptr);
-		CurMicBtn = ControlsMic;
+			ControlsDev.VSplitRight(LineSize + 4.0f, &ControlsDev, &RefreshBtn);
+			ControlsDev.VSplitRight(4.0f, &ControlsDev, nullptr);
+			ControlsDev.VSplitLeft(22.0f, &PrevBtn, &ControlsDev);
+			ControlsDev.VSplitRight(22.0f, &ControlsDev, &NextBtn);
+			ControlsDev.VSplitLeft(2.0f, nullptr, &ControlsDev);
+			ControlsDev.VSplitRight(2.0f, &ControlsDev, nullptr);
+			CurBtn = ControlsDev;
 
-		static CButtonContainer s_PrevMicBtn, s_CurMicBtn, s_NextMicBtn, s_RefreshMicBtn;
-		auto CycleMic = [&](int Delta) {
-			if(NumMics <= 0)
-			{
-				GameClient()->m_AClientVoice.SelectMicDevice(-1);
-				return;
-			}
-			// Indices: -1 (Default), 0 .. NumMics-1
-			int Pos = CurMicIdx + 1 + Delta; // 0..NumMics
-			const int Total = NumMics + 1;
-			Pos = ((Pos % Total) + Total) % Total;
-			GameClient()->m_AClientVoice.SelectMicDevice(Pos - 1);
+			auto CycleDev = [&](int Delta) {
+				if(NumDevs <= 0)
+				{
+					SelectFn(-1);
+					return;
+				}
+				int Pos = CurIdx + 1 + Delta; // 0..NumDevs
+				const int Total = NumDevs + 1;
+				Pos = ((Pos % Total) + Total) % Total;
+				SelectFn(Pos - 1);
+			};
+
+			if(DoButton_Menu(&Btns.m_Prev, "<", 0, &PrevBtn))
+				CycleDev(-1);
+
+			const char *pDisplay = (CurIdx >= 0) ? vDevices[CurIdx].c_str() : (pCurDeviceName[0] ? pCurDeviceName : TCLocalize("Predeterminado"));
+			if(DoButton_Menu(&Btns.m_Cur, pDisplay, 0, &CurBtn))
+				CycleDev(1);
+
+			if(DoButton_Menu(&Btns.m_Next, ">", 0, &NextBtn))
+				CycleDev(1);
+
+			TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+			TextRender()->SetRenderFlags(ETextRenderFlags::TEXT_RENDER_FLAG_ONLY_ADVANCE_WIDTH | ETextRenderFlags::TEXT_RENDER_FLAG_NO_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_Y_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT | ETextRenderFlags::TEXT_RENDER_FLAG_NO_OVERSIZE);
+			if(DoButton_Menu(&Btns.m_Refresh, FontIcon::ARROW_ROTATE_RIGHT, 0, &RefreshBtn))
+				RefreshFn();
+			TextRender()->SetRenderFlags(0);
+			TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+			GameClient()->m_Tooltips.DoToolTip(&Btns.m_Refresh, &RefreshBtn, pRefreshTooltip);
 		};
 
-		if(DoButton_Menu(&s_PrevMicBtn, "<", 0, &PrevMicBtn))
-			CycleMic(-1);
+		static SAudioSelectorBtns s_MicBtns, s_OutBtns;
+		RenderAudioDeviceRow(
+			TCLocalize("Microfono:"),
+			TCLocalize("Actualizar lista de microfonos"),
+			GameClient()->m_AClientVoice.GetMicDevices(),
+			g_Config.m_AcVoiceMicDevice,
+			s_MicBtns,
+			[&](int Idx) { GameClient()->m_AClientVoice.SelectMicDevice(Idx); },
+			[&]() { GameClient()->m_AClientVoice.RefreshMicDevices(); });
 
-		const char *pMicDisplay = (CurMicIdx >= 0) ? vMics[CurMicIdx].c_str() : (g_Config.m_AcVoiceMicDevice[0] ? g_Config.m_AcVoiceMicDevice : TCLocalize("Predeterminado"));
-		if(DoButton_Menu(&s_CurMicBtn, pMicDisplay, 0, &CurMicBtn))
-			CycleMic(1);
-
-		if(DoButton_Menu(&s_NextMicBtn, ">", 0, &NextMicBtn))
-			CycleMic(1);
-
-		TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
-		TextRender()->SetRenderFlags(ETextRenderFlags::TEXT_RENDER_FLAG_ONLY_ADVANCE_WIDTH | ETextRenderFlags::TEXT_RENDER_FLAG_NO_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_Y_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT | ETextRenderFlags::TEXT_RENDER_FLAG_NO_OVERSIZE);
-		if(DoButton_Menu(&s_RefreshMicBtn, FontIcon::ARROW_ROTATE_RIGHT, 0, &RefreshMicBtn))
-			GameClient()->m_AClientVoice.RefreshMicDevices();
-		TextRender()->SetRenderFlags(0);
-		TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
-		GameClient()->m_Tooltips.DoToolTip(&s_RefreshMicBtn, &RefreshMicBtn, TCLocalize("Actualizar lista de microfonos"));
+		RenderAudioDeviceRow(
+			TCLocalize("Salida voz:"),
+			TCLocalize("Actualizar lista de salidas de audio"),
+			GameClient()->m_AClientVoice.GetOutputDevices(),
+			g_Config.m_AcVoiceOutputDevice,
+			s_OutBtns,
+			[&](int Idx) { GameClient()->m_AClientVoice.SelectOutputDevice(Idx); },
+			[&]() { GameClient()->m_AClientVoice.RefreshOutputDevices(); });
 	}
 
 	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
@@ -8244,57 +8654,193 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 
 	Column.HSplitTop(LineSize, &Button, &Column);
 	{
+		CAClientVoice &Voice = GameClient()->m_AClientVoice;
 		char aVoiceStatus[128];
 		if(!g_Config.m_AcVoiceEnabled)
 		{
 			str_copy(aVoiceStatus, TCLocalize("Estado: Desactivado"));
 			TextRender()->TextColor(0.75f, 0.75f, 0.78f, 0.9f);
 		}
-		else if(!GameClient()->m_AClientVoice.HasValidRelayAddr())
+		else if(!Voice.HasValidRelayAddr())
 		{
 			str_copy(aVoiceStatus, TCLocalize("Estado: Direccion de Relay invalida"));
 			TextRender()->TextColor(1.0f, 0.45f, 0.45f, 0.95f);
 		}
-		else if(GameClient()->m_AClientVoice.IsRoomActive())
+		else if(Voice.IsInCustomRoom())
 		{
-			str_format(aVoiceStatus, sizeof(aVoiceStatus), "Estado: Conectado (Team %d)", GameClient()->m_AClientVoice.GetCurrentTeam());
+			str_format(aVoiceStatus, sizeof(aVoiceStatus), "Estado: Sala Privada '%s' (%zu amigo%s)", Voice.GetCustomRoomCode(), Voice.GetRoomPeers().size(), Voice.GetRoomPeers().size() == 1 ? "" : "s");
+			TextRender()->TextColor(0.40f, 0.95f, 0.75f, 0.95f);
+		}
+		else if(Voice.IsRoomActive())
+		{
+			str_format(aVoiceStatus, sizeof(aVoiceStatus), "Estado: Conectado (Team %d)", Voice.GetCurrentTeam());
 			TextRender()->TextColor(0.40f, 0.95f, 0.55f, 0.95f);
 		}
 		else
 		{
-			str_copy(aVoiceStatus, TCLocalize("Estado: En espera (entra a un servidor / team)"));
+			str_copy(aVoiceStatus, TCLocalize("Estado: En espera (entra a un team o sala privada)"));
 			TextRender()->TextColor(0.95f, 0.85f, 0.45f, 0.95f);
 		}
 		Ui()->DoLabel(&Button, aVoiceStatus, FontSize * 0.9f, TEXTALIGN_ML);
 		TextRender()->TextColor(TextRender()->DefaultTextColor());
 	}
 
-	// Volumen individual por jugador
+	// Banner de invitacion pendiente a sala privada
+	{
+		CAClientVoice &Voice = GameClient()->m_AClientVoice;
+		if(Voice.HasPendingInvite())
+		{
+			Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+			Column.HSplitTop(LineSize + 4.0f, &Button, &Column);
+			Button.Draw(ColorRGBA(0.14f, 0.28f, 0.48f, 0.85f), IGraphics::CORNER_ALL, 4.0f);
+			CUIRect InviteRow = Button;
+			InviteRow.Margin(2.0f, &InviteRow);
+
+			CUIRect AcceptBtn, DeclineBtn;
+			InviteRow.VSplitRight(58.0f, &InviteRow, &DeclineBtn);
+			InviteRow.VSplitRight(4.0f, &InviteRow, nullptr);
+			InviteRow.VSplitRight(58.0f, &InviteRow, &AcceptBtn);
+			InviteRow.VSplitRight(6.0f, &InviteRow, nullptr);
+
+			char aInvBanner[144];
+			str_format(aInvBanner, sizeof(aInvBanner), "Invitacion de %s (%s%s)",
+				Voice.GetPendingInviteFrom(), Voice.GetPendingInviteRoom(),
+				Voice.HasPendingInvitePassword() ? " + clave" : "");
+			TextRender()->TextColor(0.95f, 0.98f, 1.0f, 1.0f);
+			Ui()->DoLabel(&InviteRow, aInvBanner, FontSize * 0.85f, TEXTALIGN_ML);
+			TextRender()->TextColor(TextRender()->DefaultTextColor());
+
+			static CButtonContainer s_BtnAcceptInvite, s_BtnDeclineInvite;
+			if(DoButton_Menu(&s_BtnAcceptInvite, TCLocalize("Aceptar"), 0, &AcceptBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.25f, 0.78f, 0.40f, 0.85f)))
+			{
+				Voice.AcceptPendingInvite();
+			}
+			if(DoButton_Menu(&s_BtnDeclineInvite, TCLocalize("Rechazar"), 0, &DeclineBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.80f, 0.28f, 0.28f, 0.80f)))
+			{
+				Voice.DeclinePendingInvite();
+			}
+		}
+	}
+
+	// Salas Privadas (Amigos)
+	{
+		CAClientVoice &Voice = GameClient()->m_AClientVoice;
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Label, &Column);
+		Ui()->DoLabel(&Label, TCLocalize("Salas Privadas (Amigos):"), FontSize, TEXTALIGN_ML);
+
+		static CLineInputBuffered<32> s_VoiceRoomInput;
+		static CLineInputBuffered<32> s_VoiceRoomPassInput;
+		static CLineInputBuffered<MAX_NAME_LENGTH> s_VoiceInviteInput;
+		static CButtonContainer s_BtnCreateRoom, s_BtnJoinRoom, s_BtnCopyRoom, s_BtnLeaveRoom, s_BtnSendInvite;
+
+		if(!Voice.IsInCustomRoom())
+		{
+			Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+			Column.HSplitTop(LineSize, &Button, &Column);
+			CUIRect BoxRect, JoinBtn, CreateBtn;
+			Button.VSplitRight(78.0f, &BoxRect, &CreateBtn);
+			BoxRect.VSplitRight(4.0f, &BoxRect, nullptr);
+			BoxRect.VSplitRight(60.0f, &BoxRect, &JoinBtn);
+			BoxRect.VSplitRight(4.0f, &BoxRect, nullptr);
+
+			s_VoiceRoomInput.SetEmptyText(TCLocalize("Codigo de sala..."));
+			Ui()->DoEditBox(&s_VoiceRoomInput, &BoxRect, FontSize * 0.85f);
+
+			Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+			Column.HSplitTop(LineSize, &Button, &Column);
+			s_VoiceRoomPassInput.SetEmptyText(TCLocalize("Contraseña (opcional)..."));
+			Ui()->DoEditBox(&s_VoiceRoomPassInput, &Button, FontSize * 0.85f);
+
+			const bool RoomEnter = (s_VoiceRoomInput.IsActive() || s_VoiceRoomPassInput.IsActive()) && (Ui()->ConsumeHotkey(CUi::HOTKEY_ENTER) || Input()->KeyPress(KEY_RETURN) || Input()->KeyPress(KEY_KP_ENTER));
+			if(DoButton_Menu(&s_BtnJoinRoom, TCLocalize("Unirse"), 0, &JoinBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, ColorRGBA(0.25f, 0.58f, 0.90f, 0.75f)) || RoomEnter)
+			{
+				if(s_VoiceRoomInput.GetString()[0] != '\0')
+					Voice.JoinCustomRoom(s_VoiceRoomInput.GetString(), s_VoiceRoomPassInput.GetString());
+				else
+					Voice.CreateCustomRoom(nullptr, s_VoiceRoomPassInput.GetString());
+			}
+			if(DoButton_Menu(&s_BtnCreateRoom, TCLocalize("Crear Sala"), 0, &CreateBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, ColorRGBA(0.28f, 0.75f, 0.45f, 0.80f)))
+			{
+				Voice.CreateCustomRoom(s_VoiceRoomInput.GetString(), s_VoiceRoomPassInput.GetString());
+			}
+		}
+		else
+		{
+			Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+			Column.HSplitTop(LineSize, &Button, &Column);
+			CUIRect RoomInfoRect, CopyBtn, LeaveBtn;
+			Button.VSplitRight(82.0f, &RoomInfoRect, &LeaveBtn);
+			RoomInfoRect.VSplitRight(4.0f, &RoomInfoRect, nullptr);
+			RoomInfoRect.VSplitRight(56.0f, &RoomInfoRect, &CopyBtn);
+			RoomInfoRect.VSplitRight(4.0f, &RoomInfoRect, nullptr);
+
+			char aActiveRoom[112];
+			if(Voice.HasCustomRoomPassword())
+				str_format(aActiveRoom, sizeof(aActiveRoom), "Sala: %s | Clave: %s", Voice.GetCustomRoomCode(), Voice.GetCustomRoomPassword());
+			else
+				str_format(aActiveRoom, sizeof(aActiveRoom), "Sala: %s", Voice.GetCustomRoomCode());
+			TextRender()->TextColor(0.45f, 0.95f, 0.75f, 1.0f);
+			Ui()->DoLabel(&RoomInfoRect, aActiveRoom, FontSize * 0.88f, TEXTALIGN_ML);
+			TextRender()->TextColor(TextRender()->DefaultTextColor());
+
+			if(DoButton_Menu(&s_BtnCopyRoom, TCLocalize("Copiar"), 0, &CopyBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, ColorRGBA(0.30f, 0.45f, 0.65f, 0.75f)))
+			{
+				if(Voice.HasCustomRoomPassword())
+				{
+					char aClip[96];
+					str_format(aClip, sizeof(aClip), "Sala: %s | Clave: %s", Voice.GetCustomRoomCode(), Voice.GetCustomRoomPassword());
+					Input()->SetClipboardText(aClip);
+					GameClient()->Echo("[AClient Voice] Sala y clave copiadas al portapapeles");
+				}
+				else
+				{
+					Input()->SetClipboardText(Voice.GetCustomRoomCode());
+					GameClient()->Echo("[AClient Voice] Codigo de sala copiado al portapapeles");
+				}
+			}
+			if(DoButton_Menu(&s_BtnLeaveRoom, TCLocalize("Salir Sala"), 0, &LeaveBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, ColorRGBA(0.82f, 0.28f, 0.28f, 0.80f)))
+			{
+				Voice.LeaveCustomRoom();
+				s_VoiceRoomPassInput.Clear();
+			}
+
+			Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+			Column.HSplitTop(LineSize, &Button, &Column);
+			CUIRect InvBox, InvBtn;
+			Button.VSplitRight(78.0f, &InvBox, &InvBtn);
+			InvBox.VSplitRight(4.0f, &InvBox, nullptr);
+
+			s_VoiceInviteInput.SetEmptyText(TCLocalize("Nombre de amigo a invitar..."));
+			Ui()->DoEditBox(&s_VoiceInviteInput, &InvBox, FontSize * 0.85f);
+
+			const bool InvEnter = s_VoiceInviteInput.IsActive() && (Ui()->ConsumeHotkey(CUi::HOTKEY_ENTER) || Input()->KeyPress(KEY_RETURN) || Input()->KeyPress(KEY_KP_ENTER));
+			if(DoButton_Menu(&s_BtnSendInvite, TCLocalize("Invitar"), 0, &InvBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, ColorRGBA(0.30f, 0.62f, 0.95f, 0.80f)) || InvEnter)
+			{
+				if(s_VoiceInviteInput.GetString()[0] != '\0')
+				{
+					Voice.SendRoomInvite(s_VoiceInviteInput.GetString());
+					s_VoiceInviteInput.Clear();
+				}
+			}
+		}
+	}
+
+	// Volumen individual por jugador (solo personas disponibles para hablar en la sala)
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	Column.HSplitTop(LineSize, &Label, &Column);
 	Ui()->DoLabel(&Label, TCLocalize("Volumen por jugador:"), FontSize, TEXTALIGN_ML);
-	if(Client()->State() != IClient::STATE_ONLINE)
 	{
-		Column.HSplitTop(LineSize, &Button, &Column);
-		TextRender()->TextColor(0.65f, 0.68f, 0.75f, 0.85f);
-		Ui()->DoLabel(&Button, TCLocalize("Entra a un servidor para ajustar volumenes individuales."), FontSize * 0.85f, TEXTALIGN_ML);
-		TextRender()->TextColor(TextRender()->DefaultTextColor());
-	}
-	else
-	{
-		const int ActiveDummy = std::clamp(g_Config.m_ClDummy, 0, NUM_DUMMIES - 1);
-		const int LocalId = GameClient()->m_aLocalIds[ActiveDummy];
-		const int LocalTeam = (LocalId >= 0 && LocalId < MAX_CLIENTS) ? GameClient()->m_Teams.Team(LocalId) : 0;
+		CAClientVoice &Voice = GameClient()->m_AClientVoice;
 		static CButtonContainer s_aPeerMuteBtns[MAX_CLIENTS];
-		int ShownPeers = 0;
+		static CButtonContainer s_aPeerInviteBtns[MAX_CLIENTS];
 
-		for(int i = 0; i < MAX_CLIENTS; ++i)
+		const auto vAvailablePeers = Voice.GetAvailableVoicePeers();
+		int ShownPeers = 0;
+		for(const auto &Peer : vAvailablePeers)
 		{
-			if(i == LocalId || !GameClient()->m_aClients[i].m_Active)
-				continue;
-			if(g_Config.m_AcVoiceOnlyTeam && LocalTeam > 0 && GameClient()->m_Teams.Team(i) != LocalTeam)
-				continue;
-			if(g_Config.m_AcVoiceOnlyTeam && LocalTeam <= 0)
+			const int Slot = Peer.m_VirtualSlot;
+			if(Slot < 0 || Slot >= MAX_CLIENTS)
 				continue;
 
 			Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
@@ -8303,18 +8849,21 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 			Button.VSplitRight(48.0f, &SliderRect, &MuteBtn);
 			SliderRect.VSplitRight(4.0f, &SliderRect, nullptr);
 
-			int *pPeerVol = GameClient()->m_AClientVoice.GetClientVolumePtr(i);
+			int *pPeerVol = Voice.GetClientVolumePtr(Slot);
 			if(pPeerVol)
 			{
-				const char *pPeerName = GameClient()->m_aClients[i].m_aName[0] ? GameClient()->m_aClients[i].m_aName : "Jugador";
+				const int PrevVol = *pPeerVol;
+				const char *pPeerName = Peer.m_aName[0] ? Peer.m_aName : (Voice.IsInCustomRoom() ? "Amigo" : "Jugador");
 				Ui()->DoScrollbarOption(pPeerVol, pPeerVol, &SliderRect, pPeerName, 0, 200, &CUi::ms_LinearScrollbarScale, 0, "%");
+				if(*pPeerVol != PrevVol)
+					Voice.NotifyClientVolumeChanged(Slot);
 			}
 
-			const bool Muted = GameClient()->m_AClientVoice.IsClientMuted(i);
+			const bool Muted = Voice.IsClientMuted(Slot);
 			const ColorRGBA MuteColor = Muted ? ColorRGBA(0.85f, 0.25f, 0.25f, 0.85f) : ColorRGBA(0.25f, 0.28f, 0.35f, 0.65f);
-			if(DoButton_Menu(&s_aPeerMuteBtns[i], Muted ? "Muted" : "Mute", 0, &MuteBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, MuteColor))
+			if(DoButton_Menu(&s_aPeerMuteBtns[Slot], Muted ? "Muted" : "Mute", 0, &MuteBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, MuteColor))
 			{
-				GameClient()->m_AClientVoice.ToggleClientMute(i);
+				Voice.ToggleClientMute(Slot);
 			}
 			++ShownPeers;
 		}
@@ -8323,8 +8872,58 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 		{
 			Column.HSplitTop(LineSize, &Button, &Column);
 			TextRender()->TextColor(0.65f, 0.68f, 0.75f, 0.85f);
-			Ui()->DoLabel(&Button, (g_Config.m_AcVoiceOnlyTeam && LocalTeam <= 0) ? TCLocalize("Entra a un /team (> 0) para ver a tus companeros.") : TCLocalize("No hay otros jugadores en tu team."), FontSize * 0.85f, TEXTALIGN_ML);
+			const char *pEmptyMsg = TCLocalize("Ningun jugador en tu sala tiene Voice Chat activo ahora.");
+			if(!g_Config.m_AcVoiceEnabled)
+				pEmptyMsg = TCLocalize("Activa Voice Chat para ver con quien puedes hablar.");
+			else if(Voice.IsInCustomRoom())
+				pEmptyMsg = TCLocalize("Esperando amigos en la sala privada...");
+			else if(!Voice.IsRoomActive())
+				pEmptyMsg = TCLocalize("Entra a un /team (> 0) o crea una sala privada arriba.");
+			Ui()->DoLabel(&Button, pEmptyMsg, FontSize * 0.85f, TEXTALIGN_ML);
 			TextRender()->TextColor(TextRender()->DefaultTextColor());
+		}
+
+		if(Voice.IsInCustomRoom() && Client()->State() == IClient::STATE_ONLINE)
+		{
+			const int ActiveDummy = std::clamp(g_Config.m_ClDummy, 0, NUM_DUMMIES - 1);
+			const int LocalId = GameClient()->m_aLocalIds[ActiveDummy];
+			int ServerCandidates = 0;
+			for(int i = 0; i < MAX_CLIENTS; ++i)
+			{
+				if(i == LocalId || !GameClient()->m_aClients[i].m_Active)
+					continue;
+				const char *pSrvName = GameClient()->m_aClients[i].m_aName;
+				bool AlreadyInRoom = false;
+				for(const auto &Peer : vAvailablePeers)
+				{
+					if(str_comp_nocase(Peer.m_aName, pSrvName) == 0)
+					{
+						AlreadyInRoom = true;
+						break;
+					}
+				}
+				if(AlreadyInRoom)
+					continue;
+
+				if(ServerCandidates == 0)
+				{
+					Column.HSplitTop(MarginSmall, nullptr, &Column);
+					Column.HSplitTop(LineSize, &Label, &Column);
+					Ui()->DoLabel(&Label, TCLocalize("Invitar del servidor actual:"), FontSize * 0.9f, TEXTALIGN_ML);
+				}
+				Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+				Column.HSplitTop(LineSize, &Button, &Column);
+				CUIRect NameRect, InvBtn;
+				Button.VSplitRight(56.0f, &NameRect, &InvBtn);
+				NameRect.VSplitRight(4.0f, &NameRect, nullptr);
+
+				Ui()->DoLabel(&NameRect, pSrvName, FontSize * 0.85f, TEXTALIGN_ML);
+				if(DoButton_Menu(&s_aPeerInviteBtns[i], TCLocalize("Invitar"), 0, &InvBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, ColorRGBA(0.28f, 0.58f, 0.90f, 0.75f)))
+				{
+					Voice.SendRoomInvite(pSrvName);
+				}
+				++ServerCandidates;
+			}
 		}
 	}
 
@@ -8336,6 +8935,23 @@ void CMenus::RenderSettingsAClientSettings(CUIRect MainView)
 
 	if(!VisualTab)
 	{
+	// ***** Bloque: Configuraciones de jugadores ***** //
+	{
+		CUIRect ConfigSyncSection;
+		ConfigSyncSection.x = LeftView.x;
+		ConfigSyncSection.y = std::max(LeftView.y, RightView.y) + MarginBetweenSections;
+		ConfigSyncSection.w = (RightView.x + RightView.w) - LeftView.x;
+		ConfigSyncSection.h = 115.0f;
+
+		s_SectionBoxesAc.push_back(ConfigSyncSection);
+
+		const float UsedHeight = RenderPlayerConfigsPanel(ConfigSyncSection, false, nullptr);
+
+		s_SectionBoxesAc.back().h = UsedHeight + MarginSmall;
+		LeftView.y = ConfigSyncSection.y + UsedHeight + MarginSmall;
+		RightView.y = ConfigSyncSection.y + UsedHeight + MarginSmall;
+	}
+
 	// ***** Bloque: Actualizador Integrado de AClient ***** //
 	CUIRect UpdateSection;
 	UpdateSection.x = LeftView.x;
@@ -8998,11 +9614,224 @@ void CMenus::RenderSettingsAClientMod(CUIRect MainView)
 
 	RightView = Column;
 
+	// Section 6: Voice Chat Moderation (Global Relay)
+	CUIRect VoiceModCol = MainView;
+	VoiceModCol.y = std::max(LeftView.y, RightView.y) + MarginBetweenSections;
+	VoiceModCol.x = MainView.x + MarginSmall;
+	VoiceModCol.w = MainView.w - MarginSmall * 2.0f;
+
+	s_SectionBoxesMod.push_back(VoiceModCol);
+
+	VoiceModCol.HSplitTop(HeadlineHeight, &Label, &VoiceModCol);
+	Ui()->DoLabel(&Label, TCLocalize("Voice Chat Moderation (Global Relay)"), HeadlineFontSize, TEXTALIGN_ML);
+	VoiceModCol.HSplitTop(MarginSmall, nullptr, &VoiceModCol);
+
+	{
+		CAClientVoice &Voice = GameClient()->m_AClientVoice;
+		static CLineInputBuffered<128> s_VoiceModKeyInput;
+		static CLineInputBuffered<MAX_NAME_LENGTH> s_VoiceModTargetInput;
+		static CLineInputNumber s_VoiceModMinInput;
+		static CButtonContainer s_BtnVerifyVoiceModKey;
+		static CButtonContainer s_BtnClearVoiceModKey;
+		static CButtonContainer s_aBtnModPreset[5];
+		static CButtonContainer s_BtnModManualMute;
+		static CButtonContainer s_BtnModManualUnmute;
+		static CButtonContainer s_aBtnModPlayerMute[MAX_CLIENTS];
+		static CButtonContainer s_aBtnModPlayerUnmute[MAX_CLIENTS];
+
+		if(!Voice.IsModKeyVerified())
+		{
+			VoiceModCol.HSplitTop(LineSize, &Button, &VoiceModCol);
+			CUIRect KeyLabel, KeyBox, VerifyBtn;
+			Button.VSplitLeft(110.0f, &KeyLabel, &KeyBox);
+			KeyBox.VSplitRight(150.0f, &KeyBox, &VerifyBtn);
+			KeyBox.VSplitRight(MarginExtraSmall, &KeyBox, nullptr);
+
+			Ui()->DoLabel(&KeyLabel, TCLocalize("Key VoiceChat:"), FontSize, TEXTALIGN_ML);
+			s_VoiceModKeyInput.SetHidden(true);
+			s_VoiceModKeyInput.SetEmptyText(TCLocalize("Ingresa tu clave de moderador..."));
+			Ui()->DoEditBox(&s_VoiceModKeyInput, &KeyBox, EditBoxFontSize);
+
+			const bool KeyEnter = s_VoiceModKeyInput.IsActive() && (Ui()->ConsumeHotkey(CUi::HOTKEY_ENTER) || Input()->KeyPress(KEY_RETURN) || Input()->KeyPress(KEY_KP_ENTER));
+			if(DoButton_Menu(&s_BtnVerifyVoiceModKey, TCLocalize("Verificar y Guardar"), 0, &VerifyBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, ColorRGBA(0.25f, 0.65f, 0.40f, 0.85f)) || KeyEnter)
+			{
+				if(Voice.VerifyAndSaveModKey(s_VoiceModKeyInput.GetString()))
+				{
+					s_VoiceModKeyInput.Clear();
+				}
+			}
+
+			VoiceModCol.HSplitTop(MarginExtraSmall, nullptr, &VoiceModCol);
+			VoiceModCol.HSplitTop(LineSize * 0.9f, &Label, &VoiceModCol);
+			if(Voice.GetModStatusMsg()[0] != '\0')
+			{
+				TextRender()->TextColor(1.0f, 0.35f, 0.35f, 1.0f);
+				Ui()->DoLabel(&Label, Voice.GetModStatusMsg(), FontSize * 0.85f, TEXTALIGN_ML);
+				TextRender()->TextColor(TextRender()->DefaultTextColor());
+			}
+			else
+			{
+				TextRender()->TextColor(0.70f, 0.72f, 0.78f, 0.90f);
+				Ui()->DoLabel(&Label, TCLocalize("Ingresa la clave correcta una sola vez; se guardara en tu configuracion."), FontSize * 0.85f, TEXTALIGN_ML);
+				TextRender()->TextColor(TextRender()->DefaultTextColor());
+			}
+		}
+		else
+		{
+			VoiceModCol.HSplitTop(LineSize, &Button, &VoiceModCol);
+			CUIRect StatusLabel, LogoutBtn;
+			Button.VSplitRight(125.0f, &StatusLabel, &LogoutBtn);
+			StatusLabel.VSplitRight(MarginExtraSmall, &StatusLabel, nullptr);
+
+			TextRender()->TextColor(0.30f, 0.95f, 0.45f, 1.0f);
+			Ui()->DoLabel(&StatusLabel, TCLocalize("Clave verificada (Guardada en config)"), FontSize, TEXTALIGN_ML);
+			TextRender()->TextColor(TextRender()->DefaultTextColor());
+
+			if(DoButton_Menu(&s_BtnClearVoiceModKey, TCLocalize("Cerrar Sesion"), 0, &LogoutBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, ColorRGBA(0.78f, 0.28f, 0.28f, 0.80f)))
+			{
+				Voice.ClearModKey();
+			}
+
+			// Duration presets + custom minutes input (0 = Permanente)
+			VoiceModCol.HSplitTop(MarginExtraSmall, nullptr, &VoiceModCol);
+			VoiceModCol.HSplitTop(LineSize, &Button, &VoiceModCol);
+			CUIRect DurLabel, PresetsArea, MinBox;
+			Button.VSplitLeft(128.0f, &DurLabel, &PresetsArea);
+			PresetsArea.VSplitRight(125.0f, &PresetsArea, &MinBox);
+			PresetsArea.VSplitRight(MarginSmall, &PresetsArea, nullptr);
+
+			Ui()->DoLabel(&DurLabel, TCLocalize("Duracion (0=Perm):"), FontSize, TEXTALIGN_ML);
+
+			static const int s_aPresetMins[5] = {5, 15, 60, 1440, 0};
+			const char *apPresetLabels[5] = {TCLocalize("5m"), TCLocalize("15m"), TCLocalize("1h"), TCLocalize("24h"), TCLocalize("Permanente")};
+			const float PresetGap = MarginExtraSmall;
+			const float PresetTotalW = PresetsArea.w - PresetGap * 4.0f;
+			const float PresetW = std::max(30.0f, (PresetTotalW - 36.0f) / 5.0f);
+			CUIRect CurPreset = PresetsArea;
+			for(int p = 0; p < 5; ++p)
+			{
+				CUIRect BtnRect;
+				const float ThisW = (p == 4) ? std::max(45.0f, CurPreset.w) : PresetW;
+				CurPreset.VSplitLeft(ThisW, &BtnRect, &CurPreset);
+				if(p < 4)
+					CurPreset.VSplitLeft(PresetGap, nullptr, &CurPreset);
+
+				const bool Active = (g_Config.m_AcVoiceModMuteMinutes == s_aPresetMins[p]);
+				const ColorRGBA BtnColor = Active ? ColorRGBA(0.25f, 0.72f, 0.42f, 0.88f) : ColorRGBA(0.25f, 0.28f, 0.35f, 0.65f);
+				if(DoButton_Menu(&s_aBtnModPreset[p], apPresetLabels[p], Active ? 1 : 0, &BtnRect, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, BtnColor))
+				{
+					g_Config.m_AcVoiceModMuteMinutes = s_aPresetMins[p];
+					char aMinBuf[16];
+					str_format(aMinBuf, sizeof(aMinBuf), "%d", s_aPresetMins[p]);
+					s_VoiceModMinInput.Set(aMinBuf);
+				}
+			}
+
+			DoEditBoxNumberWithLabel(&s_VoiceModMinInput, &MinBox, TCLocalize("Min:"), &g_Config.m_AcVoiceModMuteMinutes, 0, 525600);
+
+			const int MuteMinutes = std::clamp(g_Config.m_AcVoiceModMuteMinutes, 0, 525600);
+			const int DurationSeconds = (MuteMinutes == 0) ? 0 : (MuteMinutes * 60);
+
+			// Manual target input
+			VoiceModCol.HSplitTop(MarginExtraSmall, nullptr, &VoiceModCol);
+			VoiceModCol.HSplitTop(LineSize, &Button, &VoiceModCol);
+			CUIRect TargetLabel, TargetBox, ManualMuteBtn, ManualUnmuteBtn;
+			Button.VSplitLeft(68.0f, &TargetLabel, &TargetBox);
+			TargetBox.VSplitRight(75.0f, &TargetBox, &ManualUnmuteBtn);
+			TargetBox.VSplitRight(MarginExtraSmall, &TargetBox, nullptr);
+			TargetBox.VSplitRight(98.0f, &TargetBox, &ManualMuteBtn);
+			TargetBox.VSplitRight(MarginExtraSmall, &TargetBox, nullptr);
+
+			Ui()->DoLabel(&TargetLabel, TCLocalize("Jugador:"), FontSize, TEXTALIGN_ML);
+			s_VoiceModTargetInput.SetEmptyText(TCLocalize("Nombre exacto del jugador..."));
+			Ui()->DoEditBox(&s_VoiceModTargetInput, &TargetBox, EditBoxFontSize);
+
+			const bool TargetEnter = s_VoiceModTargetInput.IsActive() && (Ui()->ConsumeHotkey(CUi::HOTKEY_ENTER) || Input()->KeyPress(KEY_RETURN) || Input()->KeyPress(KEY_KP_ENTER));
+			if(DoButton_Menu(&s_BtnModManualMute, TCLocalize("Mute Global"), 0, &ManualMuteBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, ColorRGBA(0.85f, 0.30f, 0.25f, 0.85f)) || TargetEnter)
+			{
+				if(s_VoiceModTargetInput.GetString()[0] != '\0')
+				{
+					Voice.SendGlobalModMute(-1, s_VoiceModTargetInput.GetString(), DurationSeconds);
+				}
+			}
+			if(DoButton_Menu(&s_BtnModManualUnmute, TCLocalize("Unmute"), 0, &ManualUnmuteBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, ColorRGBA(0.28f, 0.62f, 0.85f, 0.80f)))
+			{
+				if(s_VoiceModTargetInput.GetString()[0] != '\0')
+				{
+					Voice.SendGlobalModMute(-1, s_VoiceModTargetInput.GetString(), -1);
+				}
+			}
+
+			// Connected players in current server
+			if(Client()->State() == IClient::STATE_ONLINE)
+			{
+				const int ActiveDummy = std::clamp(g_Config.m_ClDummy, 0, NUM_DUMMIES - 1);
+				const int LocalId = GameClient()->m_aLocalIds[ActiveDummy];
+				int ListedPlayers = 0;
+				for(int i = 0; i < MAX_CLIENTS; ++i)
+				{
+					if(i == LocalId || !GameClient()->m_aClients[i].m_Active)
+						continue;
+
+					if(ListedPlayers == 0)
+					{
+						VoiceModCol.HSplitTop(MarginSmall, nullptr, &VoiceModCol);
+						VoiceModCol.HSplitTop(LineSize, &Label, &VoiceModCol);
+						Ui()->DoLabel(&Label, TCLocalize("Jugadores conectados en este servidor:"), FontSize * 0.9f, TEXTALIGN_ML);
+					}
+
+					VoiceModCol.HSplitTop(MarginExtraSmall, nullptr, &VoiceModCol);
+					VoiceModCol.HSplitTop(LineSize, &Button, &VoiceModCol);
+					CUIRect NameLabel, PlayerMuteBtn, PlayerUnmuteBtn;
+					Button.VSplitRight(75.0f, &NameLabel, &PlayerUnmuteBtn);
+					NameLabel.VSplitRight(MarginExtraSmall, &NameLabel, nullptr);
+					NameLabel.VSplitRight(98.0f, &NameLabel, &PlayerMuteBtn);
+					NameLabel.VSplitRight(MarginExtraSmall, &NameLabel, nullptr);
+
+					char aPlayerLabel[MAX_NAME_LENGTH + 16];
+					str_format(aPlayerLabel, sizeof(aPlayerLabel), "[%d] %s", i, GameClient()->m_aClients[i].m_aName);
+					Ui()->DoLabel(&NameLabel, aPlayerLabel, FontSize * 0.9f, TEXTALIGN_ML);
+
+					if(DoButton_Menu(&s_aBtnModPlayerMute[i], TCLocalize("Mute Global"), 0, &PlayerMuteBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, ColorRGBA(0.85f, 0.30f, 0.25f, 0.85f)))
+					{
+						Voice.SendGlobalModMute(i, GameClient()->m_aClients[i].m_aName, DurationSeconds);
+					}
+					if(DoButton_Menu(&s_aBtnModPlayerUnmute[i], TCLocalize("Unmute"), 0, &PlayerUnmuteBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, ColorRGBA(0.28f, 0.62f, 0.85f, 0.80f)))
+					{
+						Voice.SendGlobalModMute(i, GameClient()->m_aClients[i].m_aName, -1);
+					}
+					++ListedPlayers;
+				}
+
+				if(ListedPlayers == 0)
+				{
+					VoiceModCol.HSplitTop(MarginExtraSmall, nullptr, &VoiceModCol);
+					VoiceModCol.HSplitTop(LineSize, &Label, &VoiceModCol);
+					TextRender()->TextColor(0.65f, 0.68f, 0.75f, 0.85f);
+					Ui()->DoLabel(&Label, TCLocalize("No hay otros jugadores conectados en este servidor."), FontSize * 0.85f, TEXTALIGN_ML);
+					TextRender()->TextColor(TextRender()->DefaultTextColor());
+				}
+			}
+
+			if(Voice.GetModStatusMsg()[0] != '\0')
+			{
+				VoiceModCol.HSplitTop(MarginExtraSmall, nullptr, &VoiceModCol);
+				VoiceModCol.HSplitTop(LineSize * 0.9f, &Label, &VoiceModCol);
+				TextRender()->TextColor(0.45f, 0.90f, 1.0f, 1.0f);
+				Ui()->DoLabel(&Label, Voice.GetModStatusMsg(), FontSize * 0.85f, TEXTALIGN_ML);
+				TextRender()->TextColor(TextRender()->DefaultTextColor());
+			}
+		}
+	}
+
+	VoiceModCol.HSplitTop(MarginSmall, nullptr, &VoiceModCol);
+	s_SectionBoxesMod.back().h = VoiceModCol.y - s_SectionBoxesMod.back().y;
+
 	CUIRect ScrollRegion;
 	ScrollRegion.x = MainView.x;
 	ScrollRegion.y = MainView.y;
 	ScrollRegion.w = MainView.w;
-	ScrollRegion.h = std::max(LeftView.y, RightView.y) - MainView.y;
+	ScrollRegion.h = std::max(VoiceModCol.y, std::max(LeftView.y, RightView.y)) - MainView.y;
 	s_ScrollRegionMod.AddRect(ScrollRegion);
 	s_ScrollRegionMod.End();
 }
@@ -9202,6 +10031,29 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 		}
 	};
 
+	auto DoColorBtn = [this](CButtonContainer *pId, const char *pText, const CUIRect *pRect, ColorRGBA BaseColor, int Corners = IGraphics::CORNER_ALL, float Rounding = 3.5f, float LabelFontSize = 11.0f, bool Active = false) -> int {
+		const bool Hot = Ui()->HotItem() == pId;
+		ColorRGBA DrawCol = BaseColor;
+		if(Hot)
+		{
+			DrawCol.r = std::min(1.0f, DrawCol.r + 0.10f);
+			DrawCol.g = std::min(1.0f, DrawCol.g + 0.10f);
+			DrawCol.b = std::min(1.0f, DrawCol.b + 0.10f);
+			DrawCol.a = std::min(1.0f, DrawCol.a + 0.12f);
+		}
+		pRect->Draw(DrawCol, Corners, Rounding);
+		if(Active)
+		{
+			CUIRect Underline;
+			pRect->HSplitBottom(2.0f, nullptr, &Underline);
+			Underline.Draw(ColorRGBA(1.0f, 1.0f, 1.0f, 0.85f), IGraphics::CORNER_NONE, 0.0f);
+		}
+		TextRender()->TextColor(1.0f, 1.0f, 1.0f, (Active || Hot) ? 1.0f : 0.90f);
+		Ui()->DoLabel(pRect, pText, LabelFontSize, TEXTALIGN_MC);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
+		return Ui()->DoButtonLogic(pId, 0, pRect, BUTTONFLAG_LEFT);
+	};
+
 	// Search input box with internal buffer
 	static CLineInputBuffered<128> s_ProfileSearchInput;
 	static char s_aLastSyncedReq[MAX_NAME_LENGTH] = "";
@@ -9227,92 +10079,40 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 		s_ProfileSearchInput.Set(pReqName);
 	}
 
-	TopBar.VSplitLeft(140.0f, &SearchBox, &TopBar);
-	s_ProfileSearchInput.SetEmptyText(TCLocalize("Buscar jugador..."));
-	Ui()->DoEditBox(&s_ProfileSearchInput, &SearchBox, FontSize);
-
-	const bool SearchTriggered = s_ProfileSearchInput.IsActive() && (Ui()->ConsumeHotkey(CUi::HOTKEY_ENTER) || Input()->KeyPress(KEY_RETURN) || Input()->KeyPress(KEY_KP_ENTER));
-
-	TopBar.VSplitLeft(Margin, nullptr, &TopBar);
-
-	// [ Buscar ]
-	static CButtonContainer s_BtnSearch;
-	TopBar.VSplitLeft(55.0f, &Button, &TopBar);
-	if(DoButton_Menu(&s_BtnSearch, TCLocalize("Buscar"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.2f, 0.6f, 0.9f, 0.5f)) || SearchTriggered)
-	{
-		const char *pSearch = s_ProfileSearchInput.GetString();
-		char aTrimmed[128];
-		if(pSearch)
-		{
-			str_copy(aTrimmed, pSearch);
-			char *pStart = aTrimmed;
-			while(*pStart && (unsigned char)*pStart <= ' ')
-				pStart++;
-			char *pEnd = pStart + str_length(pStart);
-			while(pEnd > pStart && (unsigned char)*(pEnd - 1) <= ' ')
-				pEnd--;
-			*pEnd = '\0';
-			if(pStart[0] != '\0')
-			{
-				str_copy(s_aLastSyncedReq, pStart);
-				s_ProfileSearchInput.Set(pStart);
-				if(IsKoG)
-					Profiles.FetchKoGProfile(pStart);
-				else
-					Profiles.FetchProfile(pStart);
-			}
-		}
-	}
-
-	TopBar.VSplitLeft(Margin, nullptr, &TopBar);
-
-	// [ Mi Perfil ]
-	static CButtonContainer s_BtnMyProfile;
-	TopBar.VSplitLeft(70.0f, &Button, &TopBar);
-	if(DoButton_Menu(&s_BtnMyProfile, TCLocalize("Mi Perfil"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.3f, 0.7f, 0.3f, 0.5f)))
-	{
-		const char *pMyName = Client()->PlayerName();
-		if(pMyName && pMyName[0] != '\0')
-		{
-			s_ProfileSearchInput.Set(pMyName);
-			str_copy(s_aLastSyncedReq, pMyName);
-			if(IsKoG)
-				Profiles.FetchKoGProfile(pMyName);
-			else
-				Profiles.FetchProfile(pMyName);
-		}
-	}
-
-	TopBar.VSplitLeft(Margin, nullptr, &TopBar);
-
-	// [ Recargar ]
-	static CButtonContainer s_BtnRefresh;
-	TopBar.VSplitLeft(65.0f, &Button, &TopBar);
-	if(DoButton_Menu(&s_BtnRefresh, TCLocalize("Recargar"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.6f, 0.6f, 0.6f, 0.5f)))
-	{
-		const char *pSearch = s_ProfileSearchInput.GetString();
-		const char *pTarget = (pSearch && pSearch[0] != '\0') ? pSearch : Client()->PlayerName();
-		if(pTarget && pTarget[0] != '\0')
-		{
-			str_copy(s_aLastSyncedReq, pTarget);
-			if(IsKoG)
-			{
-				Profiles.FetchKoGProfile(pTarget, true);
-				Profiles.FetchKoGMapsMetaNetwork();
-			}
-			else
-				Profiles.FetchProfile(pTarget, true);
-		}
-	}
-
-	TopBar.VSplitLeft(Margin * 1.5f, nullptr, &TopBar);
-
-	// Source Selector: [ DDNet | KoG ]
+	// ==========================================
+	// Fila 1: Modo [Individual | Equipo] + Plataforma [DDNet | KoG] + [Recargar] + Webs
+	// ==========================================
+	const bool IsTeamMode = (g_Config.m_AcProfileViewMode == 1);
+	static CButtonContainer s_BtnModeIndiv;
+	static CButtonContainer s_BtnModeTeam;
 	static CButtonContainer s_BtnSrcDDNet;
 	static CButtonContainer s_BtnSrcKoG;
-	TopBar.VSplitLeft(50.0f, &Button, &TopBar);
-	ColorRGBA DDNetColor = !IsKoG ? ColorRGBA(0.2f, 0.55f, 0.9f, 0.85f) : ColorRGBA(0.2f, 0.2f, 0.2f, 0.45f);
-	if(DoButton_Menu(&s_BtnSrcDDNet, "DDNet", 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L, 3.0f, 0.0f, DDNetColor))
+	static CButtonContainer s_BtnRefresh;
+	static CButtonContainer s_BtnKoGWeb;
+	static CButtonContainer s_BtnDDNetWeb;
+
+	const ColorRGBA InactiveTabCol(0.14f, 0.16f, 0.22f, 0.72f);
+
+	TopBar.VSplitLeft(76.0f, &Button, &TopBar);
+	if(DoColorBtn(&s_BtnModeIndiv, TCLocalize("Individual"), &Button, !IsTeamMode ? ColorRGBA(0.20f, 0.50f, 0.88f, 0.90f) : InactiveTabCol, IGraphics::CORNER_L, 4.0f, 11.0f, !IsTeamMode))
+	{
+		g_Config.m_AcProfileViewMode = 0;
+	}
+
+	TopBar.VSplitLeft(68.0f, &Button, &TopBar);
+	if(DoColorBtn(&s_BtnModeTeam, TCLocalize("Equipo"), &Button, IsTeamMode ? ColorRGBA(0.48f, 0.26f, 0.86f, 0.90f) : InactiveTabCol, IGraphics::CORNER_R, 4.0f, 11.0f, IsTeamMode))
+	{
+		g_Config.m_AcProfileViewMode = 1;
+		if(Profiles.TeamPlayers().empty())
+			Profiles.AutoDetectCurrentTeam();
+		else
+			Profiles.ComputeTeamCommonUnfinished();
+	}
+
+	TopBar.VSplitLeft(12.0f, nullptr, &TopBar);
+
+	TopBar.VSplitLeft(56.0f, &Button, &TopBar);
+	if(DoColorBtn(&s_BtnSrcDDNet, "DDNet", &Button, !IsKoG ? ColorRGBA(0.16f, 0.54f, 0.86f, 0.90f) : InactiveTabCol, IGraphics::CORNER_L, 4.0f, 11.0f, !IsKoG))
 	{
 		if(g_Config.m_AcProfileSource != 0)
 		{
@@ -9326,9 +10126,8 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 		}
 	}
 
-	TopBar.VSplitLeft(45.0f, &Button, &TopBar);
-	ColorRGBA KoGColor = IsKoG ? ColorRGBA(0.9f, 0.45f, 0.1f, 0.85f) : ColorRGBA(0.2f, 0.2f, 0.2f, 0.45f);
-	if(DoButton_Menu(&s_BtnSrcKoG, "KoG", 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R, 3.0f, 0.0f, KoGColor))
+	TopBar.VSplitLeft(48.0f, &Button, &TopBar);
+	if(DoColorBtn(&s_BtnSrcKoG, "KoG", &Button, IsKoG ? ColorRGBA(0.86f, 0.44f, 0.12f, 0.90f) : InactiveTabCol, IGraphics::CORNER_R, 4.0f, 11.0f, IsKoG))
 	{
 		if(g_Config.m_AcProfileSource != 1)
 		{
@@ -9342,35 +10141,45 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 		}
 	}
 
-	TopBar.VSplitLeft(Margin * 1.5f, nullptr, &TopBar);
+	TopBar.VSplitLeft(12.0f, nullptr, &TopBar);
 
-	// Mode Selector: [ Individual | Equipo ]
-	const bool IsTeamMode = (g_Config.m_AcProfileViewMode == 1);
-	static CButtonContainer s_BtnModeIndiv;
-	static CButtonContainer s_BtnModeTeam;
-
-	TopBar.VSplitLeft(70.0f, &Button, &TopBar);
-	ColorRGBA IndivCol = !IsTeamMode ? ColorRGBA(0.2f, 0.6f, 0.9f, 0.85f) : ColorRGBA(0.2f, 0.2f, 0.2f, 0.45f);
-	if(DoButton_Menu(&s_BtnModeIndiv, TCLocalize("Individual"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L, 3.0f, 0.0f, IndivCol))
+	// Unico boton [ Recargar ] contextual (recarga equipo o perfil individual)
+	TopBar.VSplitLeft(74.0f, &Button, &TopBar);
+	if(DoColorBtn(&s_BtnRefresh, TCLocalize("Recargar"), &Button, ColorRGBA(0.18f, 0.46f, 0.54f, 0.82f), IGraphics::CORNER_ALL, 4.0f, 11.0f))
 	{
-		g_Config.m_AcProfileViewMode = 0;
-	}
-
-	TopBar.VSplitLeft(60.0f, &Button, &TopBar);
-	ColorRGBA TeamCol = IsTeamMode ? ColorRGBA(0.9f, 0.5f, 0.1f, 0.85f) : ColorRGBA(0.2f, 0.2f, 0.2f, 0.45f);
-	if(DoButton_Menu(&s_BtnModeTeam, TCLocalize("Equipo"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R, 3.0f, 0.0f, TeamCol))
-	{
-		g_Config.m_AcProfileViewMode = 1;
-		if(Profiles.TeamPlayers().empty())
-			Profiles.AutoDetectCurrentTeam();
+		if(IsTeamMode)
+		{
+			for(const auto &Name : Profiles.TeamPlayers())
+			{
+				if(IsKoG)
+					Profiles.FetchKoGProfile(Name.c_str(), true);
+				else
+					Profiles.FetchProfile(Name.c_str(), true);
+			}
+			if(IsKoG)
+				Profiles.FetchKoGMapsMetaNetwork();
+		}
 		else
-			Profiles.ComputeTeamCommonUnfinished();
+		{
+			const char *pSearch = s_ProfileSearchInput.GetString();
+			const char *pTarget = (pSearch && pSearch[0] != '\0') ? pSearch : Client()->PlayerName();
+			if(pTarget && pTarget[0] != '\0')
+			{
+				str_copy(s_aLastSyncedReq, pTarget);
+				if(IsKoG)
+				{
+					Profiles.FetchKoGProfile(pTarget, true);
+					Profiles.FetchKoGMapsMetaNetwork();
+				}
+				else
+					Profiles.FetchProfile(pTarget, true);
+			}
+		}
 	}
 
 	// Web links on right side of TopBar
-	static CButtonContainer s_BtnKoGWeb;
-	TopBar.VSplitRight(100.0f, &TopBar, &Button);
-	if(DoButton_Menu(&s_BtnKoGWeb, TCLocalize("Abrir KoG.tw"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.9f, 0.4f, 0.1f, 0.5f)))
+	TopBar.VSplitRight(68.0f, &TopBar, &Button);
+	if(DoColorBtn(&s_BtnKoGWeb, "KoG.tw", &Button, ColorRGBA(0.62f, 0.32f, 0.12f, 0.72f), IGraphics::CORNER_ALL, 4.0f, 10.5f))
 	{
 		const char *pTarget = IsKoG ? (Profiles.KoGState() == EProfileState::READY ? Profiles.CurrentKoGProfile().m_aName : s_ProfileSearchInput.GetString())
 		                            : (Profiles.State() == EProfileState::READY ? Profiles.CurrentProfile().m_aName : s_ProfileSearchInput.GetString());
@@ -9381,14 +10190,75 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 
 	TopBar.VSplitRight(Margin, &TopBar, nullptr);
 
-	static CButtonContainer s_BtnDDNetWeb;
-	TopBar.VSplitRight(115.0f, &TopBar, &Button);
-	if(DoButton_Menu(&s_BtnDDNetWeb, TCLocalize("Abrir DDNet.org"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.2f, 0.5f, 0.85f, 0.5f)))
+	TopBar.VSplitRight(82.0f, &TopBar, &Button);
+	if(DoColorBtn(&s_BtnDDNetWeb, "DDNet.org", &Button, ColorRGBA(0.16f, 0.38f, 0.66f, 0.72f), IGraphics::CORNER_ALL, 4.0f, 10.5f))
 	{
 		const char *pTarget = Profiles.State() == EProfileState::READY ? Profiles.CurrentProfile().m_aName : s_ProfileSearchInput.GetString();
 		if(!pTarget || pTarget[0] == '\0')
 			pTarget = Client()->PlayerName();
 		Profiles.OpenDDNetWeb(pTarget);
+	}
+
+	// Fila 2 (solo en modo Individual: buscador + Buscar + Mi Perfil)
+	if(!IsTeamMode)
+	{
+		CUIRect IndivBar;
+		Content.HSplitTop(LineHeight, &IndivBar, &Content);
+		Content.HSplitTop(Margin, nullptr, &Content);
+
+		IndivBar.VSplitLeft(180.0f, &SearchBox, &IndivBar);
+		s_ProfileSearchInput.SetEmptyText(TCLocalize("Buscar jugador..."));
+		Ui()->DoEditBox(&s_ProfileSearchInput, &SearchBox, FontSize);
+
+		const bool SearchTriggered = s_ProfileSearchInput.IsActive() && (Ui()->ConsumeHotkey(CUi::HOTKEY_ENTER) || Input()->KeyPress(KEY_RETURN) || Input()->KeyPress(KEY_KP_ENTER));
+
+		IndivBar.VSplitLeft(Margin, nullptr, &IndivBar);
+
+		static CButtonContainer s_BtnSearch;
+		IndivBar.VSplitLeft(66.0f, &Button, &IndivBar);
+		if(DoColorBtn(&s_BtnSearch, TCLocalize("Buscar"), &Button, ColorRGBA(0.20f, 0.55f, 0.88f, 0.85f), IGraphics::CORNER_ALL, 4.0f, 11.0f) || SearchTriggered)
+		{
+			const char *pSearch = s_ProfileSearchInput.GetString();
+			char aTrimmed[128];
+			if(pSearch)
+			{
+				str_copy(aTrimmed, pSearch);
+				char *pStart = aTrimmed;
+				while(*pStart && (unsigned char)*pStart <= ' ')
+					pStart++;
+				char *pEnd = pStart + str_length(pStart);
+				while(pEnd > pStart && (unsigned char)*(pEnd - 1) <= ' ')
+					pEnd--;
+				*pEnd = '\0';
+				if(pStart[0] != '\0')
+				{
+					str_copy(s_aLastSyncedReq, pStart);
+					s_ProfileSearchInput.Set(pStart);
+					if(IsKoG)
+						Profiles.FetchKoGProfile(pStart);
+					else
+						Profiles.FetchProfile(pStart);
+				}
+			}
+		}
+
+		IndivBar.VSplitLeft(Margin, nullptr, &IndivBar);
+
+		static CButtonContainer s_BtnMyProfile;
+		IndivBar.VSplitLeft(78.0f, &Button, &IndivBar);
+		if(DoColorBtn(&s_BtnMyProfile, TCLocalize("Mi Perfil"), &Button, ColorRGBA(0.20f, 0.62f, 0.38f, 0.85f), IGraphics::CORNER_ALL, 4.0f, 11.0f))
+		{
+			const char *pMyName = Client()->PlayerName();
+			if(pMyName && pMyName[0] != '\0')
+			{
+				s_ProfileSearchInput.Set(pMyName);
+				str_copy(s_aLastSyncedReq, pMyName);
+				if(IsKoG)
+					Profiles.FetchKoGProfile(pMyName);
+				else
+					Profiles.FetchProfile(pMyName);
+			}
+		}
 	}
 
 	// ==========================================
@@ -9402,8 +10272,8 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 
 		// [ Detectar Equipo ]
 		static CButtonContainer s_BtnDetectTeam;
-		TeamControls.VSplitLeft(105.0f, &Button, &TeamControls);
-		if(DoButton_Menu(&s_BtnDetectTeam, TCLocalize("Detectar Equipo"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.2f, 0.7f, 0.4f, 0.6f)))
+		TeamControls.VSplitLeft(108.0f, &Button, &TeamControls);
+		if(DoColorBtn(&s_BtnDetectTeam, TCLocalize("Detectar Equipo"), &Button, ColorRGBA(0.18f, 0.62f, 0.38f, 0.85f), IGraphics::CORNER_ALL, 4.0f, 11.0f))
 		{
 			Profiles.AutoDetectCurrentTeam();
 		}
@@ -9413,7 +10283,7 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 		// Input box to add custom player name
 		static CLineInputBuffered<64> s_AddPlayerInput;
 		CUIRect AddBox;
-		TeamControls.VSplitLeft(130.0f, &AddBox, &TeamControls);
+		TeamControls.VSplitLeft(140.0f, &AddBox, &TeamControls);
 		s_AddPlayerInput.SetEmptyText(TCLocalize("Agregar jugador..."));
 		Ui()->DoEditBox(&s_AddPlayerInput, &AddBox, FontSize);
 
@@ -9423,8 +10293,8 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 
 		// [ + Agregar ]
 		static CButtonContainer s_BtnAddPlayer;
-		TeamControls.VSplitLeft(70.0f, &Button, &TeamControls);
-		if(DoButton_Menu(&s_BtnAddPlayer, TCLocalize("+ Agregar"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.3f, 0.6f, 0.9f, 0.6f)) || AddTriggered)
+		TeamControls.VSplitLeft(74.0f, &Button, &TeamControls);
+		if(DoColorBtn(&s_BtnAddPlayer, TCLocalize("+ Agregar"), &Button, ColorRGBA(0.20f, 0.52f, 0.86f, 0.85f), IGraphics::CORNER_ALL, 4.0f, 11.0f) || AddTriggered)
 		{
 			const char *pAdd = s_AddPlayerInput.GetString();
 			if(pAdd && pAdd[0] != '\0')
@@ -9438,28 +10308,10 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 
 		// [ Limpiar ]
 		static CButtonContainer s_BtnClearTeam;
-		TeamControls.VSplitLeft(60.0f, &Button, &TeamControls);
-		if(DoButton_Menu(&s_BtnClearTeam, TCLocalize("Limpiar"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.6f, 0.3f, 0.3f, 0.5f)))
+		TeamControls.VSplitLeft(62.0f, &Button, &TeamControls);
+		if(DoColorBtn(&s_BtnClearTeam, TCLocalize("Limpiar"), &Button, ColorRGBA(0.68f, 0.22f, 0.24f, 0.82f), IGraphics::CORNER_ALL, 4.0f, 11.0f))
 		{
 			Profiles.ClearTeamPlayers();
-		}
-
-		TeamControls.VSplitLeft(Margin, nullptr, &TeamControls);
-
-		// [ Recargar ]
-		static CButtonContainer s_BtnReloadTeam;
-		TeamControls.VSplitLeft(70.0f, &Button, &TeamControls);
-		if(DoButton_Menu(&s_BtnReloadTeam, TCLocalize("Recargar"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.5f, 0.5f, 0.5f, 0.5f)))
-		{
-			for(const auto &Name : Profiles.TeamPlayers())
-			{
-				if(IsKoG)
-					Profiles.FetchKoGProfile(Name.c_str(), true);
-				else
-					Profiles.FetchProfile(Name.c_str(), true);
-			}
-			if(IsKoG)
-				Profiles.FetchKoGMapsMetaNetwork();
 		}
 
 		// Status text on right side of controls
@@ -9569,10 +10421,22 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 		CUIRect RightHeader;
 		RightCol.HSplitTop(28.0f, &RightHeader, &RightCol);
 		RightHeader.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.35f), IGraphics::CORNER_T, 4.0f);
-
-		CUIRect MapFilterBox, RightTitle;
-		RightHeader.VSplitRight(150.0f, &RightTitle, &MapFilterBox);
 		RightHeader.Margin(3.0f, &RightHeader);
+
+		CUIRect MapFilterBox, SortBtnRect, RightTitle;
+		RightHeader.VSplitRight(140.0f, &RightTitle, &MapFilterBox);
+		RightTitle.VSplitRight(4.0f, &RightTitle, nullptr);
+		RightTitle.VSplitRight(96.0f, &RightTitle, &SortBtnRect);
+		RightTitle.VSplitRight(6.0f, &RightTitle, nullptr);
+
+		static int s_TeamMapSortMode = 0; // 0 = A-Z, 1 = Puntos desc, 2 = Puntos asc
+		static CButtonContainer s_BtnTeamSort;
+		const char *pTeamSortLabel = s_TeamMapSortMode == 1 ? TCLocalize("Puntos (Mayor)") : (s_TeamMapSortMode == 2 ? TCLocalize("Puntos (Menor)") : TCLocalize("Orden: A-Z"));
+		const ColorRGBA TeamSortCol = s_TeamMapSortMode == 1 ? ColorRGBA(0.78f, 0.54f, 0.14f, 0.88f) : (s_TeamMapSortMode == 2 ? ColorRGBA(0.16f, 0.56f, 0.52f, 0.88f) : ColorRGBA(0.22f, 0.25f, 0.34f, 0.82f));
+		if(DoColorBtn(&s_BtnTeamSort, pTeamSortLabel, &SortBtnRect, TeamSortCol, IGraphics::CORNER_ALL, 3.0f, 10.0f, s_TeamMapSortMode != 0))
+		{
+			s_TeamMapSortMode = (s_TeamMapSortMode + 1) % 3;
+		}
 
 		static CLineInputBuffered<64> s_TeamMapFilter;
 		s_TeamMapFilter.SetEmptyText(TCLocalize("Filtrar mapa..."));
@@ -9616,14 +10480,14 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 			ColorRGBA BtnCol;
 			if(IsActive)
 			{
-				BtnCol = IsKoG ? ColorRGBA(0.95f, 0.5f, 0.15f, 0.85f) : ColorRGBA(0.2f, 0.6f, 0.9f, 0.85f);
+				BtnCol = IsKoG ? ColorRGBA(0.86f, 0.44f, 0.12f, 0.90f) : ColorRGBA(0.18f, 0.54f, 0.86f, 0.90f);
 			}
 			else
 			{
-				BtnCol = ColorRGBA(0.12f, 0.12f, 0.12f, 0.45f);
+				BtnCol = ColorRGBA(0.13f, 0.15f, 0.21f, 0.65f);
 			}
 
-			if(DoButton_Menu(&s_aBtnCatFilter[c], TCLocalize(apCats[c]), 0, &CatBtnRect, BUTTONFLAG_LEFT, nullptr, Corners, 3.0f, 0.0f, BtnCol))
+			if(DoColorBtn(&s_aBtnCatFilter[c], TCLocalize(apCats[c]), &CatBtnRect, BtnCol, Corners, 3.0f, 10.5f, IsActive))
 			{
 				if(IsAll || IsActive)
 					s_aSelectedCategory[0] = '\0';
@@ -9649,16 +10513,14 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 			for(char *p = aFilterLower; *p; ++p) *p = (char)tolower((unsigned char)*p);
 		}
 
-		const float ItemH = 24.0f;
-		size_t Shown = 0;
-
-		for(size_t i = 0; i < Profiles.CommonUnfinishedMaps().size(); ++i)
+		const auto &vCommonMaps = Profiles.CommonUnfinishedMaps();
+		std::vector<size_t> vFilteredIdx;
+		vFilteredIdx.reserve(vCommonMaps.size());
+		for(size_t i = 0; i < vCommonMaps.size(); ++i)
 		{
-			const CTeamUnfinishedMap &M = Profiles.CommonUnfinishedMaps()[i];
-
+			const CTeamUnfinishedMap &M = vCommonMaps[i];
 			if(!MatchesCategoryFilter(M.m_aCategory, s_aSelectedCategory))
 				continue;
-
 			if(aFilterLower[0] != '\0')
 			{
 				char aMapLower[64];
@@ -9667,8 +10529,36 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 				if(str_find(aMapLower, aFilterLower) == nullptr)
 					continue;
 			}
+			vFilteredIdx.push_back(i);
+		}
 
-			Shown++;
+		if(s_TeamMapSortMode == 1)
+		{
+			std::stable_sort(vFilteredIdx.begin(), vFilteredIdx.end(), [&](size_t A, size_t B) {
+				if(vCommonMaps[A].m_Points != vCommonMaps[B].m_Points)
+					return vCommonMaps[A].m_Points > vCommonMaps[B].m_Points;
+				return str_comp_nocase(vCommonMaps[A].m_aMap, vCommonMaps[B].m_aMap) < 0;
+			});
+		}
+		else if(s_TeamMapSortMode == 2)
+		{
+			std::stable_sort(vFilteredIdx.begin(), vFilteredIdx.end(), [&](size_t A, size_t B) {
+				const int Pa = vCommonMaps[A].m_Points > 0 ? vCommonMaps[A].m_Points : 999999;
+				const int Pb = vCommonMaps[B].m_Points > 0 ? vCommonMaps[B].m_Points : 999999;
+				if(Pa != Pb)
+					return Pa < Pb;
+				return str_comp_nocase(vCommonMaps[A].m_aMap, vCommonMaps[B].m_aMap) < 0;
+			});
+		}
+
+		const float ItemH = 24.0f;
+		const size_t Shown = vFilteredIdx.size();
+
+		for(size_t idx = 0; idx < vFilteredIdx.size(); ++idx)
+		{
+			const size_t i = vFilteredIdx[idx];
+			const CTeamUnfinishedMap &M = vCommonMaps[i];
+
 			CUIRect ItemRect;
 			RightCol.HSplitTop(ItemH, &ItemRect, &RightCol);
 			RightCol.HSplitTop(2.0f, nullptr, &RightCol);
@@ -9678,44 +10568,44 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 				ItemRect.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 3.0f);
 				ItemRect.Margin(3.0f, &ItemRect);
 
-				// Category Badge
+				// Category Badge (fixed width)
 				CUIRect CatBadge;
 				ItemRect.VSplitLeft(56.0f, &CatBadge, &ItemRect);
-				ItemRect.VSplitLeft(3.0f, nullptr, &ItemRect);
+				ItemRect.VSplitLeft(4.0f, nullptr, &ItemRect);
 				ColorRGBA CatCol = GetCategoryColor(M.m_aCategory);
 				ColorRGBA CatBgCol = ColorRGBA(CatCol.r * 0.35f, CatCol.g * 0.35f, CatCol.b * 0.35f, 0.6f);
 				CatBadge.Draw(CatBgCol, IGraphics::CORNER_ALL, 2.0f);
 				TextRender()->TextColor(CatCol.r, CatCol.g, CatCol.b, 1.0f);
 				Ui()->DoLabel(&CatBadge, M.m_aCategory[0] ? M.m_aCategory : "-", 10.0f, TEXTALIGN_MC);
 
-				// Points Badge
+				// Points Badge (ALWAYS reserved width so map names align perfectly)
+				CUIRect PtsBadge;
+				ItemRect.VSplitLeft(46.0f, &PtsBadge, &ItemRect);
+				ItemRect.VSplitLeft(6.0f, nullptr, &ItemRect);
 				if(M.m_Points > 0)
 				{
-					CUIRect PtsBadge;
-					ItemRect.VSplitLeft(42.0f, &PtsBadge, &ItemRect);
-					ItemRect.VSplitLeft(3.0f, nullptr, &ItemRect);
 					char aPtsBuf[16];
 					str_format(aPtsBuf, sizeof(aPtsBuf), "%d pts", M.m_Points);
-					TextRender()->TextColor(1.0f, 0.85f, 0.3f, 0.9f);
+					TextRender()->TextColor(1.0f, 0.85f, 0.3f, 0.95f);
 					Ui()->DoLabel(&PtsBadge, aPtsBuf, 10.0f, TEXTALIGN_MC);
 				}
-
-				CUIRect MapNameCol, ActionCol, StatusCol;
-				ItemRect.VSplitLeft(ItemRect.w * 0.48f, &MapNameCol, &StatusCol);
-
-				TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
-				Ui()->DoLabel(&MapNameCol, M.m_aMap, 11.5f, TEXTALIGN_ML);
+				else
+				{
+					TextRender()->TextColor(0.45f, 0.48f, 0.55f, 0.65f);
+					Ui()->DoLabel(&PtsBadge, "-", 10.0f, TEXTALIGN_MC);
+				}
 
 				if(IsOnline)
 				{
 					bool DifferentDiff = (aCurCategory[0] != '\0' && M.m_aCategory[0] != '\0' && str_comp_nocase(M.m_aCategory, aCurCategory) != 0);
 
-					StatusCol.VSplitRight(50.0f, &StatusCol, &ActionCol);
+					CUIRect ActionCol;
+					ItemRect.VSplitRight(54.0f, &ItemRect, &ActionCol);
 					static std::vector<CButtonContainer> s_vBtnVoteMap;
-					if(s_vBtnVoteMap.size() < Profiles.CommonUnfinishedMaps().size())
-						s_vBtnVoteMap.resize(Profiles.CommonUnfinishedMaps().size());
+					if(s_vBtnVoteMap.size() < vCommonMaps.size())
+						s_vBtnVoteMap.resize(vCommonMaps.size());
 					CButtonContainer *pVoteBtn = &s_vBtnVoteMap[i];
-					if(DoButton_Menu(pVoteBtn, TCLocalize("Votar"), 0, &ActionCol, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 2.0f, 0.0f, ColorRGBA(0.2f, 0.5f, 0.85f, 0.65f)))
+					if(DoColorBtn(pVoteBtn, TCLocalize("Votar"), &ActionCol, ColorRGBA(0.18f, 0.50f, 0.86f, 0.82f), IGraphics::CORNER_ALL, 3.0f, 10.0f))
 					{
 						VoteForMap(M.m_aMap);
 					}
@@ -9723,22 +10613,22 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 					if(DifferentDiff)
 					{
 						CUIRect DiffCol;
-						StatusCol.VSplitRight(3.0f, &StatusCol, nullptr);
-						StatusCol.VSplitRight(60.0f, &StatusCol, &DiffCol);
+						ItemRect.VSplitRight(4.0f, &ItemRect, nullptr);
+						ItemRect.VSplitRight(98.0f, &ItemRect, &DiffCol);
 						static std::vector<CButtonContainer> s_vBtnVoteDiff;
-						if(s_vBtnVoteDiff.size() < Profiles.CommonUnfinishedMaps().size())
-							s_vBtnVoteDiff.resize(Profiles.CommonUnfinishedMaps().size());
+						if(s_vBtnVoteDiff.size() < vCommonMaps.size())
+							s_vBtnVoteDiff.resize(vCommonMaps.size());
 						CButtonContainer *pDiffBtn = &s_vBtnVoteDiff[i];
-						if(DoButton_Menu(pDiffBtn, TCLocalize("Votar Dif"), 0, &DiffCol, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 2.0f, 0.0f, ColorRGBA(0.85f, 0.5f, 0.15f, 0.75f)))
+						if(DoColorBtn(pDiffBtn, TCLocalize("Votar Dificultad"), &DiffCol, ColorRGBA(0.84f, 0.45f, 0.12f, 0.85f), IGraphics::CORNER_ALL, 3.0f, 10.0f))
 						{
 							VoteForCategory(M.m_aCategory);
 						}
 					}
+					ItemRect.VSplitRight(6.0f, &ItemRect, nullptr);
 				}
 
-				TextRender()->TextColor(1.0f, 0.6f, 0.4f, 0.9f);
-				Ui()->DoLabel(&StatusCol, TCLocalize("Incompleto"), 10.5f, TEXTALIGN_MC);
 				TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+				Ui()->DoLabel(&ItemRect, M.m_aMap, 11.5f, TEXTALIGN_ML);
 			}
 		}
 
@@ -10035,17 +10925,30 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 		char aFinTabStr[64];
 		str_format(aFinTabStr, sizeof(aFinTabStr), "%s (%zu)", TCLocalize("Mapas Terminados"), Prof.m_vFinishes.size());
 		RightHeader.VSplitLeft(RightHeader.w * 0.5f, &TabBtn, &RightHeader);
-		ColorRGBA TabFinCol = (s_KoGRightTab == 0) ? ColorRGBA(0.2f, 0.6f, 0.9f, 0.7f) : ColorRGBA(0.2f, 0.2f, 0.2f, 0.3f);
-		if(DoButton_Menu(&s_BtnKoGFins, aFinTabStr, 0, &TabBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L, 3.0f, 0.0f, TabFinCol))
+		if(DoColorBtn(&s_BtnKoGFins, aFinTabStr, &TabBtn, s_KoGRightTab == 0 ? ColorRGBA(0.20f, 0.54f, 0.86f, 0.88f) : InactiveTabCol, IGraphics::CORNER_L, 3.0f, 10.5f, s_KoGRightTab == 0))
 			s_KoGRightTab = 0;
 
 		char aUnfinTabStr[64];
 		str_format(aUnfinTabStr, sizeof(aUnfinTabStr), "%s (%zu)", TCLocalize("Pendientes"), Prof.m_vUnfinishedMaps.size());
-		ColorRGBA TabUnfinCol = (s_KoGRightTab == 1) ? ColorRGBA(0.2f, 0.6f, 0.9f, 0.7f) : ColorRGBA(0.2f, 0.2f, 0.2f, 0.3f);
-		if(DoButton_Menu(&s_BtnKoGUnfin, aUnfinTabStr, 0, &RightHeader, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R, 3.0f, 0.0f, TabUnfinCol))
+		if(DoColorBtn(&s_BtnKoGUnfin, aUnfinTabStr, &RightHeader, s_KoGRightTab == 1 ? ColorRGBA(0.86f, 0.44f, 0.12f, 0.88f) : InactiveTabCol, IGraphics::CORNER_R, 3.0f, 10.5f, s_KoGRightTab == 1))
 			s_KoGRightTab = 1;
 
-		// Map search filter input
+		// Map search filter input + sort by points (in Pendientes tab)
+		static int s_KoGUnfinSortMode = 0; // 0 = A-Z, 1 = Puntos desc, 2 = Puntos asc
+		static CButtonContainer s_BtnKoGUnfinSort;
+		if(s_KoGRightTab == 1)
+		{
+			CUIRect KoGSortRect;
+			RightFilter.VSplitRight(96.0f, &RightFilter, &KoGSortRect);
+			RightFilter.VSplitRight(4.0f, &RightFilter, nullptr);
+			const char *pSortLbl = s_KoGUnfinSortMode == 1 ? TCLocalize("Puntos (Mayor)") : (s_KoGUnfinSortMode == 2 ? TCLocalize("Puntos (Menor)") : TCLocalize("Orden: A-Z"));
+			const ColorRGBA SortCol = s_KoGUnfinSortMode == 1 ? ColorRGBA(0.78f, 0.54f, 0.14f, 0.88f) : (s_KoGUnfinSortMode == 2 ? ColorRGBA(0.16f, 0.56f, 0.52f, 0.88f) : ColorRGBA(0.22f, 0.25f, 0.34f, 0.82f));
+			if(DoColorBtn(&s_BtnKoGUnfinSort, pSortLbl, &KoGSortRect, SortCol, IGraphics::CORNER_ALL, 3.0f, 10.0f, s_KoGUnfinSortMode != 0))
+			{
+				s_KoGUnfinSortMode = (s_KoGUnfinSortMode + 1) % 3;
+			}
+		}
+
 		static CLineInputBuffered<64> s_KoGMapFilter;
 		s_KoGMapFilter.SetEmptyText(TCLocalize("Filtrar por nombre de mapa..."));
 		Ui()->DoEditBox(&s_KoGMapFilter, &RightFilter, 11.0f);
@@ -10145,9 +11048,14 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 			UnfinScrollParams.m_ScrollbarMargin = 3.0f;
 			s_ScrollKoGUnfinished.Begin(&RightList, &UnfinScrollParams);
 
-			const float ItemH = 22.0f;
-			size_t Shown = 0;
-
+			struct SUnfinRow
+			{
+				size_t m_Idx;
+				CMapMetadata m_Meta;
+				bool m_HasMeta;
+			};
+			std::vector<SUnfinRow> vUnfinRows;
+			vUnfinRows.reserve(Prof.m_vUnfinishedMaps.size());
 			for(size_t i = 0; i < Prof.m_vUnfinishedMaps.size(); ++i)
 			{
 				const std::string &MapName = Prof.m_vUnfinishedMaps[i];
@@ -10159,8 +11067,42 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 					if(str_find(aMapLower, aFilterLower) == nullptr)
 						continue;
 				}
+				CMapMetadata Meta{};
+				const bool HasMeta = Profiles.GetKoGMapMeta(MapName.c_str(), Meta);
+				vUnfinRows.push_back({i, Meta, HasMeta});
+			}
 
-				Shown++;
+			if(s_KoGUnfinSortMode == 1)
+			{
+				std::stable_sort(vUnfinRows.begin(), vUnfinRows.end(), [&](const SUnfinRow &A, const SUnfinRow &B) {
+					const int Pa = A.m_HasMeta ? A.m_Meta.m_Points : 0;
+					const int Pb = B.m_HasMeta ? B.m_Meta.m_Points : 0;
+					if(Pa != Pb)
+						return Pa > Pb;
+					return str_comp_nocase(Prof.m_vUnfinishedMaps[A.m_Idx].c_str(), Prof.m_vUnfinishedMaps[B.m_Idx].c_str()) < 0;
+				});
+			}
+			else if(s_KoGUnfinSortMode == 2)
+			{
+				std::stable_sort(vUnfinRows.begin(), vUnfinRows.end(), [&](const SUnfinRow &A, const SUnfinRow &B) {
+					const int Pa = (A.m_HasMeta && A.m_Meta.m_Points > 0) ? A.m_Meta.m_Points : 999999;
+					const int Pb = (B.m_HasMeta && B.m_Meta.m_Points > 0) ? B.m_Meta.m_Points : 999999;
+					if(Pa != Pb)
+						return Pa < Pb;
+					return str_comp_nocase(Prof.m_vUnfinishedMaps[A.m_Idx].c_str(), Prof.m_vUnfinishedMaps[B.m_Idx].c_str()) < 0;
+				});
+			}
+
+			const float ItemH = 22.0f;
+			const size_t Shown = vUnfinRows.size();
+
+			for(const SUnfinRow &Row : vUnfinRows)
+			{
+				const size_t i = Row.m_Idx;
+				const std::string &MapName = Prof.m_vUnfinishedMaps[i];
+				const CMapMetadata &Meta = Row.m_Meta;
+				const bool HasMeta = Row.m_HasMeta;
+
 				CUIRect ItemRect;
 				RightList.HSplitTop(ItemH, &ItemRect, &RightList);
 				RightList.HSplitTop(2.0f, nullptr, &RightList);
@@ -10170,48 +11112,45 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 					ItemRect.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.2f), IGraphics::CORNER_ALL, 3.0f);
 					ItemRect.Margin(3.0f, &ItemRect);
 
-					CMapMetadata Meta{};
-					bool HasMeta = Profiles.GetKoGMapMeta(MapName.c_str(), Meta);
+					// Category Badge (fixed width)
+					CUIRect CatBadge;
+					ItemRect.VSplitLeft(56.0f, &CatBadge, &ItemRect);
+					ItemRect.VSplitLeft(4.0f, nullptr, &ItemRect);
+					const char *pCatStr = (HasMeta && Meta.m_aCategory[0]) ? Meta.m_aCategory : "-";
+					ColorRGBA CatCol = GetCategoryColor(pCatStr);
+					ColorRGBA CatBgCol = ColorRGBA(CatCol.r * 0.35f, CatCol.g * 0.35f, CatCol.b * 0.35f, 0.6f);
+					CatBadge.Draw(CatBgCol, IGraphics::CORNER_ALL, 2.0f);
+					TextRender()->TextColor(CatCol.r, CatCol.g, CatCol.b, 1.0f);
+					Ui()->DoLabel(&CatBadge, pCatStr, 10.0f, TEXTALIGN_MC);
 
-					if(HasMeta && Meta.m_aCategory[0])
-					{
-						CUIRect CatBadge;
-						ItemRect.VSplitLeft(56.0f, &CatBadge, &ItemRect);
-						ItemRect.VSplitLeft(3.0f, nullptr, &ItemRect);
-						ColorRGBA CatCol = GetCategoryColor(Meta.m_aCategory);
-						ColorRGBA CatBgCol = ColorRGBA(CatCol.r * 0.35f, CatCol.g * 0.35f, CatCol.b * 0.35f, 0.6f);
-						CatBadge.Draw(CatBgCol, IGraphics::CORNER_ALL, 2.0f);
-						TextRender()->TextColor(CatCol.r, CatCol.g, CatCol.b, 1.0f);
-						Ui()->DoLabel(&CatBadge, Meta.m_aCategory, 10.0f, TEXTALIGN_MC);
-					}
-
+					// Points Badge (ALWAYS reserved width so map names align)
+					CUIRect PtsBadge;
+					ItemRect.VSplitLeft(46.0f, &PtsBadge, &ItemRect);
+					ItemRect.VSplitLeft(6.0f, nullptr, &ItemRect);
 					if(HasMeta && Meta.m_Points > 0)
 					{
-						CUIRect PtsBadge;
-						ItemRect.VSplitLeft(42.0f, &PtsBadge, &ItemRect);
-						ItemRect.VSplitLeft(3.0f, nullptr, &ItemRect);
 						char aPtsBuf[16];
 						str_format(aPtsBuf, sizeof(aPtsBuf), "%d pts", Meta.m_Points);
-						TextRender()->TextColor(1.0f, 0.85f, 0.3f, 0.9f);
+						TextRender()->TextColor(1.0f, 0.85f, 0.3f, 0.95f);
 						Ui()->DoLabel(&PtsBadge, aPtsBuf, 10.0f, TEXTALIGN_MC);
 					}
-
-					CUIRect MapNameCol, ActionCol, StatusCol;
-					ItemRect.VSplitLeft(ItemRect.w * 0.48f, &MapNameCol, &StatusCol);
-
-					TextRender()->TextColor(1.0f, 0.6f, 0.5f, 1.0f);
-					Ui()->DoLabel(&MapNameCol, MapName.c_str(), 11.0f, TEXTALIGN_ML);
+					else
+					{
+						TextRender()->TextColor(0.45f, 0.48f, 0.55f, 0.65f);
+						Ui()->DoLabel(&PtsBadge, "-", 10.0f, TEXTALIGN_MC);
+					}
 
 					if(IsOnline)
 					{
 						bool DifferentDiff = (aCurCategory[0] != '\0' && HasMeta && Meta.m_aCategory[0] != '\0' && str_comp_nocase(Meta.m_aCategory, aCurCategory) != 0);
 
-						StatusCol.VSplitRight(50.0f, &StatusCol, &ActionCol);
+						CUIRect ActionCol;
+						ItemRect.VSplitRight(54.0f, &ItemRect, &ActionCol);
 						static std::vector<CButtonContainer> s_vBtnIndivVoteMap;
 						if(s_vBtnIndivVoteMap.size() < Prof.m_vUnfinishedMaps.size())
 							s_vBtnIndivVoteMap.resize(Prof.m_vUnfinishedMaps.size());
 						CButtonContainer *pVoteBtn = &s_vBtnIndivVoteMap[i];
-						if(DoButton_Menu(pVoteBtn, TCLocalize("Votar"), 0, &ActionCol, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 2.0f, 0.0f, ColorRGBA(0.2f, 0.5f, 0.85f, 0.65f)))
+						if(DoColorBtn(pVoteBtn, TCLocalize("Votar"), &ActionCol, ColorRGBA(0.18f, 0.50f, 0.86f, 0.82f), IGraphics::CORNER_ALL, 3.0f, 10.0f))
 						{
 							VoteForMap(MapName.c_str());
 						}
@@ -10219,21 +11158,22 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 						if(DifferentDiff)
 						{
 							CUIRect DiffCol;
-							StatusCol.VSplitRight(3.0f, &StatusCol, nullptr);
-							StatusCol.VSplitRight(60.0f, &StatusCol, &DiffCol);
+							ItemRect.VSplitRight(4.0f, &ItemRect, nullptr);
+							ItemRect.VSplitRight(98.0f, &ItemRect, &DiffCol);
 							static std::vector<CButtonContainer> s_vBtnIndivVoteDiff;
 							if(s_vBtnIndivVoteDiff.size() < Prof.m_vUnfinishedMaps.size())
 								s_vBtnIndivVoteDiff.resize(Prof.m_vUnfinishedMaps.size());
 							CButtonContainer *pDiffBtn = &s_vBtnIndivVoteDiff[i];
-							if(DoButton_Menu(pDiffBtn, TCLocalize("Votar Dif"), 0, &DiffCol, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 2.0f, 0.0f, ColorRGBA(0.85f, 0.5f, 0.15f, 0.75f)))
+							if(DoColorBtn(pDiffBtn, TCLocalize("Votar Dificultad"), &DiffCol, ColorRGBA(0.84f, 0.45f, 0.12f, 0.85f), IGraphics::CORNER_ALL, 3.0f, 10.0f))
 							{
 								VoteForCategory(Meta.m_aCategory);
 							}
 						}
+						ItemRect.VSplitRight(6.0f, &ItemRect, nullptr);
 					}
 
-					TextRender()->TextColor(0.6f, 0.6f, 0.6f, 0.8f);
-					Ui()->DoLabel(&StatusCol, TCLocalize("Pendiente"), 10.0f, TEXTALIGN_MC);
+					TextRender()->TextColor(1.0f, 0.72f, 0.62f, 1.0f);
+					Ui()->DoLabel(&ItemRect, MapName.c_str(), 11.0f, TEXTALIGN_ML);
 					TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 				}
 			}
@@ -10494,5 +11434,164 @@ void CMenus::RenderSettingsAClientProfiles(CUIRect MainView)
 		}
 	}
 	s_ScrollFinishes.End();
+}
+
+float CMenus::RenderPlayerConfigsPanel(CUIRect Area, bool IsModal, bool *pCloseRequested)
+{
+	const float StartY = Area.y;
+	CUIRect Label;
+	Area.HSplitTop(HeadlineHeight, &Label, &Area);
+	CUIRect ConfigTitleRect, WebConfigsBtnRect, DiscordActionRect;
+	Label.VSplitRight(205.0f, &ConfigTitleRect, &DiscordActionRect);
+	ConfigTitleRect.VSplitRight(8.0f, &ConfigTitleRect, nullptr);
+	ConfigTitleRect.VSplitRight(155.0f, &ConfigTitleRect, &WebConfigsBtnRect);
+	ConfigTitleRect.VSplitRight(8.0f, &ConfigTitleRect, nullptr);
+	Ui()->DoLabel(&ConfigTitleRect, TCLocalize("Configuraciones de jugadores"), HeadlineFontSize, TEXTALIGN_ML);
+
+	static CButtonContainer s_BtnOpenWebConfigs;
+	if(DoButton_Menu(&s_BtnOpenWebConfigs, TCLocalize("Ver configuraciones"), 0, &WebConfigsBtnRect, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.42f, 0.25f, 0.85f, 0.85f)))
+	{
+		Client()->ViewLink("https://agusclient.github.io/configs-players/");
+	}
+	GameClient()->m_Tooltips.DoToolTip(&s_BtnOpenWebConfigs, &WebConfigsBtnRect, "https://agusclient.github.io/configs-players/");
+
+	auto &ConfigSync = GameClient()->m_AClientConfigSync;
+	static CButtonContainer s_BtnDiscordStart;
+	static CButtonContainer s_BtnDiscordCancel;
+	static CButtonContainer s_BtnDiscordLogout;
+	if(ConfigSync.HasDiscordSession())
+	{
+		CUIRect DiscUserRect, DiscOutBtn;
+		DiscordActionRect.VSplitRight(52.0f, &DiscUserRect, &DiscOutBtn);
+		DiscUserRect.VSplitRight(4.0f, &DiscUserRect, nullptr);
+		const char *pDiscName = ConfigSync.GetDiscordUsername()[0] != '\0' ? ConfigSync.GetDiscordUsername() : (ConfigSync.GetDiscordHandle()[0] != '\0' ? ConfigSync.GetDiscordHandle() : "Conectado");
+		char aDiscBadge[96];
+		str_format(aDiscBadge, sizeof(aDiscBadge), "Discord: %s", pDiscName);
+		TextRender()->TextColor(0.55f, 0.88f, 1.0f, 1.0f);
+		Ui()->DoLabel(&DiscUserRect, aDiscBadge, FontSize * 0.88f, TEXTALIGN_MR);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
+		if(DoButton_Menu(&s_BtnDiscordLogout, TCLocalize("Salir"), 0, &DiscOutBtn, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, ColorRGBA(0.35f, 0.22f, 0.25f, 0.75f)))
+		{
+			ConfigSync.LogoutDiscord();
+		}
+	}
+	else if(ConfigSync.IsDiscordBusy())
+	{
+		if(DoButton_Menu(&s_BtnDiscordCancel, TCLocalize("Cancelar Discord..."), 0, &DiscordActionRect, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.45f, 0.38f, 0.20f, 0.80f)))
+		{
+			ConfigSync.CancelDiscordLogin();
+		}
+	}
+	else
+	{
+		if(DoButton_Menu(&s_BtnDiscordStart, TCLocalize("Iniciar sesion con Discord"), 0, &DiscordActionRect, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.345f, 0.396f, 0.949f, 0.85f)))
+		{
+			ConfigSync.StartDiscordLogin();
+		}
+	}
+
+	Area.HSplitTop(MarginSmall, nullptr, &Area);
+
+	if(ConfigSync.GetDiscordStatusMessage()[0] != '\0' && ConfigSync.DiscordState() != CAClientConfigSync::DISCORD_READY)
+	{
+		CUIRect DiscMsgRect;
+		Area.HSplitTop(LineSize * 0.95f, &DiscMsgRect, &Area);
+		if(ConfigSync.DiscordState() == CAClientConfigSync::DISCORD_ERROR)
+			TextRender()->TextColor(0.95f, 0.35f, 0.35f, 1.0f);
+		else
+			TextRender()->TextColor(0.65f, 0.75f, 1.0f, 1.0f);
+		Ui()->DoLabel(&DiscMsgRect, ConfigSync.GetDiscordStatusMessage(), FontSize * 0.86f, TEXTALIGN_ML);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
+		Area.HSplitTop(MarginExtraSmall, nullptr, &Area);
+	}
+
+	char aPlayerName[MAX_NAME_LENGTH];
+	char aResolution[32];
+	int MouseMaxDistance = 0;
+	int MouseSens = 200;
+	int Hz = 0;
+	ConfigSync.GetCurrentSnapshot(aPlayerName, sizeof(aPlayerName), MouseMaxDistance, MouseSens, aResolution, sizeof(aResolution), Hz);
+
+	CUIRect PreviewLine, HintLine, InputRow;
+	Area.HSplitTop(LineSize, &PreviewLine, &Area);
+	char aPreview[256];
+	str_format(aPreview, sizeof(aPreview), "Jugador: %s  |  Sens: %d  |  Max Dist: %d  |  Res: %s  |  %d Hz",
+		aPlayerName[0] != '\0' ? aPlayerName : "(sin nombre)",
+		MouseSens,
+		MouseMaxDistance,
+		aResolution,
+		Hz);
+	TextRender()->TextColor(aPlayerName[0] != '\0' ? ColorRGBA(0.85f, 0.90f, 0.98f, 1.0f) : ColorRGBA(0.95f, 0.65f, 0.25f, 1.0f));
+	Ui()->DoLabel(&PreviewLine, aPreview, FontSize * 0.92f, TEXTALIGN_ML);
+	TextRender()->TextColor(TextRender()->DefaultTextColor());
+
+	Area.HSplitTop(LineSize * 0.95f, &HintLine, &Area);
+	if(ConfigSync.HasDiscordSession())
+	{
+		TextRender()->TextColor(0.68f, 0.72f, 0.80f, 0.95f);
+		Ui()->DoLabel(&HintLine, TCLocalize("Vinculado a tu cuenta de Discord (sin contrasena). Ingresa tu DPI y guarda o actualiza."), FontSize * 0.85f, TEXTALIGN_ML);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
+
+		Area.HSplitTop(MarginExtraSmall, nullptr, &Area);
+		Area.HSplitTop(LineSize * 1.25f, &InputRow, &Area);
+
+		CUIRect DpiLabelRect, DpiInputRect, UploadBtnRect;
+		InputRow.VSplitLeft(84.0f, &DpiLabelRect, &InputRow);
+		InputRow.VSplitLeft(110.0f, &DpiInputRect, &InputRow);
+		InputRow.VSplitRight(175.0f, &InputRow, &UploadBtnRect);
+
+		Ui()->DoLabel(&DpiLabelRect, TCLocalize("DPI Mouse:"), FontSize, TEXTALIGN_ML);
+		static CLineInputBuffered<8> s_ConfigSyncDpi;
+		s_ConfigSyncDpi.SetEmptyText("Ej: 800");
+		Ui()->DoEditBox(&s_ConfigSyncDpi, &DpiInputRect, EditBoxFontSize);
+
+		static CButtonContainer s_BtnUploadConfig;
+		const bool Uploading = ConfigSync.IsUploading();
+		const ColorRGBA UploadColor = Uploading ? ColorRGBA(0.35f, 0.35f, 0.42f, 0.65f) : ColorRGBA(0.18f, 0.52f, 0.88f, 0.80f);
+		if(DoButton_Menu(&s_BtnUploadConfig, Uploading ? TCLocalize("Enviando...") : TCLocalize("Guardar / Actualizar"), 0, &UploadBtnRect, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 4.0f, 0.0f, UploadColor) && !Uploading)
+		{
+			const int ParsedDpi = str_toint(s_ConfigSyncDpi.GetString());
+			ConfigSync.UploadCurrentConfig(ParsedDpi);
+		}
+	}
+	else
+	{
+		TextRender()->TextColor(0.95f, 0.75f, 0.30f, 1.0f);
+		Ui()->DoLabel(&HintLine, TCLocalize("Inicia sesion con Discord arriba para habilitar el guardado y actualizacion de tu configuracion."), FontSize * 0.88f, TEXTALIGN_ML);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
+	}
+
+	if(ConfigSync.State() != CAClientConfigSync::UPLOAD_IDLE && ConfigSync.GetStatusMessage()[0] != '\0')
+	{
+		Area.HSplitTop(MarginExtraSmall, nullptr, &Area);
+		CUIRect SyncStatusLine;
+		Area.HSplitTop(LineSize, &SyncStatusLine, &Area);
+		if(ConfigSync.State() == CAClientConfigSync::UPLOAD_SENDING)
+			TextRender()->TextColor(0.95f, 0.85f, 0.30f, 1.0f);
+		else if(ConfigSync.State() == CAClientConfigSync::UPLOAD_SUCCESS)
+			TextRender()->TextColor(0.35f, 0.95f, 0.45f, 1.0f);
+		else
+			TextRender()->TextColor(0.95f, 0.35f, 0.35f, 1.0f);
+		Ui()->DoLabel(&SyncStatusLine, ConfigSync.GetStatusMessage(), FontSize * 0.90f, TEXTALIGN_ML);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
+	}
+
+	if(IsModal && pCloseRequested != nullptr)
+	{
+		Area.HSplitTop(Margin, nullptr, &Area);
+		CUIRect FooterRow, EscHintRect, CloseBtnRect;
+		Area.HSplitTop(24.0f, &FooterRow, &Area);
+		FooterRow.VSplitRight(110.0f, &EscHintRect, &CloseBtnRect);
+		TextRender()->TextColor(0.60f, 0.65f, 0.75f, 0.85f);
+		Ui()->DoLabel(&EscHintRect, TCLocalize("Pulsa ESC para cerrar"), FontSize * 0.82f, TEXTALIGN_ML);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
+		static CButtonContainer s_BtnCloseModal;
+		if(DoButton_Menu(&s_BtnCloseModal, TCLocalize("Cerrar"), 0, &CloseBtnRect, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.24f, 0.26f, 0.34f, 0.85f)))
+		{
+			*pCloseRequested = true;
+		}
+	}
+
+	return Area.y - StartY;
 }
 

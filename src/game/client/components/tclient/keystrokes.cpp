@@ -850,6 +850,8 @@ void CKeystrokes::OnRender()
 		return;
 	if(GameClient()->m_HudEditor.IsActive())
 		return;
+	if(g_Config.m_ClFocusMode && (g_Config.m_ClFocusModeHideHud || g_Config.m_ClFocusModeHideUI))
+		return;
 #if defined(CONF_VIDEORECORDER)
 	if(!((IVideo::Current() && g_Config.m_ClVideoShowhud) || (!IVideo::Current() && g_Config.m_ClShowhud)))
 		return;

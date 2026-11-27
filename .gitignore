@@ -170,3 +170,37 @@ CAMBIOS_REALIZADOS.txt
 memory-bank/
 scratch/
 data/assets/audio/
+
+# Security: secrets, credentials & local keys
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+cookies.txt
+
+# Local databases, Python caches & binary backups
+*.db
+*.db-shm
+*.db-wal
+*.old
+__pycache__/
+
+# Local maintainer tools & scripts
+/tools/kog_indexer/
+/release_aclient.bat
+
+# Local AClient runtime/user state (if launched from repo root)
+/aclient_single_assets.txt
+/gameskin_blacklist.txt
+/entities_blacklist.txt
+/racestats_history.json
+/settings_ddnet.cfg
+/settings_tclient.cfg
+/settings_tclient_warlist.cfg
+/kog_cache/
+/downloaded_gameskins/
+/downloaded_entities/
+/update/

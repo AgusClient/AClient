@@ -18,9 +18,10 @@ class CScoreboard : public CComponent
 		float m_TeamStartX;
 		float m_TeamStartY;
 		int m_CurrentDDTeamSize;
+		int m_TeamLabelIndex;
 
 		CScoreboardRenderState() :
-			m_TeamStartX(0), m_TeamStartY(0), m_CurrentDDTeamSize(0) {}
+			m_TeamStartX(0), m_TeamStartY(0), m_CurrentDDTeamSize(0), m_TeamLabelIndex(0) {}
 	};
 
 	void RenderTitleScore(CUIRect ScoreLabel, int Team, float TitleFontSize);
@@ -144,6 +145,26 @@ class CScoreboard : public CComponent
 	CCachedText m_HeadlineClan;
 	CCachedText m_HeadlinePing;
 	CCachedText m_FriendMark;
+	CCachedText m_aTitleText[2];
+	CCachedText m_aTeamLabels[MAX_CLIENTS];
+
+	struct SSpectatorEntry
+	{
+		int m_ClientId;
+		CUIRect m_Rect;
+		CUIRect m_LineBreakRect;
+		bool m_HasLineBreak;
+	};
+	STextContainerIndex m_SpectatorsTextContainer;
+	std::string m_SpectatorsCacheKey;
+	std::vector<SSpectatorEntry> m_vSpectatorEntries;
+
+	float m_CachedTitleScoreWidth = -1.0f;
+	std::string m_aCachedTitleStr[2];
+	float m_aCachedTitleWidth[2] = {-1.0f, -1.0f};
+	float m_CachedScoreLengthFontSize = -1.0f;
+	bool m_CachedScoreLengthUseTime = false;
+	float m_CachedScoreLength = 0.0f;
 
 public:
 	void ResetTexts();
@@ -162,6 +183,7 @@ public:
 	bool OnInput(const IInput::CEvent &Event) override;
 
 	bool IsActive() const;
+	bool IsMouseUnlocked() const { return IsActive() && m_MouseUnlocked; }
 };
 
 #endif

@@ -108,6 +108,9 @@ void CMenusSettingsControls::OnInterfacesInit(CGameClient *pClient)
 		{EBindOptionGroup::MISCELLANEOUS, Localizable("Lock team"), "say /lock"},
 		{EBindOptionGroup::MISCELLANEOUS, Localizable("Show entities"), "toggle cl_overlay_entities 0 100"},
 		{EBindOptionGroup::MISCELLANEOUS, Localizable("Show HUD"), "toggle cl_showhud 0 1"},
+		{EBindOptionGroup::MISCELLANEOUS, Localizable("Music: Previous track"), "ac_music_prev"},
+		{EBindOptionGroup::MISCELLANEOUS, Localizable("Music: Play / Pause"), "ac_music_playpause"},
+		{EBindOptionGroup::MISCELLANEOUS, Localizable("Music: Next track"), "ac_music_next"},
 	};
 	m_NumPredefinedBindOptions = m_vBindOptions.size();
 

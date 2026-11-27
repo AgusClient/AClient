@@ -126,6 +126,7 @@ void CRaceStats::OnReset()
 	m_RunFinishedSaved = false;
 	m_LastFinishSaveTime = 0;
 	m_WasCalculating = false;
+	m_SoleSurvivorCID = -1;
 }
 
 bool CRaceStats::ShouldCalculate() const
@@ -181,6 +182,7 @@ void CRaceStats::ResetTeamStats()
 	m_CachedDisplayCount = 0;
 	m_CachedTotalTeamPlayers = 0;
 	m_StatsDirty = true;
+	m_SoleSurvivorCID = -1;
 	if(Client()->State() == IClient::STATE_ONLINE || Client()->State() == IClient::STATE_DEMOPLAYBACK)
 		m_RunStartTick = Client()->GameTick(g_Config.m_ClDummy);
 	else
@@ -654,6 +656,7 @@ void CRaceStats::OnRender()
 	{
 		m_WasCalculating = true;
 		m_LastStatsTick = CurrentTick;
+		m_SoleSurvivorCID = -1;
 		for(int i = 0; i < MAX_CLIENTS; i++)
 		{
 			if(!GameClient()->m_Snap.m_apPlayerInfos[i] || !GameClient()->m_Snap.m_aCharacters[i].m_Active)
@@ -786,7 +789,7 @@ void CRaceStats::OnRender()
 				int Team = GameClient()->m_Teams.Team(i);
 
 				int SaverCID = -1;
-				float BestDist = HAMMER_MAX_DIST;
+				float BestDistSq = HAMMER_MAX_DIST * HAMMER_MAX_DIST;
 
 				for(int j = 0; j < MAX_CLIENTS; j++)
 				{
@@ -800,12 +803,12 @@ void CRaceStats::OnRender()
 					if(TickDiff <= 25)
 					{
 						vec2 AttackerPos = (j == LocalClientId) ? GameClient()->m_LocalCharacterPos : vec2(GameClient()->m_Snap.m_aCharacters[j].m_Cur.m_X, GameClient()->m_Snap.m_aCharacters[j].m_Cur.m_Y);
-						float DistCurrent = distance(VictimPos, AttackerPos);
-						float DistAtHit = distance(VictimPos, m_aPlayerStats[j].m_LastHammerPos);
-						float Dist = std::min(DistCurrent, DistAtHit);
-						if(Dist <= BestDist)
+						float DistCurrentSq = distance_squared(VictimPos, AttackerPos);
+						float DistAtHitSq = distance_squared(VictimPos, m_aPlayerStats[j].m_LastHammerPos);
+						float DistSq = std::min(DistCurrentSq, DistAtHitSq);
+						if(DistSq <= BestDistSq)
 						{
-							BestDist = Dist;
+							BestDistSq = DistSq;
 							SaverCID = j;
 						}
 					}
@@ -821,9 +824,15 @@ void CRaceStats::OnRender()
 			m_aPlayerStats[i].m_WasFrozen = IsFrozen;
 		}
 
-		// Detección estabilizada de Lasts (requiere al menos 15 ticks reales como único descongelado)
+		// Detección estabilizada de Lasts en O(1) (requiere al menos 15 ticks reales como único descongelado)
 		if(TeamActivePlayers >= 2 && TeamUnfrozenPlayers == 1 && LastUnfrozenCID != -1)
 		{
+			if(m_SoleSurvivorCID >= 0 && m_SoleSurvivorCID < MAX_CLIENTS && m_SoleSurvivorCID != LastUnfrozenCID)
+			{
+				m_aPlayerStats[m_SoleSurvivorCID].m_SoleSurvivorTicks = 0;
+				m_aPlayerStats[m_SoleSurvivorCID].m_WasSoleSurvivor = false;
+			}
+			m_SoleSurvivorCID = LastUnfrozenCID;
 			m_aPlayerStats[LastUnfrozenCID].m_SoleSurvivorTicks += ElapsedTicks;
 			if(m_aPlayerStats[LastUnfrozenCID].m_SoleSurvivorTicks >= 15 && !m_aPlayerStats[LastUnfrozenCID].m_WasSoleSurvivor)
 			{
@@ -832,20 +841,16 @@ void CRaceStats::OnRender()
 				m_StatsDirty = true;
 			}
 		}
-		else
+		else if(m_SoleSurvivorCID >= 0 && m_SoleSurvivorCID < MAX_CLIENTS)
 		{
-			for(int i = 0; i < MAX_CLIENTS; i++)
-			{
-				if(GameClient()->m_Teams.Team(i) == CurrentTeam)
-				{
-					m_aPlayerStats[i].m_SoleSurvivorTicks = 0;
-					m_aPlayerStats[i].m_WasSoleSurvivor = false;
-				}
-			}
+			m_aPlayerStats[m_SoleSurvivorCID].m_SoleSurvivorTicks = 0;
+			m_aPlayerStats[m_SoleSurvivorCID].m_WasSoleSurvivor = false;
+			m_SoleSurvivorCID = -1;
 		}
 	}
 
-	if((g_Config.m_AcMiniStatboard && HudLayout::IsEnabled(HudLayout::MODULE_MINI_STATBOARD)) || m_Active || GameClient()->m_HudEditor.IsActive())
+	const bool HideByFocus = !GameClient()->m_HudEditor.IsActive() && g_Config.m_ClFocusMode && (g_Config.m_ClFocusModeHideHud || g_Config.m_ClFocusModeHideUI);
+	if(!HideByFocus && ((g_Config.m_AcMiniStatboard && HudLayout::IsEnabled(HudLayout::MODULE_MINI_STATBOARD)) || m_Active || GameClient()->m_HudEditor.IsActive()))
 	{
 		RenderMiniStatboard();
 	}

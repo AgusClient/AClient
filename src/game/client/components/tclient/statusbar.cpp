@@ -21,6 +21,7 @@ CStatusItem::CStatusItem(std::function<void()> Render, std::function<float()> Wi
 		str_copy(m_aDisplayName, pName);
 	str_copy(m_aDesc, pDesc);
 	m_ShowLabel = ShowLabel;
+	m_IsSpace = (str_comp(pName, "Space") == 0);
 }
 
 int CStatusBar::GetDigitsIndex(const int Value, const int Max)
@@ -260,6 +261,15 @@ float CStatusBar::LabelWidth(const char *pLabel)
 	str_format(aBuf, sizeof(aBuf), "%s:", pLabel);
 	return TextRender()->TextWidth(m_FontSize, aBuf);
 }
+float CStatusBar::CachedLabelWidth(const CStatusItem &Item)
+{
+	if(Item.m_CachedLabelFontSize != m_FontSize)
+	{
+		Item.m_CachedLabelWidth = LabelWidth(Item.m_aDisplayName);
+		Item.m_CachedLabelFontSize = m_FontSize;
+	}
+	return Item.m_CachedLabelWidth;
+}
 
 void CStatusBar::ApplyStatusBarScheme(const char *pScheme)
 {
@@ -302,6 +312,8 @@ void CStatusBar::OnRender()
 
 	if(!g_Config.m_TcStatusBar || !GameClient()->m_Snap.m_pGameInfoObj)
 		return;
+	if(g_Config.m_ClFocusMode && (g_Config.m_ClFocusModeHideHud || g_Config.m_ClFocusModeHideUI))
+		return;
 
 	m_PlayerId = GameClient()->m_Snap.m_LocalClientId;
 	if(GameClient()->m_Snap.m_SpecInfo.m_Active)
@@ -313,54 +325,60 @@ void CStatusBar::OnRender()
 	Graphics()->DrawRect(m_BarX, m_BarY, m_Width, m_BarHeight, color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcStatusBarColor)).WithAlpha(g_Config.m_TcStatusBarAlpha / 100.0f), 0, 0);
 	TextRender()->TextColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_TcStatusBarTextColor)).WithAlpha(g_Config.m_TcStatusBarTextAlpha / 100.0f));
 
-	// std::vector<CStatusItem *> m_StatusBarItems = {&m_LocalTime, &m_LocalTime, &m_Space, &m_LocalTime};
 	int SpaceCount = 0;
-	const int ItemCount = (int)m_StatusBarItems.size();
+	const int ItemCount = std::min<int>((int)m_StatusBarItems.size(), STATUSBAR_MAX_SIZE);
+	float aItemWidths[STATUSBAR_MAX_SIZE];
+	float aLabelWidths[STATUSBAR_MAX_SIZE];
 	float UsedWidth = 0.0f;
 	float AvailableWidth = m_Width - m_Margin * 2.0f; // 1 extra margin on the sides
-	// Count the number of spaces and determine how much unused space there is
-	for(const CStatusItem *Item : m_StatusBarItems)
+	const bool ShowLabels = g_Config.m_TcStatusBarLabels != 0;
+	// Single-pass layout measurement: avoids duplicate m_GetWidth() and TextWidth() calls per item per frame
+	for(int idx = 0; idx < ItemCount; ++idx)
 	{
-		if(str_comp(Item->m_aName, "Space") == 0)
+		const CStatusItem *Item = m_StatusBarItems[idx];
+		if(Item->m_IsSpace)
+		{
+			aItemWidths[idx] = 0.0f;
+			aLabelWidths[idx] = 0.0f;
 			++SpaceCount;
+		}
 		else
 		{
-			float ItemWidth = Item->m_GetWidth();
-			if(g_Config.m_TcStatusBarLabels && Item->m_ShowLabel && ItemWidth > 0.0f)
-				ItemWidth += LabelWidth(Item->m_aDisplayName);
-			UsedWidth += ItemWidth;
+			const float ItemWidth = Item->m_GetWidth();
+			aItemWidths[idx] = ItemWidth;
+			const float LblWidth = (ShowLabels && Item->m_ShowLabel && ItemWidth > 0.0f) ? CachedLabelWidth(*Item) : 0.0f;
+			aLabelWidths[idx] = LblWidth;
+			UsedWidth += ItemWidth + LblWidth;
 		}
 	}
 	UsedWidth += m_Margin * (ItemCount + 1);
 	AvailableWidth -= UsedWidth;
 	// AvailableWidth can be negative so might as well not make it even worse
-	float SpaceWidth = std::max((AvailableWidth) / (float)SpaceCount, 0.0f);
-
-	float SpaceBetweenItems = std::max(AvailableWidth / (float)(ItemCount - 1), 0.0f);
-	if(SpaceCount > 0)
-		SpaceBetweenItems = 0;
+	const float SpaceWidth = (SpaceCount > 0) ? std::max(AvailableWidth / (float)SpaceCount, 0.0f) : 0.0f;
+	const float SpaceBetweenItems = (SpaceCount == 0 && ItemCount > 1) ? std::max(AvailableWidth / (float)(ItemCount - 1), 0.0f) : 0.0f;
 
 	m_CursorY = m_BarY + (m_BarHeight - m_FontSize) / 2;
 
 	m_CursorX = m_Margin;
-	// Render items
-	for(const CStatusItem *Item : m_StatusBarItems)
+	// Render items using cached widths
+	for(int idx = 0; idx < ItemCount; ++idx)
 	{
+		const CStatusItem *Item = m_StatusBarItems[idx];
 		m_CursorX += m_Margin;
-		float ItemWidth = Item->m_GetWidth();
+		const float ItemWidth = aItemWidths[idx];
 
 		if(ItemWidth > 0.0f)
 		{
-			if(g_Config.m_TcStatusBarLabels && Item->m_ShowLabel)
+			if(ShowLabels && Item->m_ShowLabel)
 			{
 				LabelRender(Item->m_aDisplayName);
-				m_CursorX += LabelWidth(Item->m_aDisplayName);
+				m_CursorX += aLabelWidths[idx];
 			}
 			Item->m_RenderItem();
 		}
 
 		m_CursorX += ItemWidth;
-		if(str_comp(Item->m_aName, "Space") == 0)
+		if(Item->m_IsSpace)
 			m_CursorX += SpaceWidth;
 
 		m_CursorX += SpaceBetweenItems;

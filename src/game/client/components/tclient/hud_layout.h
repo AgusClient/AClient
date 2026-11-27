@@ -27,6 +27,7 @@ enum EModule
 	MODULE_NOTIFY_LAST,
 	MODULE_KEYSTROKES_KEYBOARD,
 	MODULE_KEYSTROKES_MOUSE,
+	MODULE_MUSIC_PLAYER,
 	MODULE_COUNT
 };
 
@@ -90,6 +91,8 @@ void ResetEditableModules();
 SModuleRect ClampRectToScreen(const SModuleRect &Rect, float HudWidth, float HudHeight);
 float CanvasXToHud(float CanvasX, float HudWidth);
 int BackgroundCorners(int DefaultCorners, float RectX, float RectY, float RectW, float RectH, float CanvasWidth, float CanvasHeight);
+void SetMusicPlayerResolvedDefaultX(float HudX, float HudWidth);
+void TryApplyMusicPlayerLegacyPositionFix(float HudWidth, float HudHeight, ITextRender *pTextRender);
 void OnConsoleInit(IConsole *pConsole, IConfigManager *pConfigManager = nullptr);
 
 } // namespace HudLayout

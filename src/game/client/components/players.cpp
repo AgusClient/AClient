@@ -775,9 +775,9 @@ void CPlayers::RenderHook(
 	bool FastHookGrabbed = false;
 	vec2 FastHookPos = vec2(0.0f, 0.0f);
 	vec2 FastGrabbedHookPos = vec2(0.0f, 0.0f);
+	int FastHookedPlayer = -1;
 	const bool HasFastHook = in_range(ClientId, MAX_CLIENTS - 1) &&
-				 pPlayerChar->m_HookedPlayer < 0 &&
-				 GameClient()->GetFastInputHookPos(ClientId, FastHookPos, FastHookActive, FastHookGrabbed, FastGrabbedHookPos);
+				 GameClient()->GetFastInputHookPos(ClientId, FastHookPos, FastHookActive, FastHookGrabbed, FastGrabbedHookPos, FastHookedPlayer);
 	if(HasFastHook ? !FastHookActive : (pPlayerChar->m_HookState <= 0))
 		return;
 
@@ -788,14 +788,16 @@ void CPlayers::RenderHook(
 
 	CTeeRenderInfo RenderInfo = *pRenderInfo;
 
+	const int HookedPlayer = HasFastHook ? FastHookedPlayer : pPlayerChar->m_HookedPlayer;
+
 	// don't render hooks to not active character cores
-	if(pPlayerChar->m_HookedPlayer != -1 && !GameClient()->m_Snap.m_aCharacters[pPlayerChar->m_HookedPlayer].m_Active)
+	if(HookedPlayer != -1 && !GameClient()->m_Snap.m_aCharacters[HookedPlayer].m_Active)
 		return;
 
 	if(GameClient()->m_FastPractice.Enabled() && !GameClient()->m_Snap.m_SpecInfo.m_Active &&
 		ClientId >= 0 && !GameClient()->m_FastPractice.IsPracticeParticipant(ClientId) &&
-		in_range(pPlayerChar->m_HookedPlayer, MAX_CLIENTS - 1) &&
-		GameClient()->m_FastPractice.IsPracticeParticipant(pPlayerChar->m_HookedPlayer))
+		in_range(HookedPlayer, MAX_CLIENTS - 1) &&
+		GameClient()->m_FastPractice.IsPracticeParticipant(HookedPlayer))
 		return;
 
 	if(ClientId >= 0)
@@ -825,19 +827,19 @@ void CPlayers::RenderHook(
 	vec2 Pos = Position;
 	vec2 HookPos;
 
-	if(in_range(pPlayerChar->m_HookedPlayer, MAX_CLIENTS - 1))
+	if(in_range(HookedPlayer, MAX_CLIENTS - 1))
 	{
 		const bool HookTargetOutsidePractice = GameClient()->m_FastPractice.Enabled() &&
 						       GameClient()->m_FastPractice.IsPracticeParticipant(ClientId) &&
-						       !GameClient()->m_FastPractice.IsPracticeParticipant(pPlayerChar->m_HookedPlayer);
+						       !GameClient()->m_FastPractice.IsPracticeParticipant(HookedPlayer);
 		if(HookTargetOutsidePractice)
 			HookPos = mix(vec2(Prev.m_HookX, Prev.m_HookY), vec2(Player.m_HookX, Player.m_HookY), Intra);
 		else
 		{
-			HookPos = GameClient()->m_aClients[pPlayerChar->m_HookedPlayer].m_RenderPos;
+			HookPos = GameClient()->m_aClients[HookedPlayer].m_RenderPos;
 			if(g_Config.m_TcSwapGhosts && Client()->State() != IClient::STATE_DEMOPLAYBACK && GameClient()->m_Snap.m_LocalClientId == ClientId)
 			{
-				HookPos = GameClient()->GetSmoothPos(pPlayerChar->m_HookedPlayer);
+				HookPos = GameClient()->GetSmoothPos(HookedPlayer);
 			}
 		}
 	}
@@ -856,7 +858,7 @@ void CPlayers::RenderHook(
 	vec2 Dir = normalize(Pos - HookPos);
 
 	const bool HookGrabbed = HasFastHook ? FastHookGrabbed : (Player.m_HookState == HOOK_GRABBED);
-	if(HookGrabbed && pPlayerChar->m_HookedPlayer < 0)
+	if(HookGrabbed && HookedPlayer < 0)
 	{
 		const vec2 GrabbedHookPos = HasFastHook ? FastGrabbedHookPos : vec2((float)Player.m_HookX, (float)Player.m_HookY);
 		RenderHookedTile(Pos, GrabbedHookPos, ClientId, Alpha);

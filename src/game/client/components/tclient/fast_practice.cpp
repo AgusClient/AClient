@@ -2049,6 +2049,10 @@ void CFastPractice::SeedPredictionHistory()
 			if(Tick < 0)
 				break;
 			GameClient()->m_aClients[ClientId].m_aPredPos[Tick % 200] = pChar->Core()->m_Pos;
+			GameClient()->m_aClients[ClientId].m_aPredVel[Tick % 200] = pChar->Core()->m_Vel;
+			GameClient()->m_aClients[ClientId].m_aPredHookPos[Tick % 200] = pChar->Core()->m_HookPos;
+			GameClient()->m_aClients[ClientId].m_aPredHookState[Tick % 200] = pChar->Core()->m_HookState;
+			GameClient()->m_aClients[ClientId].m_aPredHookedPlayer[Tick % 200] = pChar->Core()->HookedPlayer();
 			GameClient()->m_aClients[ClientId].m_aPredTick[Tick % 200] = Tick;
 		}
 	}
@@ -2120,6 +2124,7 @@ void CFastPractice::PublishParticipantCores(int LocalClientId, int DummyClientId
 void CFastPractice::StorePredictionState(int Tick, int FinalTickRegular, int FinalTickOthers, int FinalTickSelf)
 {
 	(void)FinalTickOthers;
+	const int FinalTickMove = std::min(FinalTickSelf, FinalTickRegular + AcInputs::PredictionTicks(AcInputs::EffectiveOffsetTicksMove(false)));
 	const int aIds[] = {m_EnableLocalClientId, m_EnableDummyClientId};
 	for(const int ClientId : aIds)
 	{
@@ -2129,15 +2134,19 @@ void CFastPractice::StorePredictionState(int Tick, int FinalTickRegular, int Fin
 		if(!pChar)
 			continue;
 
-		if(Tick == FinalTickSelf || Tick == FinalTickRegular)
+		if(Tick == FinalTickMove || Tick == FinalTickRegular)
 			CachePredictedCore(ClientId, pChar->GetCore());
 		if(Tick == FinalTickRegular)
 			CacheRegularPredictedCore(ClientId, pChar->GetCore());
 
 		GameClient()->m_aClients[ClientId].m_aPredPos[Tick % 200] = pChar->Core()->m_Pos;
+		GameClient()->m_aClients[ClientId].m_aPredVel[Tick % 200] = pChar->Core()->m_Vel;
+		GameClient()->m_aClients[ClientId].m_aPredHookPos[Tick % 200] = pChar->Core()->m_HookPos;
+		GameClient()->m_aClients[ClientId].m_aPredHookState[Tick % 200] = pChar->Core()->m_HookState;
+		GameClient()->m_aClients[ClientId].m_aPredHookedPlayer[Tick % 200] = pChar->Core()->HookedPlayer();
 		GameClient()->m_aClients[ClientId].m_aPredTick[Tick % 200] = Tick;
 
-		if(Tick > FinalTickRegular)
+		if(Tick > FinalTickRegular && Tick <= FinalTickMove)
 		{
 			FillRenderCharacter(pChar, m_aFastRenderCur[ClientId]);
 			m_aFastRenderValid[ClientId] = true;
@@ -2347,6 +2356,8 @@ void CFastPractice::TickPracticeWorld()
 
 	const float FastInputOffsetTicks = AcInputs::EffectiveOffsetTicks();
 	const int FastInputTicks = AcInputs::PredictionTicks(FastInputOffsetTicks);
+	const float FastInputMoveOffsetTicks = AcInputs::EffectiveOffsetTicksMove(false);
+	const int FastInputMoveTicks = AcInputs::PredictionTicks(FastInputMoveOffsetTicks);
 	const int FastInputOthersTicks = AcInputs::AnyOthers() ? AcInputs::PredictionTicksOthers(FastInputOffsetTicks) : 0;
 	const int FinalTickRegular = Client()->PredGameTick(g_Config.m_ClDummy);
 
@@ -2368,6 +2379,7 @@ void CFastPractice::TickPracticeWorld()
 	}
 
 	const int FinalTickSelf = FinalTickRegular + FastInputTicks;
+	const int FinalTickMove = FinalTickRegular + FastInputMoveTicks;
 	const int FinalTickOthers = FinalTickRegular + FastInputOthersTicks;
 	const bool FastInputOverrun = FinalTickSelf > FinalTickRegular;
 
@@ -2417,7 +2429,7 @@ void CFastPractice::TickPracticeWorld()
 			}
 		}
 
-		if(Tick > FinalTickRegular)
+		if(Tick > FinalTickRegular && Tick <= FinalTickMove)
 		{
 			for(const int ClientId : aParticipantIds)
 			{

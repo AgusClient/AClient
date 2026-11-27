@@ -510,17 +510,33 @@ void CBgDraw::OnRender()
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
 
-	Graphics()->TextureClear();
-
 	float Delta = Client()->RenderFrameTime();
 
-	m_NextAutoSave -= Delta;
-	if(m_NextAutoSave < 0)
+	if(m_Dirty)
 	{
-		if(g_Config.m_TcBgDrawAutoSaveLoad)
-			Save(nullptr, false);
-		m_NextAutoSave = AUTO_SAVE_INTERVAL;
+		m_NextAutoSave -= Delta;
+		if(m_NextAutoSave < 0)
+		{
+			if(g_Config.m_TcBgDrawAutoSaveLoad)
+				Save(nullptr, false);
+			m_NextAutoSave = AUTO_SAVE_INTERVAL;
+		}
 	}
+
+	// Fast O(1) early-out when canvas is empty and no draw/erase input is active
+	bool AnyActiveInput = false;
+	for(int Dummy = 0; Dummy < NUM_DUMMIES; ++Dummy)
+	{
+		if(m_aInputData[Dummy] != InputMode::NONE || m_apActiveItems[Dummy].has_value() || m_aLastPos[Dummy].has_value())
+		{
+			AnyActiveInput = true;
+			break;
+		}
+	}
+	if(m_pvItems->empty() && !AnyActiveInput)
+		return;
+
+	Graphics()->TextureClear();
 
 	for(int Dummy = 0; Dummy < NUM_DUMMIES; ++Dummy)
 	{

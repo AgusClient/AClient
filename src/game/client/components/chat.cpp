@@ -1153,6 +1153,18 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 			return;
 	}
 
+	if((Team >= 2 || ClientId == SERVER_MSG || pLine[0] == '[') && str_find(pLine, "[AC-VOICE]"))
+	{
+		if(GameClient()->m_AClientVoice.OnVoiceWhisperInvite(ClientId, Team, pLine))
+			return;
+	}
+
+	if((Team >= 2 || ClientId == SERVER_MSG || pLine[0] == '[') && str_find(pLine, "[AC-MUSIC]"))
+	{
+		if(GameClient()->m_AClientMusicShare.OnMusicWhisperInvite(ClientId, Team, pLine))
+			return;
+	}
+
 	// AClient: Detect incoming team invite before chat filters so binds/commands always work
 	bool EmitInviteHint = false;
 	if((ClientId == SERVER_MSG || Team == TEAM_WHISPER_RECV) && (str_find_nocase(pLine, "invit") || str_find_nocase(pLine, "convid")))
@@ -2119,6 +2131,8 @@ void CChat::OnRender()
 #else
 	if(!g_Config.m_ClShowChat)
 #endif
+		ShowChat = false;
+	if(!HudEditorActive && g_Config.m_ClFocusMode && g_Config.m_ClFocusModeHideChat)
 		ShowChat = false;
 
 	if(!ShowChat)

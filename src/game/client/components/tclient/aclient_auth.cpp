@@ -150,13 +150,8 @@ void CAClientAuth::StartLogin(const char *pUser, const char *pPass)
 	str_format(aUrl, sizeof(aUrl), "%s/rest/v1/rpc/aclient_login", pBaseUrl);
 
 	m_pAuthRequest = HttpPostJson(aUrl, aPayload);
-	m_pAuthRequest->Timeout(CTimeout{6000, 6000, 500, 6});
-	m_pAuthRequest->IpResolve(IPRESOLVE::V4);
-	m_pAuthRequest->LogProgress(HTTPLOG::NONE);
+	AClientBackend::ConfigureSupabaseRequest(m_pAuthRequest, CTimeout{6000, 6000, 500, 6}, 32 * 1024);
 	m_pAuthRequest->FailOnErrorStatus(false);
-	m_pAuthRequest->Header(AClientBackend::USER_AGENT_HEADER);
-	m_pAuthRequest->Header(AClientBackend::API_KEY_HEADER);
-	m_pAuthRequest->Header(AClientBackend::AUTH_BEARER_HEADER);
 	Http()->Run(m_pAuthRequest);
 }
 

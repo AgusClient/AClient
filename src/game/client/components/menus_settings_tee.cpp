@@ -183,7 +183,7 @@ void CMenus::RenderSettingsTee(CUIRect MainView)
 		g_Config.m_ClDownloadEntities ^= 1;
 	}
 
-	if(g_Config.m_ClDownloadGameskins)
+	if(g_Config.m_ClDownloadGameskins || g_Config.m_ClDownloadEntities)
 	{
 		CUIRect SubButton;
 		if(AddCheckboxRow(18.0f, Button))
@@ -216,7 +216,7 @@ void CMenus::RenderSettingsTee(CUIRect MainView)
 
 	if(AddCheckboxRow(20.0f, Button))
 	{
-		Ui()->DoScrollbarOption(&g_Config.m_AcDownloadSpeedLimitKbps, &g_Config.m_AcDownloadSpeedLimitKbps, &Button, Localize("Vel. descarga (KB/s)"), 0, 2048, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, " KB/s");
+		Ui()->DoScrollbarOption(&g_Config.m_AcDownloadSpeedLimitKbps, &g_Config.m_AcDownloadSpeedLimitKbps, &Button, Localize("Vel. descarga/DB (KB/s)"), 0, 2048, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, " KB/s");
 	}
 
 	static CButtonContainer s_BtnReloadGameSkins;

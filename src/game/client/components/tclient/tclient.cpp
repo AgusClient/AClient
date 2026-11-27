@@ -54,6 +54,7 @@ struct SBackgroundAlertState
 {
 	int64_t m_aLastMinimizedReplyTime[MAX_CLIENTS] = {};
 	int64_t m_aLastMutedReplyTime[MAX_CLIENTS] = {};
+	int64_t m_aLastFocusReplyTime[MAX_CLIENTS] = {};
 	bool m_Initialized = false;
 	bool m_WasActive = false;
 	bool m_WasSpectating = false;
@@ -392,7 +393,8 @@ void CTClient::OnMessage(int MsgType, void *pRawMsg)
 		if(ClientId == LocalId)
 			str_copy(m_PreviousOwnMessage, pMsg->m_pMessage);
 
-		if(!g_Config.m_TcAutoReplyMuted && !g_Config.m_TcAutoReplyMinimized)
+		const bool FocusAutoReplyActive = g_Config.m_ClFocusMode && g_Config.m_ClFocusModeHideChat && g_Config.m_ClFocusModeAutoReply;
+		if(!g_Config.m_TcAutoReplyMuted && !g_Config.m_TcAutoReplyMinimized && !FocusAutoReplyActive)
 			return;
 		if(pMsg->m_pMessage && str_find(pMsg->m_pMessage, "[AC-CHESS]"))
 			return;
@@ -436,6 +438,21 @@ void CTClient::OnMessage(int MsgType, void *pRawMsg)
 					str_format(aBuf, sizeof(aBuf), "%s: %s", aPlayerName, g_Config.m_TcAutoReplyMutedMessage);
 				if(SendNonDuplicateMessage(0, aBuf))
 					gs_BgAlerts.m_aLastMutedReplyTime[ClientId] = Now;
+			}
+			return;
+		}
+
+		if(FocusAutoReplyActive && !PlayerMuted && g_Config.m_ClFocusModeAutoReplyMessage[0] != '\0')
+		{
+			if(gs_BgAlerts.m_aLastFocusReplyTime[ClientId] == 0 || (Now - gs_BgAlerts.m_aLastFocusReplyTime[ClientId]) >= ReplyCooldown)
+			{
+				char aBuf[256];
+				if(pMsg->m_Team == TEAM_WHISPER_RECV || ServerCommandExists("w"))
+					str_format(aBuf, sizeof(aBuf), "/w %s %s", aPlayerName, g_Config.m_ClFocusModeAutoReplyMessage);
+				else
+					str_format(aBuf, sizeof(aBuf), "%s: %s", aPlayerName, g_Config.m_ClFocusModeAutoReplyMessage);
+				if(SendNonDuplicateMessage(0, aBuf))
+					gs_BgAlerts.m_aLastFocusReplyTime[ClientId] = Now;
 			}
 			return;
 		}
