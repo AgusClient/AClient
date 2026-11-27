@@ -1354,27 +1354,29 @@ void CAClientGameSkins::RefreshPresence(bool ForceAnnounce)
 
 	m_LastPresenceRefreshTime = Now;
 
-	if(g_Config.m_AcShowRemoteGameSkins || g_Config.m_AcShowRemoteEntitiesOnHook)
-	{
-		char aEscapedServer[256];
-		EscapeUrl(aEscapedServer, sizeof(aEscapedServer), aServerAddr);
-
-		int64_t NowEpochMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-		int64_t MinUpdatedAt = NowEpochMs - 3600000; // 1 hora
-
-		char aGetUrl[512];
-		str_format(aGetUrl, sizeof(aGetUrl), "%s/rest/v1/presence?server=eq.%s&updated_at=gt.%" PRId64 "&select=player,asset_game,asset_entities,updated_at&order=updated_at.desc&limit=64", pBaseUrl, aEscapedServer, MinUpdatedAt);
-
-		m_pPresenceRequest = HttpGet(aGetUrl);
-		AClientBackend::ConfigureSupabaseRequest(m_pPresenceRequest, CTimeout{4000, 4000, 500, 4}, 128 * 1024);
-		Http()->Run(m_pPresenceRequest);
-	}
-	else if(!m_mRemotePlayerGameSkins.empty() || !m_mRemotePlayerEntities.empty())
+	const bool WantRemoteAssets = (g_Config.m_AcShowRemoteGameSkins != 0) || (g_Config.m_AcShowRemoteEntitiesOnHook != 0);
+	if(!WantRemoteAssets && (!m_mRemotePlayerGameSkins.empty() || !m_mRemotePlayerEntities.empty()))
 	{
 		m_mRemotePlayerGameSkins.clear();
 		m_mRemotePlayerEntities.clear();
 		UpdateAllPlayerSkins();
 	}
+
+	char aEscapedServer[256];
+	EscapeUrl(aEscapedServer, sizeof(aEscapedServer), aServerAddr);
+
+	int64_t NowEpochMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+	int64_t MinUpdatedAt = NowEpochMs - 3600000; // 1 hora
+
+	// Always query AClient presence so Tab badges & Music Share work even with remote gameskins/entities disabled.
+	// When remote assets are disabled, request only player + updated_at to minimize payload size.
+	const char *pSelectCols = WantRemoteAssets ? "player,asset_game,asset_entities,updated_at" : "player,updated_at";
+	char aGetUrl[512];
+	str_format(aGetUrl, sizeof(aGetUrl), "%s/rest/v1/presence?server=eq.%s&updated_at=gt.%" PRId64 "&select=%s&order=updated_at.desc&limit=64", pBaseUrl, aEscapedServer, MinUpdatedAt, pSelectCols);
+
+	m_pPresenceRequest = HttpGet(aGetUrl);
+	AClientBackend::ConfigureSupabaseRequest(m_pPresenceRequest, CTimeout{4000, 4000, 500, 4}, 128 * 1024);
+	Http()->Run(m_pPresenceRequest);
 }
 
 void CAClientGameSkins::UpdateAllPlayerSkins()
@@ -1514,17 +1516,29 @@ void CAClientGameSkins::OnRender()
 	static int s_LastShowRemoteEntitiesOnHook = g_Config.m_AcShowRemoteEntitiesOnHook;
 	if(s_LastShowRemoteEntitiesOnHook != g_Config.m_AcShowRemoteEntitiesOnHook)
 	{
+		const bool EnabledNow = (g_Config.m_AcShowRemoteEntitiesOnHook != 0);
 		s_LastShowRemoteEntitiesOnHook = g_Config.m_AcShowRemoteEntitiesOnHook;
 		UpdateAllPlayerSkins();
+		if(EnabledNow && Client()->State() == IClient::STATE_ONLINE)
+		{
+			m_LastPresencePayload.clear();
+			RefreshPresence(false);
+		}
 	}
 	if(m_LastShowRemoteGameSkins != g_Config.m_AcShowRemoteGameSkins ||
 		m_LastDownloadGameskinsCfg != g_Config.m_ClDownloadGameskins ||
 		m_LastDownloadEntitiesCfg != g_Config.m_ClDownloadEntities)
 	{
+		const bool GameSkinsEnabledNow = (m_LastShowRemoteGameSkins == 0 && g_Config.m_AcShowRemoteGameSkins != 0);
 		m_LastShowRemoteGameSkins = g_Config.m_AcShowRemoteGameSkins;
 		m_LastDownloadGameskinsCfg = g_Config.m_ClDownloadGameskins;
 		m_LastDownloadEntitiesCfg = g_Config.m_ClDownloadEntities;
 		++m_AssetsScanVersion;
+		if(GameSkinsEnabledNow && Client()->State() == IClient::STATE_ONLINE)
+		{
+			m_LastPresencePayload.clear();
+			RefreshPresence(false);
+		}
 	}
 
 	if(m_PendingAnnounce && Client()->State() == IClient::STATE_ONLINE)
@@ -1575,11 +1589,10 @@ void CAClientGameSkins::OnRender()
 				bool HeartbeatNeeded = (m_LastPresenceAnnounceTime > 0) && ((NowCheck - m_LastPresenceAnnounceTime) > time_freq() * 2700);
 
 				bool ForceAnnounce = SkinChanged || EntitiesChanged || DummyEntitiesChanged || NameChanged || DummyChanged || HeartbeatNeeded;
-				const bool WantRemoteAssets = (g_Config.m_AcShowRemoteGameSkins != 0) || (g_Config.m_AcShowRemoteEntitiesOnHook != 0);
-				bool PeriodicRefresh = WantRemoteAssets && ((m_LastPresenceRefreshTime == 0) || ((NowCheck - m_LastPresenceRefreshTime) > time_freq() * 90));
+				bool PeriodicRefresh = (m_LastPresenceRefreshTime == 0) || ((NowCheck - m_LastPresenceRefreshTime) > time_freq() * 90);
 
 				bool RosterChanged = false;
-				if(WantRemoteAssets && (NowCheck - m_LastPresenceRefreshTime) > time_freq() * 30)
+				if((NowCheck - m_LastPresenceRefreshTime) > time_freq() * 30)
 				{
 					int RosterSignature = 0;
 					int ActiveCount = 0;
